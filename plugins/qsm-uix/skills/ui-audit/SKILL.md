@@ -59,6 +59,17 @@ resting frame is not an audit.
    dim resting state passes only if its active state is captured and measured too. Adjacent states
    of one control differ by a ratio of at least 1.2. Sample the rendered pixel, never the colour
    the code names, because opacity stacks and blending change what reaches the screen.
+   Three more smells are measured here, each a finding with its number, the thresholds being
+   ui-design's. One hue: take each role's top colour from `region-stats` on a rect of that role
+   (when it covers over half the pixels, else Not examined), convert it to OKLCH, and when the
+   neutrals carry chroma above 0.02 and the accent sits within 15 degrees of them, file the palette
+   once, because an accent that differs from its ground only by lightness marks nothing. Fog: with
+   lightness as the source's separation, a container under 1.3:1 on its parent (`contrast`, one
+   point in each; a parent that is an image is Not examined); a repeated group (table rows) is
+   filed once with the count. Two products: more than one separation mechanism on container edges
+   (a lightness step, a border, a shadow; `pixel-sample` across each edge), filed once with the
+   mechanisms and the tree ids; a control's own 3:1 border, a row rule inside a container and a
+   focus ring do not count, because 1.4.11 asks for them.
 5. **Type and icons.** Inventory every text item with family, rendered size, weight. Sizes form a
    scale, each step about 1.125 times the one below, because a scale makes hierarchy legible
    without reading. Rank items by size, weight, and contrast; the most glance-critical readouts

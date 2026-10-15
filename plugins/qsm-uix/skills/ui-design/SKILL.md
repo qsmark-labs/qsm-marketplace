@@ -46,15 +46,30 @@ Use these headings, because the audits and the stack skills look for them:
 
 | Heading | Holds |
 | --- | --- |
-| `## Tokens` | name, light, dark, role. Roles, not hues: `surface`, `primary`, `danger`, `border` |
+| `## Tokens` | the palette (named values with their light and dark value: a neutral ladder and named hues), then the roles: name, meaning, light, dark, each value a palette name. Roles, not hues: `surface`, `primary`, `danger`, `border` |
 | `## Pairs` | fill, on-fill, ratio in light, ratio in dark |
 | `## Scales` | space, type, radius, elevation, layer, icon size, motion, density |
-| `## Style` | constraints, the requirements it brings, do not use for |
+| `## Style` | the one separation mechanism, constraints, the requirements it brings, do not use for |
 | `## Requirements` | the accessibility floor the source commits to |
 
 ## Rules
 
-- **Every colour is a token, and a fill token never travels alone.** Define `primary` with
+- **A role gets its sentence before its value.** Each role in `## Tokens` says what it is for
+  ("accent: what is current now, the active tab or the selected row, nothing else"; `primary`
+  stays the one action) and its palette value is chosen after that sentence. Why: a hue with no
+  job gets reused for whatever looks good, so the accent ends up marking nothing and the audit has
+  no role to check a use against.
+- **Neutrals carry structure, hues carry meaning.** The neutrals are a ladder of low-chroma steps;
+  with lightness as the separation (below), a container sits at least 1.3:1 (default, WCAG
+  formula, computed) on its parent, so the two read as two. The named hues share one lightness per
+  theme (default: dark OKLCH L 0.80, light L 0.55) at the largest chroma sRGB holds for every hue
+  there (about C 0.10 dark, C 0.09 light), so they read as one set. A role's hue sits more than
+  15 degrees (OKLCH, chroma above 0.02) from the neutral tint, and the status roles sit at least
+  30 degrees from each other and from `accent` (defaults). Why: a hue within 15 degrees of its
+  ground differs from it only by lightness and marks nothing. The instance is Catppuccin's
+  structure, not its values: red, peach, green and sky for danger, warning, success and info; a
+  second brand hue is one more named hue, and the role that uses it gets its sentence.
+- **Every colour is a role, and a fill role never travels alone.** Define `primary` with
   `on-primary` and record the ratio per theme: 4.5 for text, 3 for large text, icons, borders and
   focus indicators (WCAG 1.4.3, 1.4.11). Why: contrast belongs to a pair, so a colour checked alone
   is checked against nothing. Compute the ratio with the WCAG relative-luminance formula, never
@@ -69,6 +84,26 @@ Use these headings, because the audits and the stack skills look for them:
   (z-order), icon size, motion (duration and easing, exit shorter than enter), density. Why: a
   literal in a component is a decision nobody reviewed, and a scale is how one change reaches
   every surface. Density is an axis of the scale (compact, regular), not a second design.
+- **Palette, roles, components, surfaces: one component per concept.** A component reads roles
+  only; a surface composes components and overrides a role only in its page file, with the reason.
+  Why: a second component for one concept drifts one grey at a time, and so does a value a surface
+  sets for itself.
+- **A theme derived from an image keeps the ladder and moves the hues.** The lightness ladder is
+  fixed per polarity (dark when the image's median OKLCH lightness is under 0.5) and judged once.
+  The neutral tint is the chroma-weighted circular mean hue (vector sum of C cos h and C sin h,
+  then atan2) of the pixels above OKLCH C 0.02; the `accent` role takes the hue of the most
+  chromatic cluster of those pixels, moved to the distances above; under 10 percent of pixels
+  qualifying, both take the default hues the source records and the source says the image gave
+  none. Every pair is then recomputed, because a new hue is a new column. Why: fixed lightness
+  steps keep each pair's relative luminance within about 10 percent across hues, so the ladder is
+  designed once and the image supplies only colour.
+- **One separation mechanism for containers.** Panels, cards and sections separate by a lightness
+  step, or a border (3:1, the Pairs rule), or a shadow; `## Style` names the one, and every
+  container edge uses only it. A control whose edge identifies it (a field, a checkbox) keeps its
+  3:1 border, a divider inside a container is a row rule, and a focus ring is a state. For example,
+  a panel and its cards separated by lightness alone, with no hairline on any container edge. Why:
+  two marks on one edge leave the eye unsure which one the design means, and the UI reads as two
+  products.
 - **State changes colour, opacity, or elevation, never bounds.** Hover, press, focus and disabled
   stay in the same box. Adjacent states of a control differ by a contrast ratio of at least 1.2,
   and the focus indicator reaches 3:1 against its neighbours. Why: a state that moves layout
@@ -80,15 +115,17 @@ Use these headings, because the audits and the stack skills look for them:
 - **One primary action per surface.** Secondary actions are visibly subordinate and a destructive
   one is separated and named as such. Why: when two things shout, the user has to decide what
   the design should have decided.
-- **Colour is never the only carrier of meaning.** Each status token comes with a word, glyph or
-  shape (error is red and says what failed). Icons follow use: decorative beside text, named when
-  alone, a button when interactive.
-- **Prefer the platform's control to a custom one**, unless the source says why not. The system
-  one brings keyboard, focus, scaling and screen reader behaviour for free.
 - **A style is a constraint set, never a name.** Write what the look requires (for example "thin
   borders at 1 px, 3:1 against the surface; no shadow-only separation"), the accessibility it
   brings, and where it must not be used (dense data, small text, high-contrast users). Why: a
   named fad such as "glass" says nothing the audit can measure; a constraint can fail a pair.
+- **The source changes by principle and holds only what is true now.** When a finding or a wish
+  comes back to the source, it is traced to the principle it broke, and the token or rule that
+  carries that principle changes: "the sidebar warning is too loud" breaks "a status colour marks
+  a state, never a region", so the `warning` value changes, not a sidebar exception. A superseded
+  line is replaced, never kept beside a dated amendment. Why: a line per complaint stacks until
+  each new one breaks an older rule it never met, and git already holds what the source used to
+  say.
 
 ## Output
 

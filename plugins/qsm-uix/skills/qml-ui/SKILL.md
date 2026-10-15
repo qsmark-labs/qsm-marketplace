@@ -34,6 +34,13 @@ choose values, audit, or restyle what was not asked.
   `Theme.` / `Motion.` property. A missing token means add it to the singleton in the design
   source's name and fill the dark and light values, never a literal beside it, because a literal
   is invisible to a theme switch and to the audit's token trace.
+- **Components read roles only.** A component binds `Theme.accent`, never a named value
+  (`Theme.palette.mauve`), so a theme swap replaces one file holding that theme's palette values
+  and role mapping and touches no component (ui-design: palette, roles, components, surfaces).
+  Where the singleton keeps a `palette` block, a role points at one entry (`property color accent:
+  palette.mauve`); a wallpaper theme fills `palette.accent` from the image, and when the
+  derivation finds no hue the singleton fails loud with the image path rather than mapping
+  `accent` to a neutral. Check: `grep -rn 'palette\.' components/` prints nothing.
 - **Pairs travel together.** A fill token and its on-token (`primary` / `onPrimary`) are read
   together in one item. Colours are bindings to the singleton so a theme swap reaches every
   consumer; never copy a colour into a local `property color`.

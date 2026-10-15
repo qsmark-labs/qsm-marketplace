@@ -66,6 +66,17 @@ design source is the expected column), measuring the result (ui-audit), criteria
 12. **Features: container queries, `dvh`, `:focus-visible`, `:has`, `color-scheme` are
     Baseline and safe to use; anything newer is checked on MDN before use**, and gets an
     `@supports` fallback. The page works without it.
+13. **The palette holds values, roles point at them, components read roles.** The palette is the
+    named values of rule 3's theme blocks (`--mauve: #8839ef` in light, `#cba6f7` in the dark
+    block); a role is a custom property on `:root` that points at one (`--primary: var(--mauve);
+    --on-primary: var(--crust)`), redeclared in the dark block only where ui-design's dark column
+    names another palette value, and redeclared in any subtree that switches appearance on its own,
+    because a `var()` is resolved where the role is declared. A component reads roles only
+    (`background: var(--primary); color: var(--on-primary)`). A brand or wallpaper theme is a block
+    under its own selector (`:root[data-theme="forest"]`) that sets the palette values it changes
+    and repoints a role with its `--on-` partner, because contrast is proven on the pair (rule 2).
+    Reason: a component that names `--mauve` stays mauve in a theme that should be teal. Check:
+    grep the component styles for palette names; zero hits.
 
 ## Make it checkable
 
@@ -79,7 +90,9 @@ for ui-audit and a11y-audit; a UI that cannot be read this way is reported as no
 
 Tailwind is the same tokens in another syntax; it adds nothing to the discipline.
 
-- Put tokens in `@theme` (v4) or `theme.extend` (v3) and nowhere else. Define the pair names
+- Keep the palette values in rule 3's `:root` blocks and map the roles once, `@theme inline {
+  --color-primary: var(--primary) }` (v4) or `theme.extend` colours reading `var(--primary)`
+  (v3); a value written in `@theme` has no dark value to flip to. Define the pair names
   (`--color-primary`, `--color-on-primary`) so `bg-primary text-on-primary` is the only way
   to colour a fill.
 - For themes, define the values as plain custom properties flipped by the
@@ -88,7 +101,8 @@ Tailwind is the same tokens in another syntax; it adds nothing to the discipline
   `dark:` colour is a second place the dark value lives.
 - No arbitrary values (`bg-[#1a1a1a]`, `p-[13px]`, `duration-[240ms]`): they are literals. A
   missing step means a missing token; add it to the design source first.
-- `motion-reduce:` and `focus-visible:` on every animation and every control, as rules 4 and 7.
+- `focus-visible:` on every control (rule 4); no `motion-reduce:` per animation, because rule 7's
+  `:root` switch already covers every duration.
 - Build class names whole (`{ red: 'bg-red-500' }`), never `bg-${color}-500`: the scanner
   cannot see the second.
 
