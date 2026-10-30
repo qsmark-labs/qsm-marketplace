@@ -25,9 +25,9 @@ and neither knows the other.
 - **The parent of tasks is GitHub's default issue type Feature, and one Status field serves both
   kinds.** A task uses Todo, In Dev, Agent Review, Human Review, Done, Released and Canceled; a
   feature uses Todo, In Dev, Ready For Test, In Test, Blocked, Done, Released and Canceled. Each
-  option has one definition
-  per kind, "not used" where a kind never takes it, and a Status of the other kind is refused. No
-  second field, no custom issue type for the parent.
+  option has one definition per kind, "not used" where a kind never takes it, and a Status of the
+  other kind is refused; a Feedback issue uses Todo, Done and Canceled only. No second field, no
+  custom issue type for the parent.
 - **The flow is code, not prose.** The flow (one Status field, a part of it for each kind), the two
   definitions of done and the guard of every move are one table in `lib/flow.ts`; the verbs, `flow`,
   `doctor` and `setup` read it. A verb that would break the flow fails `blocked` naming the rule.
@@ -137,11 +137,11 @@ None. Every requirement lands in the existing `qsm-tasks` capability.
    Agent Review or Human Review, and a Status of the other kind is refused (`wrong-kind`), because
    the views filter by kind and Status. Consequences he chose in the same decision: the Action
    stays, on the one field, as `feature-ready.yml` with its repository secret (Impact); `unclaim` is
-   the verb that puts a claimed task back to Todo; `reject` is deleted because the owner's rejection
-   is a `finding` (In Test to Blocked with a fix task); `qa` has two routes, the Action's Ready For
-   Test and the verb from In Dev when every sub-issue is closed: "Both should be possible, pref the
-   action", the owner's explicit exception to the one-path rule (design decision 16); and Released
-   is an option only, set by nothing in this change.
+   the verb that puts a task back on the ready list; `reject` is deleted because the owner's
+   rejection is a `finding` (In Test to Blocked with a fix task); `qa` has two routes, the Action's
+   Ready For Test and the verb from In Dev when every sub-issue is closed: "Both should be possible,
+   pref the action", the owner's explicit exception to the one-path rule (design decision 16); and
+   Released is an option only, set by nothing in this change.
 7. **Canceled is a Status for both kinds** (2026-10-30), the tenth option after Released: "Closed
    without being done: dropped, duplicate or superseded; the reason is the last comment". `drop`
    closes as not planned and sets it, and takes a feature too when it has no open sub-issue. Whether

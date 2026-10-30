@@ -60,7 +60,7 @@ the failure this removes, and hooks need `$.tasks`.
 | | `note <n> "<text>"` | text or `--body-file` |
 | task flow | `claim <n>`, `unclaim <n>`, `review <n>`, `human <n>`, `reopen <n>` | |
 | | `close <n>` | `--reason "<what was done>"` required |
-| | `drop <n>` | `--reason` required; a task, or a feature with no open sub-issue |
+| | `drop <n>` | `--reason` required; a task, Feedback, or a feature with no open sub-issue |
 | | `defer <n>` | `--until <YYYY-MM-DD or a condition>` required |
 | feature flow | `plan <feature>`, `qa <feature>`, `accept <feature>` | |
 | admin | `doctor`, `setup`, `flow` | `setup`: `--project owner/number` |
@@ -75,13 +75,14 @@ reason for each:
   and is never a feature's child; a spec change always passes it.
 - `close` is added (decision of 2026-10-29); `reopen` covers a task; an accepted feature is not
   reopened (`wrong-kind`), new work is a new feature.
-- `unclaim` is the way back from In Dev to Todo for a task; `plan` is the way back to Todo for a
-  feature that is re-planned; `feature` already creates at Todo.
-- `human` and `review` are the two ends of CI for a task: `review` also takes a task back from
-  Human Review when a finding appears. A feature has neither.
+- `unclaim` is the way back to the ready list for a task: from In Dev, Agent Review or Human Review,
+  or from Todo when the task is deferred; `plan` is the way back to Todo for a feature that is
+  re-planned; `feature` already creates at Todo.
+- `human` and `review` are the two ends of CI for a task: `review` also takes a task back from Human
+  Review when a finding appears. A feature has neither.
 - There is no `reject`: the owner's rejection of a feature is a `finding` with the owner's reason as
   title, which is In Test to Blocked with a fix task, the same write.
-- `drop` is the one way to Canceled, for a task and for a feature (decision 17).
+- `drop` is the one way to Canceled, for a task, a feature and a Feedback issue (decision 17).
 - `ready --qa` is a flag, not a verb: the QA agent's list is the ready list of the other kind.
 
 ### 3. The repository and the board are resolved, not configured
@@ -103,13 +104,13 @@ filtered to Status Todo by the backend. `ready --qa` lists open features whose S
 Test, and features at In Dev whose sub-issues are all closed, in ascending number; it takes no other
 filter. `--mine` on `list` is assigned to the caller's login. `tree` prints the feature, then its
 sub-issues indented one level with Status, assignee and blockers, so the QA agent and the owner read
-one screen. `board` counts features and tasks (a bug counts as a task) per Status, each kind over
-the options it uses, zero included, in flow order, with Canceled as its own row after Done and
-Released. `list` shows open issues by default, so Done, Released and Canceled items appear only
-with `--state closed` or `all`. `search` is `gh`'s issue search over title and
-body, any state, each row with its kind and state. `notes` prints the comments oldest first, each as
-`<date> <login>: <text>`. All output is deterministic: ascending number unless the verb says
-otherwise, no relative times, no colour. Output shape in decision 10.
+one screen. `board` counts features, tasks (a bug counts as a task) and Feedback issues per Status,
+each kind over the options it uses, zero included, in flow order, with Canceled as its own row after
+Done and Released. `list` shows open issues by default, so Done, Released and Canceled items appear
+only with `--state closed` or `all`. `search` is `gh`'s issue search over title and body, any state,
+each row with its kind and state. `notes` prints the comments oldest first, each as `<date> <login>:
+<text>`. All output is deterministic: ascending number unless the verb says otherwise, no relative
+times, no colour. Output shape in decision 10.
 
 ### 5. The flow is a table in `lib/flow.ts`
 
@@ -119,41 +120,49 @@ effect (the value it writes, the assignee, the side effect on the feature). Stat
 and each kind uses a part of them; the table says which kind takes each option and gives one
 definition per kind:
 
-| Status | Task and Bug | Feature |
-| --- | --- | --- |
-| Todo | Not started | Being planned: intent, acceptance criteria, specs, tasks |
-| In Dev | Claimed and being built | Its tasks are being built |
-| Agent Review | PR open: CI, the gates and the review agents run; every finding is fixed | not used |
-| Human Review | CI green and no open finding: the owner tests it and approves | not used |
-| Ready For Test | not used | Every task is closed: waiting for the QA agent |
-| In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts |
-| Blocked | not used | QA found a finding: a fix task is open under the feature |
-| Done | Merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner |
-| Released | Included in a published release | Included in a published release |
-| Canceled | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment |
+| Status | Task and Bug | Feature | Feedback |
+| --- | --- | --- | --- |
+| Todo | Not started | Being planned: intent, acceptance criteria, specs, tasks | Filed, not yet read |
+| In Dev | Claimed and being built | Its tasks are being built | not used |
+| Agent Review | PR open: CI, the gates and the review agents run; every finding is fixed | not used | not used |
+| Human Review | CI green and no open finding: the owner tests it and approves | not used | not used |
+| Ready For Test | not used | Every task is closed: waiting for the QA agent | not used |
+| In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts | not used |
+| Blocked | not used | QA found a finding: a fix task is open under the feature | not used |
+| Done | Merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner | Read and settled: answered, changed or filed as a task |
+| Released | Included in a published release | Included in a published release | not used |
+| Canceled | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment |
 
-The board's option description is one string per option, `Task: <text>. Feature: <text>.`, with the
-kind that does not use the option omitted. A verb that would write a Status of the other kind exits
-`wrong-kind`.
+The board's option description is one string per option, `Task: <text>. Feature: <text>. Feedback:
+<text>.`, with the kinds that do not use the option omitted. A verb that would write a Status of the
+other kind exits `wrong-kind`.
 
-The verbs' guards and effects: `claim` needs a task at Todo, unassigned or held by the caller; sets
-In Dev, assigns the caller, adds the item to the board when it is missing, and moves a feature at
-Todo to In Dev. `unclaim` needs In Dev; unassigns, Todo. `review` needs In Dev or Human Review;
-Agent Review. `human` needs Agent Review; Human Review. `reopen` needs a closed task; opens it,
-Todo. `close` needs an open task, closes it completed and leaves the board to GitHub (Done on
-close). `drop` needs an open task, or an open feature with no open sub-issue (else `open-children`),
-closes it as not planned with the reason as a comment and sets Canceled (decision 17). `defer`
-unassigns, Todo, adds the label `deferred` and a comment `Deferred until <value>`; `unclaim` on a
-deferred task removes the label. `plan` needs a feature at In Dev or Blocked; Todo. `qa` needs a
-feature at Ready For Test, or at In Dev with no open sub-issue; In Test (decision 16). `finding`
-needs In Test; creates the fix task, Blocked. `accept` needs In Test and no open sub-issue; closes
-the feature completed and writes no Status, because the board's "Item closed" workflow sets Done
-(decision 8). A verb whose guard fails exits `blocked`, names the rule and the current value, and
-changes nothing. One more rule across verbs: when an open sub-issue appears under a feature at Ready
-For Test or In Test (`add`, `reopen`, `move`), the feature goes to In Dev; under Blocked it is
-normal, because the fix task is a sub-issue; under a feature at Done or Released it is refused
-(`feature-done`). Nothing sets Released. The table is data the verbs, `flow`, `doctor`, `setup` and
-the tests read, so the names exist once in Typescript (and once in the Action, decision 9).
+The verbs' guards and effects: `claim` needs a task at Todo (an item not yet on the board counts as
+Todo, because the auto-add workflow may not have run), unassigned or held by the caller; sets In
+Dev, assigns the caller, adds the item to the board when it is missing, and moves a feature at Todo
+to In Dev. `unclaim` puts a task back on the ready list: it needs a task at In Dev, Agent Review or
+Human Review, or at Todo carrying `deferred`; unassigns, Todo, removes `deferred`. `review` needs In
+Dev or Human Review; Agent Review. `human` needs Agent Review; Human Review. `reopen` needs a closed
+task or Feedback issue; opens it, Todo. `close` needs an open task or Feedback issue, closes it
+completed and leaves the board to GitHub (Done on close); for a task it first moves its feature from
+Todo to In Dev, so the Action that runs on the close sees In Dev (a feature whose only tasks are
+decisions would otherwise stay at Todo for good). `drop` needs an open task, an open Feedback issue,
+or an open feature with no open sub-issue (else `open-children`), closes it as not planned with the
+reason as a comment and sets Canceled (decision 17); it moves no feature, because a feature whose
+tasks were all dropped is re-planned or dropped. `defer` needs a task at Todo or In Dev; unassigns,
+Todo, adds the label `deferred` and a comment `Deferred until <value>`. A Feedback issue uses Todo,
+Done and Canceled only: every task-flow verb except `close`, `drop` and `reopen` refuses it with
+`wrong-kind`. `plan` needs a feature at In Dev or Blocked; Todo. `qa` needs a feature at Ready For
+Test, or at In Dev with no open sub-issue; In Test (decision 16). `finding` needs In Test; creates
+the fix task, Blocked. `accept` needs In Test and no open sub-issue; closes the feature completed
+and writes no Status, because the board's "Item closed" workflow sets Done (decision 8). A verb
+whose guard fails exits `blocked`, names the rule and the current value, and changes nothing. One
+more rule across verbs, the sub-issue rule: When `add`, `reopen` or `move` puts an open sub-issue
+under a feature at Ready For Test or In Test, the feature goes to In Dev; under a feature at Done,
+Released or Canceled it is refused with `feature-done`; under a feature at any other Status nothing
+changes. Under Blocked it is normal, because `finding` creates the fix task itself and sets Blocked.
+Nothing sets Released. The table is data the verbs, `flow`, `doctor`, `setup` and the tests read, so
+the names exist once in Typescript (and once in the Action, decision 9).
 
 ### 6. Binding a change: the first body line
 
@@ -180,12 +189,13 @@ body holds backticks and quotes.
 
 A merged pull request with `Closes #N` closes the task (a GitHub rule for the default branch,
 protected or not) and the board's "Item closed" workflow sets Done; "Pull request merged" does the
-pull request's own item. A feature is closed by `accept` and the same workflow sets its Done. No
-verb writes Done for a task or a feature, and none adds an issue to the board (the two auto-add
-workflows do, within seconds; `claim` adds the item itself when it is not there yet, because it may
-run inside that gap). Reason: GitHub does it on the server for every merge, including one made in
-the browser, which no verb of ours would see. Nothing sets Released in this change (Not in this
-change, in the proposal).
+pull request's own item, and "Pull request linked to issue" moves a task to Agent Review, the same
+move as `review`, which stays the verb for it and for the way back from Human Review. A feature is
+closed by `accept` and the same workflow sets its Done. No verb writes Done for a task or a feature,
+and none adds an issue to the board (the two auto-add workflows do, within seconds; `claim` adds the
+item itself when it is not there yet, because it may run inside that gap). Reason: GitHub does it on
+the server for every merge, including one made in the browser, which no verb of ours would see.
+Nothing sets Released in this change (Not in this change, in the proposal).
 
 ### 9. The Action moves a feature to Ready For Test
 
@@ -230,22 +240,25 @@ each write is idempotent.
 
 ### 11. `doctor`, `setup`, `flow`
 
-`doctor` checks, one line each with `ok`, `failed` or `manual`: `gh` and its login and the
-`project` scope; the repository and the one linked board; the issue types Feature, Task, Bug and
-Feedback; the two fields Status and Priority with exactly the option names of `lib/flow.ts` and
-their definitions, and no leftover field named `Epic stage` (a leftover is `failed`, its fix: the
-owner deletes the field on the project's Settings page); the label `deferred`; the built-in
-workflows that must be on (auto-add, auto-add sub-issues, item added, item closed, pull request
-merged); the views Tasks and Features; the file `.github/workflows/feature-ready.yml` with its names
-and the secret `PROJECT_TOKEN`. Each failing line names its fix: a `qsm-tasks setup` or the web-UI
-page. A check the API cannot read is `manual`, and `doctor` then exits `partial`. `setup` creates
-what the API allows and nothing else: the fields, their options with definitions (a missing option
-is added to an existing field), the issue type Feedback when it is missing, the label `deferred`;
-it never creates, renames or deletes GitHub's default issue types and never renames, reorders or
-deletes an option, so a second run does nothing and names nothing. It prints the manual remainder
-(views, workflows, secret, and a rename the API cannot do) as the same lines `doctor` would. `flow`
-prints the flow, the two definitions of done and, per verb, its guard and effect, from
-`lib/flow.ts`.
+`doctor` checks, one line each with `ok`, `failed` or `manual`: `gh` and its login and the `project`
+scope; the repository and the one linked board; the issue types Feature, Task, Bug and Feedback; the
+two fields Status and Priority with exactly the option names of `lib/flow.ts` and their definitions
+(an extra or wrongly named option, such as a leftover In Progress, is `failed` with the project's
+field settings in the web UI as its fix, never `qsm-tasks setup`, because setup never renames or
+deletes) and no leftover field named `Epic stage` (a leftover is `failed`, its fix: the owner
+deletes the field on the project's Settings page); the label `deferred`; the built-in workflows that
+must be on: "Auto-add to project", "Auto-add sub-issues to project", "Item added to project" (sets
+Todo), "Item closed" (sets Done), "Pull request merged" (sets Done) and "Pull request linked to
+issue" (sets Agent Review); the views Tasks and Features; the file
+`.github/workflows/feature-ready.yml` with its names and the secret `PROJECT_TOKEN`. Each failing
+line names its fix: a `qsm-tasks setup` or the web-UI page. A check the API cannot read is `manual`,
+and `doctor` then exits `partial`. `setup` creates what the API allows and nothing else: the fields,
+their options with definitions (a missing option is added to an existing field), the issue type
+Feedback when it is missing, the label `deferred`; it never creates, renames or deletes GitHub's
+default issue types and never renames, reorders or deletes an option, so a second run does nothing
+and names nothing. It prints the manual remainder (views, workflows, secret, and a rename the API
+cannot do) as the same lines `doctor` would. `flow` prints the flow, the two definitions of done
+and, per verb, its guard and effect, from `lib/flow.ts`.
 
 ### 12. The backend boundary
 
@@ -260,7 +273,8 @@ names the verbs, is what it also replaces.
 
 ### 13. Ghost mode
 
-The binary adds nothing of its own to a body, comment, title or label: no footer, no marker, no
+The binary adds nothing of its own to a body, comment, title or label, apart from two fixed texts,
+the label `deferred` and the comment `Deferred until <value>` of `defer`: no footer, no marker, no
 `Co-Authored-By`. The only labels it writes are `deferred`, the three feedback labels the caller
 names (decision 14), and `change:<id>` if decision 6 falls back. `from:main-agent` names an agent on
 a public repository by the owner's choice (proposal, decision 2); the binary never adds it unasked.

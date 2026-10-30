@@ -56,7 +56,7 @@ renamed option edits one file), and holds the table below.
 | task of a change | `qsm-tasks add "<change>" --feature <id> --spec <change-id>` | spec-propose, once the spec is written, never before |
 | order | `qsm-tasks after <task> <blocker>` | the planner |
 | claim | `qsm-tasks claim <task>` | the agent that builds; spec-apply at start |
-| give back | `qsm-tasks unclaim <task>` | the agent that cannot continue |
+| give back | `qsm-tasks unclaim <task>` | the agent that cannot continue, or brings a deferred task back to the ready list |
 | pull request open, CI and review agents running | `qsm-tasks review <task>` | the builder, when it opens the pull request |
 | CI green, every finding fixed | `qsm-tasks human <task>` | the builder, only then; the owner tests and approves |
 | merge | nothing: `Closes #N` closes the task, the board sets Done | the owner merges |
@@ -69,8 +69,9 @@ renamed option edits one file), and holds the table below.
 | owner accepts | `qsm-tasks accept <feature>` | only on the owner's explicit word in the conversation |
 | owner rejects | `qsm-tasks finding <feature> "<reason>"` | only on the owner's explicit word |
 | progress | `qsm-tasks note <id> "<text>"` | anyone, in the owner's name |
-| work for later | `qsm-tasks defer <id> --until <date>` | the main agent |
+| work for later | `qsm-tasks defer <task> --until <date>` (a task at Todo or In Dev) | the main agent |
 | feature check | `qsm-tasks tree <feature>`, `qsm-tasks show <feature>` | after each task closes |
+| feedback handled | `qsm-tasks close <n> --reason`, or `drop <n> --reason` when it will not be acted on | the main agent with the owner's word |
 | feedback | `qsm-tasks feedback "<title>" --area <a> --kind <k> --from <f>` | any agent, a subagent's one permitted create |
 
 Alternative rejected: keep `task-tool` free of verb names and point at the binary's own help. The

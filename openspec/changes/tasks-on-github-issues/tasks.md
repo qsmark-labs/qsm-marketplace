@@ -250,7 +250,7 @@ final grep finds. Blocked by: groups 2 to 11, and the feature's triage task.
 
 - [ ] 12.1 Sweep:
       `grep -rnIE "\bbr (ready|show|create|close|update|list|dep|comment|sync)|beads|\.beads|beads_rust|test-it"`
-      over the tree outside `openspec/changes/archive/` and `.beads/` returns nothing, and
+      over the tree outside `openspec/changes/` and `.beads/` returns nothing, and
       `bun run validate` passes
 - [ ] 12.2 Archive: merge the deltas and edit by hand what a delta cannot (the Purpose and design
       table sentences listed in groups 3, 4, 8 and 11)

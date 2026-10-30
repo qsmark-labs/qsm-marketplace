@@ -136,9 +136,9 @@ blockers, sub-issue counts and body. `tree <feature>` SHALL print the feature an
 level below with Status, assignee and blockers. `search "<words>"` SHALL search title and body in
 any state and print each row with its kind and state. `notes <n>` SHALL print the comments oldest
 first as `<date> <login>: <text>`, at most `--limit`. `board` SHALL print the count of features and
-the count of tasks (a bug counts as a task) per Status, each kind over the options it uses, zero
-included, in flow order, with Canceled as its own row. A list that reaches its limit SHALL say it is
-cut, as a warning, and still exit `ok`.
+the count of tasks (a bug counts as a task) and the count of Feedback issues per Status, each kind
+over the options it uses, zero included, in flow order, with Canceled as its own row. A list that
+reaches its limit SHALL say it is cut, as a warning, and still exit `ok`.
 
 #### Scenario: A blocked task is not ready
 
@@ -176,8 +176,9 @@ cut, as a warning, and still exit `ok`.
 
 - **WHEN** `board` runs
 - **THEN** the features are counted over Todo, In Dev, Ready For Test, In Test, Blocked, Done,
-  Released and Canceled, and the tasks over Todo, In Dev, Agent Review, Human Review, Done, Released
-  and Canceled, each with its count, including zero
+  Released and Canceled, the tasks over Todo, In Dev, Agent Review, Human Review, Done, Released and
+  Canceled, and the Feedback issues over Todo, Done and Canceled, each with its count, including
+  zero
 
 #### Scenario: A bigger list than the limit
 
@@ -189,11 +190,9 @@ cut, as a warning, and still exit `ok`.
 `feature "<goal>" --intent <file or ->` SHALL create an issue of kind Feature whose body is the
 intent and SHALL set its Status to Todo. `add "<title>"` SHALL create a Task, optionally a sub-issue
 of `--feature`, blocked by `--after`, bound to a change by `--spec`, with `--priority`, `--body` or
-`--body-file` and `--label`; it SHALL send a feature at Ready For Test or In Test back to In Dev,
-SHALL leave a feature at Blocked as it is and SHALL refuse a feature at Done, Released or Canceled
-with reason `feature-done`. `finding <feature> "<title>"` SHALL create a Task under a feature In
-Test and set the feature to Blocked. Body text SHALL reach the backend as a file or stdin, never as
-an argument. Every create SHALL print the new number and URL.
+`--body-file` and `--label`; it SHALL apply the sub-issue rule. `finding <feature> "<title>"` SHALL
+create a Task under a feature In Test and set the feature to Blocked. Body text SHALL reach the
+backend as a file or stdin, never as an argument. Every create SHALL print the new number and URL.
 
 #### Scenario: A feature is created
 
@@ -290,15 +289,16 @@ the issue type Feedback SHALL exit `missing` with reason `no-feedback-type` and 
 
 `edit <n>` SHALL change `--title`, `--priority` and `--body` or `--body-file` and keep an existing
 `openspec: <change-id>` first body line when the new body has none. `move <n> --feature <m>` SHALL
-make the task a sub-issue of feature m, leaving an earlier parent. `after <n> <blocker>` SHALL
-record that n is blocked by the blocker and `unblock <n> <blocker>` SHALL lift it. `assign <n>`
-SHALL assign the caller, or `--login`, without changing Status. `spec <n> <change-id>` SHALL write
-the first body line `openspec: <change-id>`, replacing an earlier one. `find-spec <change-id>` SHALL
-print the one issue, in any state, whose first body line is exactly `openspec: <change-id>`, or
-`none`, and SHALL never match a longer id that begins with it. `note <n> "<text>"` SHALL add one
-comment with the text unchanged. A relation the backend refuses (a cycle, a missing issue, a parent
-in another repository) SHALL exit `failed` carrying its cause and change nothing; `unblock` of a
-blocker the task does not have SHALL exit `failed` naming both numbers.
+make the task a sub-issue of feature m, leaving an earlier parent, and SHALL apply the sub-issue
+rule. `after <n> <blocker>` SHALL record that n is blocked by the blocker and `unblock <n>
+<blocker>` SHALL lift it. `assign <n>` SHALL assign the caller, or `--login`, without changing
+Status. `spec <n> <change-id>` SHALL write the first body line `openspec: <change-id>`, replacing an
+earlier one. `find-spec <change-id>` SHALL print the one issue, in any state, whose first body line
+is exactly `openspec: <change-id>`, or `none`, and SHALL never match a longer id that begins with
+it. `note <n> "<text>"` SHALL add one comment with the text unchanged. A relation the backend
+refuses (a cycle, a missing issue, a parent in another repository) SHALL exit `failed` carrying its
+cause and change nothing; `unblock` of a blocker the task does not have SHALL exit `failed` naming
+both numbers.
 
 #### Scenario: The binding is exact
 
@@ -339,25 +339,33 @@ blocker the task does not have SHALL exit `failed` naming both numbers.
 ### Requirement: Task flow verbs
 
 A task or a bug SHALL move by Status in this order: Todo, In Dev, Agent Review, Human Review, Done.
-`claim <n>` SHALL need Status Todo and an unassigned task or one the caller holds, assign the
+`claim <n>` SHALL need Status Todo (an item not yet on the board counts as Todo, because the
+auto-add workflow may not have run) and an unassigned task or one the caller holds, assign the
 caller, set In Dev, add the task to the board when it is not there, and move its feature from Todo
-to In Dev; a repeat by the holder SHALL change nothing. `unclaim <n>` SHALL need In Dev, unassign
-and set Todo, and SHALL remove the label `deferred`. `review <n>` SHALL need In Dev or Human Review
-and set Agent Review. `human <n>` SHALL need Agent Review and set Human Review. `reopen <n>` SHALL
-need a closed task, open it and set Todo, and SHALL send a feature at Ready For Test or In Test back
-to In Dev. `close <n> --reason "<what was done>"` SHALL close an open task as completed with the
-reason as a comment, for work no merge closes. `drop <n> --reason` SHALL close an open task, or an
-open feature with no open sub-issue, as not planned with the reason as a comment and set Canceled
-(by the verb, or by the Action when the measurement of design decision 17 shows that "Item closed"
-would overwrite it; either way never Done), and SHALL exit `blocked` with reason `open-children` for
-a feature that has an open sub-issue. `defer <n> --until <date or condition>` SHALL unassign, set
-Todo, add the label `deferred` and comment `Deferred until <value>`. No verb SHALL mark a merged
-task Done. A verb SHALL refuse a feature where it needs a task, with reason `wrong-kind`, and a move
-its guard does not allow, with reason `wrong-status`, naming the current value and changing nothing.
+to In Dev; a repeat by the holder SHALL change nothing. `unclaim <n>` SHALL put a task back on the
+ready list: it SHALL need a task at In Dev, Agent Review or Human Review, or at Todo carrying the
+label `deferred`, and SHALL unassign, set Todo and remove the label `deferred`. `review <n>` SHALL
+need In Dev or Human Review and set Agent Review. `human <n>` SHALL need Agent Review and set Human
+Review. `reopen <n>` SHALL need a closed task or a closed Feedback issue, open it and set Todo, and
+SHALL apply the sub-issue rule. `close <n> --reason "<what was done>"` SHALL close an open task or
+Feedback issue as completed with the reason as a comment, for work no merge closes, and for a task
+SHALL first move its feature from Todo to In Dev, so the Action that runs on the close sees In Dev.
+`drop <n> --reason` SHALL close an open task, an open Feedback issue, or an open feature with no
+open sub-issue, as not planned with the reason as a comment and set Canceled (by the verb, or by the
+Action when the measurement of design decision 17 shows that "Item closed" would overwrite it;
+either way never Done), and SHALL exit `blocked` with reason `open-children` for a feature that has
+an open sub-issue; it SHALL NOT move a feature, because a feature whose tasks were all dropped is
+re-planned or dropped. `defer <n> --until <date or condition>` SHALL need a task at Todo or In Dev,
+unassign, set Todo, add the label `deferred` and comment `Deferred until <value>`. A Feedback issue
+SHALL use Todo, Done and Canceled only: every task-flow verb except `close`, `drop` and `reopen`
+SHALL refuse it with reason `wrong-kind`. No verb SHALL mark a merged task Done. A verb SHALL refuse
+a feature where it needs a task, with reason `wrong-kind`, and a move its guard does not allow, with
+reason `wrong-status`, naming the current value and changing nothing.
 
 #### Scenario: A task is claimed
 
-- **WHEN** `claim` runs on an open unassigned Todo task whose feature is Todo
+- **WHEN** `claim` runs on an open unassigned Todo task whose feature is Todo, or on a task that is
+  not on the board yet
 - **THEN** the task has the caller as assignee and Status In Dev, and its feature is In Dev
 
 #### Scenario: A later task of a feature in development
@@ -392,20 +400,32 @@ its guard does not allow, with reason `wrong-status`, naming the current value a
 
 #### Scenario: A claimed task is given back
 
-- **WHEN** `unclaim` runs on a task In Dev
-- **THEN** it is unassigned and Todo
+- **WHEN** `unclaim` runs on a task In Dev, Agent Review or Human Review
+- **THEN** it is unassigned and Todo, and a task at Todo without the label `deferred` makes it exit
+  `blocked` with reason `wrong-status`
 
 #### Scenario: A task is deferred and comes back
 
-- **WHEN** `defer 14 --until 2026-12-01` runs, then later `unclaim 14`
-- **THEN** after the first `ready` does not list 14 and its last comment says `Deferred until
-  2026-12-01`, and after the second the label is gone and `ready` lists it
+- **WHEN** `defer 14 --until 2026-12-01` runs on a task In Dev, then later `unclaim 14`
+- **THEN** after the first `ready` does not list 14, it is Todo and unassigned and its last comment
+  says `Deferred until 2026-12-01`, and after the second the label is gone and `ready` lists it
+
+#### Scenario: A task past review is not deferred
+
+- **WHEN** `defer 14 --until 2026-12-01` runs on a task at Agent Review
+- **THEN** it exits `blocked` with reason `wrong-status` and changes nothing
 
 #### Scenario: Close without a pull request
 
 - **WHEN** `close 9 --reason "decided: keep the existing table"` runs on an open task
 - **THEN** the task is closed as completed with that comment, and `close` without `--reason` exits
   `usage`
+
+#### Scenario: A feature of decision tasks reaches QA
+
+- **WHEN** a feature at Todo has one task, a decision, and `close` runs on it from Todo
+- **THEN** the feature is In Dev before the task closes, and the Action then sets it to Ready For
+  Test, because no sub-issue is open
 
 #### Scenario: Not planned
 
@@ -416,6 +436,40 @@ its guard does not allow, with reason `wrong-status`, naming the current value a
 
 - **WHEN** `drop 3 --reason "no longer wanted"` runs on a feature with an open sub-issue
 - **THEN** it exits `blocked` with reason `open-children` and changes nothing
+
+#### Scenario: A dropped task does not start its feature
+
+- **WHEN** `drop` runs on the only task of a feature at Todo
+- **THEN** the task is Canceled and the feature stays Todo
+
+#### Scenario: Feedback is closed, dropped and reopened
+
+- **WHEN** `close`, `drop` or `reopen` runs on a Feedback issue
+- **THEN** it is Done, Canceled or Todo respectively, and `claim`, `unclaim`, `review`, `human` or
+  `defer` on it exits `blocked` with reason `wrong-kind`
+
+### Requirement: A new open sub-issue sends a feature in test back to development
+
+When `add`, `reopen` or `move` puts an open sub-issue under a feature at Ready For Test or In Test,
+the feature goes to In Dev; under a feature at Done, Released or Canceled it is refused with
+`feature-done`; under a feature at any other Status nothing changes. The rule SHALL run in `add`,
+`reopen` and `move` and in no other verb: `finding` creates its fix task and sets Blocked itself.
+
+#### Scenario: A task is moved under a feature in test
+
+- **WHEN** `move 12 --feature 3` runs and feature 3 is at In Test
+- **THEN** task 12 is a sub-issue of 3 and the feature's Status is In Dev, as two lines of output
+
+#### Scenario: A task is reopened under a feature ready for test
+
+- **WHEN** `reopen 12` runs on a closed task whose feature is at Ready For Test
+- **THEN** the task is open and Todo and the feature's Status is In Dev
+
+#### Scenario: A task under a closed feature
+
+- **WHEN** `add --feature 3`, `reopen` of a task of 3 or `move --feature 3` runs and 3 is at Done,
+  Released or Canceled
+- **THEN** it exits `blocked` with reason `feature-done` and changes nothing
 
 ### Requirement: Feature flow verbs
 
@@ -484,25 +538,25 @@ binary SHALL close a feature only through `accept` or `drop`.
 
 The plugin SHALL hold the flow in `lib/flow.ts` as data: the Status options Todo, In Dev, Agent
 Review, Human Review, Ready For Test, In Test, Blocked, Done, Released and Canceled, the kind that
-uses each (a task and a bug, a feature, or both), one definition per kind, the Priority options P0,
-P1 and P2, and for each verb its guard and its effect. The verbs, `flow`, `doctor` and `setup` SHALL
-read that table and no other copy of a name or a definition SHALL exist in the binary, apart from
-the Action's workflow file, which `doctor` checks against it. The verbs and the board SHALL use the
-option names exactly, and the board's description of an option SHALL be the table's text for the
-kinds that use it. The definitions SHALL be these:
+uses each (a task and a bug, a feature, Feedback, or several), one definition per kind, the Priority
+options P0, P1 and P2, and for each verb its guard and its effect. The verbs, `flow`, `doctor` and
+`setup` SHALL read that table and no other copy of a name or a definition SHALL exist in the binary,
+apart from the Action's workflow file, which `doctor` checks against it. The verbs and the board
+SHALL use the option names exactly, and the board's description of an option SHALL be the table's
+text for the kinds that use it. The definitions SHALL be these:
 
-| Status | Task and Bug | Feature |
-| --- | --- | --- |
-| Todo | Not started | Being planned: intent, acceptance criteria, specs, tasks |
-| In Dev | Claimed and being built | Its tasks are being built |
-| Agent Review | PR open: CI, the gates and the review agents run; every finding is fixed | not used |
-| Human Review | CI green and no open finding: the owner tests it and approves | not used |
-| Ready For Test | not used | Every task is closed: waiting for the QA agent |
-| In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts |
-| Blocked | not used | QA found a finding: a fix task is open under the feature |
-| Done | Definition of done: merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Definition of done: every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner |
-| Released | Included in a published release | Included in a published release |
-| Canceled | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment |
+| Status | Task and Bug | Feature | Feedback |
+| --- | --- | --- | --- |
+| Todo | Not started | Being planned: intent, acceptance criteria, specs, tasks | Filed, not yet read |
+| In Dev | Claimed and being built | Its tasks are being built | not used |
+| Agent Review | PR open: CI, the gates and the review agents run; every finding is fixed | not used | not used |
+| Human Review | CI green and no open finding: the owner tests it and approves | not used | not used |
+| Ready For Test | not used | Every task is closed: waiting for the QA agent | not used |
+| In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts | not used |
+| Blocked | not used | QA found a finding: a fix task is open under the feature | not used |
+| Done | Definition of done: merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Definition of done: every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner | Read and settled: answered, changed or filed as a task |
+| Released | Included in a published release | Included in a published release | not used |
+| Canceled | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment |
 
 | Priority | Definition |
 | --- | --- |
@@ -510,12 +564,13 @@ kinds that use it. The definitions SHALL be these:
 | P1 | Needed for the current feature |
 | P2 | Worth doing, no date |
 
-`flow` SHALL print the flow, both definitions of done and, per verb, its guard and effect, from
-that table. A value that is not an option SHALL exit `usage` listing the options of its field before
-any backend call. A verb SHALL refuse to write a Status that the item's kind does not use, with
-`blocked` and reason `wrong-kind`, and `list` with a `--kind` and a `--status` the kind does not
-use SHALL exit `usage` listing that kind's options, because the views filter by kind and Status and
-an issue with the wrong one vanishes from its view. Nothing in this change SHALL set Released.
+`flow` SHALL print the flow, both definitions of done and, per verb, its guard and effect, from that
+table. A value that is not an option SHALL exit `usage` listing the options of its field before any
+backend call. A verb SHALL refuse to write a Status that the item's kind does not use (a Feedback
+issue uses Todo, Done and Canceled only), with `blocked` and reason `wrong-kind`, and `list` with a
+`--kind` and a `--status` the kind does not use SHALL exit `usage` listing that kind's options,
+because the views filter by kind and Status and an issue with the wrong one vanishes from its view.
+Nothing in this change SHALL set Released.
 
 #### Scenario: The flow is printed
 
@@ -544,15 +599,18 @@ an issue with the wrong one vanishes from its view. Nothing in this change SHALL
 
 A merged pull request whose body says `Closes #N` SHALL close task N and the board's built-in
 workflow "Item closed" SHALL set its Status Done, not a verb; the same workflow SHALL set Done for a
-feature closed by `accept`. The board SHALL have the workflows "Auto-add to project", "Auto-add
-sub-issues to project", "Item added to project" and "Item closed" switched on. A workflow file in
-this repository, `.github/workflows/feature-ready.yml`, SHALL run when an issue closes and SHALL set
-the Status of the issue's parent to Ready For Test when the parent is a Feature, no sub-issue of it
-is open and its Status is In Dev or Blocked. It SHALL use `gh` only, SHALL authenticate to the
-project with the repository secret `PROJECT_TOKEN`, SHALL change no other field, SHALL post nothing
-and SHALL serialise two closes under one parent. When the measurement of design decision 17 shows
-that "Item closed" overwrites a Canceled written before the close, the workflow SHALL also set
-Canceled on an issue closed as not planned and `drop` SHALL write no Status.
+feature closed by `accept`. The board SHALL have these built-in workflows switched on: "Auto-add to
+project", "Auto-add sub-issues to project", "Item added to project" (sets Todo), "Item closed" (sets
+Done), "Pull request merged" (sets Done) and "Pull request linked to issue" (sets Agent Review). The
+last moves a task to Agent Review when its pull request is linked, and `review` stays the verb for
+the same move and for the way back from Human Review. A workflow file in this repository,
+`.github/workflows/feature-ready.yml`, SHALL run when an issue closes and SHALL set the Status of
+the issue's parent to Ready For Test when the parent is a Feature, no sub-issue of it is open and
+its Status is In Dev or Blocked. It SHALL use `gh` only, SHALL authenticate to the project with the
+repository secret `PROJECT_TOKEN`, SHALL change no other field, SHALL post nothing and SHALL
+serialise two closes under one parent. When the measurement of design decision 17 shows that "Item
+closed" overwrites a Canceled written before the close, the workflow SHALL also set Canceled on an
+issue closed as not planned and `drop` SHALL write no Status.
 
 #### Scenario: A pull request is merged into a protected main
 
@@ -615,14 +673,18 @@ own binary SHALL replace this plugin for a user without any consumer changing th
 
 `qsm-tasks doctor` SHALL print one line per check with `ok`, `failed` or `manual`, and exit `ok`
 when every check is `ok`, `partial` when only `manual` ones remain, and `missing` or `failed` with
-the cause otherwise. It SHALL check: `gh` on PATH, its login and the `project` scope; the
-repository and the one linked board; the issue types Feature, Task, Bug and Feedback; the two
-fields Status and Priority with exactly the option names and definitions of the flow table, and no
-leftover field named `Epic stage`; the label `deferred`; the built-in workflows that must be on;
-the views Tasks and Features; the file `.github/workflows/feature-ready.yml` with names that are
-options of the board; and the secret `PROJECT_TOKEN`. Each failing line SHALL name its fix: a
-`qsm-tasks setup` or the one place in the web UI. A check the backend cannot read SHALL be `manual`
-and SHALL NOT be reported `ok`.
+the cause otherwise. It SHALL check: `gh` on PATH, its login and the `project` scope; the repository
+and the one linked board; the issue types Feature, Task, Bug and Feedback; the two fields Status and
+Priority with exactly the option names and definitions of the flow table (an extra or wrongly named
+option, such as a leftover In Progress, is `failed` with the project's field settings in the web UI
+as its fix, never `qsm-tasks setup`, because setup never renames or deletes) and no leftover field
+named `Epic stage`; the label `deferred`; the built-in workflows that must be on: "Auto-add to
+project", "Auto-add sub-issues to project", "Item added to project" (sets Todo), "Item closed" (sets
+Done), "Pull request merged" (sets Done) and "Pull request linked to issue" (sets Agent Review); the
+views Tasks and Features; the file `.github/workflows/feature-ready.yml` with names that are options
+of the board; and the secret `PROJECT_TOKEN`. Each failing line SHALL name its fix: a `qsm-tasks
+setup` or the one place in the web UI. A check the backend cannot read SHALL be `manual` and SHALL
+NOT be reported `ok`.
 
 #### Scenario: Everything is set
 
@@ -639,6 +701,12 @@ and SHALL NOT be reported `ok`.
 - **WHEN** the board still has a field named `Epic stage`
 - **THEN** that line is `failed` and its fix is that the owner deletes the field on the project's
   Settings page
+
+#### Scenario: A leftover option
+
+- **WHEN** the board's Status still has an option In Progress that the table does not name
+- **THEN** that line is `failed`, its fix is the project's field settings in the web UI, and
+  `qsm-tasks setup` is not named
 
 #### Scenario: A built-in workflow is off
 
@@ -684,10 +752,11 @@ built-in workflows, the secret, the Action file) as the lines `doctor` prints fo
 
 ### Requirement: The tool posts what it is given and nothing of its own
 
-A verb SHALL write to an issue only the text and labels its caller passed and SHALL add no footer,
-marker, trailer or signature of its own. The labels the binary writes SHALL be `deferred`, the
-`area:`, `kind:` and `from:` labels the caller of `feedback` names, and, if the binding falls back
-to a label, `change:<id>`.
+A verb SHALL write to an issue only the text and labels its caller passed, apart from two fixed
+texts of the binary, the label `deferred` and the comment `Deferred until <value>` of `defer`, and
+SHALL add no footer, marker, trailer or signature of its own. The labels the binary writes SHALL be
+`deferred`, the `area:`, `kind:` and `from:` labels the caller of `feedback` names, and, if the
+binding falls back to a label, `change:<id>`.
 
 #### Scenario: A comment
 

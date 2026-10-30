@@ -29,10 +29,12 @@ nothing (0.6 is the owner's).
 - [ ] 0.6 The owner's steps on the existing board, in the web UI unless 0.5 shows the API can: set
       issue #3 to the type Feature; rename the Status options In Progress to In Dev, In Review to
       Agent Review and Ready For Human Review to Human Review; add Ready For Test, In Test, Blocked,
-      Released and Canceled (`setup` adds them when the API allows); delete the field Epic stage;
-      rename the view Epics to Features with the filter `type:Feature`; set the view Tasks to
+      Released and Canceled (`setup` adds them when the API allows); switch on the built-in workflow
+      "Pull request linked to issue" with Status Agent Review; delete the field Epic stage; rename
+      the view Epics to Features with the filter `type:Feature`; set the view Tasks to
       `-type:Feature -type:Feedback`; later delete the organization issue type Epic. `doctor`
-      reports a leftover Epic stage field as failed with this fix
+      reports a leftover Epic stage field, or an option the table does not name, as failed with this
+      fix
 - [ ] 0.7 Close every `test:` issue; edit the decisions the answers change
 
 ## 1. The binary exists: manifest, flow table, `flow`, install
@@ -76,13 +78,15 @@ Owns: `lib/backend.ts` (the `Backend` type and the item, kind, field types), `li
 ## 3. Create and comment verbs
 
 Owns: `lib/github/write.ts` (create issue by body on stdin, sub-issue, blocked-by, comment, labels,
-type), `lib/feedback.ts` (the feedback rules as data), `lib/verbs/create.ts` (`feature`, `add`,
-`feedback`, `note`), `scripts/cli.ts`. Blocked by: 2 and 0.
+type), `lib/github/fields.ts` (set a Status or a Priority, add to the board), `lib/feedback.ts` (the
+feedback rules as data), `lib/verbs/create.ts` (`feature`, `add`, `feedback`, `note`),
+`scripts/cli.ts`. Blocked by: 2 and 0.
 
 - [ ] 3.1 `feature` (type Feature, Status Todo), `add` (`--feature`, `--after`, `--spec`,
-      `--priority`, `--label`), `note`; the body reaches `gh` on stdin; the rule that `add` under a
-      feature at Ready For Test or In Test sets In Dev and under a feature at Done or Released is
-      refused with `feature-done`
+      `--priority`, `--label`), `note`; the body reaches `gh` on stdin; the sub-issue rule in `add`:
+      When `add`, `reopen` or `move` puts an open sub-issue under a feature at Ready For Test or In
+      Test, the feature goes to In Dev; under a feature at Done, Released or Canceled it is refused
+      with `feature-done`; under a feature at any other Status nothing changes.
 - [ ] 3.2 `feedback`: validates area, kind, from and the body sections before any call, refuses
       personal and system data, files an issue of type Feedback with the three labels in the
       `QSM_MARKETPLACE` checkout's repository, and comments on an open same-title issue instead
@@ -103,22 +107,34 @@ Owns: `lib/verbs/edit.ts` (`edit`, `move`, `after`, `unblock`, `assign`, `spec`,
       `find-spec` filters to the exact first line
 - [ ] 4.2 Proof: `spec` two test tasks `add-x` and `add-x-more`, `find-spec add-x` prints one;
       `after` / `unblock` change what `ready` lists; `after` that would cycle exits `failed`;
-      `unblock` of a missing blocker exits `failed` naming both
+      `unblock` of a missing blocker exits `failed` naming both; `move` of a test task from one
+      `test:` feature at Todo to another leaves both features at Todo (the rule's other cases are
+      proved in 7.2)
 
 ## 5. Task flow verbs
 
 Owns: `lib/verbs/task-flow.ts` (`claim`, `unclaim`, `review`, `human`, `reopen`, `close`, `drop`,
-`defer`), `lib/github/fields.ts` (set a Status, add to board), `scripts/cli.ts`,
+`defer`), `scripts/cli.ts` (it uses `lib/github/fields.ts` of group 3),
 `lib/verbs/task-flow.test.ts` through `runBin` with a recording fake `gh` (a guard refusal runs no
 write; a refused second write of `claim` names the first). Blocked by: 4.
 
 - [ ] 5.1 The eight verbs read their guard and effect from `lib/flow.ts`; `claim` writes the board
-      item, Status, assignee, then the feature, each idempotent
+      item, Status, assignee, then the feature, each idempotent and treats an item not yet on the
+      board as Todo; `close` writes the feature's In Dev before it closes the task; the sub-issue
+      rule in `reopen`: When `add`, `reopen` or `move` puts an open sub-issue under a feature at
+      Ready For Test or In Test, the feature goes to In Dev; under a feature at Done, Released or
+      Canceled it is refused with `feature-done`; under a feature at any other Status nothing
+      changes.
 - [ ] 5.2 Proof: a `test:` task `claim`ed twice (second changes nothing), its feature In Dev;
-      `human` from In Dev is `blocked`; `review`, `human`, `review` again; `defer` then `unclaim`;
-      `close --reason` and `drop --reason` on two others (Canceled after a minute); `reopen`; a
-      feature given to `claim` or `human` exits `wrong-kind`; another login's task is `held` (a
-      second account, or a recorded answer when none exists)
+      `human` from In Dev is `blocked`; `review`, `human`, `review` again, then `unclaim` from Human
+      Review; `defer` from In Dev then `unclaim` (label gone, `ready` lists it), `defer` from Agent
+      Review is `blocked`, `unclaim` on a plain Todo task is `blocked`; `close --reason` on a task
+      whose feature is at Todo moves the feature to In Dev, and `drop --reason` on a task of another
+      Todo feature leaves it at Todo; `reopen`; a Feedback issue takes `close`, `drop` and `reopen`
+      (Done, Canceled, Todo) and `claim` on it exits `wrong-kind`; a feature given to `claim` or
+      `human` exits `wrong-kind`; another login's task is `held` (a second account, or a recorded
+      answer when none exists); Canceled after a minute on a dropped task holds when 0.4 found that
+      `drop` writes it, and in the other branch that proof is 6.2
 - [ ] 5.3 `claim` run before the auto-add workflow finished (the item is not on the board yet)
       succeeds
 - [ ] 5.4 A merged throwaway pull request with `Closes #N` on a `test:` task: `show N` prints Done
@@ -130,11 +146,13 @@ the owner setting the secret `PROJECT_TOKEN`.
 
 - [ ] 6.1 The workflow: `issues: closed`, concurrency per parent, `gh` calls only (parent and type,
       `subIssuesSummary`, the parent's Status, `gh project item-edit`), Ready For Test from In Dev
-      or Blocked
+      or Blocked; if 0.4 shows that Item closed overwrites Canceled, the workflow also sets Canceled
+      on an issue closed with `state_reason: not_planned`
 - [ ] 6.2 Proof: under `test: feature` at In Dev with two `test:` tasks, close one (Status
       unchanged), close the other (Ready For Test within a minute); read the Actions run; a missing
       secret fails the run visibly (`gh secret remove` then restore is the owner's, so this case is
-      shown on a fork or skipped and named)
+      shown on a fork or skipped and named); if 0.4 shows that Item closed overwrites Canceled, a
+      `test:` task closed as not planned ends Canceled, not Done, after a minute
 
 ## 7. Feature flow verbs
 
@@ -150,18 +168,26 @@ feature cases of `lib/verbs/task-flow.test.ts`. Blocked by: 5 and 6.
       `plan` on In Dev returns Todo; `drop --reason` on a feature with an open task exits `blocked`
       with `open-children`, on one with none it is Canceled; `qa` straight from In Dev with every
       task closed (the Action route skipped) reaches In Test, and from In Dev with an open task
-      exits `open-children`; `add` under a feature at Ready For Test sends it to In Dev; `add` under
-      a feature closed by `accept` exits `blocked` with `feature-done`; `ready --qa` lists the
-      feature at each waiting point and not between
+      exits `open-children`; the sub-issue rule: When `add`, `reopen` or `move` puts an open
+      sub-issue under a feature at Ready For Test or In Test, the feature goes to In Dev; under a
+      feature at Done, Released or Canceled it is refused with `feature-done`; under a feature at
+      any other Status nothing changes. proved with `add` and `move` under a feature at Ready For
+      Test (In Dev), `reopen` of a closed task under a feature at In Test (In Dev), and `add`,
+      `move` and `reopen` under a feature closed by `accept` (exit `blocked` with `feature-done`); a
+      `test:` feature at Todo whose only task is closed by `close` from Todo reaches Ready For Test
+      through the Action; `ready --qa` lists the feature at each waiting point and not between
 
 ## 8. doctor, setup and the guard against drift
 
 Owns: `lib/github/check.ts`, `lib/github/setup.ts`, `lib/verbs/admin.ts`, `scripts/cli.ts`. Blocked
 by: 0.5 and 6.
 
-- [ ] 8.1 `doctor`: each check of the spec with `ok`, `failed` or `manual` and its fix; reads the
-      Action file's field and option names against the flow table; reports a leftover field Epic
-      stage as failed
+- [ ] 8.1 `doctor`: each check of the spec with `ok`, `failed` or `manual` and its fix, the built-in
+      workflows "Auto-add to project", "Auto-add sub-issues to project", "Item added to project"
+      (sets Todo), "Item closed" (sets Done), "Pull request merged" (sets Done) and "Pull request
+      linked to issue" (sets Agent Review); reads the Action file's field and option names against
+      the flow table; reports a leftover field Epic stage and an extra or wrongly named option as
+      failed with the web-UI page, never `qsm-tasks setup`
 - [ ] 8.2 `setup`: fields with options and definitions (a missing option is added), the issue type
       Feedback when missing, the label; never touches the default issue types; idempotent; prints
       the manual remainder
