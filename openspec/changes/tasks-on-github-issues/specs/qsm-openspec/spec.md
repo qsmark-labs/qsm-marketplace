@@ -3,15 +3,15 @@
 ### Requirement: A change has one task in the task tool, created with its spec
 
 A change and its task are bound by the first line of the task's body, `openspec: <change-id>`,
-written and read through the task tool. The task SHALL be created under the change's epic through
+written and read through the task tool. The task SHALL be created under the change's feature through
 the task tool when the spec is written and never before: spec-propose SHALL look the reference up
 first and, finding no task, SHALL create one carrying the reference, the change name as its title,
-and the proposal's why as its description, under the epic the change belongs to. tasks.md is the
+and the proposal's why as its description, under the feature the change belongs to. tasks.md is the
 developer's local breakdown of that one task, and subtasks SHALL NOT be created in the task tool.
 spec-apply SHALL claim the task when implementation starts. spec-propose SHALL record each changed
 decision as a comment on it. spec-archive SHALL close it with a reason naming what was done unless
 the merge of the change's pull request already closed it, SHALL close every other task bound to the
-change the same way, and SHALL then check the epic's close rule without closing the epic early. When
+change the same way, and SHALL then report the feature's Status without closing the feature. When
 the task tool is not reachable from the repository (no GitHub remote, no login, no board: the task
 tool's doctor does not pass), spec-propose SHALL stop before writing and name the cause, and SHALL
 NOT create the change unbound. The skills SHALL say "the task tool" and "the spec tool" and never
@@ -27,7 +27,7 @@ name a binary; the plug-in that serves the task port holds the commands.
 #### Scenario: No task carries the reference
 
 - **WHEN** no task carries `openspec: <change-id>` when spec-propose runs
-- **THEN** spec-propose SHALL create one with that line under the epic
+- **THEN** spec-propose SHALL create one with that line under the feature
   when the spec is written
 
 #### Scenario: tasks.md stays local
@@ -60,32 +60,32 @@ name a binary; the plug-in that serves the task port holds the commands.
 
 ## ADDED Requirements
 
-### Requirement: Archive reports the epic's stage and never closes the epic
+### Requirement: Archive reports the feature's Status and never closes the feature
 
-After closing the change's task, spec-archive SHALL list the epic's tasks and read the epic's Epic
-stage, and SHALL say what the epic waits for: more tasks, the QA agent, or the owner's acceptance.
-It SHALL NOT close an epic and SHALL NOT set its stage: the move to Ready For Test is a GitHub
-Action's, and the later stages are the QA agent's and the owner's. A fix, which is a commit only,
-has no epic and is not touched by this rule.
+After closing the change's task, spec-archive SHALL list the feature's tasks and read the feature's
+Status, and SHALL say what the feature waits for: more tasks, the QA agent, or the owner's
+acceptance. It SHALL NOT close a feature and SHALL NOT set its Status: the move to Ready For Test
+is a GitHub Action's, and the later steps are the QA agent's and the owner's. A fix, which is a
+commit only, has no feature and is not touched by this rule.
 
 #### Scenario: The last task is archived
 
-- **WHEN** archiving closes the last open task of an epic
-- **THEN** spec-archive SHALL leave the epic open, SHALL report its Epic stage, and SHALL say it
+- **WHEN** archiving closes the last open task of a feature
+- **THEN** spec-archive SHALL leave the feature open, SHALL report its Status, and SHALL say it
   waits for the QA agent
 
 #### Scenario: Tasks remain
 
-- **WHEN** archiving closes a task and other tasks of the epic are open
-- **THEN** spec-archive SHALL name the open tasks and leave the epic as it is
+- **WHEN** archiving closes a task and other tasks of the feature are open
+- **THEN** spec-archive SHALL name the open tasks and leave the feature as it is
 
 ## REMOVED Requirements
 
 ### Requirement: An epic closes only when its close rule holds
 
-**Reason**: The epic no longer closes at archive: its last proof is the QA stage and the owner's
+**Reason**: The feature no longer closes at archive: its last proof is the QA test and the owner's
 acceptance, and there is no test-it task to check.
 
-**Migration**: "Archive reports the epic's stage and never closes the epic" and, for the close
-rule, the qsm-tasks requirement "A task closes by merge and an epic closes by the owner's
+**Migration**: "Archive reports the feature's Status and never closes the feature" and, for the
+close rule, the qsm-tasks requirement "A task closes by merge and a feature closes by the owner's
 acceptance of QA".

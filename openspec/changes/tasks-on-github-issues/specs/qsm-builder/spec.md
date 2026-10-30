@@ -20,7 +20,7 @@ directory with no `.claude-plugin/marketplace.json` SHALL fail with `missing` na
 #### Scenario: A pen edit is saved
 
 - **WHEN** the person saves an edit on the served page and `qsm-tasks` is installed
-- **THEN** one task is made through `qsm-tasks add` with no epic, titled with the plugin the edit
+- **THEN** one task is made through `qsm-tasks add` with no feature, titled with the plugin the edit
   belongs to, and no plugin file and no `.beads` path is touched
 
 #### Scenario: The lens reads no tasks

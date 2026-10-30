@@ -1,27 +1,27 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: Epics hold the intent of a piece of work, tasks hold one spec change
+### Requirement: Features hold the intent of a piece of work, tasks hold one spec change
 
 The `task-tool` skill SHALL state the task model in the terms of the main task tool, GitHub Issues.
-An epic SHALL be an issue of the organization issue type `Epic` that holds the intent of one piece
-of work and its acceptance criteria. Each spec change SHALL have exactly one task, an issue of type
-`Task` and a sub-issue of the epic, created together with the spec and never before, whose body
-starts with the line `openspec: <change-id>`. Subtasks SHALL NOT be created as issues: the change's
-`tasks.md` holds that breakdown. An epic SHALL NOT have a test-it sub-issue: its final proof is the
-QA stage. A follow-up, a side finding, a decision to make and tool feedback SHALL each be an issue,
-never prose. A fix, a change that needs no spec, SHALL get no epic and no task.
+A feature SHALL be an issue of GitHub's default issue type `Feature` that holds the intent of one
+piece of work and its acceptance criteria. Each spec change SHALL have exactly one task, an issue of
+type `Task` and a sub-issue of the feature, created together with the spec and never before, whose
+body starts with the line `openspec: <change-id>`. Subtasks SHALL NOT be created as issues: the
+change's `tasks.md` holds that breakdown. A feature SHALL NOT have a test-it sub-issue: its final
+proof is the QA test. A follow-up, a side finding, a decision to make and tool feedback SHALL each
+be an issue, never prose. A fix, a change that needs no spec, SHALL get no feature and no task.
 
 #### Scenario: A spec change is planned
 
-- **WHEN** a spec change is created under an epic
-- **THEN** one sub-issue of type Task is created under that epic with it, its body starts with
+- **WHEN** a spec change is created under a feature
+- **THEN** one sub-issue of type Task is created under that feature with it, its body starts with
   `openspec: <change-id>`, and no issue for the change's steps is created
 
-#### Scenario: An epic is split into tasks
+#### Scenario: A feature is split into tasks
 
-- **WHEN** an epic is split into its tasks
-- **THEN** no test-it issue is among them, and the epic's Epic stage is Planning until its first
-  task is claimed
+- **WHEN** a feature is split into its tasks
+- **THEN** no test-it issue is among them, and the feature's Status is Todo until its first task is
+  claimed
 
 #### Scenario: A change is looked up before it is bound
 
@@ -33,25 +33,23 @@ never prose. A fix, a change that needs no spec, SHALL get no epic and no task.
 #### Scenario: A fix
 
 - **WHEN** the work is a fix
-- **THEN** the agent creates neither an epic nor a task, and the commit message carries the why
+- **THEN** the agent creates neither a feature nor a task, and the commit message carries the why
 
 #### Scenario: A finding that is not the ask
 
 - **WHEN** the agent finds work while doing another task
 - **THEN** it creates an issue that names the task it was working on as where it was discovered
 
-## ADDED Requirements
-
 ### Requirement: GitHub Issues is the main task tool, reached through the qsm-tasks verbs
 
 The `task-tool` skill SHALL state that GitHub Issues is the main task tool and SHALL map each step
-of working with tasks to a verb of the `qsm-tasks` binary: the ready list, an epic, a task under an
-epic, an order between tasks, a claim, a comment, a close, a Status or Epic stage move, the epic
-check, a deferral and a feedback task. The skill SHALL tell the agent to create, nest, order,
-comment, close and move issues only through those verbs, never through raw `gh`, `jq` or `gh api`
-calls, and when a step has no verb to report the gap instead of composing a call. A verb that
-fails SHALL be reported with its cause and nothing else done in its place. The skill SHALL name the
-`br` tracker and the `.beads` store nowhere.
+of working with tasks to a verb of the `qsm-tasks` binary: the ready list, a feature, a task under a
+feature, an order between tasks, a claim, a comment, a close, a Status move, the feature check, a
+deferral and a feedback issue. The skill SHALL tell the agent to create, nest, order, comment, close
+and move issues only through those verbs, never through raw `gh`, `jq` or `gh api` calls, and when a
+step has no verb to report the gap instead of composing a call. A verb that fails SHALL be reported
+with its cause and nothing else done in its place. The skill SHALL name the `br` tracker and the
+`.beads` store nowhere.
 
 #### Scenario: A session starts
 
@@ -77,15 +75,16 @@ fails SHALL be reported with its cause and nothing else done in its place. The s
 - **THEN** the mention is removed or replaced with "the task tool" and a pointer to the `task-tool`
   skill
 
-### Requirement: Work not done now is deferred or filed, and feedback has one epic
+### Requirement: Work not done now is deferred or filed, and feedback is its own issue type
 
 A task whose work is real but not now SHALL be deferred with `qsm-tasks defer`, never closed
-silently and never left open in the ready list. Before creating an issue the agent SHALL search the
-title words with `qsm-tasks search` and comment on an existing one instead. Feedback about the
-marketplace SHALL be filed with `qsm-tasks feedback`, which finds the issue titled
-`Feedback on agents and tools` of type `Epic` in the marketplace repository by title and never by
-number, with a title that names the plugin or `marketplace` and a body of what, how and why. A
-subagent SHALL create only this kind of issue.
+silently and never left open in the ready list; work that will not be done SHALL be dropped with
+`qsm-tasks drop` and a reason. Before creating an issue the agent SHALL search the title words with
+`qsm-tasks search` and comment on an existing one instead. Feedback about the marketplace SHALL be
+filed with `qsm-tasks feedback --area --kind --from`, which files an issue of the type `Feedback` in
+the marketplace repository, never by an issue number, with a title that names the plugin or
+`marketplace`. The body SHALL be abstract: the steps that led to it and how it should behave, with
+no suggested fix and no personal or system data. A subagent SHALL create only this kind of issue.
 
 #### Scenario: Real work that is not now
 
@@ -94,8 +93,8 @@ subagent SHALL create only this kind of issue.
 
 #### Scenario: Feedback that already exists
 
-- **WHEN** a subagent meets a tool defect and an open feedback issue already holds its title words
-- **THEN** it comments on that issue and creates no second one
+- **WHEN** a subagent meets a tool defect and an open feedback issue already holds its title
+- **THEN** `qsm-tasks feedback` comments on that issue and creates no second one
 
 #### Scenario: A subagent files feedback from another project
 
@@ -103,14 +102,20 @@ subagent SHALL create only this kind of issue.
 - **THEN** `qsm-tasks feedback` files it in the marketplace repository, not in the checkout's own
   repository
 
-### Requirement: A task closes by merge and an epic closes by the owner's acceptance of QA
+#### Scenario: Feedback is written abstractly
+
+- **WHEN** a subagent writes the body of a feedback issue
+- **THEN** it holds what happened as abstract steps and the expected behaviour, and holds no
+  suggested fix, no path of the machine and no name of a person
+
+### Requirement: A task closes by merge and a feature closes by the owner's acceptance of QA
 
 The skill SHALL state the close rules. A task SHALL be closed by the merge of a pull request whose
 body says `Closes #<n>`, which the board shows as Done; a task with no pull request SHALL be closed
-with `qsm-tasks close --reason` and a reason a reader in a month understands. An epic SHALL be
+with `qsm-tasks close --reason` and a reason a reader in a month understands. A feature SHALL be
 closed only by `qsm-tasks accept`, when every task is done, the QA agent has shown every acceptance
 criterion on the real path with no open finding, and the owner has accepted that result. The agent
-SHALL NOT close an epic on its own judgement. Finished work with its task left open SHALL be a
+SHALL NOT close a feature on its own judgement. Finished work with its task left open SHALL be a
 failure.
 
 #### Scenario: A task merges
@@ -120,9 +125,9 @@ failure.
 
 #### Scenario: The last task closes
 
-- **WHEN** the last open sub-issue of an epic closes
-- **THEN** the epic's Epic stage becomes Ready For Test by the Action, the agent does not close the
-  epic, and its reply says the epic waits for the QA agent
+- **WHEN** the last open sub-issue of a feature closes
+- **THEN** the feature's Status becomes Ready For Test by the Action, the agent does not close the
+  feature, and its reply says the feature waits for the QA agent
 
 #### Scenario: A decision with no pull request
 
@@ -132,30 +137,39 @@ failure.
 #### Scenario: The owner has not accepted
 
 - **WHEN** QA found nothing but the owner has not said the result is accepted
-- **THEN** the epic stays open and its stage stays In Test
+- **THEN** the feature stays open and its Status stays In Test
 
-### Requirement: A task moves by Status, an epic by Epic stage, and the skill says who moves what
+### Requirement: Tasks and features move by one Status, and the skill says who moves what
 
-The skill SHALL state the flow of each field, the verb that moves each step and who may make the
+The skill SHALL state the flow of each kind, the verb that moves each step and who may make the
 move, and SHALL NOT make the agent move a step GitHub makes itself. It SHALL NOT copy the option
 names or their definitions: it SHALL tell the agent to run `qsm-tasks flow`, which prints them from
-the binary. A task SHALL move Todo, In Progress by `claim`, In Review by `review` when its pull
-request is open, Ready For Human Review by `human` when CI is green and every finding is fixed, Done
-when merged. An epic SHALL move Planning, Building when its first task is claimed, Ready For Test by
-the Action when its last sub-issue closes, In Test by `qa` when the QA agent takes it, Blocked by
-`finding` when QA files a fix task, back to Ready For Test by the Action when that task closes, and
-Done by `accept` on the owner's acceptance. The QA agent SHALL be the only one to run `qa` and
-`finding`, and it SHALL test the whole epic against the business request and the acceptance criteria
-on the real path. The owner SHALL approve every pull request and accept every epic; the agent SHALL
-run `accept`, `reject` or a task's approval only on the owner's explicit word in the conversation.
-Pull requests are opened by a bot of the organization, and everything the skill posts SHALL be
-written in the owner's name with no mention of an AI or an agent.
+the binary. A task SHALL move Todo, In Dev by `claim`, Agent Review by `review` when its pull
+request is open, Human Review by `human` when CI is green and every finding is fixed, Done when
+merged, and needs no QA. A feature SHALL move Todo while planned, In Dev when its first task is
+claimed, Ready For Test by the Action when its last sub-issue closes (or `qa` straight from In Dev
+when every sub-issue is closed, the Action's route being preferred), In Test by `qa` when the QA
+agent takes it, Blocked by `finding` when QA or the owner files a fix task, back to Ready For Test
+by the Action when that task closes, and Done by `accept` on the owner's acceptance, and needs no
+review. Either kind SHALL end Canceled by `drop` when the work will not be done. The QA agent SHALL
+be the only one to run `qa`, and the one to run `finding` for a defect it finds, and it SHALL find
+the features that wait with `qsm-tasks ready --qa` and test the whole feature against the business
+request and the acceptance criteria on the real path. The owner SHALL approve every pull request and
+accept every feature; the agent SHALL run `accept`, or a task's approval, only on the owner's
+explicit word in the conversation. Pull requests are opened by a bot of the organization, and
+everything the skill posts SHALL be written in the owner's name with no mention of an AI or an
+agent.
 
 #### Scenario: A pull request is opened
 
 - **WHEN** the agent has opened a pull request for a task
 - **THEN** it runs `review` on the task, and `human` only when CI is green and every review finding
   is fixed
+
+#### Scenario: The QA agent looks for work
+
+- **WHEN** the QA agent starts
+- **THEN** it runs `qsm-tasks ready --qa` and takes a feature from that list with `qa`
 
 #### Scenario: QA finds a defect
 
@@ -166,11 +180,18 @@ written in the owner's name with no mention of an AI or an agent.
 #### Scenario: QA finds nothing
 
 - **WHEN** the QA agent has shown every criterion on the real path with no open finding
-- **THEN** it reports that to the owner, and the epic stays In Test until the owner says to accept
+- **THEN** it reports that to the owner, and the feature stays In Test until the owner says to
+  accept
 
-#### Scenario: The agent is asked what a stage means
+#### Scenario: The owner rejects
 
-- **WHEN** the agent needs the definition of a stage or of done
+- **WHEN** the owner says a feature in test is not acceptable
+- **THEN** the agent runs `finding` with the owner's reason as the title, and no verb named reject
+  exists
+
+#### Scenario: The agent is asked what a Status means
+
+- **WHEN** the agent needs the definition of a Status or of done
 - **THEN** it runs `qsm-tasks flow` and does not answer from the skill's text
 
 #### Scenario: Something is posted to GitHub
@@ -180,12 +201,19 @@ written in the owner's name with no mention of an AI or an agent.
 
 ## REMOVED Requirements
 
+### Requirement: Epics hold the intent of a piece of work, tasks hold one spec change
+
+**Reason**: One name for one concept: the parent of tasks is GitHub's default issue type Feature.
+
+**Migration**: "Features hold the intent of a piece of work, tasks hold one spec change".
+
 ### Requirement: An epic closes only when the work is proven and pushed
 
-**Reason**: The close rule changed: there is no test-it sub-issue and the agent no longer closes an
-epic. It is replaced by "A task closes by merge and an epic closes by the owner's acceptance of QA".
+**Reason**: The close rule changed: there is no test-it sub-issue and the agent no longer closes a
+feature. It is replaced by "A task closes by merge and a feature closes by the owner's acceptance of
+QA".
 
-**Migration**: The skill and spec-archive state the new rule; an epic at Ready For Test waits for
+**Migration**: The skill and spec-archive state the new rule; a feature at Ready For Test waits for
 the QA agent.
 
 ### Requirement: One skill names br
@@ -193,6 +221,6 @@ the QA agent.
 **Reason**: The skill still owns every command name, but the tool is GitHub Issues; the ownership
 sentence is now part of "GitHub Issues is the main task tool, reached through the qsm-tasks verbs",
 and the rule that only the main agent creates tasks, except feedback, is in "Work not done now is
-deferred or filed, and feedback has one epic".
+deferred or filed, and feedback is its own issue type".
 
 **Migration**: Other files keep saying "the task tool" and pointing at the `task-tool` skill.

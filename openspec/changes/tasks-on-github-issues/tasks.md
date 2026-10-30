@@ -1,13 +1,14 @@
-Piece 3 of epic #3 (<https://github.com/qsmark-labs/qsm-marketplace/issues/3>). Paths are from the
-repository root. Every slice ends with `bun run validate`, `bun run lint`, `bun run typecheck` and
-`bun test` green, and a test of a behaviour that is removed is removed with it. Proof is the real
-path or an eval, not a unit test that restates the edit. The order keeps `br` usable until nothing
-calls it: readers (groups 2 to 6), then the shim and evals (7), then the skill (8), then the rest (9
-to 10), then the sweep (11). This change waits on `qsm-tasks-cli` (the binary, its verbs, `flow`,
-`doctor` and the Action `epic-stage.yml`) for lines 1, 5, 7, 8 and 10; lines 2, 3, 4, 6 need no
-`qsm-tasks` verb and can start now. The bound task lives in the epic, the steps live here. The epic
-is an issue of type Epic and the QA stage replaces the test-it task, so every line that named
-test-it or the label `epic` is rewritten for that: 1.1, 4.1, 7, 8, 9, 10 and 11.
+Piece 3 of feature #3 (<https://github.com/qsmark-labs/qsm-marketplace/issues/3>). Paths are from
+the repository root. Every slice ends with `bun run validate`, `bun run lint`, `bun run typecheck`
+and `bun test` green, and a test of a behaviour that is removed is removed with it. Proof is the
+real path or an eval, not a unit test that restates the edit. The order keeps `br` usable until
+nothing calls it: readers (groups 2 to 6), then the shim and evals (7), then the skill (8), then the
+rest (9 to 11), then the sweep (12). This change waits on `qsm-tasks-cli` (the binary, its verbs,
+`flow`, `doctor` and the Action `feature-ready.yml`) for lines 1, 5, 7, 8 and 10; lines 2, 3, 4, 6
+need no `qsm-tasks` verb and can start now. The bound task lives in the feature, the steps live
+here. The feature is an issue of type Feature and the QA test replaces the test-it task, so every
+line that named test-it is rewritten for that: 1.1, 4.1, 7, 8, 9, 10 and 12, and the word epic
+becomes feature in the prose of group 11.
 
 ## 1. Read qsm-tasks-cli as applied
 
@@ -53,7 +54,7 @@ answered (recommendation: drop).
 
 Owns: `plugins/qsm-cockpit/lib/tasks.ts` (delete), `lib/cockpit.ts` (the `br close` id detection
 near line 167 and the Tasks state, and the CLOSE stage text on line 68 that says "close the epic
-only when ... test-it passed": it says the epic waits for QA and the owner's acceptance),
+only when ... test-it passed": it says the feature waits for QA and the owner's acceptance),
 `hooks/register.tsx` (the `tasks` atom, the `$.cockpit.tasks()`
 read, `tasksCard`, the card in the pane), `hooks/register.test.tsx` (the Tasks card tests, near
 lines 270), `hooks/noun.generated.ts`, `scripts/cli.ts` (the `tasks` handler and the `br` probe in
@@ -72,8 +73,8 @@ is answered (recommendation: drop).
 
 ## 5. qsm-builder lens: no task reads, one write through qsm-tasks
 
-Owns: `plugins/qsm-builder/lib/lens/tasks.ts` and `brief.ts` (delete), `lib/lens/edits.ts` (the
-`br create` call becomes a `qsm-tasks add` call with no epic, the error texts), `lib/lens/watch.ts`
+Owns: `plugins/qsm-builder/lib/lens/tasks.ts` and `brief.ts` (delete), `lib/lens/edits.ts` (the `br
+create` call becomes a `qsm-tasks add` call with no feature, the error texts), `lib/lens/watch.ts`
 (the `.beads` carve-out, lines 11 to 19), `lib/lens/model.ts`, `lib/lens/page.ts`,
 `lib/lens/view.ts`, `lib/lens/serve.ts` (the open-task fields, stale state, task counts),
 `lib/lens/pull.ts` and `pull.test.ts`, `lib/lens/serve.test.ts` (the `.beads` skip near line 225 and
@@ -93,9 +94,9 @@ open question 3.
 - [ ] 5.1 The edit save calls `qsm-tasks add`; the title keeps the `<where>:` prefix
 - [ ] 5.2 Remove every read of tasks; the page, `lens marketplace` and `lens plugin` print none
 - [ ] 5.3 Proof: `qsm-builder lens` served from a temp marketplace, an edit posted to it, a
-      `qsm-tasks` stub on PATH records one `add` call with the title and no `--epic`; no file named
-      `.beads` appears and `qsm-builder doctor` says `missing` naming qsm-tasks when the stub is
-      absent
+      `qsm-tasks` stub on PATH records one `add` call with the title and no `--feature`; no file
+      named `.beads` appears and `qsm-builder doctor` says `missing` naming qsm-tasks when the stub
+      is absent
 
 ## 6. qsm-toolbox and knip drop `br`
 
@@ -113,8 +114,10 @@ Owns: one shared stub, `lib/fixtures/` (the existing kit location; a `fakeBin` r
 root `lib` because four plugins' evals use it), and the scaffolds and prompts of
 `plugins/qsm-tasks/evals/task-tool-last-child-of-epic/` (`scaffold.sh`, `prompt.md`,
 `graders/store-state.md` which reads `.beads/issues.jsonl`, `graders/child-closed.md`,
-`graders/epic-closed.md`), `plugins/qsm-openspec/evals/spec-archive-closes-every-bound-task/`
-(`.sh`, `prompt.md`), `spec-propose-open-decisions-before-any-artifact/` (`.sh`, `prompt.md`,
+`graders/epic-closed.md`; the directory moves to `evals/task-tool-last-child-of-feature/` and the
+grader to `graders/feature-closed.md`),
+`plugins/qsm-openspec/evals/spec-archive-closes-every-bound-task/` (`.sh`, `prompt.md`),
+`spec-propose-open-decisions-before-any-artifact/` (`.sh`, `prompt.md`,
 `graders/task-bound-first.md`), `spec-propose-settled-brainstorm-becomes-apply-ready/` (`.sh`,
 `prompt.md`, `graders/dependency-ordered-tasks.md`),
 `plugins/qsm-plan/evals/plan-three-asks-three-sizes/` (`.sh`, `prompt.md`, `samples/pass.md`,
@@ -124,28 +127,28 @@ root `lib` because four plugins' evals use it), and the scaffolds and prompts of
 `plugins/qsm-review/evals/release-readiness-czech-saas-launch/` (`.sh`, `prompt.md`,
 `graders/tasks-for-missing.md`). Four of them carry test-it and change in what they grade, not only
 in how they scaffold: the `Test it` task of the qsm-tasks scaffold goes, `store-state.md` and
-`child-closed.md` pass when the child is closed with a reason and the epic is not closed and the
-reply says it waits for QA, `epic-closed.md` is rewritten for the owner's acceptance, the
-spec-archive grader `closes-tasks-and-epic.md` (line 8) says the epic waits for QA, and
-`plugins/qsm-plan/evals/plan-three-asks-three-sizes/samples/pass.md` (lines 9 to 11 and 18) has no
-test-it piece. Blocked by: open question 4, group 1.
+`child-closed.md` pass when the child is closed with a reason and the feature is not closed and the
+reply says it waits for QA, `feature-closed.md` is written for the owner's acceptance, the
+spec-archive grader `closes-tasks-and-epic.md` (line 8, becomes `closes-tasks-not-feature.md`) says
+the feature waits for QA, and `plugins/qsm-plan/evals/plan-three-asks-three-sizes/samples/pass.md`
+(lines 9 to 11 and 18) has no test-it piece. Blocked by: open question 4, group 1.
 
 - [ ] 7.1 The stub appends each call's arguments to a file, answers `ready`, `list`, `show` and
       `find-spec` with canned JSON, and is put on PATH by each scaffold in place of `br init` and
       `br create`
 - [ ] 7.2 Graders read the recorded calls instead of `.beads/issues.jsonl`, and grade the QA
       wording above in place of test-it
-- [ ] 7.3 Proof: `bun run eval qsm-tasks` for `task-tool-last-child-of-epic` passes with the new
+- [ ] 7.3 Proof: `bun run eval qsm-tasks` for `task-tool-last-child-of-feature` passes with the new
       skill (after line 8), and the plan and openspec evals pass with their rewritten graders
 
 ## 8. The qsm-tasks skill, README and manifest
 
-Owns: `plugins/qsm-tasks/skills/task-tool/SKILL.md` (rewritten: the model rules with epic as issue
-type and no test-it (lines 24 and 35 and the table row on line 69), the task flow and the epic flow
-with the QA stage, working rules, the verb table of design decision 1 with who acts and when, the
-instruction to run `qsm-tasks flow` for names and definitions instead of copying them, caveats on
-offline and the `project` scope, red flags; no `br`, no `.beads`, no `flush`, no `redirect`),
-`README.md` (the lines about `br` and test-it; the rest is `qsm-tasks-cli`'s),
+Owns: `plugins/qsm-tasks/skills/task-tool/SKILL.md` (rewritten: the model rules with feature as
+issue type and no test-it (lines 24 and 35 and the table row on line 69), the task flow and the
+feature flow with the QA test, working rules, the verb table of design decision 1 with who acts and
+when, the instruction to run `qsm-tasks flow` for names and definitions instead of copying them,
+caveats on offline and the `project` scope, red flags; no `br`, no `.beads`, no `flush`, no
+`redirect`), `README.md` (the lines about `br` and test-it; the rest is `qsm-tasks-cli`'s),
 `.claude-plugin/plugin.json` (description, keywords, which name test-it today; `dependencies` stays
 `[]`), `evals/task-tool-fire/`, `evals/unrelated-negative/` (unchanged unless the prompt names
 `br`), `openspec/specs/qsm-tasks/spec.md` (the delta, and its Purpose paragraph by hand at archive),
@@ -153,30 +156,30 @@ offline and the `project` scope, red flags; no `br`, no `.beads`, no `flush`, no
 GitHub), `evals/task-tool-owner-accepts/` (new, see 8.2). Blocked by: groups 1 and 7.
 
 - [ ] 8.1 Rewrite the skill from the delta spec, flows included; at most 8 KB
-- [ ] 8.2 A new eval case, `task-tool-owner-accepts`: the epic is In Test, QA found nothing, the
-      owner said nothing about accepting; the grader passes when the agent reports to the owner and
-      runs no `accept`, and fails on a recorded `accept` call (the stub of group 7)
-- [ ] 8.3 Proof: `bun run eval qsm-tasks` (fire, last-child-of-epic, owner-accepts, unrelated
+- [ ] 8.2 A new eval case, `task-tool-owner-accepts`: the feature is In Test, QA found nothing,
+      the owner said nothing about accepting; the grader passes when the agent reports to the owner
+      and runs no `accept`, and fails on a recorded `accept` call (the stub of group 7)
+- [ ] 8.3 Proof: `bun run eval qsm-tasks` (fire, last-child-of-feature, owner-accepts, unrelated
       negative) passes
 - [ ] 8.4 `bun run validate` passes; a grep of the skill and README for `\bbr\b`, `beads`,
-      `.beads`, `test-it` and the label `epic` is empty
+      `.beads`, `test-it` and `epic` is empty
 
 ## 9. Skills and specs that stop on "no task store" or name test-it
 
 Owns: `plugins/qsm-openspec/skills/spec-propose/SKILL.md` (step 2, lines 35 to 41: "No task store
-reachable ... offer to initialize one" becomes "task tool not reachable: stop and name the
-cause"), `skills/spec-archive/SKILL.md` (lines 12, 55 to 57: leave a task the merge already
-closed), `skills/spec-apply/SKILL.md` (line 27, claim: unchanged unless it names a store),
+reachable ... offer to initialize one" becomes "task tool not reachable: stop and name the cause"),
+`skills/spec-archive/SKILL.md` (lines 12, 55 to 57: leave a task the merge already closed),
+`skills/spec-apply/SKILL.md` (line 27, claim: unchanged unless it names a store),
 `openspec/specs/qsm-openspec/spec.md` (at archive), `plugins/qsm-plan/skills/plan/SKILL.md` (a grep,
 lines 29 to 42, 3 hits: the roles stay), `plugins/qsm-plan/skills/grilling/SKILL.md` (lines 81 and
 94: "of kind decision" becomes a label), `plugins/qsm-review/skills/release-readiness/SKILL.md`
-(line 23: no change expected), `plugins/qsm-plan/skills/plan/SKILL.md` (lines 86 to 95 and 125:
-"Add the last piece, test-it" and the epic's close rule become the QA stage, and an epic is written
-with type Epic and stage Planning), `plugins/qsm-plan/skills/grilling/SKILL.md` (line 93: "the
-final test-it task checks" becomes "the QA agent checks"), `plugins/qsm-plan/openspec/specs/
+(line 23: no change expected), `plugins/qsm-plan/skills/plan/SKILL.md` (lines 86 to 95 and 125: "Add
+the last piece, test-it" and the feature's close rule become the QA test, and a feature is written
+with type Feature and Status Todo), `plugins/qsm-plan/skills/grilling/SKILL.md` (line 93: "the final
+test-it task checks" becomes "the QA agent checks"), `plugins/qsm-plan/openspec/specs/
 qsm-plan/spec.md` (the Purpose sentence on line 7, by hand at archive; the requirement by the
-delta), `plugins/qsm-openspec/skills/spec-archive/SKILL.md` (lines 58 to 62: the epic close rule
-becomes "report the epic's stage, never close it"), `plugins/qsm-openspec/openspec/specs/
+delta), `plugins/qsm-openspec/skills/spec-archive/SKILL.md` (lines 58 to 62: the close rule
+becomes "report the feature's Status, never close it"), `plugins/qsm-openspec/openspec/specs/
 qsm-openspec/spec.md` (at archive), `plugins/qsm-essentials/skills/{writing,debugging,refactoring,
 subagents}/SKILL.md` (one line each; no change expected, checked by the sweep). Blocked by: group 8.
 
@@ -189,29 +192,65 @@ subagents}/SKILL.md` (one line each; no change expected, checked by the sweep). 
 Owns: `plugins/qsm-setup/instructions/CLAUDE.md` (two parts. The table "Where things live", line 68
 and the session archive row below it: the two rows are replaced by the two rows of design decision 9
 verbatim, three columns kept. The section "Feedback on how agents and tools behave", lines 99 to
-109: epic `qsm-i1u` and the task-tool commands become the issue titled
-`Feedback on agents and tools` of type `Epic`, filed with `qsm-tasks feedback`, which finds it by
-title in the marketplace repository, and the sentence on the label that says who noticed is
-deleted), `plugins/qsm-web/agents/web-research.md` (line 48: epic `qsm-i1u`),
+109: epic `qsm-i1u` and the task-tool commands become the verb
+`qsm-tasks feedback --area --kind --from`, which files an issue of the type `Feedback` in the
+marketplace repository; the rule names the labels `area:`, `kind:` and `from:` (who noticed) and the
+fixed body sections, what happened, expected behaviour and context, and says no suggested fix and
+no personal or system data), `plugins/qsm-web/agents/web-research.md` (line 48: epic `qsm-i1u`),
 `plugins/qsm-usage/skills/usage/SKILL.md` (line 94: "the task tool says how", no change expected),
-`plugins/qsm-setup/openspec/specs/qsm-setup/spec.md` (at archive). The feedback epic issue itself is
-created by `qsm-tasks setup` or the maintainer's migration piece, not by this change. Blocked by:
-group 8.
+`plugins/qsm-setup/openspec/specs/qsm-setup/spec.md` (at archive). The issue type Feedback is
+created by `qsm-tasks setup`, not by this change. Blocked by: group 8.
 
 - [ ] 10.1 Edit the three places; run `qsm-setup activate qsm-setup -- --instructions replace` in a
       sandbox Claude home and read that the activated `CLAUDE.md` has no `qsm-i1u`, one row names
-      `qsm-tasks` with `ready`, `list --mine`, `show`, `claim` and `note`, and one names
-      `qsm-memory` with `search`, `show` and `note`
+      `qsm-tasks` with `ready`, `list --mine`, `show`, `claim` and `note`, one names `qsm-memory`
+      with `search`, `show` and `note`, and the feedback rule names `qsm-tasks feedback`, the labels
+      `area:`, `kind:` and `from:` and the body sections
 
-## 11. The sweep, after the migration
+## 11. The word feature replaces epic in the marketplace prose
+
+Owns: every prose file that says "epic" outside `openspec/changes/archive/`. Found by
+`grep -rniw 'epics\?' plugins/*/skills plugins/*/agents plugins/*/commands
+plugins/qsm-setup/instructions AGENTS.md README.md --include=*.md`: ten files, 61 hits
+(`plugins/*/commands` has no files today):
+
+| File | Hits | Done in |
+| --- | --- | --- |
+| `plugins/qsm-plan/skills/plan/SKILL.md` | 21 | group 9 and here |
+| `plugins/qsm-tasks/skills/task-tool/SKILL.md` | 15 | group 8 |
+| `plugins/qsm-plan/skills/grilling/SKILL.md` | 10 | group 9 and here |
+| `plugins/qsm-openspec/skills/spec-archive/SKILL.md` | 6 | group 9 |
+| `plugins/qsm-setup/instructions/CLAUDE.md` | 3 | group 10 and here ("intent in the epic") |
+| `plugins/qsm-openspec/skills/spec-propose/SKILL.md` | 2 | here |
+| `plugins/qsm-essentials/skills/writing/SKILL.md` | 1 | here |
+| `plugins/qsm-tasks/skills/task-writing/SKILL.md` | 1 | here |
+| `plugins/qsm-web/agents/web-research.md` | 1 | group 10 |
+| `plugins/qsm-setup/instructions/rules/context.md` | 1 | here |
+
+The same word is in prose outside that grep, edited here too: the plugin READMEs
+`plugins/qsm-plan/README.md` (5), `plugins/qsm-tasks/README.md` (5) and
+`plugins/qsm-memory/USAGE.md` (1), and the main specs `plugins/qsm-plan/openspec/specs/qsm-plan/
+spec.md` (49, three requirement titles included), `plugins/qsm-openspec/openspec/specs/qsm-openspec/
+spec.md` (13), `plugins/qsm-tasks/openspec/specs/qsm-tasks/spec.md` (17), `plugins/qsm-memory/
+openspec/specs/qsm-memory/spec.md` (4) and `plugins/qsm-builder/openspec/specs/qsm-builder/spec.md`
+(1), by hand at archive after the deltas are merged. The `epic` in code and evals is edited with its
+group (3 to 7). Blocked by: groups 8 to 10.
+
+- [ ] 11.1 Replace "epic" with "feature" in the files above; where a sentence names the old stages
+      or the Epics view it names the Status and the Features view of the flow instead
+- [ ] 11.2 Proof: the grep above returns nothing, `qsm-setup activate qsm-setup -- --instructions
+      replace` in a sandbox Claude home shows no "epic" in the activated files, and
+      `bun run eval qsm-plan` and `bun run eval qsm-openspec` still pass
+
+## 12. The sweep, after the migration
 
 Owns: root `.gitignore` and `.beads/` (not deleted here: the migration piece untracks it after the
 triage), `AGENTS.md` (no `br` mention today; checked), `README.md` root (checked), the files a
-final grep finds. Blocked by: groups 2 to 10, and the epic's triage task.
+final grep finds. Blocked by: groups 2 to 11, and the feature's triage task.
 
-- [ ] 11.1 Sweep:
+- [ ] 12.1 Sweep:
       `grep -rnIE "\bbr (ready|show|create|close|update|list|dep|comment|sync)|beads|\.beads|beads_rust|test-it"`
       over the tree outside `openspec/changes/archive/` and `.beads/` returns nothing, and
       `bun run validate` passes
-- [ ] 11.2 Archive: merge the deltas and edit by hand what a delta cannot (the Purpose and design
-      table sentences listed in groups 3, 4 and 8)
+- [ ] 12.2 Archive: merge the deltas and edit by hand what a delta cannot (the Purpose and design
+      table sentences listed in groups 3, 4, 8 and 11)
