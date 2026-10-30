@@ -57,7 +57,7 @@ renamed option edits one file), and holds the table below.
 | order | `qsm-tasks edit <task> --after <blocker>` | the planner |
 | claim | `qsm-tasks claim <task>` | the agent that builds; spec-apply at start |
 | give back | `qsm-tasks unclaim <task>` | the agent that cannot continue, or brings a deferred task back |
-| pull request open, CI and review agents running | `qsm-tasks review <task>` | the builder, when it opens the pull request |
+| pull request open, CI and review agents running | nothing: the built-in workflow sets Agent Review; `qsm-tasks review <task>` when it lags or after a finding | GitHub; the builder |
 | CI green, every finding fixed | `qsm-tasks human <task>` | the builder, only then; the owner tests and approves |
 | merge | nothing: `Closes #N` closes the task, the board sets Done | the owner merges |
 | decision or spec-only task | `qsm-tasks close <task> --reason` | the main agent with the owner's word |
@@ -95,11 +95,11 @@ verb and a reason a reader in a month understands, and work that will not be don
 `close --not-planned`, which writes no Status.
 
 A feature's Status after planning is derived from its tasks by an Action (`qsm-tasks-cli` design
-decision 5): In Dev from its first claimed task, Ready For Test when every task is closed, In Test
-when the QA agent takes it with `qa`, Blocked when a fix task, QA's finding or the owner's
-rejection, is added under it, and Ready For Test again when that task closes. The owner accepts the
-QA result, and only then is the feature closed and Done. A feature needs no review: it has the test.
-The agent never closes a feature on its own word.
+decision 5): In Dev from its first claimed or completed task, Ready For Test when every task is
+closed, In Test when the QA agent takes it with `qa`, Blocked when a fix task, QA's finding or the
+owner's rejection, is added under it, and Ready For Test again when that task closes. The owner
+accepts the QA result, and only then is the feature closed and Done. A feature needs no review: it
+has the test. The agent never closes a feature on its own word.
 
 This replaces the final test-it sub-issue. Reason: test-it was a task made to look like a stage, it
 had to be blocked by every other task by hand, and it could be ticked by the same agent that built

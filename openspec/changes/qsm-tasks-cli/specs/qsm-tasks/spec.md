@@ -13,7 +13,7 @@ pull requests, review threads or git state. Its verbs SHALL be: `ready`, `list`,
 #### Scenario: A step of the flow needs a task operation
 
 - **WHEN** an agent has to create a sub-issue, order two tasks, claim a task or hand a feature to QA
-- **THEN** one `qsm-tasks` verb does it, and the agent composes no backend call
+- **THEN** one `qsm-tasks` verb does it, and the agent composes no GitHub call
 
 ### Requirement: Output is deterministic text and an envelope, a failure is a typed outcome
 
@@ -27,11 +27,11 @@ otherwise, and an empty list SHALL print `none`. A write verb SHALL print one li
 `closeReason`, `status`, `priority`, `assignee`, `parent`, `blockedBy`, `labels` and
 `subIssues: { total, completed }`, and a write verb's `data` SHALL add
 `changes: [{ number, field, from, to }]`. No output SHALL carry a node id, a field id, an option id
-or a backend's own shape, colour, a relative time or an emoji.
+or GitHub's own shape, colour, a relative time or an emoji.
 
 Every failure SHALL carry one of the marketplace's outcome codes and a stable `data.reason`, name
 the cause and, when there is one, the single fix as `next`. A wrong call SHALL exit `usage` (2)
-before any backend call. An absent prerequisite SHALL exit `missing` (4) with reason `no-gh` (no
+before any call to GitHub. An absent prerequisite SHALL exit `missing` (4) with reason `no-gh` (no
 `gh`, or no login: `next` is `gh auth login`), `no-repo`, `no-board`, `no-feedback-type` or
 `no-file`. A refused move SHALL exit `blocked` (5) with reason `wrong-kind`, `wrong-status` (the
 message names the current Status, the open sub-issues or the closed feature), `held` or
@@ -79,10 +79,10 @@ number. `ready --qa` SHALL list the open features that the guard of `qa` accepts
 issues filtered by `--feature <n>` (the feature first, then its sub-issues), `--kind` (`feature`,
 `task`, `bug` or `feedback`), `--status`, `--priority`, `--mine` (assigned to the caller),
 `--blocked`, `--label`, `--search "<words>"` (title and body), `--spec <change-id>` (the issue
-labelled `change:<change-id>`, or `none`) and `--state` (open by default), up to `--limit`. `show
-<n>` SHALL print an item's facts, blockers, sub-issue counts and body, and with `--comments` its
-comments oldest first as `<date> <login>: <text>`. A list that reaches its limit SHALL say it is
-cut, as a warning, and still exit `ok`.
+labelled `change:<change-id>` in any state, or `none`) and `--state` (open by default, `all` with
+`--spec`), up to `--limit`. `show <n>` SHALL print an item's facts, blockers, sub-issue counts and
+body, and with `--comments` its comments oldest first as `<date> <login>: <text>`. A list that
+reaches its limit SHALL say it is cut, as a warning, and still exit `ok`.
 
 #### Scenario: What is ready
 
@@ -106,20 +106,27 @@ cut, as a warning, and still exit `ok`.
 - **WHEN** `list --spec add-x` runs and an issue `add-x-more` is labelled `change:add-x-more`
 - **THEN** only the issue labelled `change:add-x` is printed, or `none` with `data.items` empty
 
+#### Scenario: A closed change's task is still found
+
+- **WHEN** the task labelled `change:add-x` is closed and `list --spec add-x` runs
+- **THEN** it is printed, because `--spec` implies `--state all`
+
 ### Requirement: Create and edit verbs
 
 `feature "<goal>" --intent <file or ->` SHALL create an issue of kind Feature whose body is the
 intent, with Status Todo. `add "<title>"` SHALL create a Task, optionally a sub-issue of
-`--feature`, blocked by `--after`, labelled `change:<id>` by `--spec`, with `--priority`, `--body`
-or `--body-file` and `--label`. `edit <n>` SHALL change `--title`, `--priority`, `--body` or
-`--body-file`, `--assignee <login>` (without changing Status), `--feature <m>` (a sub-issue of m,
-leaving an earlier parent), `--after <b>` (n is blocked by b), `--unblock <b>` (lift it) and
-`--spec <id>` (replace the `change:` label). `note <n> "<text>"` SHALL add one comment with the text
-unchanged. No verb SHALL put an open sub-issue under a closed feature (`wrong-status`). A relation
-GitHub refuses (a cycle, a missing issue, a parent in another repository) SHALL exit `failed`
-carrying its cause and change nothing, and `--unblock` of a blocker the task does not have SHALL
-exit `failed` naming both numbers. Body text SHALL reach GitHub as a file or stdin, never as an
-argument. Every create SHALL print the new number and URL.
+`--feature`, blocked by `--after`, labelled `change:<id>` by `--spec` (the label is created first
+when missing, and an id that makes it longer than 50 characters exits `usage` before any call), with
+`--priority`, `--body` or `--body-file` and `--label`. `edit <n>` SHALL change `--title`,
+`--priority`, `--body` or `--body-file`, `--assignee <login>` (without changing Status), `--feature
+<m>` (a sub-issue of m, leaving an earlier parent), `--after <b>` (n is blocked by b), `--unblock
+<b>` (lift it) and `--spec <id>` (replace the `change:` label, created first when missing). `note
+<n> "<text>"` SHALL add one comment with the text unchanged. No verb SHALL put an open sub-issue
+under a closed feature (`wrong-status`). A relation GitHub refuses (a cycle, a missing issue, a
+parent in another repository) SHALL exit `failed` carrying its cause and change nothing, and
+`--unblock` of a blocker the task does not have SHALL exit `failed` naming both numbers. Body text
+SHALL reach GitHub as a file or stdin, never as an argument. Every create SHALL print the new number
+and URL.
 
 #### Scenario: A feature is created
 
@@ -205,7 +212,7 @@ workflow file, which `doctor` checks against it. The definitions SHALL be these:
 A close as not planned SHALL write no Status: "Item closed" sets Done, and the close reason
 separates it from a close as completed. `flow` SHALL print the table, both definitions of done and
 each verb's guard and effect. A value that is not an option SHALL exit `usage` listing the options
-of its field before any backend call, and a verb that would write a Status its kind does not use
+of its field before any call to GitHub, and a verb that would write a Status its kind does not use
 SHALL exit `blocked` with reason `wrong-kind`, because the views filter by kind and Status.
 
 #### Scenario: The flow is printed
@@ -233,7 +240,7 @@ nothing. A Feedback issue SHALL take `close` and `reopen` only, and a feature SH
 | `claim <n>` (task, bug) | Todo (an item not yet on the board counts as Todo), unassigned or held by the caller | In Dev, assignee the caller, on the board; its feature at Todo goes to In Dev |
 | `unclaim <n>` | In Dev, Agent Review or Human Review, or Todo with the label `deferred` | Todo, unassigned, label `deferred` removed |
 | `unclaim <n> --until <v>` | Todo or In Dev | Todo, unassigned, label `deferred`, comment `Deferred until <v>` |
-| `review <n>` | In Dev or Human Review | Agent Review |
+| `review <n>` | In Dev, Human Review or Agent Review (a repeat changes nothing) | Agent Review |
 | `human <n>` | Agent Review | Human Review |
 | `close <n> --reason "<text>"` (task, bug, Feedback) | open | closed as completed, the reason as a comment |
 | `close <n> --not-planned --reason "<text>"` (also a feature) | open, a feature with no open sub-issue | closed as not planned, the reason as a comment |
@@ -277,16 +284,19 @@ by the holder SHALL change nothing. No verb SHALL write Done, and a close SHALL 
 The only verb write to a feature's Status SHALL be `claim` of one of its tasks (Todo to In Dev),
 `plan` (to Todo) and `qa` (to In Test), and `accept` closes it. Every other change SHALL be made by
 one rule, held once in `lib/flow.ts` and repeated by the Action: a feature at Todo stays there until
-`claim` of a child moves it to In Dev, or a child closes, which moves it to In Dev at once; then, by
-the stored Status, an open sub-issue SHALL send Ready For Test to In Dev and In Test to Blocked, and
-the closing of the last open sub-issue (at least one closed) SHALL send In Dev or Blocked to Ready
-For Test; any other Status SHALL stay. A workflow file in this repository,
-`.github/workflows/feature-ready.yml`, SHALL apply the rule when an issue is opened, closed or
-reopened and its parent is a Feature. It SHALL use `gh` only, authenticate with the repository
-secret `PROJECT_TOKEN`, change no other field, post nothing and serialise two events under one
-parent. A verb that adds a sub-issue to an existing issue (`edit --feature`) SHALL NOT recompute the
-feature: its Status MAY lag until the next event on a child, and the guards of `qa` and `accept`
-SHALL read the sub-issues, never the Status alone.
+`claim` of a child moves it to In Dev, or a child closes as completed, which moves it to In Dev at
+once, while a child closed as not planned leaves it at Todo; then, by the stored Status, an open
+sub-issue SHALL send Ready For Test to In Dev and In Test to Blocked, and the closing of the last
+open sub-issue (at least one closed) SHALL send In Dev or Blocked to Ready For Test; any other
+Status SHALL stay. A workflow file in this repository, `.github/workflows/feature-ready.yml`, SHALL
+apply the rule when an issue is opened, closed or reopened and its parent is a Feature. It SHALL use
+`gh` only, authenticate with the repository secret `PROJECT_TOKEN`, change no other field, post
+nothing and serialise two events under one parent. `add --feature` SHALL rely on the `opened` event
+seeing the parent, which task 0.2 measures; a verb that gives an existing issue a parent (`edit
+--feature`) SHALL NOT recompute the feature, so the new parent and the old one MAY keep a Status
+that lags (an old parent at In Dev or Blocked with no open child) until the next event on one of
+their children, and the guards of `qa` and `accept` SHALL read the sub-issues, never the Status
+alone.
 
 #### Scenario: The last task closes
 
@@ -343,8 +353,8 @@ workflow "Item closed" SHALL set Done for it and for a feature closed by `accept
 board SHALL have these built-in workflows switched on: "Auto-add to project", "Auto-add sub-issues
 to project", "Item added to project" (sets Todo), "Item closed" (sets Done), "Pull request merged"
 (sets Done) and "Pull request linked to issue" (sets Agent Review). The last moves a task to Agent
-Review when its pull request is linked, and `review` stays the verb for the same move and for the
-way back from Human Review.
+Review when its pull request is linked, and `review` stays the verb for the way back from Human
+Review and for the same move when the workflow lags.
 
 #### Scenario: A pull request is merged into a protected main
 
@@ -375,7 +385,7 @@ named option, such as a leftover In Progress, or a leftover field `Epic stage`, 
 web-UI page as its fix, never `setup`); the labels `deferred`, `kind:*` and `from:*`; the built-in
 workflows that must be on (the list of "Done is GitHub's"); the views Tasks and Features; the file
 `.github/workflows/feature-ready.yml` with names that are options of the board; and the secret
-`PROJECT_TOKEN`. Each failing line SHALL name its fix. A check the backend cannot read SHALL be
+`PROJECT_TOKEN`. Each failing line SHALL name its fix. A check GitHub cannot be asked for SHALL be
 `manual` and SHALL NOT be reported `ok`.
 
 #### Scenario: Everything is set, or an option is missing

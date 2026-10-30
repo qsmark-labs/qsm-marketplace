@@ -147,25 +147,26 @@ failure.
 The skill SHALL state the flow of each kind, the verb that moves each step and who may make the
 move, and SHALL NOT make the agent move a step GitHub or the Action makes itself. It SHALL NOT copy
 the option names or their definitions: it SHALL tell the agent to run `qsm-tasks flow`, which prints
-them from the binary. A task SHALL move Todo, In Dev by `claim`, Agent Review by `review` when its
-pull request is open, Human Review by `human` when CI is green and every finding is fixed, Done when
-merged, and needs no QA. A feature SHALL be Todo while planned, In Dev from its first claimed task,
-Ready For Test when its last sub-issue closes, In Test by `qa` when the QA agent takes it, Blocked
-while a fix task is open under it, and Done by `accept` on the owner's acceptance, the Action making
-every move but `qa` and `accept`, and it needs no review. The QA agent SHALL be the only one to run
-`qa`, SHALL find the features that wait with `qsm-tasks ready --qa`, SHALL test the whole feature
-against the business request and the acceptance criteria on the real path, and SHALL file a defect
-with `qsm-tasks add --feature <n>`. The owner SHALL approve every pull request and accept every
-feature; the agent SHALL run `accept`, or a task's approval, only on the owner's explicit word in
-the conversation, and a rejection by the owner is an `add --feature` under the feature. Pull
-requests are opened by a bot of the organization, and everything the skill posts SHALL be written in
-the owner's name with no mention of an AI or an agent.
+them from the binary. A task SHALL move Todo, In Dev by `claim`, Agent Review when its pull request
+is linked (by `review` when the built-in workflow lags or after a finding), Human Review by `human`
+when CI is green and every finding is fixed, Done when merged, and needs no QA. A feature SHALL be
+Todo while planned, In Dev from its first claimed or completed task, Ready For Test when its last
+sub-issue closes, In Test by `qa` when the QA agent takes it, Blocked while a fix task is open under
+it, and Done by `accept` on the owner's acceptance, the Action making every move but `qa` and
+`accept`, and it needs no review. The QA agent SHALL be the only one to run `qa`, SHALL find the
+features that wait with `qsm-tasks ready --qa`, SHALL test the whole feature against the business
+request and the acceptance criteria on the real path, and SHALL file a defect with `qsm-tasks add
+--feature <n>`. The owner SHALL approve every pull request and accept every feature; the agent SHALL
+run `accept`, or a task's approval, only on the owner's explicit word in the conversation, and a
+rejection by the owner is an `add --feature` under the feature. Pull requests are opened by a bot of
+the organization, and everything the skill posts SHALL be written in the owner's name with no
+mention of an AI or an agent.
 
 #### Scenario: A pull request is opened
 
 - **WHEN** the agent has opened a pull request for a task
-- **THEN** it runs `review` on the task, and `human` only when CI is green and every review finding
-  is fixed
+- **THEN** the task is Agent Review by the built-in workflow, the agent runs `review` only if it is
+  not, and runs `human` only when CI is green and every review finding is fixed
 
 #### Scenario: The QA agent looks for work
 

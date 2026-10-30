@@ -68,16 +68,17 @@ disagree with the children. The only verb writes are the human acts (`claim` end
 re-opens it, `qa` starts the test); the rest is one rule applied by an Action on `issues: opened,
 closed, reopened`. `qa` takes the same predicate the rule would reach (no open sub-issue), so QA
 never waits for the Action: one guard, not two routes. The Action counts the parent's open
-sub-issues with one `gh` listing, not `subIssuesSummary`, so its freshness is not a question.
-Honest consequence, bounded by the guards: whether an Action sees a sub-issue added to an
-existing issue is measured in task 0.2, and if not, `add --feature` sets the parent at creation
-(the `opened` event sees it) while `edit --feature` on an open issue leaves the Status lagging
-until the next event on a child; `qa` and `accept` read the sub-issues, so nothing downstream is
-fooled by the lag. A finding is not a verb: QA files the fix with `add --feature` under a feature In
-Test and the rule makes it Blocked. The Action sits in this repository's `.github/` because GitHub
-runs only that directory and the trigger is a close in the browser where no verb runs; its token is
-a repository secret `PROJECT_TOKEN` because the workflow's own token cannot write an organization
-project.
+sub-issues with one `gh` listing, not `subIssuesSummary`, so its freshness is not a question. Honest
+consequence, bounded by the guards: `add --feature` relies on the `opened` event seeing the parent,
+and task 0.2 measures it; if it does not, the build stops and this decision and the spec rule are
+revised before group 5, with no silent second route. `edit --feature` gives an existing issue a
+parent without any event, so the new parent, and the old one (which can sit at In Dev or Blocked
+with no open child), keep a Status that lags until the next event on one of their children; `qa` and
+`accept` read the sub-issues, so nothing downstream is fooled by the lag. A finding is not a verb:
+QA files the fix with `add --feature` under a feature In Test and the rule makes it Blocked. The
+Action sits in this repository's `.github/` because GitHub runs only that directory and the trigger
+is a close in the browser where no verb runs; its token is a repository secret `PROJECT_TOKEN`
+because the workflow's own token cannot write an organization project.
 
 ### 6. Cancel is a close, not a Status
 
@@ -90,8 +91,11 @@ Status Released is not added: it returns with the release-train feature.
 ### 7. A task is bound to its change by a label
 
 `change:<id>` is written by `add --spec` and `edit --spec` and read by `list --spec` as an exact
-`label:` search, one call. Reason: GitHub's label is the field an issue has for this, filterable
-and exact, where a first body line needed a search, a filter and a rule to keep it on every edit.
+`label:` search over open and closed issues, one call (a closed task must still be found, or a
+second one would be created). The label is created before the issue write, one path, and an id over
+GitHub's 50-character label cap is refused as `usage`. Reason: GitHub's label is the field an issue
+has for this, filterable and exact, where a first body line needed a search, a filter and a rule to
+keep it on every edit.
 
 ### 8. Done is GitHub's
 

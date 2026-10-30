@@ -69,14 +69,16 @@ as data), `lib/verbs/write.ts` (`feature`, `add`, `feedback`, `edit`, `note`), `
       Suggested fix` and an unknown area exit `usage`, none posting; live, a `feedback` from another
       directory lands here with its three labels and a repeat comments; `feature` and two `add
       --feature` tasks with `--after` show in `list --feature` in order; `list --spec` of two
-      similar ids returns only the exact one
+      similar ids returns only the exact one, and finds a closed bound task; an over-long id exits
+      `usage` and `add --spec` creates a missing label first
 
 ## 4. Task flow verbs
 
 Owns: `lib/verbs/task-flow.ts` (`claim`, `unclaim`, `review`, `human`, `close`, `reopen`),
 `scripts/cli.ts`, `lib/verbs/task-flow.test.ts` (every guard of the spec's table through the fake
 `gh`: a refusal runs no write, a refused second write of `claim` names the first, an item not yet on
-the board claims as Todo). Blocked by: 3.
+the board claims as Todo, `review` on a task already at Agent Review changes nothing). Blocked by:
+3.
 
 - [ ] 4.1 The six verbs read their guard and effect from `lib/flow.ts`; `claim` writes the board
       item, Status, assignee, then the feature, each idempotent
@@ -91,14 +93,18 @@ Owns: `.github/workflows/feature-ready.yml` (new), `lib/verbs/feature-flow.ts` (
 and the owner setting the secret `PROJECT_TOKEN`.
 
 - [ ] 5.1 The workflow applies the derivation rule on `issues: opened, closed, reopened`: `gh` only,
-      the parent's open sub-issues counted with one listing, concurrency per parent
+      the parent's open sub-issues counted with one listing, concurrency per parent; its copy of the
+      rule is proved only by the live loop of 5.3, and `doctor` checks its names
 - [ ] 5.2 `plan`, `qa` and `accept` from the flow table; `qa` reads the sub-issues, `accept` writes
-      no Status
+      no Status; `lib/flow.test.ts` feeds the spec's derivation cases as a table to the
+      `lib/flow.ts` function
 - [ ] 5.3 Proof, one live loop on `test: feature`: two tasks, `claim` one (feature In Dev), close
       both (Ready For Test), `qa` (In Test), `add --feature` a fix (Blocked), close it (Ready For
       Test), `qa`, `accept` (closed, `show` prints Done); a feature at Todo whose only task is
       closed without a claim reaches Ready For Test; `qa` straight from In Dev with every task
-      closed reaches In Test; `ready --qa` lists the feature at each waiting point and not
+      closed reaches In Test; an open sub-issue added under a feature at Ready For Test sends it to
+      In Dev, `reopen` of a child under a feature In Test makes it Blocked, and `plan` works from In
+      Dev, Ready For Test and Blocked; `ready --qa` lists the feature at each waiting point and not
       between; a missing secret fails the run visibly (shown on a fork or named as skipped)
 
 ## 6. doctor, setup and the guard against drift

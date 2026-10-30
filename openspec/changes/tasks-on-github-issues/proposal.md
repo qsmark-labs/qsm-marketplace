@@ -17,15 +17,16 @@ because "it is not done if any step still needs `br`". It depends on `qsm-tasks-
   work, feedback. The `task-writing` skill stays as it is.
 - **The skill holds the expected flow, specific to our task tool.** One Status field, each kind
   using its own part of it, both definitions of done, which verb moves each step, and who may move
-  what. A task moves Todo, In Dev (`claim`), Agent Review (`review`, pull request open, CI and the
-  review agents), Human Review (`human`, CI green, every finding fixed), Done (merge with `Closes
-  #N`, no verb); a task never needs QA. A feature's Status after planning is derived from its tasks
-  by an Action: In Dev with its first claimed task, Ready For Test when every task is closed,
-  Blocked when QA files a fix task; `qa` starts the test and `accept` closes it, and a feature never
-  needs review, it has the test. Work that will not be done is closed as not planned (`close
-  --not-planned`), with no Status. The owner approves pull requests and accepts features, the agent
-  never does either on its own word; the QA agent runs In Test. The names and definitions are not
-  copied: the skill says to run `qsm-tasks flow`, which prints them from the binary.
+  what. A task moves Todo, In Dev (`claim`), Agent Review (set when its pull request is linked,
+  `review` when that lags or after a finding; CI and the review agents run), Human Review (`human`,
+  CI green, every finding fixed), Done (merge with `Closes #N`, no verb); a task never needs QA. A
+  feature's Status after planning is derived from its tasks by an Action: In Dev with its first
+  claimed or completed task, Ready For Test when every task is closed, Blocked when QA files a fix
+  task; `qa` starts the test and `accept` closes it, and a feature never needs review, it has the
+  test. Work that will not be done is closed as not planned (`close --not-planned`), with no Status.
+  The owner approves pull requests and accepts features, the agent never does either on its own
+  word; the QA agent runs In Test. The names and definitions are not copied: the skill says to run
+  `qsm-tasks flow`, which prints them from the binary.
 - **A QA agent replaces the test-it sub-issue.** A feature has no test-it task anymore. When every
   task is done the feature waits for the QA agent (`qsm-tasks ready --qa` lists it), which tests the
   whole against the business request and the acceptance criteria on the real path, in a Claude Code
