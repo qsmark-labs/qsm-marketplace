@@ -5,117 +5,65 @@
 The plugin SHALL ship one binary `qsm-tasks`, named after the plugin, whose verbs are described in
 `qsm.json` and whose noun is `$.tasks`, so a person, a script and a hook reach the same logic: a
 hook calls `$.tasks.<verb>()` where a person runs `qsm-tasks <verb>`. The binary SHALL cover every
-step of the task flow, from the ready list to the acceptance of a feature, so that no step needs a
-raw `gh`, `jq` or GraphQL call. The binary SHALL NOT touch pull requests, review threads or git
-state. Its verbs SHALL be: `ready`, `list`, `show`, `tree`, `search`, `notes`, `board`, `feature`,
-`add`, `feedback`, `finding`, `edit`, `move`, `after`, `unblock`, `assign`, `spec`, `find-spec`,
-`note`, `claim`, `unclaim`, `review`, `human`, `reopen`, `close`, `drop`, `defer`, `plan`, `qa`,
-`accept`, `doctor`, `setup` and `flow`.
+step of the task flow, so that no step needs a raw `gh`, `jq` or GraphQL call, and SHALL NOT touch
+pull requests, review threads or git state. Its verbs SHALL be: `ready`, `list`, `show`, `feature`,
+`add`, `feedback`, `edit`, `note`, `claim`, `unclaim`, `review`, `human`, `close`, `reopen`, `plan`,
+`qa`, `accept`, `doctor`, `flow` and `setup`.
 
 #### Scenario: A step of the flow needs a task operation
 
-- **WHEN** an agent has to create a sub-issue, order two tasks, claim a task or move a feature to a
-  Status
+- **WHEN** an agent has to create a sub-issue, order two tasks, claim a task or hand a feature to QA
 - **THEN** one `qsm-tasks` verb does it, and the agent composes no backend call
 
-#### Scenario: A gap is found
-
-- **WHEN** a step of the flow has no verb
-- **THEN** the binary gains the verb and its scenario in `qsm.json` and this spec, and no skill
-  tells the agent to call a raw API
-
-#### Scenario: A hook calls the same logic
-
-- **WHEN** a hook calls `$.tasks.ready({ feature: 12 })`
-- **THEN** it gets the `data` the shell's `qsm-tasks ready --feature 12 --json` prints
-
-### Requirement: Every verb prints deterministic text and the standard envelope
+### Requirement: Output is deterministic text and an envelope, a failure is a typed outcome
 
 Every verb SHALL print text an agent reads without parsing and, with `--json`, the envelope of
 `lib/cli-base.ts` whose `data` carries the same facts. A list row SHALL be
-`#<n> [<Status>] <title>`, with the Priority after the bracket when set, followed by
-`@<login>` when assigned and by the text `blocked by` and the open blockers' numbers when any exist,
-and a feature row SHALL add its done and total sub-issue counts as `done/total`. A list SHALL be in
-ascending issue number unless the verb says otherwise, and an empty list SHALL print `none`. A write
-verb SHALL print one line per write, `#<n> <from> -> <to>`, so a side effect on a feature is its own
-line. The `data` of an item SHALL hold `number`, `url`, `title`, `kind`, `state`, `status`,
-`priority`, `assignee`, `parent`, `blockedBy`, `labels` and `subIssues: { total, completed }`,
-and a write verb's `data` SHALL add `changes: [{ number, field, from, to }]`. No output SHALL carry
-a node id, a field id, an option id or a backend's own shape. Output SHALL carry no colour, no
-relative time and no emoji.
+`#<n> [<Status>] <title>`, with the Priority after the bracket when set, then `@<login>` when
+assigned, then `blocked by` and the open blockers' numbers when any exist, and a feature row SHALL
+add `done/total` sub-issues. A list SHALL be in ascending issue number unless the verb says
+otherwise, and an empty list SHALL print `none`. A write verb SHALL print one line per write,
+`#<n> <from> -> <to>`. The `data` of an item SHALL hold `number`, `url`, `title`, `kind`, `state`,
+`closeReason`, `status`, `priority`, `assignee`, `parent`, `blockedBy`, `labels` and
+`subIssues: { total, completed }`, and a write verb's `data` SHALL add
+`changes: [{ number, field, from, to }]`. No output SHALL carry a node id, a field id, an option id
+or a backend's own shape, colour, a relative time or an emoji.
 
-#### Scenario: The same call twice
-
-- **WHEN** a list verb runs twice and nothing changed
-- **THEN** both outputs are byte-identical
+Every failure SHALL carry one of the marketplace's outcome codes and a stable `data.reason`, name
+the cause and, when there is one, the single fix as `next`. A wrong call SHALL exit `usage` (2)
+before any backend call. An absent prerequisite SHALL exit `missing` (4) with reason `no-gh` (no
+`gh`, or no login: `next` is `gh auth login`), `no-repo`, `no-board`, `no-feedback-type` or
+`no-file`. A refused move SHALL exit `blocked` (5) with reason `wrong-kind`, `wrong-status` (the
+message names the current Status, the open sub-issues or the closed feature), `held` or
+`private-data`, and change nothing. A refusal by GitHub SHALL exit `failed` (1) with reason
+`refused` carrying its words, and a missing issue with reason `not-found`. A verb SHALL NOT retry,
+take a second route, roll back or continue after a refusal; a verb of several writes SHALL make each
+write idempotent and name the writes already done, so a repeat finishes the work.
 
 #### Scenario: A write that touches two issues
 
 - **WHEN** `claim` moves a task to In Dev and its feature from Todo to In Dev
-- **THEN** two lines print, `#12 Todo -> In Dev` and `#3 Todo -> In Dev`, and `changes`
-  holds both
-
-#### Scenario: Nothing matches
-
-- **WHEN** `ready` finds no task
-- **THEN** it prints `none`, exits `ok` and `data.items` is empty
-
-### Requirement: A failure is a typed outcome with a reason, and nothing else runs
-
-Every verb SHALL fail with one of the marketplace's outcome codes and a stable `data.reason`, naming
-the cause and, when there is one, the single fix as `next`. A wrong call SHALL exit `usage` (2)
-before any backend call. An absent prerequisite SHALL exit `missing` (4) with reason `no-gh`,
-`no-login`, `no-repo`, `no-board`, `no-feedback-type` or `no-file`. A flow rule refusing the move
-SHALL exit `blocked` (5) with reason `wrong-status`, `held`, `feature-done`, `open-children` or
-`wrong-kind`, naming the rule and the current value, and the feedback rule refusing personal or
-system data SHALL exit `blocked` with reason `private-data`. A refusal by the backend or an issue
-that does not exist SHALL exit `failed` (1) with reason `refused` carrying the backend's words, or
-`not-found`. A verb SHALL NOT retry, take a second route, roll back or continue after a refusal, and
-SHALL introduce no outcome code beyond the marketplace's. A verb of several writes SHALL order them
-so the likeliest refusal is first and a feature's write last, SHALL make each write idempotent, and
-a failure SHALL name the writes already done so a repeat finishes the work.
+- **THEN** two lines print, `#12 Todo -> In Dev` and `#3 Todo -> In Dev`, and `changes` holds both
 
 #### Scenario: A wrong call runs nothing
 
-- **WHEN** a verb is called with an unknown flag, a missing required argument or a value outside its
-  choices
-- **THEN** it exits `usage` and the recorded backend calls are empty
+- **WHEN** a verb gets an unknown flag, a missing required argument or a value outside its choices
+- **THEN** it exits `usage` and the recorded `gh` calls are empty
 
 #### Scenario: The token lacks the project scope
 
-- **WHEN** the login has no `project` scope
-- **THEN** the verb exits `failed` with reason `refused`, the backend's words in the message and
-  `next` set to `gh auth refresh -s project`, and nothing is created another way
-
-#### Scenario: No repository
-
-- **WHEN** a verb runs with no `--repo` outside a git checkout
-- **THEN** it exits `missing` with reason `no-repo` and does not guess one
-
-#### Scenario: A second write is refused
-
-- **WHEN** the board write of `claim` succeeded and the assignment is then refused
-- **THEN** the verb exits `failed` naming the write done and the refusal, and running it again
-  completes the claim
+- **WHEN** GitHub refuses a write because the login has no `project` scope
+- **THEN** the verb exits `failed` with reason `refused`, GitHub's words and `next` set to
+  `gh auth refresh -s project`, and nothing is created another way
 
 ### Requirement: The repository and the board are resolved, not configured
 
-A verb SHALL act on the repository named by `--repo owner/name`, else on the origin remote of the
-working directory. It SHALL act on the board named by `--project owner/number`, else on the one
-Projects v2 board linked to the repository; no linked board SHALL exit `missing` with reason
-`no-board` and several SHALL exit `usage` naming `--project`. The binary SHALL store no default for
-either. `feedback` SHALL always act on the marketplace repository, taken from the checkout that
-`QSM_MARKETPLACE` names, whatever the working directory.
-
-#### Scenario: Inside the repository
-
-- **WHEN** a verb runs in a checkout whose origin is `qsmark-labs/qsm-marketplace`
-- **THEN** it acts on that repository and on Project #1, the one board linked to it
-
-#### Scenario: The board moves
-
-- **WHEN** the repository is linked to a different board
-- **THEN** the verbs act on that board with no file edited
+A verb SHALL act on the repository named by `--repo owner/name`, else on the repository `gh`
+resolves from the working directory, else exit `missing` with reason `no-repo`. It SHALL act on the
+board named by `--project owner/number`, else on the one Projects v2 board linked to the repository;
+none SHALL exit `missing` with reason `no-board` and several SHALL exit `usage` naming `--project`.
+The binary SHALL store no default for either. `feedback` SHALL always act on the marketplace
+repository, taken from the checkout that `QSM_MARKETPLACE` names, whatever the working directory.
 
 #### Scenario: Feedback from another project
 
@@ -127,33 +75,20 @@ either. `feedback` SHALL always act on the marketplace repository, taken from th
 `ready` SHALL list open issues of kind Task or Bug whose Status is Todo, that no open issue blocks
 and that do not carry the label `deferred`, never a Feature and never Feedback, optionally under
 `--feature <n>`, ordered by Priority (P0, P1, P2, then none) and within one priority by ascending
-number. `ready --qa` SHALL list open features whose Status is Ready For Test and open features whose
-Status is In Dev and whose sub-issues are all closed, in ascending number, and SHALL take no
-`--feature`. `list` SHALL list issues by `--feature`, `--kind` (`feature`, `task`, `bug` or
-`feedback`), `--status` (a Status), `--priority`, `--mine` (assigned to the caller), `--blocked`,
-`--label` and `--state` (open by default), up to `--limit`. `show <n>` SHALL print an item's facts,
-blockers, sub-issue counts and body. `tree <feature>` SHALL print the feature and its sub-issues one
-level below with Status, assignee and blockers. `search "<words>"` SHALL search title and body in
-any state and print each row with its kind and state. `notes <n>` SHALL print the comments oldest
-first as `<date> <login>: <text>`, at most `--limit`. `board` SHALL print the count of features and
-the count of tasks (a bug counts as a task) and the count of Feedback issues per Status, each kind
-over the options it uses, zero included, in flow order, with Canceled as its own row. A list that
-reaches its limit SHALL say it is cut, as a warning, and still exit `ok`.
+number. `ready --qa` SHALL list the open features that the guard of `qa` accepts. `list` SHALL list
+issues filtered by `--feature <n>` (the feature first, then its sub-issues), `--kind` (`feature`,
+`task`, `bug` or `feedback`), `--status`, `--priority`, `--mine` (assigned to the caller),
+`--blocked`, `--label`, `--search "<words>"` (title and body), `--spec <change-id>` (the issue
+labelled `change:<change-id>`, or `none`) and `--state` (open by default), up to `--limit`. `show
+<n>` SHALL print an item's facts, blockers, sub-issue counts and body, and with `--comments` its
+comments oldest first as `<date> <login>: <text>`. A list that reaches its limit SHALL say it is
+cut, as a warning, and still exit `ok`.
 
-#### Scenario: A blocked task is not ready
+#### Scenario: What is ready
 
-- **WHEN** task 2 is blocked by open task 1 and `ready` runs
-- **THEN** task 1 is listed and task 2 is not
-
-#### Scenario: A closed blocker no longer blocks
-
-- **WHEN** task 2 was blocked by task 1 and task 1 is closed
-- **THEN** task 2 is listed
-
-#### Scenario: A feature, a claimed task and a deferred task are not ready
-
-- **WHEN** an open feature with no blocker, a task In Dev and a task labelled `deferred` exist
-- **THEN** none of them is listed by `ready`, and the open Todo tasks and bugs of the feature are
+- **WHEN** task 2 is blocked by open task 1, task 3 is deferred, task 4 is In Dev, feature 5 is open
+  and task 6 is blocked by closed task 7
+- **THEN** `ready` lists 1 and 6 and none of the others
 
 #### Scenario: P0 comes first
 
@@ -162,37 +97,29 @@ reaches its limit SHALL say it is cut, as a warning, and still exit `ok`.
 
 #### Scenario: The QA agent's list
 
-- **WHEN** feature 3 is at Ready For Test, feature 5 is In Dev with every sub-issue closed and
-  feature 8 is In Dev with one open sub-issue
+- **WHEN** feature 3 is Ready For Test, feature 5 is In Dev with every sub-issue closed and feature
+  8 is In Dev with an open sub-issue
 - **THEN** `ready --qa` lists 3 and 5, and not 8
 
-#### Scenario: The feature at a glance
+#### Scenario: A change's task
 
-- **WHEN** `tree` runs on a feature with three tasks, one done
-- **THEN** it prints the feature's Status and `1/3`, then each task with Status, assignee and
-  blockers
+- **WHEN** `list --spec add-x` runs and an issue `add-x-more` is labelled `change:add-x-more`
+- **THEN** only the issue labelled `change:add-x` is printed, or `none` with `data.items` empty
 
-#### Scenario: Counts per Status
-
-- **WHEN** `board` runs
-- **THEN** the features are counted over Todo, In Dev, Ready For Test, In Test, Blocked, Done,
-  Released and Canceled, the tasks over Todo, In Dev, Agent Review, Human Review, Done, Released and
-  Canceled, and the Feedback issues over Todo, Done and Canceled, each with its count, including
-  zero
-
-#### Scenario: A bigger list than the limit
-
-- **WHEN** more issues match than `--limit`
-- **THEN** `limit` rows print, a warning says the list is cut, and the exit is `ok`
-
-### Requirement: Create verbs
+### Requirement: Create and edit verbs
 
 `feature "<goal>" --intent <file or ->` SHALL create an issue of kind Feature whose body is the
-intent and SHALL set its Status to Todo. `add "<title>"` SHALL create a Task, optionally a sub-issue
-of `--feature`, blocked by `--after`, bound to a change by `--spec`, with `--priority`, `--body` or
-`--body-file` and `--label`; it SHALL apply the sub-issue rule. `finding <feature> "<title>"` SHALL
-create a Task under a feature In Test and set the feature to Blocked. Body text SHALL reach the
-backend as a file or stdin, never as an argument. Every create SHALL print the new number and URL.
+intent, with Status Todo. `add "<title>"` SHALL create a Task, optionally a sub-issue of
+`--feature`, blocked by `--after`, labelled `change:<id>` by `--spec`, with `--priority`, `--body`
+or `--body-file` and `--label`. `edit <n>` SHALL change `--title`, `--priority`, `--body` or
+`--body-file`, `--assignee <login>` (without changing Status), `--feature <m>` (a sub-issue of m,
+leaving an earlier parent), `--after <b>` (n is blocked by b), `--unblock <b>` (lift it) and
+`--spec <id>` (replace the `change:` label). `note <n> "<text>"` SHALL add one comment with the text
+unchanged. No verb SHALL put an open sub-issue under a closed feature (`wrong-status`). A relation
+GitHub refuses (a cycle, a missing issue, a parent in another repository) SHALL exit `failed`
+carrying its cause and change nothing, and `--unblock` of a blocker the task does not have SHALL
+exit `failed` naming both numbers. Body text SHALL reach GitHub as a file or stdin, never as an
+argument. Every create SHALL print the new number and URL.
 
 #### Scenario: A feature is created
 
@@ -202,33 +129,18 @@ backend as a file or stdin, never as an argument. Every create SHALL print the n
 #### Scenario: A task under a feature, after another
 
 - **WHEN** `add "Write the writer" --feature 3 --after 5 --spec add-writer` runs
-- **THEN** a Task exists as a sub-issue of 3, blocked by 5, whose body starts with
-  `openspec: add-writer`
+- **THEN** a Task exists as a sub-issue of 3, blocked by 5, labelled `change:add-writer`
 
-#### Scenario: A body with backticks
+#### Scenario: Order added then lifted
 
-- **WHEN** a body holds backticks, quotes and a dollar sign
-- **THEN** the issue body is that text unchanged
+- **WHEN** `edit 2 --after 1` then `edit 2 --unblock 1` run
+- **THEN** after the first 2 is not listed by `ready` and after the second it is
 
-#### Scenario: A task added to a feature that was ready for test
+#### Scenario: A refused relation or a closed parent
 
-- **WHEN** `add --feature` names a feature at Ready For Test
-- **THEN** the task is created and the feature's Status becomes In Dev, as two lines of output
-
-#### Scenario: A task added to a blocked feature
-
-- **WHEN** `add --feature` names a feature at Blocked
-- **THEN** the task is created and the feature stays Blocked
-
-#### Scenario: A task added to a closed feature
-
-- **WHEN** `add --feature` names a feature at Done
-- **THEN** it exits `blocked` with reason `feature-done` and creates nothing
-
-#### Scenario: Both body sources or none of a title
-
-- **WHEN** a create verb gets both `--body` and `--body-file`, or no title
-- **THEN** it exits `usage` and creates nothing
+- **WHEN** `edit 1 --after 2` would make a cycle, or `add --feature 3` names a closed feature
+- **THEN** the first exits `failed` carrying GitHub's cause and the second exits `blocked` with
+  reason `wrong-status`, and nothing changes
 
 ### Requirement: Feedback is an issue of its own type, labelled, abstract, and with no fix
 
@@ -241,309 +153,37 @@ area SHALL be `marketplace` or a plugin named in the marketplace's
 `subagent`. The body SHALL hold the sections `## What happened` (the abstract steps that led to it)
 and `## Expected behaviour` (how it should behave), MAY hold `## Context`, and SHALL hold no other
 `##` heading. A value outside these sets, a missing section or another heading SHALL exit `usage`
-before any backend call. The title and body SHALL then be refused with `blocked` and reason
-`private-data`, naming the kind of match and its line but never the matched text, when they hold
-an absolute path under a home directory (`/home/`, `/Users/`, `~/`), the caller's OS login or
-`gh` login, the machine's hostname, an email address, or a shape of root `lib/secret-shapes.ts`.
-When an open issue of type Feedback already has the same title, the body SHALL become a comment on
-it and its labels SHALL stay as they are; otherwise the issue SHALL be created, with each missing
-label created first. The rules SHALL live in one module, `lib/feedback.ts`. A repository without
-the issue type Feedback SHALL exit `missing` with reason `no-feedback-type` and `next`
-`qsm-tasks setup`.
+before any call. The title and body SHALL then be refused with `blocked` and reason `private-data`,
+naming the kind of match and its line but never the matched text, when they hold an absolute path
+under a home directory (`/home/`, `/Users/`, `~/`), the caller's OS login, the machine's hostname,
+an email address, or a shape of root `lib/secret-shapes.ts`. When an open Feedback issue has the
+same title, the body SHALL become a comment on it and its labels SHALL stay; otherwise the issue
+SHALL be created, the label `area:` created on first use. The rules SHALL live in one module,
+`lib/feedback.ts`. A repository without the issue type Feedback SHALL exit `missing` with reason
+`no-feedback-type` and `next` `qsm-tasks setup`.
 
 #### Scenario: Feedback is filed
 
 - **WHEN** a subagent runs `feedback "qsm-web: searxng hangs on a suspended engine" --area qsm-web
-  --kind tool-broken --from subagent` with a body of what happened and the expected behaviour
+  --kind tool-broken --from subagent` with the two sections in the body
 - **THEN** an issue of type Feedback with no parent exists in the marketplace repository with the
   labels `area:qsm-web`, `kind:tool-broken` and `from:subagent` and the body unchanged
 
-#### Scenario: Feedback already filed
+#### Scenario: A refused feedback
 
-- **WHEN** `feedback` runs with a title an open Feedback issue already has
-- **THEN** the body is added as a comment on it, no issue is created and `data.created` is false
+- **WHEN** the body holds `/home/<login>/x`, an email address or a token shape, or the heading
+  `## Suggested fix`, or `--area` names no plugin
+- **THEN** the first exits `blocked` with reason `private-data` naming the kind and line but not the
+  text, the others exit `usage`, and nothing is posted
 
-#### Scenario: Personal data in the body
-
-- **WHEN** the body holds `/home/<login>/Projects/x`, an email address or a token shape
-- **THEN** `feedback` exits `blocked` with reason `private-data`, names the kind and line of each
-  match without printing it, and nothing is posted
-
-#### Scenario: A suggested fix
-
-- **WHEN** the body holds the heading `## Suggested fix`
-- **THEN** `feedback` exits `usage` naming the three allowed headings and calls nothing
-
-#### Scenario: An area that is not a plugin
-
-- **WHEN** `--area qsm-task` names no plugin of the marketplace
-- **THEN** `feedback` exits `usage` and lists no labels created
-
-#### Scenario: No Feedback type
-
-- **WHEN** the marketplace repository has no issue type Feedback
-- **THEN** `feedback` exits `missing` with reason `no-feedback-type` and `next` set to
-  `qsm-tasks setup`
-
-### Requirement: Edit verbs
-
-`edit <n>` SHALL change `--title`, `--priority` and `--body` or `--body-file` and keep an existing
-`openspec: <change-id>` first body line when the new body has none. `move <n> --feature <m>` SHALL
-make the task a sub-issue of feature m, leaving an earlier parent, and SHALL apply the sub-issue
-rule. `after <n> <blocker>` SHALL record that n is blocked by the blocker and `unblock <n>
-<blocker>` SHALL lift it. `assign <n>` SHALL assign the caller, or `--login`, without changing
-Status. `spec <n> <change-id>` SHALL write the first body line `openspec: <change-id>`, replacing an
-earlier one. `find-spec <change-id>` SHALL print the one issue, in any state, whose first body line
-is exactly `openspec: <change-id>`, or `none`, and SHALL never match a longer id that begins with
-it. `note <n> "<text>"` SHALL add one comment with the text unchanged. A relation the backend
-refuses (a cycle, a missing issue, a parent in another repository) SHALL exit `failed` carrying its
-cause and change nothing; `unblock` of a blocker the task does not have SHALL exit `failed` naming
-both numbers.
-
-#### Scenario: The binding is exact
-
-- **WHEN** issues bound to `add-x` and `add-x-more` exist and `find-spec add-x` runs
-- **THEN** only the issue bound to `add-x` is printed
-
-#### Scenario: An unbound change
-
-- **WHEN** no issue carries the line
-- **THEN** `find-spec` prints `none`, exits `ok` and `data.task` is null
-
-#### Scenario: A body edit keeps the binding
-
-- **WHEN** `edit --body` replaces the body of a task bound to `add-x` with text that does not start
-  with the binding
-- **THEN** the body starts with `openspec: add-x` followed by the new text
-
-#### Scenario: Order added then lifted
-
-- **WHEN** `after 2 1` then `unblock 2 1` run
-- **THEN** after the first 2 is not listed by `ready` and after the second it is
-
-#### Scenario: A dependency cycle
-
-- **WHEN** `after 1 2` runs while 2 is blocked by 1
-- **THEN** it exits `failed` carrying the backend's cause and changes nothing
-
-#### Scenario: Removing a dependency that is not there
-
-- **WHEN** `unblock 2 9` runs and 2 is not blocked by 9
-- **THEN** it exits `failed` naming 2 and 9 rather than report a removal
-
-#### Scenario: A comment is posted
-
-- **WHEN** `note 12 "measured: 40 ms"` runs
-- **THEN** that text is the issue's last comment, unchanged, with no footer
-
-### Requirement: Task flow verbs
-
-A task or a bug SHALL move by Status in this order: Todo, In Dev, Agent Review, Human Review, Done.
-`claim <n>` SHALL need Status Todo (an item not yet on the board counts as Todo, because the
-auto-add workflow may not have run) and an unassigned task or one the caller holds, assign the
-caller, set In Dev, add the task to the board when it is not there, and move its feature from Todo
-to In Dev; a repeat by the holder SHALL change nothing. `unclaim <n>` SHALL put a task back on the
-ready list: it SHALL need a task at In Dev, Agent Review or Human Review, or at Todo carrying the
-label `deferred`, and SHALL unassign, set Todo and remove the label `deferred`. `review <n>` SHALL
-need In Dev or Human Review and set Agent Review. `human <n>` SHALL need Agent Review and set Human
-Review. `reopen <n>` SHALL need a closed task or a closed Feedback issue, open it and set Todo, and
-SHALL apply the sub-issue rule. `close <n> --reason "<what was done>"` SHALL close an open task or
-Feedback issue as completed with the reason as a comment, for work no merge closes, and for a task
-SHALL first move its feature from Todo to In Dev, so the Action that runs on the close sees In Dev.
-`drop <n> --reason` SHALL close an open task, an open Feedback issue, or an open feature with no
-open sub-issue, as not planned with the reason as a comment and set Canceled (by the verb, or by the
-Action when the measurement of design decision 17 shows that "Item closed" would overwrite it;
-either way never Done), and SHALL exit `blocked` with reason `open-children` for a feature that has
-an open sub-issue; it SHALL NOT move a feature, because a feature whose tasks were all dropped is
-re-planned or dropped. `defer <n> --until <date or condition>` SHALL need a task at Todo or In Dev,
-unassign, set Todo, add the label `deferred` and comment `Deferred until <value>`. A Feedback issue
-SHALL use Todo, Done and Canceled only: every task-flow verb except `close`, `drop` and `reopen`
-SHALL refuse it with reason `wrong-kind`. No verb SHALL mark a merged task Done. A verb SHALL refuse
-a feature where it needs a task, with reason `wrong-kind`, and a move its guard does not allow, with
-reason `wrong-status`, naming the current value and changing nothing.
-
-#### Scenario: A task is claimed
-
-- **WHEN** `claim` runs on an open unassigned Todo task whose feature is Todo, or on a task that is
-  not on the board yet
-- **THEN** the task has the caller as assignee and Status In Dev, and its feature is In Dev
-
-#### Scenario: A later task of a feature in development
-
-- **WHEN** `claim` runs on a task whose feature is already In Dev
-- **THEN** the feature is unchanged
-
-#### Scenario: Held by someone else
-
-- **WHEN** `claim` runs on a task assigned to another login
-- **THEN** it exits `blocked` with reason `held` naming that login and changes nothing
-
-#### Scenario: The claim is repeated
-
-- **WHEN** the holder claims a task that is already In Dev
-- **THEN** it exits `ok` and nothing changes
-
-#### Scenario: A skipped step
-
-- **WHEN** `human` runs on a task In Dev
-- **THEN** it exits `blocked` with reason `wrong-status` naming In Dev and Agent Review
-
-#### Scenario: A claim on a feature or a closed issue
-
-- **WHEN** `claim` runs on a Feature or on a closed task
-- **THEN** it exits `blocked` with reason `wrong-kind` or `wrong-status` and changes nothing
-
-#### Scenario: A finding on a task in human review
-
-- **WHEN** a review finding appears while the task is Human Review and `review` runs
-- **THEN** the task is Agent Review
-
-#### Scenario: A claimed task is given back
-
-- **WHEN** `unclaim` runs on a task In Dev, Agent Review or Human Review
-- **THEN** it is unassigned and Todo, and a task at Todo without the label `deferred` makes it exit
-  `blocked` with reason `wrong-status`
-
-#### Scenario: A task is deferred and comes back
-
-- **WHEN** `defer 14 --until 2026-12-01` runs on a task In Dev, then later `unclaim 14`
-- **THEN** after the first `ready` does not list 14, it is Todo and unassigned and its last comment
-  says `Deferred until 2026-12-01`, and after the second the label is gone and `ready` lists it
-
-#### Scenario: A task past review is not deferred
-
-- **WHEN** `defer 14 --until 2026-12-01` runs on a task at Agent Review
-- **THEN** it exits `blocked` with reason `wrong-status` and changes nothing
-
-#### Scenario: Close without a pull request
-
-- **WHEN** `close 9 --reason "decided: keep the existing table"` runs on an open task
-- **THEN** the task is closed as completed with that comment, and `close` without `--reason` exits
-  `usage`
-
-#### Scenario: A feature of decision tasks reaches QA
-
-- **WHEN** a feature at Todo has one task, a decision, and `close` runs on it from Todo
-- **THEN** the feature is In Dev before the task closes, and the Action then sets it to Ready For
-  Test, because no sub-issue is open
-
-#### Scenario: Not planned
-
-- **WHEN** `drop 9 --reason "superseded by 12"` runs on an open task
-- **THEN** the task is closed as not planned with that comment and its Status is Canceled, not Done
-
-#### Scenario: A feature with open tasks is not dropped
-
-- **WHEN** `drop 3 --reason "no longer wanted"` runs on a feature with an open sub-issue
-- **THEN** it exits `blocked` with reason `open-children` and changes nothing
-
-#### Scenario: A dropped task does not start its feature
-
-- **WHEN** `drop` runs on the only task of a feature at Todo
-- **THEN** the task is Canceled and the feature stays Todo
-
-#### Scenario: Feedback is closed, dropped and reopened
-
-- **WHEN** `close`, `drop` or `reopen` runs on a Feedback issue
-- **THEN** it is Done, Canceled or Todo respectively, and `claim`, `unclaim`, `review`, `human` or
-  `defer` on it exits `blocked` with reason `wrong-kind`
-
-### Requirement: A new open sub-issue sends a feature in test back to development
-
-When `add`, `reopen` or `move` puts an open sub-issue under a feature at Ready For Test or In Test,
-the feature goes to In Dev; under a feature at Done, Released or Canceled it is refused with
-`feature-done`; under a feature at any other Status nothing changes. The rule SHALL run in `add`,
-`reopen` and `move` and in no other verb: `finding` creates its fix task and sets Blocked itself.
-
-#### Scenario: A task is moved under a feature in test
-
-- **WHEN** `move 12 --feature 3` runs and feature 3 is at In Test
-- **THEN** task 12 is a sub-issue of 3 and the feature's Status is In Dev, as two lines of output
-
-#### Scenario: A task is reopened under a feature ready for test
-
-- **WHEN** `reopen 12` runs on a closed task whose feature is at Ready For Test
-- **THEN** the task is open and Todo and the feature's Status is In Dev
-
-#### Scenario: A task under a closed feature
-
-- **WHEN** `add --feature 3`, `reopen` of a task of 3 or `move --feature 3` runs and 3 is at Done,
-  Released or Canceled
-- **THEN** it exits `blocked` with reason `feature-done` and changes nothing
-
-### Requirement: Feature flow verbs
-
-A feature SHALL move by Status in this order: Todo, In Dev, Ready For Test, In Test, Blocked, Done.
-`plan <feature>` SHALL need In Dev or Blocked and set Todo. `qa <feature>` SHALL need Ready For Test
-or In Dev with no open sub-issue, and set In Test; it SHALL exit `blocked` with reason
-`open-children` for a feature In Dev with an open sub-issue and with reason `wrong-status` for any
-other Status. `finding <feature> "<title>"` SHALL need In Test, create a Task under the feature
-whose title is the title, and set Blocked; the owner's rejection of a feature is a `finding`.
-`accept <feature>` SHALL need In Test and no open sub-issue and close the feature as completed,
-writing no Status, because the board's "Item closed" workflow sets Done. A verb SHALL refuse a task
-where it needs a feature, with reason `wrong-kind`, and a refused guard SHALL change nothing. The
-binary SHALL close a feature only through `accept` or `drop`.
-
-#### Scenario: QA takes a feature that is ready for test
-
-- **WHEN** a feature is at Ready For Test and `qa` runs
-- **THEN** its Status is In Test
-
-#### Scenario: QA takes a feature before the Action ran
-
-- **WHEN** a feature is In Dev with every sub-issue closed and `qa` runs
-- **THEN** its Status is In Test
-
-#### Scenario: QA before the work is done
-
-- **WHEN** `qa` runs on a feature at Todo, or at In Dev with an open sub-issue
-- **THEN** it exits `blocked` with reason `wrong-status` for the first and `open-children` for the
-  second
-
-#### Scenario: QA finds a defect
-
-- **WHEN** `finding 3 "export drops the last row"` runs on a feature In Test
-- **THEN** a Task exists under feature 3 and the feature is Blocked, and when that task closes the
-  Action sets Ready For Test
-
-#### Scenario: The owner rejects
-
-- **WHEN** `finding 3 "numbers disagree with the invoice"` runs on a feature In Test, on the
-  owner's word
-- **THEN** a Task with that title exists under the feature and the feature is Blocked, so the
-  Action moves it to Ready For Test when that task closes
-
-#### Scenario: The owner accepts
-
-- **WHEN** `accept 3` runs on a feature In Test with no open sub-issue
-- **THEN** the issue is closed as completed, no Status is written by the verb, and the board shows
-  Done
-
-#### Scenario: Accept before QA
-
-- **WHEN** `accept 3` runs on a feature at Ready For Test
-- **THEN** it exits `blocked` with reason `wrong-status` and the feature stays open
-
-#### Scenario: Re-planning
-
-- **WHEN** `plan 3` runs on a feature at In Dev or Blocked
-- **THEN** its Status is Todo
-
-#### Scenario: A task verb on a feature
-
-- **WHEN** `human 3` or `review 3` runs on a feature
-- **THEN** it exits `blocked` with reason `wrong-kind` and changes nothing
-
-### Requirement: The flow and its definitions are one table the verbs read
+### Requirement: One Status field and the flow table are data the verbs read
 
 The plugin SHALL hold the flow in `lib/flow.ts` as data: the Status options Todo, In Dev, Agent
-Review, Human Review, Ready For Test, In Test, Blocked, Done, Released and Canceled, the kind that
-uses each (a task and a bug, a feature, Feedback, or several), one definition per kind, the Priority
-options P0, P1 and P2, and for each verb its guard and its effect. The verbs, `flow`, `doctor` and
-`setup` SHALL read that table and no other copy of a name or a definition SHALL exist in the binary,
-apart from the Action's workflow file, which `doctor` checks against it. The verbs and the board
-SHALL use the option names exactly, and the board's description of an option SHALL be the table's
-text for the kinds that use it. The definitions SHALL be these:
+Review, Human Review, Ready For Test, In Test, Blocked and Done, the kinds that use each, one
+definition per kind, the Priority options P0, P1 and P2, each verb's guard and effect, and the rule
+that derives a feature's Status. The verbs, `flow`, `doctor`, `setup` and the tests SHALL read that
+table and no other copy of a name or a definition SHALL exist in the binary, apart from the Action's
+workflow file, which `doctor` checks against it. The definitions SHALL be these:
 
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
@@ -554,9 +194,7 @@ text for the kinds that use it. The definitions SHALL be these:
 | Ready For Test | not used | Every task is closed: waiting for the QA agent | not used |
 | In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts | not used |
 | Blocked | not used | QA found a finding: a fix task is open under the feature | not used |
-| Done | Definition of done: merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Definition of done: every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner | Read and settled: answered, changed or filed as a task |
-| Released | Included in a published release | Included in a published release | not used |
-| Canceled | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment | Closed without being done: dropped, duplicate or superseded; the reason is the last comment |
+| Done | Merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner | Read and settled: answered, changed or filed as a task |
 
 | Priority | Definition |
 | --- | --- |
@@ -564,53 +202,149 @@ text for the kinds that use it. The definitions SHALL be these:
 | P1 | Needed for the current feature |
 | P2 | Worth doing, no date |
 
-`flow` SHALL print the flow, both definitions of done and, per verb, its guard and effect, from that
-table. A value that is not an option SHALL exit `usage` listing the options of its field before any
-backend call. A verb SHALL refuse to write a Status that the item's kind does not use (a Feedback
-issue uses Todo, Done and Canceled only), with `blocked` and reason `wrong-kind`, and `list` with a
-`--kind` and a `--status` the kind does not use SHALL exit `usage` listing that kind's options,
-because the views filter by kind and Status and an issue with the wrong one vanishes from its view.
-Nothing in this change SHALL set Released.
+A close as not planned SHALL write no Status: "Item closed" sets Done, and the close reason
+separates it from a close as completed. `flow` SHALL print the table, both definitions of done and
+each verb's guard and effect. A value that is not an option SHALL exit `usage` listing the options
+of its field before any backend call, and a verb that would write a Status its kind does not use
+SHALL exit `blocked` with reason `wrong-kind`, because the views filter by kind and Status.
 
 #### Scenario: The flow is printed
 
 - **WHEN** `qsm-tasks flow` runs
-- **THEN** it prints the Status order of each kind, both definitions of done and each verb's guard
-  and effect, byte-identical to the table in `lib/flow.ts`
+- **THEN** it prints the Status options of each kind, both definitions of done and each verb's
+  guard and effect, byte-identical to the table in `lib/flow.ts`
 
-#### Scenario: A value that is not an option
+#### Scenario: A Status that is not an option, or not the kind's
 
-- **WHEN** `list --status Reviewing` runs
-- **THEN** it exits `usage` listing the Status names and calls nothing
+- **WHEN** `list --status Reviewing` runs, `list --kind task --status Blocked` runs, or a verb would
+  set a task to In Test
+- **THEN** the first two exit `usage` listing the names, the third exits `blocked` with reason
+  `wrong-kind`, and nothing is written
 
-#### Scenario: A Status of the other kind
+### Requirement: Task and feedback verbs move one item by its guard
 
-- **WHEN** `list --kind task --status Blocked` runs, or a verb would set a task to In Test
-- **THEN** the first exits `usage` listing the Status names a task uses and the second exits
-  `blocked` with reason `wrong-kind`, and nothing is written
+The verbs below SHALL move an item only from the state they need, and SHALL refuse any other kind
+with `wrong-kind` and any other state with `wrong-status`, naming the current value and changing
+nothing. A Feedback issue SHALL take `close` and `reopen` only, and a feature SHALL take `plan`,
+`qa`, `accept` and `close --not-planned` only.
 
-#### Scenario: A name drifts on the board
+| Verb | Needs | Effect |
+| --- | --- | --- |
+| `claim <n>` (task, bug) | Todo (an item not yet on the board counts as Todo), unassigned or held by the caller | In Dev, assignee the caller, on the board; its feature at Todo goes to In Dev |
+| `unclaim <n>` | In Dev, Agent Review or Human Review, or Todo with the label `deferred` | Todo, unassigned, label `deferred` removed |
+| `unclaim <n> --until <v>` | Todo or In Dev | Todo, unassigned, label `deferred`, comment `Deferred until <v>` |
+| `review <n>` | In Dev or Human Review | Agent Review |
+| `human <n>` | Agent Review | Human Review |
+| `close <n> --reason "<text>"` (task, bug, Feedback) | open | closed as completed, the reason as a comment |
+| `close <n> --not-planned --reason "<text>"` (also a feature) | open, a feature with no open sub-issue | closed as not planned, the reason as a comment |
+| `reopen <n>` (task, bug, Feedback) | closed, and not under a closed feature | open, Todo |
 
-- **WHEN** the board's option is renamed and a verb writes it
-- **THEN** the verb exits `failed` with the backend's words, and `doctor` names the option that
-  differs from the table
+`claim` held by another login SHALL exit `blocked` with reason `held` naming it, and a repeat claim
+by the holder SHALL change nothing. No verb SHALL write Done, and a close SHALL write no Status.
 
-### Requirement: Done is GitHub's, and a feature reaches Ready For Test by an Action
+#### Scenario: A task is claimed
 
-A merged pull request whose body says `Closes #N` SHALL close task N and the board's built-in
-workflow "Item closed" SHALL set its Status Done, not a verb; the same workflow SHALL set Done for a
-feature closed by `accept`. The board SHALL have these built-in workflows switched on: "Auto-add to
-project", "Auto-add sub-issues to project", "Item added to project" (sets Todo), "Item closed" (sets
-Done), "Pull request merged" (sets Done) and "Pull request linked to issue" (sets Agent Review). The
-last moves a task to Agent Review when its pull request is linked, and `review` stays the verb for
-the same move and for the way back from Human Review. A workflow file in this repository,
-`.github/workflows/feature-ready.yml`, SHALL run when an issue closes and SHALL set the Status of
-the issue's parent to Ready For Test when the parent is a Feature, no sub-issue of it is open and
-its Status is In Dev or Blocked. It SHALL use `gh` only, SHALL authenticate to the project with the
-repository secret `PROJECT_TOKEN`, SHALL change no other field, SHALL post nothing and SHALL
-serialise two closes under one parent. When the measurement of design decision 17 shows that "Item
-closed" overwrites a Canceled written before the close, the workflow SHALL also set Canceled on an
-issue closed as not planned and `drop` SHALL write no Status.
+- **WHEN** `claim` runs on an open unassigned Todo task whose feature is Todo
+- **THEN** the task has the caller as assignee and Status In Dev, its feature is In Dev, and a
+  repeat claim by the caller changes nothing
+
+#### Scenario: Held by someone else
+
+- **WHEN** `claim` runs on a task assigned to another login
+- **THEN** it exits `blocked` with reason `held` naming that login and changes nothing
+
+#### Scenario: A skipped step or a wrong kind
+
+- **WHEN** `human` runs on a task In Dev, or `claim` runs on a Feature or a Feedback issue
+- **THEN** the first exits `blocked` with reason `wrong-status` naming In Dev and Agent Review, the
+  second with reason `wrong-kind`, and nothing changes
+
+#### Scenario: A task is given back, or deferred and brought back
+
+- **WHEN** `unclaim --until 2026-12-01` runs on a task In Dev, then later `unclaim` on it
+- **THEN** after the first `ready` does not list it, it is Todo and unassigned and its last comment
+  says `Deferred until 2026-12-01`, and after the second the label is gone and `ready` lists it
+
+#### Scenario: Close without a pull request, and not planned
+
+- **WHEN** `close 9 --reason "decided: keep the table"` and `close 10 --not-planned --reason
+  "superseded by 12"` run on open tasks, and `close` runs without `--reason`
+- **THEN** 9 is closed as completed and 10 as not planned, each with its comment and no Status
+  written by the verb, and the third exits `usage`
+
+### Requirement: A feature's Status is derived, and the Action is its only writer
+
+The only verb write to a feature's Status SHALL be `claim` of one of its tasks (Todo to In Dev),
+`plan` (to Todo) and `qa` (to In Test), and `accept` closes it. Every other change SHALL be made by
+one rule, held once in `lib/flow.ts` and repeated by the Action: a feature at Todo stays there until
+`claim` of a child moves it to In Dev, or a child closes, which moves it to In Dev at once; then, by
+the stored Status, an open sub-issue SHALL send Ready For Test to In Dev and In Test to Blocked, and
+the closing of the last open sub-issue (at least one closed) SHALL send In Dev or Blocked to Ready
+For Test; any other Status SHALL stay. A workflow file in this repository,
+`.github/workflows/feature-ready.yml`, SHALL apply the rule when an issue is opened, closed or
+reopened and its parent is a Feature. It SHALL use `gh` only, authenticate with the repository
+secret `PROJECT_TOKEN`, change no other field, post nothing and serialise two events under one
+parent. A verb that adds a sub-issue to an existing issue (`edit --feature`) SHALL NOT recompute the
+feature: its Status MAY lag until the next event on a child, and the guards of `qa` and `accept`
+SHALL read the sub-issues, never the Status alone.
+
+#### Scenario: The last task closes
+
+- **WHEN** the last open sub-issue of a feature at In Dev closes
+- **THEN** the feature's Status becomes Ready For Test within a minute, and while another is open it
+  is unchanged
+
+#### Scenario: A feature of decision tasks
+
+- **WHEN** a task of a feature at Todo is closed by `close` without ever being claimed
+- **THEN** the feature goes to In Dev and, with no sub-issue open, to Ready For Test
+
+#### Scenario: A finding under test
+
+- **WHEN** QA runs `add --feature 3 "export drops the last row"` on a feature In Test
+- **THEN** a Task exists under feature 3 and the Action sets Blocked, and when that task closes the
+  Action sets Ready For Test
+
+#### Scenario: A task added or reopened under a feature that waits
+
+- **WHEN** an open sub-issue appears under a feature at Ready For Test
+- **THEN** the Action sets In Dev, and under a feature at Blocked or In Dev it changes nothing
+
+### Requirement: Feature verbs plan, test and accept
+
+`plan <feature>` SHALL need In Dev, Ready For Test or Blocked and set Todo. `qa <feature>` SHALL
+need a feature stored at In Dev, Ready For Test or Blocked with no open sub-issue and at least one
+closed, so QA never waits for the Action, and set In Test; it SHALL exit `blocked` with reason
+`wrong-status` naming the open sub-issues or the current Status otherwise. `accept <feature>` SHALL
+need In Test and no open sub-issue and close the feature as completed, writing no Status, because
+the board's "Item closed" workflow sets Done. QA SHALL file a defect, and the owner a rejection, as
+`add --feature <n> "<reason>"` under the feature In Test; no verb for it exists.
+
+#### Scenario: QA takes a feature, before or after the Action ran
+
+- **WHEN** `qa` runs on a feature at Ready For Test, or at In Dev with every sub-issue closed
+- **THEN** its Status is In Test
+
+#### Scenario: QA before the work is done, and accept before QA
+
+- **WHEN** `qa` runs on a feature at Todo or In Dev with an open sub-issue, and `accept` on one at
+  Ready For Test
+- **THEN** each exits `blocked` with reason `wrong-status` naming why, and the feature is unchanged
+
+#### Scenario: The owner accepts
+
+- **WHEN** `accept 3` runs on a feature In Test with no open sub-issue
+- **THEN** the issue is closed as completed, the verb writes no Status, and the board shows Done
+
+### Requirement: Done is GitHub's
+
+A merged pull request whose body says `Closes #N` SHALL close task N, and the board's built-in
+workflow "Item closed" SHALL set Done for it and for a feature closed by `accept`, not a verb. The
+board SHALL have these built-in workflows switched on: "Auto-add to project", "Auto-add sub-issues
+to project", "Item added to project" (sets Todo), "Item closed" (sets Done), "Pull request merged"
+(sets Done) and "Pull request linked to issue" (sets Agent Review). The last moves a task to Agent
+Review when its pull request is linked, and `review` stays the verb for the same move and for the
+way back from Human Review.
 
 #### Scenario: A pull request is merged into a protected main
 
@@ -618,145 +352,70 @@ issue closed as not planned and `drop` SHALL write no Status.
   board
 - **THEN** N is closed and `show N` prints Status Done
 
-#### Scenario: The last task closes
+### Requirement: Only lib/github talks to GitHub
 
-- **WHEN** the last open sub-issue of a feature at In Dev closes
-- **THEN** the feature's Status becomes Ready For Test within a minute
-
-#### Scenario: A task closes while others are open
-
-- **WHEN** a sub-issue closes and another is still open
-- **THEN** the feature's Status is unchanged
-
-#### Scenario: A fix task closes under a blocked feature
-
-- **WHEN** the only open sub-issue of a feature at Blocked closes
-- **THEN** the feature's Status becomes Ready For Test
-
-#### Scenario: Any other Status
-
-- **WHEN** a sub-issue closes under a feature at Todo, Ready For Test, In Test, Done, Released or
-  Canceled
-- **THEN** the feature's Status is unchanged
-
-#### Scenario: An issue with no feature
-
-- **WHEN** an issue with no parent, or whose parent is not a Feature, closes
-- **THEN** the workflow changes nothing
-
-#### Scenario: The project refuses the token
-
-- **WHEN** the secret is missing or lacks the project scope
-- **THEN** the run fails visibly in the Actions tab and the Status stays as it was
-
-### Requirement: The backend is behind one interface
-
-The binary SHALL reach the backend only through the `Backend` type of `lib/backend.ts`, stated in
-backend-neutral words, and the GitHub implementation under `lib/github/` SHALL be the only code that
-names `gh`, an issue type, a project field, a node id or a GraphQL query. The verbs and the flow
-table SHALL import the type only. One place SHALL choose the implementation. Calls to the backend
-SHALL go through one `Run` function so a test hands it a recorded answer. A second backend SHALL be
-another implementation of the type in this plugin, and a plugin that serves the same verbs under its
-own binary SHALL replace this plugin for a user without any consumer changing the verb it calls.
+Only the module `lib/github/` SHALL name `gh`, a node id, an issue type, a project field or a
+GraphQL query, and it SHALL reach `gh` through one `Run(args, stdin)` function. Verbs and
+`lib/flow.ts` SHALL see only plain items and values.
 
 #### Scenario: A verb is tested without GitHub
 
-- **WHEN** a flow test runs a verb against a recording backend
-- **THEN** it asserts the writes the backend received and needs no `gh`
-
-#### Scenario: The backend leaks nothing
-
-- **WHEN** any verb prints text or `--json`
-- **THEN** no node id, field id, option id or GraphQL shape appears in it
+- **WHEN** a flow test runs the built binary with a recording fake `gh` on `PATH`
+- **THEN** it asserts the calls `gh` received, and any verb's output holds no node id, field id or
+  option id
 
 ### Requirement: doctor checks every part of the task tool and names each fix
 
 `qsm-tasks doctor` SHALL print one line per check with `ok`, `failed` or `manual`, and exit `ok`
 when every check is `ok`, `partial` when only `manual` ones remain, and `missing` or `failed` with
-the cause otherwise. It SHALL check: `gh` on PATH, its login and the `project` scope; the repository
-and the one linked board; the issue types Feature, Task, Bug and Feedback; the two fields Status and
-Priority with exactly the option names and definitions of the flow table (an extra or wrongly named
-option, such as a leftover In Progress, is `failed` with the project's field settings in the web UI
-as its fix, never `qsm-tasks setup`, because setup never renames or deletes) and no leftover field
-named `Epic stage`; the label `deferred`; the built-in workflows that must be on: "Auto-add to
-project", "Auto-add sub-issues to project", "Item added to project" (sets Todo), "Item closed" (sets
-Done), "Pull request merged" (sets Done) and "Pull request linked to issue" (sets Agent Review); the
-views Tasks and Features; the file `.github/workflows/feature-ready.yml` with names that are options
-of the board; and the secret `PROJECT_TOKEN`. Each failing line SHALL name its fix: a `qsm-tasks
-setup` or the one place in the web UI. A check the backend cannot read SHALL be `manual` and SHALL
-NOT be reported `ok`.
+the cause otherwise. It SHALL check: `gh` on PATH with a login and the `project` scope; the
+repository and the one linked board; the issue types Feature, Task, Bug and Feedback; the fields
+Status and Priority with exactly the option names of the flow table (names only; an extra or wrongly
+named option, such as a leftover In Progress, or a leftover field `Epic stage`, is `failed` with the
+web-UI page as its fix, never `setup`); the labels `deferred`, `kind:*` and `from:*`; the built-in
+workflows that must be on (the list of "Done is GitHub's"); the views Tasks and Features; the file
+`.github/workflows/feature-ready.yml` with names that are options of the board; and the secret
+`PROJECT_TOKEN`. Each failing line SHALL name its fix. A check the backend cannot read SHALL be
+`manual` and SHALL NOT be reported `ok`.
 
-#### Scenario: Everything is set
+#### Scenario: Everything is set, or an option is missing
 
-- **WHEN** the board, fields, labels, workflows, views, Action and secret are in place
-- **THEN** every line is `ok` and the exit is `ok`
+- **WHEN** every part is in place, or the board has no Status option In Test
+- **THEN** the first exits `ok`, the second prints that line `failed` naming `qsm-tasks setup`
 
-#### Scenario: A field option is missing
+#### Scenario: A leftover
 
-- **WHEN** the board has no Status option In Test
-- **THEN** that line is `failed`, names `qsm-tasks setup` as the fix, and the exit is `failed`
-
-#### Scenario: A leftover field
-
-- **WHEN** the board still has a field named `Epic stage`
-- **THEN** that line is `failed` and its fix is that the owner deletes the field on the project's
-  Settings page
-
-#### Scenario: A leftover option
-
-- **WHEN** the board's Status still has an option In Progress that the table does not name
-- **THEN** that line is `failed`, its fix is the project's field settings in the web UI, and
-  `qsm-tasks setup` is not named
-
-#### Scenario: A built-in workflow is off
-
-- **WHEN** "Item closed" is off
-- **THEN** that line is `failed` and names the project's Workflows page in the web UI
+- **WHEN** the board still has a field `Epic stage` or a Status option In Progress, or "Item closed"
+  is off
+- **THEN** each line is `failed` and names the project's web-UI page, and `setup` is not named
 
 #### Scenario: gh is missing
 
 - **WHEN** `gh` is not on PATH
-- **THEN** `doctor` exits `missing` naming `gh` and no other check runs
+- **THEN** `doctor` exits `missing` with reason `no-gh` and no other check runs
 
 ### Requirement: setup creates what the API allows and names the rest
 
 `qsm-tasks setup` SHALL, for a repository and its board, create what the API allows and nothing
-else: the two single-select fields Status and Priority with every option and its definition from the
-flow table (a missing option is added to an existing field), the issue type Feedback when it is
-missing, and the label `deferred`. It SHALL NOT create, rename or delete GitHub's default issue
-types Feature, Task and Bug, and SHALL NOT rename, reorder or delete an existing option. A second
-run SHALL do nothing and say so, and `setup` SHALL print what it cannot create (the views, the
-built-in workflows, the secret, the Action file) as the lines `doctor` prints for them.
+else: the fields Status and Priority with every missing option and its definition from the flow
+table, the issue type Feedback when it is missing, and the labels `deferred`, `kind:*` and `from:*`.
+It SHALL NOT create, rename or delete GitHub's default issue types, and SHALL NOT rename, reorder or
+delete an option. A second run SHALL do nothing and say so, and `setup` SHALL print what it cannot
+create (the views, the built-in workflows, the secret, the Action file) as the lines `doctor` prints
+for them.
 
-#### Scenario: A new board
+#### Scenario: A new board, run twice
 
-- **WHEN** `setup` runs against a board with no fields
-- **THEN** the two fields exist with all options and their definitions, and the lines for the
-  views, the workflows and the secret are printed as `manual`
-
-#### Scenario: A board missing some options
-
-- **WHEN** `setup` runs against a board whose Status lacks Ready For Test, In Test, Blocked,
-  Released and Canceled
-- **THEN** those options are added with their definitions and the existing options are untouched
-
-#### Scenario: The default issue types
-
-- **WHEN** `setup` runs in a repository that has Feature, Task and Bug but not Feedback
-- **THEN** only Feedback is created
-
-#### Scenario: Run twice
-
-- **WHEN** `setup` runs a second time
-- **THEN** it creates nothing, changes nothing and says everything is in place
+- **WHEN** `setup` runs against a board with no fields, then again
+- **THEN** the first creates both fields with all options and definitions and prints the views,
+  workflows and secret as `manual`, and the second creates nothing and says so
 
 ### Requirement: The tool posts what it is given and nothing of its own
 
-A verb SHALL write to an issue only the text and labels its caller passed, apart from two fixed
-texts of the binary, the label `deferred` and the comment `Deferred until <value>` of `defer`, and
-SHALL add no footer, marker, trailer or signature of its own. The labels the binary writes SHALL be
-`deferred`, the `area:`, `kind:` and `from:` labels the caller of `feedback` names, and, if the
-binding falls back to a label, `change:<id>`.
+A verb SHALL write to an issue only the text and labels its caller passed, apart from the two fixed
+texts of the binary, the label `deferred` and the comment `Deferred until <value>`, and SHALL add no
+footer, marker, trailer or signature of its own. The labels the binary writes SHALL be `deferred`,
+`change:<id>`, and the `area:`, `kind:` and `from:` labels of `feedback`.
 
 #### Scenario: A comment
 

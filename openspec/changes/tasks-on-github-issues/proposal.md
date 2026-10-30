@@ -18,27 +18,27 @@ because "it is not done if any step still needs `br`". It depends on `qsm-tasks-
 - **The skill holds the expected flow, specific to our task tool.** One Status field, each kind
   using its own part of it, both definitions of done, which verb moves each step, and who may move
   what. A task moves Todo, In Dev (`claim`), Agent Review (`review`, pull request open, CI and the
-  review agents), Human Review (`human`, CI green, every finding fixed), Done (merge with
-  `Closes #N`, no verb); a task never needs QA. A feature moves Todo, In Dev (its first claim),
-  Ready For Test (a GitHub Action, or `qa` straight from In Dev when every task is closed), In Test
-  (`qa`, the QA agent), Blocked (`finding`), Done (`accept`); a feature never needs review, it has
-  the test. Either kind may be set to Canceled by `drop`. The owner approves pull requests and
-  accepts features, the agent never does either on its own word; the QA agent runs In Test. The
-  names and definitions are not copied: the skill says to run `qsm-tasks flow`, which prints them
-  from the binary.
+  review agents), Human Review (`human`, CI green, every finding fixed), Done (merge with `Closes
+  #N`, no verb); a task never needs QA. A feature's Status after planning is derived from its tasks
+  by an Action: In Dev with its first claimed task, Ready For Test when every task is closed,
+  Blocked when QA files a fix task; `qa` starts the test and `accept` closes it, and a feature never
+  needs review, it has the test. Work that will not be done is closed as not planned (`close
+  --not-planned`), with no Status. The owner approves pull requests and accepts features, the agent
+  never does either on its own word; the QA agent runs In Test. The names and definitions are not
+  copied: the skill says to run `qsm-tasks flow`, which prints them from the binary.
 - **A QA agent replaces the test-it sub-issue.** A feature has no test-it task anymore. When every
   task is done the feature waits for the QA agent (`qsm-tasks ready --qa` lists it), which tests the
   whole against the business request and the acceptance criteria on the real path, in a Claude Code
   session on the owner's machine for now. A finding, the owner's rejection included, becomes a fix
-  task under the feature (`finding`) and the feature is Blocked until it closes, then the Action
-  sends it back to Ready For Test. The owner accepts the QA result (`accept`) and only then is the
+  task under the feature (`add --feature <n>`) and the Action makes the feature Blocked until it
+  closes, then Ready For Test again. The owner accepts the QA result (`accept`) and only then is the
   feature Done and closed. The grilling and plan skills, spec-archive and the cockpit's stage text
   say this instead of test-it, and spec-archive no longer closes a feature.
-- **A change is bound to its task by a first line in the issue body**, `openspec: <change-id>`,
-  written by `qsm-tasks spec` or `add --spec` and read by `find-spec`, because an issue has no
-  external-reference field.
+- **A change is bound to its task by the label `change:<change-id>`**, written by `qsm-tasks add
+  --spec` or `edit --spec` and read by `list --spec`, because an issue has no external-reference
+  field.
 - **A merged pull request with `Closes #N` closes a task.** That is the close for a task; `close` is
-  for work that has no pull request, and `drop` for work that will not be done.
+  for work that has no pull request, and `close --not-planned` for work that will not be done.
 - **The main instruction file names the tools.** In `plugins/qsm-setup/instructions/CLAUDE.md`, the
   "Where things live" table's row "the task tool" names `qsm-tasks` with what tasks mean for us and
   its daily verbs, and the session archive row becomes the memory tool naming `qsm-memory` with what
@@ -140,12 +140,9 @@ Devil's advocate:
   so a session offline cannot track work. Waived with the reason stated: the feature decides GitHub
   is the main store, and the one-path rule says no fallback; the cost is that tracking stops
   offline, and the change says so in the skill's caveats and in the briefing decision (question 1).
-- Binding by a first body line is fuzzier than `br`'s exact external reference. Fixed: `find-spec`
-  filters for an exact first line and `qsm-tasks-cli` proves it on real issues (its task 0.3) before
-  this change's skill relies on it; the label fallback lives inside the binary, so nothing here
-  changes if it is taken.
-- "A merged PR closes the task" fails for work without a PR (planning, a decision). Fixed: `close`
-  stays for work that no merge closes, with a reason comment, and the skill says which to use.
+- Binding by a label is looser than `br`'s exact external reference. Fixed: `list --spec` is an
+  exact label search and `edit --spec` replaces the label, so a change has one task by construction
+  (`qsm-tasks-cli` spec, create and edit verbs).
 - The QA agent runs in a session on the owner's machine, so a feature at Ready For Test waits until
   the owner starts it. Waived with the reason: the wait is visible (`qsm-tasks ready --qa` lists it
   and the Features board column Ready For Test shows it) and a dedicated machine is the later
@@ -166,7 +163,7 @@ Devil's advocate:
 Future archaeologist:
 
 - Why is feedback an issue type with three labels and not a task under a feedback issue? Fixed: the
-  design (decision 5) and `qsm-tasks-cli` design decision 14 say an inbox that never ends fits no
+  design (decision 5) and `qsm-tasks-cli` design decision 11 say an inbox that never ends fits no
   stage of the flow, and the labels are what a reader filters by.
 - Why does a spec change get an issue at all when `tasks.md` holds its steps? Fixed: the design
   states it: the issue is what a maintainer and a pull request see; `tasks.md` is the agent's local

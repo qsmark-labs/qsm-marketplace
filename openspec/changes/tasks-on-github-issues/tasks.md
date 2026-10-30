@@ -18,8 +18,8 @@ scenarios, if a name moved. Blocked by: `qsm-tasks-cli` applied and `qsm-tasks` 
 - [ ] 1.1 Read `qsm-tasks --help` and `qsm-tasks flow`; check every verb named in design.md
       decision 1 and the spec's scenarios exists with those flags and guards; fix the names here
       where they moved, and settle open questions 1 to 4 with the maintainer
-- [ ] 1.2 Proof the skill can rely on: on a `test:` issue, `add --spec` then `find-spec` returns it
-      and `find-spec` of a longer id returns `none`; close the issue
+- [ ] 1.2 Proof the skill can rely on: on a `test:` issue, `add --spec` then `list --spec` returns
+      it and `list --spec` of a longer id returns `none`; close the issue
 
 ## 2. qsm-worktrunk stops writing the task-store redirect
 
@@ -134,7 +134,7 @@ the feature waits for QA, and `plugins/qsm-plan/evals/plan-three-asks-three-size
 (lines 9 to 11 and 18) has no test-it piece. Blocked by: open question 4, group 1.
 
 - [ ] 7.1 The stub appends each call's arguments to a file, answers `ready`, `list`, `show` and
-      `find-spec` with canned JSON, and is put on PATH by each scaffold in place of `br init` and
+      `list --spec` with canned JSON, and is put on PATH by each scaffold in place of `br init` and
       `br create`
 - [ ] 7.2 Graders read the recorded calls instead of `.beads/issues.jsonl`, and grade the QA
       wording above in place of test-it

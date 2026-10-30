@@ -5,17 +5,17 @@
 The `task-tool` skill SHALL state the task model in the terms of the main task tool, GitHub Issues.
 A feature SHALL be an issue of GitHub's default issue type `Feature` that holds the intent of one
 piece of work and its acceptance criteria. Each spec change SHALL have exactly one task, an issue of
-type `Task` and a sub-issue of the feature, created together with the spec and never before, whose
-body starts with the line `openspec: <change-id>`. Subtasks SHALL NOT be created as issues: the
-change's `tasks.md` holds that breakdown. A feature SHALL NOT have a test-it sub-issue: its final
-proof is the QA test. A follow-up, a side finding, a decision to make and tool feedback SHALL each
-be an issue, never prose. A fix, a change that needs no spec, SHALL get no feature and no task.
+type `Task` and a sub-issue of the feature, created together with the spec and never before,
+labelled `change:<change-id>`. Subtasks SHALL NOT be created as issues: the change's `tasks.md`
+holds that breakdown. A feature SHALL NOT have a test-it sub-issue: its final proof is the QA test.
+A follow-up, a side finding, a decision to make and tool feedback SHALL each be an issue, never
+prose. A fix, a change that needs no spec, SHALL get no feature and no task.
 
 #### Scenario: A spec change is planned
 
 - **WHEN** a spec change is created under a feature
-- **THEN** one sub-issue of type Task is created under that feature with it, its body starts with
-  `openspec: <change-id>`, and no issue for the change's steps is created
+- **THEN** one sub-issue of type Task is created under that feature with it, labelled
+  `change:<change-id>`, and no issue for the change's steps is created
 
 #### Scenario: A feature is split into tasks
 
@@ -25,10 +25,10 @@ be an issue, never prose. A fix, a change that needs no spec, SHALL get no featu
 
 #### Scenario: A change is looked up before it is bound
 
-- **WHEN** spec-propose looks for the task of change `add-x` with `qsm-tasks find-spec add-x` and an
-  issue `add-x-more` exists whose first line is `openspec: add-x-more`
-- **THEN** only an issue whose first body line is exactly `openspec: add-x` is the change's task,
-  and the task is created with `add --spec` only when `find-spec` printed none
+- **WHEN** spec-propose runs `qsm-tasks list --spec add-x` and an issue labelled `change:add-x-more`
+  exists
+- **THEN** only an issue labelled `change:add-x` is the change's task, and the task is created with
+  `add --spec` only when `list --spec` printed none
 
 #### Scenario: A fix
 
@@ -43,13 +43,13 @@ be an issue, never prose. A fix, a change that needs no spec, SHALL get no featu
 ### Requirement: GitHub Issues is the main task tool, reached through the qsm-tasks verbs
 
 The `task-tool` skill SHALL state that GitHub Issues is the main task tool and SHALL map each step
-of working with tasks to a verb of the `qsm-tasks` binary: the ready list, a feature, a task under a
-feature, an order between tasks, a claim, a comment, a close, a Status move, the feature check, a
-deferral and a feedback issue. The skill SHALL tell the agent to create, nest, order, comment, close
-and move issues only through those verbs, never through raw `gh`, `jq` or `gh api` calls, and when a
-step has no verb to report the gap instead of composing a call. A verb that fails SHALL be reported
-with its cause and nothing else done in its place. The skill SHALL name the `br` tracker and the
-`.beads` store nowhere.
+of working with tasks to a verb or flag of the `qsm-tasks` binary: the ready list, a feature, a task
+under a feature, an order between tasks, a claim, a comment, a close, a Status move, the feature
+check, a deferral and a feedback issue. The skill SHALL tell the agent to create, nest, order,
+comment, close and move issues only through those verbs, never through raw `gh`, `jq` or `gh api`
+calls, and when a step has no verb to report the gap instead of composing a call. A verb that fails
+SHALL be reported with its cause and nothing else done in its place. The skill SHALL name the `br`
+tracker and the `.beads` store nowhere.
 
 #### Scenario: A session starts
 
@@ -77,21 +77,22 @@ with its cause and nothing else done in its place. The skill SHALL name the `br`
 
 ### Requirement: Work not done now is deferred or filed, and feedback is its own issue type
 
-A task whose work is real but not now SHALL be deferred with `qsm-tasks defer`, never closed
-silently and never left open in the ready list, and SHALL come back with `qsm-tasks unclaim`; work
-that will not be done SHALL be dropped with `qsm-tasks drop` and a reason. Before creating an issue
-the agent SHALL search the title words with `qsm-tasks search` and comment on an existing one
-instead. Feedback about the marketplace SHALL be filed with `qsm-tasks feedback --area --kind
---from`, which files an issue of the type `Feedback` in the marketplace repository, never by an
-issue number, with a title that names the plugin or `marketplace`. The body SHALL be abstract: the
-steps that led to it and how it should behave, with no suggested fix and no personal or system data.
-A handled feedback issue SHALL be closed with `qsm-tasks close --reason`, or dropped when it will
-not be acted on. A subagent SHALL create only this kind of issue.
+A task whose work is real but not now SHALL be deferred with `qsm-tasks unclaim --until`, never
+closed silently and never left open in the ready list, and SHALL come back with `qsm-tasks unclaim`;
+work that will not be done SHALL be closed with `qsm-tasks close --not-planned` and a reason. Before
+creating an issue the agent SHALL search the title words with `qsm-tasks list --search` and comment
+on an existing one instead. Feedback about the marketplace SHALL be filed with
+`qsm-tasks feedback --area --kind --from`, which files an issue of the type `Feedback` in the
+marketplace repository, never by an issue number, with a title that names the plugin or
+`marketplace`. The body SHALL be abstract: the steps that led to it and how it should behave, with
+no suggested fix and no personal or system data. A handled feedback issue SHALL be closed with
+`qsm-tasks close --reason`, or with `--not-planned` when it will not be acted on. A subagent SHALL
+create only this kind of issue.
 
 #### Scenario: Real work that is not now
 
 - **WHEN** the agent finds work the person postponed to next month
-- **THEN** `qsm-tasks defer` is run with the date, and the task is not in the ready list
+- **THEN** `qsm-tasks unclaim --until` is run with the date, and the task is not in the ready list
 
 #### Scenario: Feedback that already exists
 
@@ -144,23 +145,21 @@ failure.
 ### Requirement: Tasks and features move by one Status, and the skill says who moves what
 
 The skill SHALL state the flow of each kind, the verb that moves each step and who may make the
-move, and SHALL NOT make the agent move a step GitHub makes itself. It SHALL NOT copy the option
-names or their definitions: it SHALL tell the agent to run `qsm-tasks flow`, which prints them from
-the binary. A task SHALL move Todo, In Dev by `claim`, Agent Review by `review` when its pull
-request is open, Human Review by `human` when CI is green and every finding is fixed, Done when
-merged, and needs no QA. A feature SHALL move Todo while planned, In Dev when its first task is
-claimed, Ready For Test by the Action when its last sub-issue closes (or `qa` straight from In Dev
-when every sub-issue is closed, the Action's route being preferred), In Test by `qa` when the QA
-agent takes it, Blocked by `finding` when QA or the owner files a fix task, back to Ready For Test
-by the Action when that task closes, and Done by `accept` on the owner's acceptance, and needs no
-review. Either kind SHALL end Canceled by `drop` when the work will not be done. The QA agent SHALL
-be the only one to run `qa`, and the one to run `finding` for a defect it finds, and it SHALL find
-the features that wait with `qsm-tasks ready --qa` and test the whole feature against the business
-request and the acceptance criteria on the real path. The owner SHALL approve every pull request and
-accept every feature; the agent SHALL run `accept`, or a task's approval, only on the owner's
-explicit word in the conversation. Pull requests are opened by a bot of the organization, and
-everything the skill posts SHALL be written in the owner's name with no mention of an AI or an
-agent.
+move, and SHALL NOT make the agent move a step GitHub or the Action makes itself. It SHALL NOT copy
+the option names or their definitions: it SHALL tell the agent to run `qsm-tasks flow`, which prints
+them from the binary. A task SHALL move Todo, In Dev by `claim`, Agent Review by `review` when its
+pull request is open, Human Review by `human` when CI is green and every finding is fixed, Done when
+merged, and needs no QA. A feature SHALL be Todo while planned, In Dev from its first claimed task,
+Ready For Test when its last sub-issue closes, In Test by `qa` when the QA agent takes it, Blocked
+while a fix task is open under it, and Done by `accept` on the owner's acceptance, the Action making
+every move but `qa` and `accept`, and it needs no review. The QA agent SHALL be the only one to run
+`qa`, SHALL find the features that wait with `qsm-tasks ready --qa`, SHALL test the whole feature
+against the business request and the acceptance criteria on the real path, and SHALL file a defect
+with `qsm-tasks add --feature <n>`. The owner SHALL approve every pull request and accept every
+feature; the agent SHALL run `accept`, or a task's approval, only on the owner's explicit word in
+the conversation, and a rejection by the owner is an `add --feature` under the feature. Pull
+requests are opened by a bot of the organization, and everything the skill posts SHALL be written in
+the owner's name with no mention of an AI or an agent.
 
 #### Scenario: A pull request is opened
 
@@ -176,8 +175,8 @@ agent.
 #### Scenario: QA finds a defect
 
 - **WHEN** the QA agent finds that an acceptance criterion does not hold
-- **THEN** it runs `finding` with the defect as title, and when the fix task closes the Action sets
-  Ready For Test and QA runs again
+- **THEN** it runs `add --feature <n>` with the defect as title, the Action makes the feature
+  Blocked, and when the fix task closes it is Ready For Test and QA runs again
 
 #### Scenario: QA finds nothing
 
@@ -188,8 +187,7 @@ agent.
 #### Scenario: The owner rejects
 
 - **WHEN** the owner says a feature in test is not acceptable
-- **THEN** the agent runs `finding` with the owner's reason as the title, and no verb named reject
-  exists
+- **THEN** the agent runs `add --feature <n>` with the owner's reason as the title
 
 #### Scenario: The agent is asked what a Status means
 

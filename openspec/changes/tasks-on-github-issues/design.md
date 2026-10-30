@@ -54,53 +54,52 @@ renamed option edits one file), and holds the table below.
 | session start | `qsm-tasks ready`, `qsm-tasks list --mine` | the agent, first thing: the two lists are the old ready list |
 | feature | `qsm-tasks feature "<goal>" --intent <file>` | the main agent after grilling, with the person's yes |
 | task of a change | `qsm-tasks add "<change>" --feature <id> --spec <change-id>` | spec-propose, once the spec is written, never before |
-| order | `qsm-tasks after <task> <blocker>` | the planner |
+| order | `qsm-tasks edit <task> --after <blocker>` | the planner |
 | claim | `qsm-tasks claim <task>` | the agent that builds; spec-apply at start |
-| give back | `qsm-tasks unclaim <task>` | the agent that cannot continue, or brings a deferred task back to the ready list |
+| give back | `qsm-tasks unclaim <task>` | the agent that cannot continue, or brings a deferred task back |
 | pull request open, CI and review agents running | `qsm-tasks review <task>` | the builder, when it opens the pull request |
 | CI green, every finding fixed | `qsm-tasks human <task>` | the builder, only then; the owner tests and approves |
 | merge | nothing: `Closes #N` closes the task, the board sets Done | the owner merges |
 | decision or spec-only task | `qsm-tasks close <task> --reason` | the main agent with the owner's word |
-| not doing it | `qsm-tasks drop <n> --reason` (a task, or a feature with no open task) | the main agent with the owner's word |
-| feature ready for QA | nothing: the Action sets Ready For Test; `qsm-tasks ready --qa` lists it | GitHub; the QA agent reads the list |
+| not doing it | `qsm-tasks close <n> --not-planned --reason` | the main agent with the owner's word |
+| feature ready for QA | nothing: the Action derives Ready For Test; `qsm-tasks ready --qa` lists it | GitHub; the QA agent reads the list |
 | QA takes the feature | `qsm-tasks qa <feature>` | the QA agent only |
-| QA finds something | `qsm-tasks finding <feature> "<title>"` | the QA agent only |
+| QA finds something | `qsm-tasks add --feature <feature> "<defect>"` | the QA agent only |
 | QA finds nothing | report to the owner; the Status stays In Test | the QA agent |
 | owner accepts | `qsm-tasks accept <feature>` | only on the owner's explicit word in the conversation |
-| owner rejects | `qsm-tasks finding <feature> "<reason>"` | only on the owner's explicit word |
+| owner rejects | `qsm-tasks add --feature <feature> "<reason>"` | only on the owner's explicit word |
 | progress | `qsm-tasks note <id> "<text>"` | anyone, in the owner's name |
-| work for later | `qsm-tasks defer <task> --until <date>` (a task at Todo or In Dev) | the main agent |
-| feature check | `qsm-tasks tree <feature>`, `qsm-tasks show <feature>` | after each task closes |
-| feedback handled | `qsm-tasks close <n> --reason`, or `drop <n> --reason` when it will not be acted on | the main agent with the owner's word |
+| work for later | `qsm-tasks unclaim <task> --until <date>` (a task at Todo or In Dev) | the main agent |
+| feature check | `qsm-tasks list --feature <feature>`, `qsm-tasks show <feature>` | after each task closes |
+| feedback handled | `qsm-tasks close <n> --reason`, or `--not-planned` when it will not be acted on | the main agent with the owner's word |
 | feedback | `qsm-tasks feedback "<title>" --area <a> --kind <k> --from <f>` | any agent, a subagent's one permitted create |
 
 Alternative rejected: keep `task-tool` free of verb names and point at the binary's own help. The
 agent would learn the flow from two places; one skill that names its verbs is one place to read.
 
-### 2. Binding a change to its task: a first line in the body
+### 2. Binding a change to its task: a label
 
-`br` had an external-reference field; an issue does not. The task for a change carries the first
-body line `openspec: <change-id>`, written by `qsm-tasks add --spec` or `spec` and read by
-`find-spec`, which filters for the exact first line. spec-propose runs `find-spec` before it creates
-anything. The exactness proof and the fallback to a label are the binary's (`qsm-tasks-cli` design
-6 and its task 0.3), so this change adds no proof of its own and the skill relies on the verb.
+`br` had an external-reference field; an issue has a label. The task for a change carries the label
+`change:<change-id>`, written by `qsm-tasks add --spec` or `edit --spec` and read by `list --spec`,
+an exact label search. spec-propose runs `list --spec` before it creates anything. The exactness is
+the binary's (`qsm-tasks-cli` design decision 7), so this change adds no proof of its own and the
+skill relies on the verb.
 
 ### 3. One Status, a part of it for each kind, and QA instead of test-it
 
-A task's flow is Todo, In Dev, Agent Review, Human Review, Done. The owner tests tasks himself,
-with automatic tests and the review agents, so no agent sits between a task and him and a task
-needs no QA. A task closes by the merge of a pull request with `Closes #N`, and the board's "Item
-closed" sets Done; a task whose work has no pull request (a decision) is closed with the explicit
-`close` verb and a reason a reader in a month understands, and work that will not be done is
-`drop`ped with a reason and ends Canceled.
+A task's flow is Todo, In Dev, Agent Review, Human Review, Done. The owner tests tasks himself, with
+automatic tests and the review agents, so no agent sits between a task and him and a task needs no
+QA. A task closes by the merge of a pull request with `Closes #N`, and the board's "Item closed"
+sets Done; a task whose work has no pull request (a decision) is closed with the explicit `close`
+verb and a reason a reader in a month understands, and work that will not be done is closed with
+`close --not-planned`, which writes no Status.
 
-A feature's flow uses the same field: Todo while planned, In Dev from its first claimed task
-(`claim` does it), Ready For Test when its last sub-issue closes (an Action, or `qa` straight from
-In Dev when every task is closed, the owner's two routes), In Test when the QA agent takes it,
-Blocked when a finding, the owner's rejection included, puts a fix task under it, and the fix task
-closing sends it back to Ready For Test by the same Action. The owner accepts the QA result, and
-only then is the feature closed and Done. A feature needs no review: it has the test. The agent
-never closes a feature on its own word.
+A feature's Status after planning is derived from its tasks by an Action (`qsm-tasks-cli` design
+decision 5): In Dev from its first claimed task, Ready For Test when every task is closed, In Test
+when the QA agent takes it with `qa`, Blocked when a fix task, QA's finding or the owner's
+rejection, is added under it, and Ready For Test again when that task closes. The owner accepts the
+QA result, and only then is the feature closed and Done. A feature needs no review: it has the test.
+The agent never closes a feature on its own word.
 
 This replaces the final test-it sub-issue. Reason: test-it was a task made to look like a stage, it
 had to be blocked by every other task by hand, and it could be ticked by the same agent that built
@@ -126,7 +125,7 @@ project does not file into that project), labelled `area:`, `kind:` and `from:`,
 open issue with the same title instead of making a second, and refuses personal or system data and
 a suggested fix. The rule in the instruction file keeps the label for who noticed (`from:`), names
 the area, the kind and the body sections (what happened, expected behaviour, context), and says
-when to file; what the verb checks is `qsm-tasks-cli`'s (its design decision 14). A subagent
+when to file; what the verb checks is `qsm-tasks-cli`'s (its design decision 11). A subagent
 creates only this kind of issue.
 
 ### 6. The readers outside qsm-tasks go, apart from one write
@@ -155,7 +154,7 @@ a fake `br`.
 The evals of qsm-tasks (`task-tool-last-child-of-epic`, whose grader reads `.beads/issues.jsonl`),
 qsm-openspec, qsm-plan and qsm-review scaffold a repository with `br init` and `br create`. They get
 a `qsm-tasks` stub on PATH that records its arguments to a file and prints a canned answer for the
-reads (`ready`, `list`, `show`, `find-spec`); the graders read that file. The real verbs against
+reads (`ready`, `list`, `show`, `list --spec`); the graders read that file. The real verbs against
 real GitHub are proved once by `qsm-tasks-cli` and by the feature's QA test. Alternative: real
 `test:` issues per eval run, rejected as noise on the public repository (question 4).
 
