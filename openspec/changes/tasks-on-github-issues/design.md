@@ -71,7 +71,7 @@ renamed option edits one file), and holds the table below.
 | progress | `qsm-tasks note <id> "<text>"` | anyone, in the owner's name |
 | work for later | `qsm-tasks unclaim <task> --until <date>` (a task at Todo or In Dev) | the main agent |
 | feature check | `qsm-tasks list --feature <feature>`, `qsm-tasks show <feature>` | after each task closes |
-| feedback handled | `qsm-tasks close <n> --reason`, or `--not-planned` when it will not be acted on | the main agent with the owner's word |
+| feedback handled | the task starts its body with `From #<feedback>`, then `qsm-tasks close <n> --reason "filed as #<task>"`, or `--not-planned` when it will not be acted on | the main agent with the owner's word |
 | feedback | `qsm-tasks feedback "<title>" --area <a> --kind <k> --from <f>` | any agent, a subagent's one permitted create |
 
 Alternative rejected: keep `task-tool` free of verb names and point at the binary's own help. The

@@ -287,16 +287,16 @@ one rule, held once in `lib/flow.ts` and repeated by the Action: a feature at To
 `claim` of a child moves it to In Dev, or a child closes as completed, which moves it to In Dev at
 once, while a child closed as not planned leaves it at Todo; then, by the stored Status, an open
 sub-issue SHALL send Ready For Test to In Dev and In Test to Blocked, and the closing of the last
-open sub-issue (at least one closed) SHALL send In Dev or Blocked to Ready For Test; any other
-Status SHALL stay. A workflow file in this repository, `.github/workflows/feature-ready.yml`, SHALL
-apply the rule when an issue is opened, closed or reopened and its parent is a Feature. It SHALL use
-`gh` only, authenticate with the repository secret `PROJECT_TOKEN`, change no other field, post
-nothing and serialise two events under one parent. `add --feature` SHALL rely on the `opened` event
-seeing the parent, which task 0.2 measures; a verb that gives an existing issue a parent (`edit
---feature`) SHALL NOT recompute the feature, so the new parent and the old one MAY keep a Status
-that lags (an old parent at In Dev or Blocked with no open child) until the next event on one of
-their children, and the guards of `qa` and `accept` SHALL read the sub-issues, never the Status
-alone.
+open sub-issue (at least one closed as completed) SHALL send In Dev or Blocked to Ready For Test;
+any other Status SHALL stay. A workflow file in this repository,
+`.github/workflows/feature-ready.yml`, SHALL apply the rule when an issue is opened, closed or
+reopened and its parent is a Feature. It SHALL use `gh` only, authenticate with the repository
+secret `PROJECT_TOKEN`, change no other field, post nothing and serialise two events under one
+parent. `add --feature` SHALL rely on the `opened` event seeing the parent, which task 0.2 measures;
+a verb that gives an existing issue a parent (`edit --feature`) SHALL NOT recompute the feature, so
+the new parent and the old one MAY keep a Status that lags (an old parent at In Dev or Blocked with
+no open child) until the next event on one of their children, and the guards of `qa` and `accept`
+SHALL read the sub-issues, never the Status alone.
 
 #### Scenario: The last task closes
 
@@ -324,11 +324,13 @@ alone.
 
 `plan <feature>` SHALL need In Dev, Ready For Test or Blocked and set Todo. `qa <feature>` SHALL
 need a feature stored at In Dev, Ready For Test or Blocked with no open sub-issue and at least one
-closed, so QA never waits for the Action, and set In Test; it SHALL exit `blocked` with reason
-`wrong-status` naming the open sub-issues or the current Status otherwise. `accept <feature>` SHALL
-need In Test and no open sub-issue and close the feature as completed, writing no Status, because
-the board's "Item closed" workflow sets Done. QA SHALL file a defect, and the owner a rejection, as
-`add --feature <n> "<reason>"` under the feature In Test; no verb for it exists.
+closed as completed, so QA never waits for the Action, and set In Test; it SHALL exit `blocked` with
+reason `wrong-status` naming the open sub-issues or the current Status otherwise; a feature whose
+tasks were all closed as not planned stays where it is and is closed with `close --not-planned`.
+`accept <feature>` SHALL need In Test and no open sub-issue and close the feature as completed,
+writing no Status, because the board's "Item closed" workflow sets Done. QA SHALL file a defect, and
+the owner a rejection, as `add --feature <n> "<reason>"` under the feature In Test; no verb for it
+exists.
 
 #### Scenario: QA takes a feature, before or after the Action ran
 

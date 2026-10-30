@@ -81,13 +81,14 @@ A task whose work is real but not now SHALL be deferred with `qsm-tasks unclaim 
 closed silently and never left open in the ready list, and SHALL come back with `qsm-tasks unclaim`;
 work that will not be done SHALL be closed with `qsm-tasks close --not-planned` and a reason. Before
 creating an issue the agent SHALL search the title words with `qsm-tasks list --search` and comment
-on an existing one instead. Feedback about the marketplace SHALL be filed with
-`qsm-tasks feedback --area --kind --from`, which files an issue of the type `Feedback` in the
-marketplace repository, never by an issue number, with a title that names the plugin or
-`marketplace`. The body SHALL be abstract: the steps that led to it and how it should behave, with
-no suggested fix and no personal or system data. A handled feedback issue SHALL be closed with
-`qsm-tasks close --reason`, or with `--not-planned` when it will not be acted on. A subagent SHALL
-create only this kind of issue.
+on an existing one instead. Feedback about the marketplace SHALL be filed with `qsm-tasks feedback
+--area --kind --from`, which files an issue of the type `Feedback` in the marketplace repository,
+never by an issue number, with a title that names the plugin or `marketplace`. The body SHALL be
+abstract: the steps that led to it and how it should behave, with no suggested fix and no personal
+or system data. A task filed from a feedback issue SHALL start its body with `From #<feedback>`,
+which GitHub shows as a back-reference on the feedback issue, and the feedback issue SHALL then be
+closed with `qsm-tasks close <n> --reason "filed as #<task>"`; a feedback issue that will not be
+acted on SHALL be closed with `--not-planned`. A subagent SHALL create only this kind of issue.
 
 #### Scenario: Real work that is not now
 
