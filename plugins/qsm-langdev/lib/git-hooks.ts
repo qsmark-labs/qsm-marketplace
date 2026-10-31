@@ -1,8 +1,8 @@
 // Per-project git hooks: wiring `qsm-langdev hook <name>` into pre-commit and pre-push, reversibly.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
+import { git } from "./gitref.ts";
 import { HOOK_POINTS, type HookPoint } from "./registry.ts";
 
 /** The call a hook makes. git hands pre-push the remote's name as its first argument, and the
@@ -71,10 +71,7 @@ export type HookAction =
 
 /** Where git itself looks for hooks. */
 function hooksDir(repoRoot: string): string {
-  const result = spawnSync("git", ["rev-parse", "--git-path", "hooks"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
+  const result = git(repoRoot, ["rev-parse", "--git-path", "hooks"]);
   const path = result.status === 0 ? result.stdout.trim() : join(".git", "hooks");
   return isAbsolute(path) ? path : join(repoRoot, path);
 }

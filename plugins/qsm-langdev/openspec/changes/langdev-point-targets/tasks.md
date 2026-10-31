@@ -78,21 +78,11 @@
 - [x] 5.1 CI green again: today every run fails at `bun install --frozen-lockfile`, and before that
   at `Test`. Find each cause from the run logs and fix it. Files: what the logs name. Proof: a green
   `CI` run on `main`. Blocked by nothing.
-- [ ] 5.2 Verify that `semgrep scan --pro` with only `SEMGREP_APP_TOKEN` set runs the Pro engine and
-      uploads nothing (design D7 says unverified). Proof: one local run with the token from
-      `qsm-secrets`, its output and the semgrep docs page quoted in `measurements.md`. Blocked by
-      nothing.
-- [ ] 5.3 The `ci` point: semgrep's `ci` form is `scan --pro` over the whole tree, a missing token
-  fails naming it; `check --at ci` accepted. Files: `lib/registry.ts`, `lib/compare.ts`. Proof:
-  `qsm-langdev check --at ci --against HEAD~1` locally, once with and once without the token.
-  Blocked by 1.2 and 5.2.
-- [ ] 5.4 The `langdev` job in `.github/workflows/ci.yml` (spec: CI runs the ci point). Proof: the
-  job green on a push to `main`, its log showing the `ci` comparison; the owner adds the
-  `SEMGREP_APP_TOKEN` secret first. Blocked by 5.1 and 5.3.
+- 5.2 to 5.4 moved to change `langdev-ci-point` (2026-10-31), waiting for `SEMGREP_APP_TOKEN`.
 
 ## 6. Docs and landing
 
-- [ ] 6.1 `README.md` and `USAGE.md`: the four points, their targets and timeouts, the `slow:` line,
+- [x] 6.1 `README.md` and `USAGE.md`: the four points, their targets and timeouts, the `slow:` line,
   the doctor warning. Proof: `bun run validate` and markdownlint pass. Blocked by 3.2 and 5.3.
 - [ ] 6.2 Measure again the table of the design's Context on the same machine and add the after
       column to `measurements.md`. Proof: edit `.ts` under 7.5 s at load 15. Blocked by everything

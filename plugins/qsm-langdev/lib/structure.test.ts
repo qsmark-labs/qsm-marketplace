@@ -251,7 +251,7 @@ describe("compareStructure leaves test files out of both trees", () => {
     const { root, base } = repo();
     write(root, { ...TESTS_ONLY, "lib/gen.ts": 'import { helper } from "./helper.ts";\n' });
 
-    const result = await compareStructure(root, base, { kind: "index" });
+    const result = await compareStructure(root, base, { kind: "index" }, 60_000);
     const judged = verdict(result);
 
     expect(result.status).toBe("not-scored");
@@ -265,7 +265,7 @@ describe("compareStructure leaves test files out of both trees", () => {
     write(root, { ...TESTS_ONLY, "lib/b.ts": 'import { helper } from "./helper.ts";\n' });
     const head = commit(root);
 
-    const result = await compareStructure(root, base, { kind: "commit", sha: head });
+    const result = await compareStructure(root, base, { kind: "commit", sha: head }, 60_000);
 
     expect(result.status).toBe("scored");
     if (result.status !== "scored") {
@@ -283,12 +283,66 @@ describe("compareStructure leaves test files out of both trees", () => {
     write(root, { "lib/a.ts": 'import { helper } from "./helper.ts";\n' });
     git(root, ["add", "-A"]);
 
-    const result = await compareStructure(root, base, { kind: "index" });
+    const result = await compareStructure(root, base, { kind: "index" }, 60_000);
 
     expect(result.status).toBe("scored");
     if (result.status === "scored") {
       expect(result.edgesAdded).toEqual(["lib/a.ts -> lib/helper.ts (import)"]);
       expect(result.testFiles).toBe(1);
+    }
+  });
+});
+
+describe("compareStructure under a hook's GIT_INDEX_FILE", () => {
+  test("a generated file the staged index lacks is still left out of the reference tree", async () => {
+    const restorePath = installFakeSentrux();
+    const { root } = repo();
+    write(root, { "lib/gen.ts": "export const gen = 1;\n" });
+    const base = commit(root);
+    write(root, { "lib/b.ts": 'import { helper } from "./helper.ts";\n' });
+    git(root, ["rm", "-q", "lib/gen.ts"]);
+    git(root, ["add", "-A"]);
+    // A hook runs with the staged index named absolutely: the listing of a scratch tree must not
+    // read it, or the reference side keeps the generated file the staged side deleted.
+    process.env.GIT_INDEX_FILE = join(root, ".git", "index");
+    try {
+      const result = await compareStructure(root, base, { kind: "index" }, 60_000);
+
+      expect(result.status).toBe("scored");
+      if (result.status === "scored") {
+        expect(result.shipped.quality - result.reference.quality).toBe(-1);
+      }
+    } finally {
+      delete process.env.GIT_INDEX_FILE;
+      restorePath();
+    }
+  });
+});
+
+describe("compareStructure at its limit", () => {
+  test("The structural checker hangs", async () => {
+    const originalPath = process.env.PATH;
+    const bin = sandboxDir("qsm-langdev-structure-bin-");
+    // The engine child sleeps for a number nothing else does, so `pgrep -f` names it.
+    const marker = `${process.pid}${Date.now()}`;
+    writeFileSync(join(bin, "sentrux"), `#!/bin/sh\nsleep ${marker}.5 &\nwait\n`);
+    chmodSync(join(bin, "sentrux"), 0o755);
+    process.env.PATH = `${bin}:${originalPath ?? ""}`;
+    try {
+      const { root, base } = repo();
+      write(root, { "lib/b.ts": "export const b = 2;\n" });
+      git(root, ["add", "-A"]);
+
+      const result = await compareStructure(root, base, { kind: "index" }, 200);
+
+      expect(result).toEqual({
+        status: "not-measured",
+        reason: "reference tree: sentrux did not finish within 0.2s",
+      });
+      expect(verdict(result).pass).toBe(false);
+      expect(spawnSync("pgrep", ["-f", `sleep ${marker}`]).status).toBe(1);
+    } finally {
+      process.env.PATH = originalPath;
     }
   });
 });

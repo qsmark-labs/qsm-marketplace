@@ -163,6 +163,10 @@ export const POINTS = {
   ci: { targetMs: 600_000, timeoutMs: 1_200_000 },
 } as const satisfies Record<Point, { targetMs: number; timeoutMs: number }>;
 
+/** How long a process outside any point may run before it counts as stuck: doctor's and install's
+ * probes. The commit's timeout, the same five minutes. */
+export const PROBE_MS = POINTS["pre-commit"].timeoutMs;
+
 /** A point that compares two trees and stores results; the edit point checks in place. */
 export type ComparedPoint = Exclude<Point, "edit">;
 

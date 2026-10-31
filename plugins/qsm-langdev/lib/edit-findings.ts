@@ -1,11 +1,11 @@
 // What the edit hook tells the model after a file edit: the errors the project's own rules raise in
 // that one file, checked in place in the live checkout, against nothing else. Advisory only, except
 // that an edited file is first fixed (lib/fixers.ts), so what a tool can rewrite is never a finding.
-// How the run went goes to the hook's log: the model cannot act on it, and the commit compares the
-// file against HEAD again.
+// How the run went goes to the hook's log: the model cannot act on it, and the commit scores the
+// staged file against HEAD again.
 
 import { dirname, relative } from "node:path";
-import { checkInPlace, scoredAtCommit } from "./compare.ts";
+import { checkInPlace, leftOf, scoredAtCommit } from "./compare.ts";
 import { findRepoRoot, isLangdevRepo, readGatesConfig } from "./config.ts";
 import { fixFiles } from "./fixers.ts";
 import { POINTS } from "./registry.ts";
@@ -52,7 +52,7 @@ export async function editFindings(editor: Editor, file: string): Promise<EditRe
   if (relPath.startsWith("..") || !scoredAtCommit(root, relPath)) {
     return NOTHING;
   }
-  fixFiles(root, [relPath]);
+  await fixFiles(root, [relPath], leftOf(POINTS.edit.timeoutMs));
   // The edit point's timeout counts from the binary's start, so the start and the fixers come out of
   // it, and several edits at once still answer inside the engine's 10 s, a slow checker not measured.
   const { findings, log } = await checkInPlace(root, relPath, {

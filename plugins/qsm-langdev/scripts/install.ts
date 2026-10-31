@@ -46,12 +46,12 @@ export async function structuralChecker(
  * The semgrep login warning as its own step when semgrep is on PATH and not logged in: a
  * suggestion, so install still succeeds.
  */
-export function semgrepLoginStep(
+export async function semgrepLoginStep(
   ctx: InstallContext,
-  login: () => SemgrepLogin = () => semgrepLogin(ctx.env),
-): Step | null {
+  login: () => Promise<SemgrepLogin> = () => semgrepLogin(ctx.env),
+): Promise<Step | null> {
   // an absent semgrep is the checker's missing binary, never a login question
-  const warning = ctx.probe("semgrep") ? semgrepLoginWarning(login()) : null;
+  const warning = ctx.probe("semgrep") ? semgrepLoginWarning(await login()) : null;
   return warning === null ? null : { name: "semgrep login", status: "suggested", detail: warning };
 }
 
@@ -59,10 +59,10 @@ export function semgrepLoginStep(
 export async function extraSteps(
   ctx: InstallContext,
   checker?: () => Promise<StructuralCheckerStatus>,
-  login?: () => SemgrepLogin,
+  login?: () => Promise<SemgrepLogin>,
   build?: (cacheRoot: string) => void,
 ): Promise<Step[]> {
-  const loginStep = semgrepLoginStep(ctx, login);
+  const loginStep = await semgrepLoginStep(ctx, login);
   const checkerStep = await structuralChecker(ctx, checker, build);
   return loginStep === null ? [checkerStep] : [checkerStep, loginStep];
 }

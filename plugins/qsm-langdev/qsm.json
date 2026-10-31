@@ -146,7 +146,7 @@
         ]
       },
       "qsm-langdev edited": {
-        "description": "Compare one edited file against HEAD and answer the findings text the edit hook gives the model",
+        "description": "Check one edited file in place against the project's rules and answer the findings text the edit hook gives the model",
         "args": [
           {
             "name": "file",

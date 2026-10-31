@@ -176,12 +176,12 @@ function describeStructuralCheck(structural: StructuralCheckerStatus): string {
   if (structural.present) {
     return (
       "MISSING  structural checker (sentrux on PATH is unpatched upstream, not ready) — install: " +
-      "bun plugins/qsm-langdev/scripts/install.ts"
+      "qsm-setup install qsm-langdev"
     );
   }
   return (
     "MISSING  structural checker (sentrux not on PATH) — install: " +
-    "bun plugins/qsm-langdev/scripts/install.ts"
+    "qsm-setup install qsm-langdev"
   );
 }
 
@@ -196,7 +196,7 @@ const doctor: Handler = async (call) => {
   const warnings: string[] = [];
   // an absent semgrep is its MISSING row above, never a login question
   const semgrep = rows.some((row) => row.binary === "semgrep" && row.present);
-  const login = semgrep ? semgrepLoginWarning(semgrepLogin()) : null;
+  const login = semgrep ? semgrepLoginWarning(await semgrepLogin()) : null;
   if (login !== null) {
     warnings.push(login);
   }

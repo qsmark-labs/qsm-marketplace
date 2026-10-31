@@ -11,7 +11,6 @@
 // there and silently falls back to a plain filesystem walk with no import
 // resolution at all, scoring nothing real under an inflated quality number.
 
-import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
   existsSync,
@@ -25,6 +24,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { git, type GitRun, scratchEnv } from "./gitref.ts";
 import { arrayOf, recordOf, str } from "./json.ts";
 
 const SCRATCH_PREFIX = "qsm-langdev-tree-";
@@ -59,42 +59,16 @@ function sweepAbandoned(prefix: string): void {
   }
 }
 
-function fail(step: string, result: ReturnType<typeof spawnSync>): never {
-  const stderr = result.stderr === null ? "" : String(result.stderr).trim();
+function fail(step: string, result: GitRun): never {
+  const stderr = result.stderr.trim();
   const suffix = stderr.length > 0 ? `: ${stderr}` : "";
   throw new Error(`${step} failed${suffix}`);
-}
-
-// A git hook exports GIT_DIR (and sometimes GIT_INDEX_FILE) into this process's environment so git
-// can find the repository without a cwd inside its work tree.
-const GIT_REPO_ENV_KEYS = [
-  "GIT_DIR",
-  "GIT_WORK_TREE",
-  "GIT_INDEX_FILE",
-  "GIT_COMMON_DIR",
-  "GIT_PREFIX",
-  "GIT_OBJECT_DIRECTORY",
-  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-  "GIT_NAMESPACE",
-] as const;
-
-function gitEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  for (const key of GIT_REPO_ENV_KEYS) {
-    delete env[key];
-  }
-  return extra ? { ...env, ...extra } : env;
 }
 
 /** A git command's NUL-separated output; `input` goes to its stdin. `check-ignore` exits 1 when
  * it matched nothing, which is an answer, not a failure. */
 function gitLines(root: string, args: readonly string[], input?: string): string[] {
-  const result = spawnSync("git", ["-C", root, ...args], {
-    env: gitEnv(),
-    encoding: "utf8",
-    maxBuffer: 256 * 1024 * 1024,
-    ...(input === undefined ? {} : { input }),
-  });
+  const result = git(root, args, input === undefined ? {} : { input });
   const matchedNothing = args[0] === "check-ignore" && result.status === 1;
   if (result.status !== 0 && !matchedNothing) {
     fail(`git ${args[0] ?? ""}`, result);
@@ -169,15 +143,13 @@ function linkInputs(dir: string, root: string, treeish: string): void {
  * archive drops an `export-ignore` path, and a generated file the code imports must be on disk for
  * a type-aware checker to resolve it. Leaving generated files unscored is the file sets' job. */
 function checkoutInto(root: string, treeish: string, dir: string): void {
-  const env = gitEnv({ GIT_INDEX_FILE: `${dir}.checkout-index` });
+  const env = scratchEnv({ GIT_INDEX_FILE: `${dir}.checkout-index` });
   try {
-    const read = spawnSync("git", ["-C", root, "read-tree", treeish], { env });
+    const read = git(root, ["read-tree", treeish], { env });
     if (read.status !== 0) {
       fail(`git read-tree ${treeish}`, read);
     }
-    const checkout = spawnSync("git", ["-C", root, "checkout-index", "-a", `--prefix=${dir}/`], {
-      env,
-    });
+    const checkout = git(root, ["checkout-index", "-a", `--prefix=${dir}/`], { env });
     if (checkout.status !== 0) {
       fail("git checkout-index", checkout);
     }
@@ -195,12 +167,12 @@ function checkoutInto(root: string, treeish: string, dir: string): void {
  * imports exactly as it would in the live checkout. `.gitignore` travelled
  * in with the checkout, so `node_modules`/`dist` stay excluded the same way. */
 function gitIndexInto(dir: string): void {
-  const env = gitEnv();
-  const init = spawnSync("git", ["-C", dir, "init", "-q", "--initial-branch=main", "."], { env });
+  const env = scratchEnv();
+  const init = git(dir, ["init", "-q", "--initial-branch=main", "."], { env });
   if (init.status !== 0) {
     fail("git init (materialized tree)", init);
   }
-  const add = spawnSync("git", ["-C", dir, "add", "-A"], { env });
+  const add = git(dir, ["add", "-A"], { env });
   if (add.status !== 0) {
     fail("git add -A (materialized tree)", add);
   }
@@ -219,13 +191,9 @@ export interface Kept {
  * so a checker that lists the index or walks the directory sees neither.
  */
 export function leaveOut(dir: string, matches: (path: string) => boolean): Kept {
-  const env = gitEnv();
+  const env = scratchEnv();
   const listFiles = (args: string[]): string => {
-    const listed = spawnSync("git", ["-C", dir, "ls-files", ...args], {
-      env,
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-    });
+    const listed = git(dir, ["ls-files", ...args], { env });
     if (listed.status !== 0) {
       fail("git ls-files (materialized tree)", listed);
     }
@@ -274,12 +242,15 @@ export function withCommitTree<T>(
   });
 }
 
-/** The checkout's own index file, which a linked worktree keeps under its own git directory. */
-function liveIndex(root: string): string {
-  const r = spawnSync("git", ["-C", root, "rev-parse", "--git-path", "index"], {
-    env: gitEnv(),
-    encoding: "utf8",
-  });
+/** The index a run scores: the one git handed the hook, which for `git commit <paths>` holds only
+ * what that commit takes; else the checkout's own, which a linked worktree keeps under its own git
+ * directory. */
+function stagedIndex(root: string): string {
+  const handed = process.env.GIT_INDEX_FILE;
+  if (handed !== undefined && handed !== "") {
+    return resolve(root, handed);
+  }
+  const r = git(root, ["rev-parse", "--git-path", "index"]);
   if (r.status !== 0) {
     fail("git rev-parse --git-path index", r);
   }
@@ -297,12 +268,13 @@ export function withIndexTree<T>(root: string, fn: (dir: string) => Promise<T> |
   return withScratchDir(SCRATCH_PREFIX, (dir) => {
     const indexFile = `${dir}.index`;
     try {
-      const live = liveIndex(root);
+      const live = stagedIndex(root);
       if (existsSync(live)) {
         copyFileSync(live, indexFile);
       }
-      const env = gitEnv({ GIT_INDEX_FILE: indexFile });
-      const writeTree = spawnSync("git", ["-C", root, "write-tree"], { env, encoding: "utf8" });
+      const writeTree = git(root, ["write-tree"], {
+        env: scratchEnv({ GIT_INDEX_FILE: indexFile }),
+      });
       if (writeTree.status !== 0) {
         fail("git write-tree (scratch index)", writeTree);
       }

@@ -1,7 +1,6 @@
 // Every checker compares a reference tree against the tree being shipped, and passes only when the
 // second is no worse.
 
-import { type SpawnSyncReturns, spawn as spawnChild } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,8 +15,9 @@ import {
 import { describeSets, givenSet, type SetSize } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
-import type { Sha, TreeSide } from "./gitref.ts";
+import { type Sha, scratchEnv, type TreeSide } from "./gitref.ts";
 import { hasScaffoldedConfig } from "./profiles.ts";
+import { type Spawned, spawnAsync, timedOut } from "./process.ts";
 import { recordRun, type Timing } from "./timings.ts";
 import {
   asRunAt,
@@ -28,6 +28,7 @@ import {
   type ComparedPoint,
   type Point,
   POINTS,
+  PROBE_MS,
   REGISTRY,
   selectedAt,
 } from "./registry.ts";
@@ -96,52 +97,6 @@ function diffRange(before: Sha, after: TreeSide): string[] {
   return after.kind === "index" ? ["--cached", before] : [before, after.sha];
 }
 
-type Spawned = Pick<SpawnSyncReturns<string>, "status" | "signal" | "error" | "stdout" | "stderr">;
-
-/** How long a process outside any point may run before it counts as stuck: doctor's and the
- * structural checker's `--version` probes. The commit's timeout, the same five minutes. */
-const PROBE_MS = POINTS["pre-commit"].timeoutMs;
-
-function spawnAsync(
-  cwd: string,
-  command: string,
-  args: string[],
-  timeoutMs: number,
-): Promise<Spawned> {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawnChild(command, args, { cwd, detached: true });
-    let stdout = "";
-    let stderr = "";
-    let error: NodeJS.ErrnoException | undefined;
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
-      stdout += chunk;
-    });
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
-      stderr += chunk;
-    });
-    const timer = setTimeout(() => {
-      error = Object.assign(new Error(`${command} timed out`), { code: "ETIMEDOUT" });
-      // The launcher can exit while its engine keeps scanning. This group belongs to this run.
-      if (child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch (cause) {
-          if (!isErrno(cause) || cause.code !== "ESRCH") {
-            rejectPromise(new Error(`could not stop ${command}'s process group`, { cause }));
-          }
-        }
-      }
-    }, timeoutMs);
-    child.on("error", (err: NodeJS.ErrnoException) => {
-      error = err;
-    });
-    child.on("close", (status, signal) => {
-      clearTimeout(timer);
-      resolvePromise({ status, signal, stdout, stderr, ...(error === undefined ? {} : { error }) });
-    });
-  });
-}
-
 /** `fn` over `items` with at most `limit` in flight, results in item order. */
 async function mapLimit<T, R>(
   items: readonly T[],
@@ -173,7 +128,7 @@ function spawnStatus(result: Spawned, binary: string): number | SpawnFailure {
     if (code === "ENOENT") {
       return { kind: "missing", reason: `${binary} not on PATH` };
     }
-    if (code === "ETIMEDOUT") {
+    if (timedOut(result)) {
       return { kind: "timed-out", reason: `${binary} timed out` };
     }
     return {
@@ -260,7 +215,7 @@ async function readOne(run: OneRun): Promise<Score> {
   const { spec, root, args, timeoutMs, readReport } = run;
   const { binary } = spec;
   const where = run.where ?? "";
-  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs);
+  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs, scratchEnv());
   const exitCode = spawnStatus(result, binary);
   if (typeof exitCode !== "number") {
     return { ...exitCode, reason: `${where}${exitCode.reason}` };
@@ -603,8 +558,6 @@ interface Evaluation {
   renames: Renames;
 }
 
-/** A side narrowed to one checker, with where its results are kept and the
- * local copy of each rule pack the checker names that the run fetched. */
 /** A side and the local copy of each rule pack its checker names. */
 type RuledSide = Side & { rules: LocalRules };
 
@@ -801,11 +754,10 @@ interface Probe {
 async function probeBinary(binary: string, timeoutMs: number): Promise<Probe> {
   const r = await spawnAsync(tmpdir(), binary, ["--version"], timeoutMs);
   const said = `${r.stdout ?? ""}${r.stderr ?? ""}`.trim();
-  const timedOut = isErrno(r.error) && r.error.code === "ETIMEDOUT";
   const present = !r.error;
   return {
     present,
-    timedOut,
+    timedOut: timedOut(r),
     timeoutMs,
     version: present && r.status === 0 && said !== "" ? said : null,
   };
@@ -960,7 +912,7 @@ function engage(selected: readonly CheckSpec[], options: CompareOptions): CheckS
 /** What every checker of a run shares: the store, each binary's version,
  * and where each checker's use of the store is recorded. */
 interface RunContext {
-  /** The limit a checker gets, read when it starts: under a deadline, what is left of it. */
+  /** The limit a checker gets, read when it starts: at the edit point what is left of the shared deadline. */
   timeoutMs: number;
   renames: Renames;
   changed: readonly string[];
@@ -1218,7 +1170,7 @@ export async function compareTrees(
   const warnings: string[] = [];
 
   const fetchPack = options.fetchPack ?? fetchFromRegistry;
-  const { context, verdicts } = await withPacks(selected, fetchPack, async (packs) => {
+  const { context, verdicts } = await withPacks(selected, fetchPack, timeoutMs, async (packs) => {
     const run: RunContext = {
       timeoutMs,
       renames:
@@ -1256,6 +1208,10 @@ export async function compareTrees(
 
 /** The least a checker gets under the edit deadline, so a late one still measures something. */
 const DEADLINE_FLOOR_MS = 1000;
+
+/** What is left of `deadlineMs` counted from the binary's start, never under the floor. */
+export const leftOf = (deadlineMs: number) => (): number =>
+  Math.max(DEADLINE_FLOOR_MS, deadlineMs - performance.now());
 
 /** What one file says under the project's rules, checked in place. */
 export interface InPlace {
@@ -1303,8 +1259,8 @@ export async function checkInPlace(
   const unconfigured = missingConfigVerdicts(covering, root);
   const log = [...skipVerdicts, ...unconfigured].map(headline);
   const runnable = covering.filter(hasConfig(unconfigured));
-  const left = () => Math.max(DEADLINE_FLOOR_MS, options.deadlineMs - performance.now());
-  const runs = await withPacks(runnable, options.fetchPack ?? fetchFromRegistry, (packs) =>
+  const left = leftOf(options.deadlineMs);
+  const runs = await withPacks(runnable, options.fetchPack ?? fetchFromRegistry, left(), (packs) =>
     mapLimit(runnable, JOBS, async (spec) => {
       const started = performance.now();
       const side = { root, files: [file], rules: packsOf(spec, packs).rules };
@@ -1368,6 +1324,7 @@ async function runSelected(
 function withPacks<T>(
   selected: readonly CheckSpec[],
   fetchPack: FetchPack,
+  timeoutMs: number,
   fn: (packs: ReadonlyMap<string, ResolvedPack>) => Promise<T>,
 ): Promise<T> {
   const wanted = selected.flatMap((spec) => spec.packs ?? []);
@@ -1375,7 +1332,7 @@ function withPacks<T>(
     return fn(new Map());
   }
   return withScratchDir(PACKS_SCRATCH_PREFIX, async (dir) =>
-    fn(await resolvePacks(wanted, dir, fetchPack)),
+    fn(await resolvePacks(wanted, dir, fetchPack, timeoutMs)),
   );
 }
 

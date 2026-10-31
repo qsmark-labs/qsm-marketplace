@@ -35,7 +35,10 @@ that returns gate outcomes, and one `describeVerdicts`. The policy is one switch
 `spawnAsync` moves from `compare.ts` to a new `lib/process.ts` and is the only way a run starts a
 process: its own group, killed on the limit. Every caller passes its point's `timeoutMs`; the edit
 point passes what is left of its deadline. `rule-packs.ts` fetches with an `AbortSignal` of the same
-value. The callers that were synchronous become async.
+value. The callers that were synchronous become async. git plumbing stays synchronous in
+`lib/gitref.ts`, bounded by the same timeout through `spawnSync`'s own limit; the presence and login
+probes keep the owner's one timeout of five minutes ("chci aby to melo 5MIN timeout"), never a
+shorter private one.
 
 ### D3. One git helper (11, 14)
 
