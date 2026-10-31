@@ -1,9 +1,8 @@
 // Materializes a tree as an on-disk directory for a checker to score: a
-// commit checked out through a scratch index, or the working tree via a
-// scratch git index (the live index copied, its tracked files refreshed with
-// `git add -u`, `git write-tree`, then that tree checked out) so an ignored
-// or untracked path — node_modules, dist, a file nobody added — never enters
-// a score just because it sits on disk; the ignored inputs the repository's
+// commit checked out through a scratch index, or what is staged via a copy of
+// the live index (`git write-tree`, then that tree checked out) so an
+// unstaged change, an ignored or an untracked path (node_modules, dist, a
+// file nobody added) never enters a score just because it sits on disk; the ignored inputs the repository's
 // own commands read are linked back in (linkInputs). Both sides of every comparison go through one of these,
 // so the only difference a checker ever sees is the change itself. The
 // materialized directory is then given its own throwaway git index (`git
@@ -288,14 +287,13 @@ function liveIndex(root: string): string {
   return isAbsolute(path) ? path : join(root, path);
 }
 
-/** A scratch directory holding what the working tree would ship: a copy of
- * the live index refreshed with `git add -u`, so every tracked file counts
- * as it is on disk and an untracked or ignored file never enters it, then
- * that index's tree checked out. This is "the shipped side" for every
- * comparison: the live directory itself is never handed to a checker, so
- * node_modules/ or dist/ never enter a score just because they sit on disk.
- * Removed once `fn` settles. */
-export function withWorktreeTree<T>(root: string, fn: (dir: string) => Promise<T> | T): Promise<T> {
+/** A scratch directory holding what is staged: a copy of the live index, its
+ * tree checked out. This is "the shipped side" for every comparison, because
+ * only what is staged or committed is on its way out: an unstaged change, an
+ * untracked file and an ignored path never enter it. The live directory itself
+ * is never handed to a checker, so node_modules/ or dist/ never enter a score
+ * just because they sit on disk. Removed once `fn` settles. */
+export function withIndexTree<T>(root: string, fn: (dir: string) => Promise<T> | T): Promise<T> {
   return withScratchDir(SCRATCH_PREFIX, (dir) => {
     const indexFile = `${dir}.index`;
     try {
@@ -304,10 +302,6 @@ export function withWorktreeTree<T>(root: string, fn: (dir: string) => Promise<T
         copyFileSync(live, indexFile);
       }
       const env = gitEnv({ GIT_INDEX_FILE: indexFile });
-      const add = spawnSync("git", ["-C", root, "add", "-u"], { env });
-      if (add.status !== 0) {
-        fail("git add -u (scratch index)", add);
-      }
       const writeTree = spawnSync("git", ["-C", root, "write-tree"], { env, encoding: "utf8" });
       if (writeTree.status !== 0) {
         fail("git write-tree (scratch index)", writeTree);

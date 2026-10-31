@@ -267,9 +267,9 @@ as `HOME` the way CCR reads it, and CCR's default `~/.claude/settings.json`) wit
 before the start, and on any difference SHALL stop the daemon and answer `failed` naming each file
 and changed key. Stopping SHALL be proven: `ccr stop`, then SIGTERM to the start this run spawned
 (its process group) and to the pid in `service.json` only once proven CCR's (alone, never as a
-group), then the port must close; a start whose port does not open within 20 seconds SHALL be
-stopped the same way; and an answer SHALL say the daemon still runs, naming its address, whenever
-the port stayed open.
+group), then the port must close and every process signalled must be gone; a start whose port does
+not open within 20 seconds SHALL be stopped the same way; and an answer SHALL say the daemon still
+runs, naming its address, whenever the port stayed open.
 
 #### Scenario: Two teammates start at once
 

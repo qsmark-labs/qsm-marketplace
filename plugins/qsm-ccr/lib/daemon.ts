@@ -321,7 +321,11 @@ export async function takeDown(daemon: Daemon): Promise<boolean> {
     });
   }
   const { address } = daemon;
-  const closed = async () => address === undefined || !(await isRunning(address));
+  // Down is every process gone as well as the port shut: a daemon that never listened has its port
+  // shut from the start, and the signal below has not ended it yet.
+  const pids = [named, daemon.spawned].filter((pid) => pid !== undefined);
+  const closed = async () =>
+    pids.every((pid) => !isAlive(pid)) && (address === undefined || !(await isRunning(address)));
   if (daemon.spawned !== undefined) {
     terminate(daemon.spawned, true);
     terminate(named);

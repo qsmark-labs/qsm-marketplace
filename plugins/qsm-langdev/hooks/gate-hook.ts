@@ -24,7 +24,7 @@
 import { readHookEvent, runMain } from "../../../lib/hooks-kit.ts";
 import { isRecord } from "../../../lib/outcome.ts";
 import { compareTrees, type Verdict } from "../lib/compare.ts";
-import { isLangdevRepo, readGatesConfig } from "../lib/config.ts";
+import { gitPaths, isLangdevRepo, readGatesConfig } from "../lib/config.ts";
 import { editorOf } from "../lib/hookio.ts";
 import {
   clearBlocks,
@@ -75,11 +75,18 @@ async function judgeTree(
   const warnings: string[] = [];
 
   const { languages } = readGatesConfig(tree.root);
-  const { verdicts } = await compareTrees(tree.root, tree.start, "worktree", {
+  const { verdicts } = await compareTrees(tree.root, tree.start, "index", {
     at: "pre-commit",
     languages,
     ...testBudgetMs(),
   });
+  // Only what is staged is scored; an edit the agent left unstaged is named, never judged in silence.
+  const unstaged = gitPaths(tree.root, ["diff", "--name-only", "-z"]) ?? [];
+  if (unstaged.length > 0) {
+    const named = unstaged.slice(0, 5).join(", ");
+    const more = unstaged.length > 5 ? ` and ${unstaged.length - 5} more` : "";
+    warnings.push(`unstaged changes not scored: ${named}${more}`);
+  }
   const environment = verdicts.filter((v) => !v.pass && gap(v));
   const worse = verdicts.filter((v) => !(v.pass || gap(v)));
   if (environment.length > 0) {
@@ -91,7 +98,7 @@ async function judgeTree(
 
   // The stop gate compares against the agent's own start point, so a whole session is judged as one
   // aggregate drift rather than commit by commit.
-  const structure = await compareStructure(tree.root, tree.start, "worktree");
+  const structure = await compareStructure(tree.root, tree.start, "index");
   const structureVerdict = verdict(structure);
   if (structureVerdict.pass) {
     // Each summary says what it is — a quality line, or a tree sentrux had no ruleset to score.
