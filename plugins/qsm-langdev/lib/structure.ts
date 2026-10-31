@@ -4,11 +4,12 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Glob, TOML } from "bun";
+import { TOML } from "bun";
 import { generatedPaths, gitPaths } from "./config.ts";
 import { git, scratchEnv, type Sha, type TreeSide } from "./gitref.ts";
 import { arrayOf, num, recordOf, recordsOf, str, type Rec } from "./json.ts";
 import { spawnAsync, timedOut } from "./process.ts";
+import { isTestFile } from "./test-files.ts";
 import { type Kept, leaveOut, withCommitTree, withIndexTree } from "./tree.ts";
 
 const RULES_REL = join(".sentrux", "rules.toml");
@@ -16,32 +17,6 @@ const INSTALL_LINE = "install a qsm-patched sentrux: qsm-langdev doctor names th
 
 /** How far the aggregate quality may fall before the verdict fails. */
 const QUALITY_TOLERANCE = 20;
-
-/**
- * What the structure score leaves out of both trees: test files and test fixtures, by each
- * language's own convention.
- */
-const TEST_FILES = [
-  // bun test, vitest, jest
-  "**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
-  "**/__tests__/**",
-  "**/fixtures/**",
-  // pytest and unittest; `tests/` is also where cargo keeps integration tests
-  "**/test_*.py",
-  "**/*_test.py",
-  "**/conftest.py",
-  "**/tests/**",
-  // a .NET test project
-  "**/*.Tests/**",
-  // go test
-  "**/*_test.go",
-  "**/testdata/**",
-].map((pattern) => new Glob(pattern));
-
-/** Whether a repository-relative path is a test file or a test fixture. */
-export function isTestFile(path: string): boolean {
-  return TEST_FILES.some((glob) => glob.match(path));
-}
 
 /** The materialized tree without its test files and its generated files, the latter by the
  * repository's own `.gitattributes` marker, the definition the language checkers use. */

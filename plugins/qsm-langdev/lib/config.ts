@@ -15,6 +15,7 @@ import { messageOf } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { git } from "./gitref.ts";
 import { arrayOf, recordOf } from "./json.ts";
+import { isTestFile } from "./test-files.ts";
 import {
   type GateName,
   type HookPoint,
@@ -200,15 +201,21 @@ export function languageEnabled(language: Language, enabled: readonly Language[]
   return ALWAYS_ON.has(language) || enabled.includes(language);
 }
 
-/** The languages whose `detects` extensions `files` match, by name or by
- * shebang, plus the always-on ones. */
+/** The languages whose `detects` extensions the non-test `files` match, by name or by
+ * shebang, plus the always-on ones. A fixture is data, not a language the project is written in. */
 function languagesIn(root: string, files: readonly string[]): Language[] {
   return LANGUAGES.filter((language) => {
     const info: LanguageInfo = LANGUAGE_TABLE[language];
     if (info.alwaysOn) {
       return true;
     }
-    return matchingFiles(root, files, info.detects ?? []).length > 0;
+    return (
+      matchingFiles(
+        root,
+        files.filter((file) => !isTestFile(file)),
+        info.detects ?? [],
+      ).length > 0
+    );
   });
 }
 

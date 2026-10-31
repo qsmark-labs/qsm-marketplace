@@ -259,7 +259,7 @@ test("a prompt whose marker fails still reaches the bottom once", async ($, on) 
     throw new Error("wt is gone");
   });
 
-  await $.prompt.submit({ text: "hi" });
+  await $.prompt.submit({ text: "hi", wait: false, origin: { kind: "composer" } });
 
   expect(bottomRan()).toBe(1);
 });

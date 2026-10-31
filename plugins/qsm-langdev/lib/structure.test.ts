@@ -11,11 +11,11 @@ import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import {
   compareStructure,
   isDownwardEdge,
-  isTestFile,
   readLayers,
   type StructureResult,
   verdict,
 } from "./structure.ts";
+import { isTestFile } from "./test-files.ts";
 import { headOf, processWith } from "./test-support.ts";
 import type { Sha } from "./gitref.ts";
 

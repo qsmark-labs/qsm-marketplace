@@ -256,6 +256,12 @@ function repoWithTsAndPy(languages: readonly string[]): string {
   return home;
 }
 
+/** The languages `init` recorded in the repository's gates.json. */
+function recordedLanguages(root: string): unknown {
+  return recordOf(JSON.parse(readFileSync(join(root, ".qsm-langdev", "gates.json"), "utf8")))
+    ?.languages;
+}
+
 describe("qsm-langdev languages: opt-in", () => {
   test("`init` records what it scaffolded", () => {
     const home = plainRepo();
@@ -264,10 +270,23 @@ describe("qsm-langdev languages: opt-in", () => {
     const r = run(["init"], { home });
 
     expect(r.exit).toBe(0);
-    const gates = recordOf(
-      JSON.parse(readFileSync(join(root, ".qsm-langdev", "gates.json"), "utf8")),
-    );
-    expect(gates?.languages).toEqual(["ts"]);
+    expect(recordedLanguages(root)).toEqual(["ts"]);
+  });
+
+  test("`init` leaves a test fixture's language out of what it records", () => {
+    const home = sandbox();
+    const root = join(home, "work");
+    git(root, "init", "-q");
+    mkdirSync(join(root, "src"), { recursive: true });
+    mkdirSync(join(root, "tests", "fixtures", "ts"), { recursive: true });
+    writeFileSync(join(root, "src", "main.rs"), "fn main() {}\n");
+    writeFileSync(join(root, "tests", "fixtures", "ts", "a.ts"), "const a = 1;\n");
+    commit(root, "first");
+
+    const r = run(["init"], { home });
+
+    expect(r.exit).toBe(0);
+    expect(recordedLanguages(root)).toEqual(["rust"]);
   });
 
   test("`languages` with no selection names what runs and how to select", () => {

@@ -713,7 +713,13 @@ reason written where it would otherwise appear.
 `init --profile <name>` SHALL write, for every language the repository's
 files indicate, the profile's config file wherever the repository does not
 already have a file of that name, and SHALL record the chosen profile.
-`init` SHALL NOT overwrite a config file the repository already has.
+`init` SHALL NOT overwrite a config file the repository already has. A file the structure
+score leaves out (a test file or a test fixture) SHALL NOT make a language count as indicated.
+
+#### Scenario: A language only a fixture holds
+
+- **WHEN** `init` runs in a repository with `src/main.rs` and `tests/fixtures/ts/a.ts`
+- **THEN** it SHALL record `rust` alone and SHALL scaffold no TypeScript config
 
 #### Scenario: A fresh repository
 
