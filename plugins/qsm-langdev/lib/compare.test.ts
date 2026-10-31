@@ -25,14 +25,15 @@ import {
   doctorRows,
   headline,
   resolveBinary,
-  runOutcome,
   type Verdict,
 } from "./compare.ts";
 import { describeSets } from "./file-sets.ts";
+import { judge } from "./gate-runner.ts";
+import type { Sha } from "./gitref.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { type CheckSpec, REGISTRY } from "./registry.ts";
 import { describeStore } from "./result-store.ts";
-import { defined } from "./test-support.ts";
+import { defined, headOf } from "./test-support.ts";
 
 function git(root: string, args: string[]): string {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -44,7 +45,7 @@ function git(root: string, args: string[]): string {
 
 /** A sandbox git repository with one commit holding `files`, and that
  * commit's id. */
-function repoWith(files: Record<string, string>): { root: string; head: string } {
+function repoWith(files: Record<string, string>): { root: string; head: Sha } {
   const root = sandboxDir("qsm-langdev-compare-");
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.email", "test@example.invalid"]);
@@ -52,7 +53,7 @@ function repoWith(files: Record<string, string>): { root: string; head: string }
   write(root, files);
   git(root, ["add", "-A"]);
   git(root, ["commit", "-q", "-m", "base"]);
-  return { root, head: git(root, ["rev-parse", "HEAD"]) };
+  return { root, head: headOf(root) };
 }
 
 function write(root: string, files: Record<string, string>): void {
@@ -70,7 +71,7 @@ function stage(root: string): void {
 
 /** A repo whose gen.txt carries `attribute` in .gitattributes, with a marked
  * line added to gen.txt and a plain edit to a.txt staged. */
-function stagedGeneratedChange(attribute: string): { root: string; head: string } {
+function stagedGeneratedChange(attribute: string): { root: string; head: Sha } {
   const { root, head } = repoWith({
     ".gitattributes": `gen.txt ${attribute}\n`,
     "a.txt": "alpha\n",
@@ -133,12 +134,17 @@ const MARKED: CheckSpec = {
 /** `languages` is opt-in in production; a ratchet test is not about that
  * selection, so this always opts the registry's own languages in, the same
  * way a repository's gates.json would once it named them. */
-function run(root: string, head: string | null, registry: readonly CheckSpec[] = [MARKED]) {
-  return compareTrees(root, head, "index", {
-    registry,
-    at: "pre-commit",
-    languages: [...new Set(registry.map((spec) => spec.language))],
-  });
+function run(root: string, head: Sha | null, registry: readonly CheckSpec[] = [MARKED]) {
+  return compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry,
+      at: "pre-commit",
+      languages: [...new Set(registry.map((spec) => spec.language))],
+    },
+  );
 }
 
 describe("compareTrees", () => {
@@ -151,7 +157,7 @@ describe("compareTrees", () => {
 
     expect(verdicts).toHaveLength(1);
     const only = defined(verdicts[0], "a verdict");
-    expect(only.pass).toBe(false);
+    expect(only).toMatchObject({ kind: "measured", pass: false });
     expect(only.summary).toContain("marked: 0 -> 1");
     expect((only.lines ?? []).join("\n")).toContain("a.txt");
   });
@@ -168,7 +174,7 @@ describe("compareTrees", () => {
     const { verdicts } = await run(root, head);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
     expect(verdicts[0]?.summary).toContain("marked: 2 -> 2");
   });
 
@@ -182,7 +188,7 @@ describe("compareTrees", () => {
 
     const { verdicts } = await run(root, head);
 
-    expect(verdicts[0]?.pass).toBe(false);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: false });
     expect(verdicts[0]?.summary).toContain("marked: 2 -> 1");
     expect(verdicts[0]?.summary).toContain("b.txt 0 -> 1");
   });
@@ -206,7 +212,7 @@ describe("compareTrees: scored files", () => {
     const { changed, verdicts } = await run(root, head);
 
     expect(changed).toEqual(["a.txt"]);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   });
 
   test("a path marked linguist-generated is not scored, unless the checker guards safety", async () => {
@@ -215,8 +221,8 @@ describe("compareTrees: scored files", () => {
     const { verdicts } = await run(root, head);
     const guarding = await run(root, head, [{ ...MARKED, guardsSafety: true }]);
 
-    expect(verdicts[0]?.pass).toBe(true);
-    expect(guarding.verdicts[0]?.pass).toBe(false);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
+    expect(guarding.verdicts[0]).toMatchObject({ kind: "measured", pass: false });
   });
 
   test("A checker's binary is absent", async () => {
@@ -233,14 +239,13 @@ describe("compareTrees: scored files", () => {
     const { verdicts } = await run(root, head, [absent]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(false);
-    expect(verdicts[0]?.missing).toBe(true);
+    expect(verdicts[0]?.kind).toBe("missing-binary");
     expect(verdicts[0]?.summary).toContain("install it with your package manager");
   });
 });
 
 /** A repo whose staged edit is `edit` over a.txt, with an empty, ignored node_modules/.bin. */
-function stagedWithLocalBin(edit: string): { root: string; head: string; bin: string } {
+function stagedWithLocalBin(edit: string): { root: string; head: Sha; bin: string } {
   const { root, head } = repoWith({ "a.txt": "alpha\n", ".gitignore": "node_modules/\n" });
   write(root, { "a.txt": edit });
   stage(root);
@@ -265,8 +270,8 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await runWith(root, head, SLOW_PROBE, { probeTimeoutMs: 200 });
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.missing).toBeUndefined();
-    expect(verdicts[0]?.notMeasured).toBe(true);
+    expect(verdicts[0]?.kind).not.toBe("missing-binary");
+    expect(verdicts[0]?.kind).toBe("not-measured");
     expect(verdicts[0]?.summary).toBe(
       "slow-probe: not measured: 'qsm-langdev-slow-version --version' timed out after 0.2s; retry",
     );
@@ -297,7 +302,7 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await run(root, head, [local]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.missing).toBeUndefined();
+    expect(verdicts[0]?.kind).not.toBe("missing-binary");
     expect(verdicts[0]?.summary).toContain("local: 0 -> 1");
   });
 
@@ -310,8 +315,7 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await run(root, head, [needsConfig]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(false);
-    expect(verdicts[0]?.missingConfig).toBe(true);
+    expect(verdicts[0]?.kind).toBe("missing-config");
     expect(verdicts[0]?.summary).toContain("qsm-langdev init");
   });
 });
@@ -345,13 +349,18 @@ function recorder(fileSet: CheckSpec["fileSet"], extensions: readonly string[] =
 
 /** Opts `spec`'s own language in by default, same reasoning as `run` above;
  * an `options.languages` the caller passes still wins. */
-function runWith(root: string, head: string | null, spec: CheckSpec, options: CompareOptions = {}) {
-  return compareTrees(root, head, "index", {
-    registry: [spec],
-    at: "pre-commit",
-    languages: [spec.language],
-    ...options,
-  });
+function runWith(root: string, head: Sha | null, spec: CheckSpec, options: CompareOptions = {}) {
+  return compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry: [spec],
+      at: "pre-commit",
+      languages: [spec.language],
+      ...options,
+    },
+  );
 }
 
 describe("file sets", () => {
@@ -472,7 +481,7 @@ describe("file sets: deletions and the reference", () => {
 
     expect(changed).toEqual(["a.ts"]);
     expect(handed).toEqual([["a.ts"]]);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   });
 
   test("a checker whose set holds nothing it covers does not run, and says so", async () => {
@@ -485,7 +494,7 @@ describe("file sets: deletions and the reference", () => {
 
     expect(handed).toEqual([]);
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.skipped).toBe(true);
+    expect(verdicts[0]?.kind).toBe("skipped");
     expect(verdicts[0]?.summary).toContain("recorder: its given set holds no file it covers");
     expect(describeSets(sets)).toContain("given: 1 file");
   });
@@ -587,7 +596,7 @@ test("A timeout stops the launcher's engine child", async () => {
   try {
     const { verdicts } = await runWith(root, head, checker, { timeoutMs: 200 });
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.notMeasured).toBe(true);
+    expect(verdicts[0]?.kind).toBe("not-measured");
     expect(verdicts[0]?.summary).toBe("slow: not measured: timed out after 0.2s; retry");
     expect(headline(defined(verdicts[0], "a verdict"))).not.toContain("WORSE");
     const pids = readdirSync(engines).map((file) => readFileSync(join(engines, file), "utf8"));
@@ -613,30 +622,53 @@ test("time limit: the checkers after one not measured still run, so the report i
   write(root, { "a.txt": `alpha\n${MARKER} fresh\n` });
   stage(root);
 
-  const { verdicts } = await compareTrees(root, head, "index", {
-    registry: [SLOW, MARKED],
-    languages: ["fish"],
-    at: "pre-commit",
-    timeoutMs: 200,
-    jobs: 1,
-  });
+  const { verdicts } = await compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry: [SLOW, MARKED],
+      languages: ["fish"],
+      at: "pre-commit",
+      timeoutMs: 200,
+      jobs: 1,
+    },
+  );
 
-  expect(verdicts.map((v) => [v.check, v.notMeasured === true, v.pass])).toEqual([
-    ["slow", true, false],
-    ["marked", false, false],
+  expect(verdicts.map((v) => [v.check, v.kind])).toEqual([
+    ["slow", "not-measured"],
+    ["marked", "measured"],
   ]);
 });
 
-test("time limit: a run with a checker not measured is blocked, and a worse one still worse", () => {
-  const unmeasured: Verdict = { check: "slow", pass: false, notMeasured: true, summary: "slow: …" };
-  const worse: Verdict = { check: "marked", pass: false, summary: "marked: 0 -> 1" };
-  const fine: Verdict = { check: "fine", pass: true, summary: "fine: 0 -> 0" };
+test("a verdict that is both passing and missing does not compile", () => {
+  // @ts-expect-error a verdict is one kind; there is no optional `missing` beside `pass`
+  const both: Verdict = { check: "x", pass: true, missing: true, summary: "x" };
 
-  expect(runOutcome([unmeasured, fine], true)).toEqual({ code: "blocked", deciding: [unmeasured] });
-  expect(runOutcome([unmeasured, worse], true)).toEqual({ code: "worse", deciding: [worse] });
-  expect(runOutcome([unmeasured], false).code).toBe("blocked");
-  expect(runOutcome([worse], false).code).toBe("ok");
-  expect(runOutcome([fine], true)).toEqual({ code: "ok", deciding: [] });
+  expect(both.check).toBe("x");
+});
+
+test("time limit: a run with a checker not measured is blocked, and a worse one still worse", () => {
+  const unmeasured: Verdict = { check: "slow", kind: "not-measured", summary: "slow: …" };
+  const worse: Verdict = {
+    check: "marked",
+    kind: "measured",
+    pass: false,
+    summary: "marked: 0 -> 1",
+  };
+  const fine: Verdict = { check: "fine", kind: "measured", pass: true, summary: "fine: 0 -> 0" };
+
+  const none = { failed: [], blocked: [], warned: [] };
+
+  expect(judge([unmeasured, fine], true, "commit")).toEqual({ ...none, blocked: [unmeasured] });
+  expect(judge([unmeasured, worse], true, "commit")).toEqual({
+    ...none,
+    failed: [worse],
+    blocked: [unmeasured],
+  });
+  expect(judge([unmeasured], false, "commit").blocked).toEqual([unmeasured]);
+  expect(judge([worse], false, "commit")).toEqual(none);
+  expect(judge([fine], true, "commit")).toEqual(none);
 });
 
 // --- the result store ---------------------------------------------------------
@@ -676,10 +708,10 @@ function localPrinter(root: string, name: string): string {
   return bin;
 }
 
-function commitAll(root: string, message: string): string {
+function commitAll(root: string, message: string): Sha {
   stage(root);
   git(root, ["commit", "-q", "-m", message]);
-  return git(root, ["rev-parse", "HEAD"]);
+  return headOf(root);
 }
 
 /** A sandbox whose only commit holds `files`, with `a.ts` then changed to
@@ -715,7 +747,7 @@ test("store: the same content again is a hit on both sides: nothing scores", asy
   const { store, verdicts } = await runWith(root, head, spec);
 
   expect(handed).toHaveLength(2);
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(describeStore(store)).toEqual([
     "store: recorder: reference hit, shipped hit",
     "store: 2 hits, 0 scored",
@@ -816,7 +848,7 @@ test("A new ruleset", async () => {
   write(root, { "rules.cfg": "strict = true\n" });
   git(root, ["commit", "-q", "-m", "rules", "rules.cfg"]);
 
-  await runWith(root, git(root, ["rev-parse", "HEAD"]), spec);
+  await runWith(root, headOf(root), spec);
 
   expect(handed).toHaveLength(4);
   const after = entries(root);
@@ -894,7 +926,7 @@ test("store: a checker whose version cannot be read is never stored, and the rep
 
   const { store, verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(handed).toHaveLength(4);
   expect(entries(root)).toEqual([]);
   expect(describeStore(store)[0]).toBe(
@@ -931,7 +963,7 @@ test("store: an unreadable or wrong-shaped entry is a miss, never a crash", asyn
 
   const { verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(handed).toHaveLength(4);
 });
 
@@ -942,7 +974,7 @@ test("store: a failed run is not stored", async () => {
 
   const { verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(false);
+  expect(verdicts[0]?.kind).toBe("not-measured");
   expect(entries(root)).toEqual([]);
 });
 
@@ -998,7 +1030,7 @@ test("packs: each pack is fetched once per run, and the checker runs the local c
 
   const { verdicts } = await runWith(root, head, spec, { fetchPack: source.fetchPack });
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(source.fetched).toEqual(["p/x"]);
   expect(configs).toEqual(["rules: [one]\n", "rules: [one]\n"]);
 });
@@ -1175,10 +1207,10 @@ test("failed run: a checker whose output cannot be read is not measured, its std
 
   const { verdicts } = await runWith(root, head, broken);
 
-  expect(verdicts.map((v) => [v.notMeasured === true, v.summary])).toEqual([
-    [true, "broken: not measured: boom: config broken; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "broken: not measured: boom: config broken; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
 });
 
 test("failed run: a Python crash is named by its exception, not by the Traceback line", async () => {
@@ -1215,10 +1247,10 @@ test("failed run: a checker killed by a signal is not measured, never worse", as
 
   const { verdicts } = await runWith(root, head, killed);
 
-  expect(verdicts.map((v) => [v.notMeasured === true, v.summary])).toEqual([
-    [true, "killed: not measured: sh killed by SIGKILL; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "killed: not measured: sh killed by SIGKILL; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
 });
 
 test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s", async (mode) => {
@@ -1230,20 +1262,20 @@ test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s",
   const { verdicts, warnings } = await runWith(root, head, spec, { ...RULES, ...PUSH });
 
   if (mode === "ok") {
-    expect(verdicts.map((v) => [v.pass, v.notMeasured === true, v.summary])).toEqual([
-      [false, false, "semgrep-ts: 0 -> 1; worse: a.ts 0 -> 1; 1 new"],
+    expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+      ["measured", "semgrep-ts: 0 -> 1; worse: a.ts 0 -> 1; 1 new"],
     ]);
     expect(warnings).toEqual([]);
-    expect(runOutcome(verdicts, true).code).toBe("worse");
+    expect(judge(verdicts, true, "commit").failed).toHaveLength(1);
     return;
   }
 
   const again = await runWith(root, head, spec, { ...RULES, ...PUSH });
 
-  expect(verdicts.map((v) => [v.pass, v.notMeasured === true, v.summary])).toEqual([
-    [false, true, "semgrep-ts: not measured: semgrep timed out; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "semgrep-ts: not measured: semgrep timed out; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
   expect(headline(defined(verdicts[0], "a verdict"))).not.toContain("WORSE");
   expect(describeStore(again.store).at(-1)).toStartWith("store: 0 hits,");
   expect(entries(root, "semgrep-ts", "pre-push")).toEqual([]);
@@ -1263,7 +1295,7 @@ describe("compareTrees: run times", () => {
     const first = await runWith(root, head, MARKED, { targetMs: 0 });
     const again = await runWith(root, head, MARKED, { targetMs: 0 });
 
-    expect(first.verdicts.map((v) => v.pass)).toEqual([true]);
+    expect(first.verdicts.map((v) => v.kind === "measured" && v.pass)).toEqual([true]);
     const slow = first.warnings.filter((w) => w.startsWith("slow: "));
     expect(slow).toHaveLength(1);
     expect(slow[0]).toMatch(/^slow: marked \d+\.\d s at pre-commit, target 0\.0 s$/);

@@ -23,8 +23,9 @@
 
 import { readHookEvent, runMain } from "../../../lib/hooks-kit.ts";
 import { isRecord } from "../../../lib/outcome.ts";
-import { compareTrees, type Verdict } from "../lib/compare.ts";
+import { compareTrees } from "../lib/compare.ts";
 import { gitPaths, isLangdevRepo, readGatesConfig } from "../lib/config.ts";
+import { describeVerdicts, judge } from "../lib/gate-runner.ts";
 import { editorOf } from "../lib/hookio.ts";
 import {
   clearBlocks,
@@ -57,12 +58,14 @@ interface Regression {
   lines: string[];
 }
 
-function describeVerdicts(verdicts: readonly Verdict[]): string[] {
-  return verdicts.flatMap((v) => [v.summary, ...(v.lines ?? [])]);
+/** The warning naming the first five of `files` as not scored, or none when there are none. */
+function notScored(what: string, files: readonly string[]): string[] {
+  if (files.length === 0) {
+    return [];
+  }
+  const more = files.length > 5 ? ` and ${files.length - 5} more` : "";
+  return [`${what} not scored: ${files.slice(0, 5).join(", ")}${more}`];
 }
-
-const gap = (v: Verdict): boolean =>
-  v.missing === true || v.missingConfig === true || v.notMeasured === true;
 
 /**
  * One tree's judgement against its start commit: every regression to block the stop on, plus every
@@ -75,30 +78,32 @@ async function judgeTree(
   const warnings: string[] = [];
 
   const { languages } = readGatesConfig(tree.root);
-  const { verdicts } = await compareTrees(tree.root, tree.start, "index", {
-    at: "pre-commit",
-    languages,
-    ...testBudgetMs(),
-  });
-  // Only what is staged is scored; an edit the agent left unstaged is named, never judged in silence.
+  const { verdicts } = await compareTrees(
+    tree.root,
+    tree.start,
+    { kind: "index" },
+    {
+      at: "pre-commit",
+      languages,
+      ...testBudgetMs(),
+    },
+  );
+  // Only what is staged is scored; an edit the agent left unstaged, or a file it never added, is
+  // named, never judged in silence.
   const unstaged = gitPaths(tree.root, ["diff", "--name-only", "-z"]) ?? [];
-  if (unstaged.length > 0) {
-    const named = unstaged.slice(0, 5).join(", ");
-    const more = unstaged.length > 5 ? ` and ${unstaged.length - 5} more` : "";
-    warnings.push(`unstaged changes not scored: ${named}${more}`);
+  const untracked = gitPaths(tree.root, ["ls-files", "--others", "--exclude-standard", "-z"]) ?? [];
+  warnings.push(...notScored("unstaged changes", unstaged), ...notScored("untracked", untracked));
+  const { failed, warned } = judge(verdicts, true, "stop");
+  if (warned.length > 0) {
+    warnings.push(`langdev: ${describeVerdicts(warned).join("; ")}`);
   }
-  const environment = verdicts.filter((v) => !v.pass && gap(v));
-  const worse = verdicts.filter((v) => !(v.pass || gap(v)));
-  if (environment.length > 0) {
-    warnings.push(`langdev: ${describeVerdicts(environment).join("; ")}`);
-  }
-  if (worse.length > 0) {
-    regressions.push({ comparison: "langdev", lines: describeVerdicts(worse) });
+  if (failed.length > 0) {
+    regressions.push({ comparison: "langdev", lines: describeVerdicts(failed) });
   }
 
   // The stop gate compares against the agent's own start point, so a whole session is judged as one
   // aggregate drift rather than commit by commit.
-  const structure = await compareStructure(tree.root, tree.start, "index");
+  const structure = await compareStructure(tree.root, tree.start, { kind: "index" });
   const structureVerdict = verdict(structure);
   if (structureVerdict.pass) {
     // Each summary says what it is — a quality line, or a tree sentrux had no ruleset to score.

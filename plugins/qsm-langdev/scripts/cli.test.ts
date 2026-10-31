@@ -136,7 +136,11 @@ describe("qsm-langdev cli: repository state", () => {
     expect(r.exit).toBe(3);
     const envelope = envelopeOf(r.stdout);
     expect(envelope).toMatchObject({ code: "worse", exit: 3 });
-    expect(recordsOf(recordOf(envelope.data)?.verdicts)?.some((v) => v.pass !== true)).toBe(true);
+    expect(
+      recordsOf(recordOf(envelope.data)?.verdicts)?.some(
+        (v) => v.kind !== "skipped" && v.pass !== true,
+      ),
+    ).toBe(true);
   }, 60_000);
 
   test("check hands the paths it is given to the given set and reports each set's size", () => {
@@ -177,6 +181,24 @@ describe("qsm-langdev cli: gates", () => {
     const r = run(["hook", "pre-commit"], { home });
     expect(r.exit).toBe(1);
     expect(r.stderr).toContain("unknown gate 'nonsense'");
+  }, 60_000);
+
+  test("The first commit of a repository is reported, never blocked", () => {
+    const home = sandbox();
+    const root = join(home, "work");
+    git(root, "init", "-q");
+    writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho $1\n");
+    expect(run(["init"], { home }).exit).toBe(0);
+    writeFileSync(
+      join(root, ".qsm-langdev", "gates.json"),
+      `${JSON.stringify({ hooks: { "pre-commit": ["langdev"], "pre-push": [] }, languages: ["shell"] })}\n`,
+    );
+    git(root, "add", ".");
+
+    const r = run(["hook", "pre-commit"], { home });
+
+    expect(r.stderr).toContain("langdev: file sets:");
+    expect(r.exit).toBe(0);
   }, 60_000);
 
   test("The installed git hook in an un-init'd repository", () => {

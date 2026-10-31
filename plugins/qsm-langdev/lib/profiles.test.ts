@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
-import { hasScaffoldedConfig, scaffoldProfile } from "./profiles.ts";
+import { hasScaffoldedConfig, profileGaps, scaffoldProfile } from "./profiles.ts";
 import { PROFILE_DATA } from "./profiles-data.ts";
 
 const SHELL_CONFIG = ".shellcheckrc";
@@ -78,5 +78,11 @@ describe("hasScaffoldedConfig", () => {
 
   test("a configless language has nothing to scaffold and always passes", () => {
     expect(hasScaffoldedConfig(sandboxDir("qsm-langdev-profiles-"), "fish")).toBe(true);
+  });
+});
+
+describe("profileGaps", () => {
+  test("every profile ships a config for every language that reads one", () => {
+    expect(profileGaps()).toEqual([]);
   });
 });

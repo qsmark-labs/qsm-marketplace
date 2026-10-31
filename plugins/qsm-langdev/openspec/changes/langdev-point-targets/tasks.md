@@ -67,7 +67,7 @@
 
 ## 4. The registry gate
 
-- [ ] 4.1 `registryGaps` fails a language without both profiles (but `fish`) or without a checker at
+- [x] 4.1 `registryGaps` fails a language without both profiles (but `fish`) or without a checker at
       a point. Files: `lib/registry.ts`, `lib/registry.test.ts`. Proof: `bun test` passes on the
       real registry, and fails with `dotnet: no checker at edit` when the test removes dotnet's edit
       checkers. A language the measurements of 2.1 leave without an edit checker is a question for

@@ -19,7 +19,6 @@ import {
   doctorRows,
   headline,
   printRunLines,
-  runOutcome,
   type StructuralCheckerStatus,
   structuralCheckerStatus,
   type Verdict,
@@ -33,7 +32,7 @@ import {
   readGatesConfig,
   writeGatesConfig,
 } from "../lib/config.ts";
-import { type GateOutcome, gatesCode, runGates, SELF_GATES } from "../lib/gate-runner.ts";
+import { type GateOutcome, gatesCode, judge, runGates, SELF_GATES } from "../lib/gate-runner.ts";
 import {
   HOOK_LANGS,
   HOOK_NAMES,
@@ -42,14 +41,13 @@ import {
   installHooks,
   uninstallHooks,
 } from "../lib/git-hooks.ts";
-import { resolveRef } from "../lib/gitref.ts";
-import { profileGaps, type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
+import { resolveRef, type Sha } from "../lib/gitref.ts";
+import { type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
 import {
   ENFORCEMENT_POINTS,
   LANGUAGES,
   type Language,
   REGISTRY,
-  registryGaps,
   resolveLanguage,
 } from "../lib/registry.ts";
 import { semgrepLogin, semgrepLoginWarning } from "../lib/semgrep-login.ts";
@@ -94,7 +92,7 @@ function printVerdicts(verdicts: readonly Verdict[], changedCount: number): void
  * `against` resolved to a commit id, or null when the tree has no previous commit yet — the
  * caller's own default, "HEAD".
  */
-function resolveAgainst(root: string, against: string, explicit: boolean): string | null {
+function resolveAgainst(root: string, against: string, explicit: boolean): Sha | null {
   const beforeRef = resolveRef(root, against);
   if (beforeRef === null && explicit) {
     throw new QsmError("usage", `unknown commit '${against}'`);
@@ -117,7 +115,7 @@ const check: Handler = async (call) => {
   const { changed, sets, verdicts, store, warnings } = await compareTrees(
     root,
     beforeRef,
-    "index",
+    { kind: "index" },
     {
       at,
       languages: lang === undefined ? config.languages : parseLanguages(lang),
@@ -139,8 +137,13 @@ const check: Handler = async (call) => {
     verdicts,
     warnings,
   };
-  const { code, deciding } = runOutcome(verdicts, beforeRef !== null);
-  return code === "ok" ? ok(data) : fail(code, deciding.map((v) => v.summary).join("; "), data);
+  const { failed, blocked } = judge(verdicts, beforeRef !== null, "commit");
+  if (failed.length > 0) {
+    return fail("worse", failed.map((v) => v.summary).join("; "), data);
+  }
+  return blocked.length > 0
+    ? fail("blocked", blocked.map((v) => v.summary).join("; "), data)
+    : ok(data);
 };
 
 const list: Handler = () => {
@@ -194,10 +197,9 @@ const doctor: Handler = async (call) => {
   const config = readGatesConfig(root);
   const specs = REGISTRY.filter((spec) => languageEnabled(spec.language, config.languages));
   const rows = await doctorRows(specs);
-  const gaps = [...registryGaps(), ...profileGaps()];
   const structural = await structuralCheckerStatus();
   const text = [...rows.map(describeCheckRow), describeStructuralCheck(structural)].join("\n");
-  const warnings = gaps.map((gap) => `registry or profile gap: ${gap}`);
+  const warnings: string[] = [];
   // an absent semgrep is its MISSING row above, never a login question
   const semgrep = rows.some((row) => row.binary === "semgrep" && row.present);
   const login = semgrep ? semgrepLoginWarning(semgrepLogin()) : null;
@@ -205,7 +207,7 @@ const doctor: Handler = async (call) => {
     warnings.push(login);
   }
   warnings.push(...slowCheckers(root));
-  const data = { checks: rows, gaps, structural };
+  const data = { checks: rows, structural };
   // a gate binary that is absent fails the hook, so it is the verdict, not a row
   const gone = rows.some((row) => !row.present && !row.timedOut) || !structural.patched;
   // a probe that only ran out of time proves nothing absent: the run is blocked until a retry

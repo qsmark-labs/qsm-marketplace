@@ -5,7 +5,7 @@ import { type Handler, optionalString, requiredString } from "../../../lib/cli-b
 import { fail, ok } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { editFindings } from "../lib/edit-findings.ts";
-import { resolveRef } from "../lib/gitref.ts";
+import { resolveRef, type Sha } from "../lib/gitref.ts";
 import { type Editor, editedTrees, MAIN_AGENT, readStartPoint } from "../lib/state.ts";
 import {
   compareIndexSince,
@@ -17,7 +17,7 @@ import { err, requireRepo } from "./call.ts";
 
 interface StructureTree {
   root: string;
-  start: string;
+  start: Sha;
 }
 
 /**

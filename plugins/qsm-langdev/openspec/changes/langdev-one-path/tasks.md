@@ -1,6 +1,6 @@
 ## 0. Close langdev-point-targets first (finding 1, 18)
 
-- [ ] 0.1 Task 4.1 of `langdev-point-targets`: assert `profileGaps()` empty in
+- [x] 0.1 Task 4.1 of `langdev-point-targets`: assert `profileGaps()` empty in
   `lib/profiles.test.ts` and `registryGaps()` empty in `lib/registry.test.ts`, with the negative
   case 4.1 names (a language without a checker at `edit`); both leave `doctor`. Files:
   `lib/profiles.test.ts`, `lib/registry.test.ts`, `scripts/cli.ts`. Proof: those two test files
@@ -13,21 +13,21 @@
 
 ## 1. Batch A: verdicts, sides and one judge (5, 6, 16, 9, 3, 17, 14 partly)
 
-- [ ] 1.1 `Verdict` and `Score` failure as unions on `kind`; every reader one switch. Files:
+- [x] 1.1 `Verdict` and `Score` failure as unions on `kind`; every reader one switch. Files:
   `lib/compare.ts`, `lib/result-store.ts`, `lib/gate-runner.ts`, `hooks/gate-hook.ts`,
   `scripts/cli.ts`, `scripts/cli-judge.ts`, tests. Proof: a test building `{pass: true, missing:
   true}` carries `@ts-expect-error`; `bun run typecheck`; the qsm-langdev suite green.
-- [ ] 1.2 Tree sides typed `{kind: "index"} | {kind: "commit"; sha: Sha}`, `Sha` branded by
+- [x] 1.2 Tree sides typed `{kind: "index"} | {kind: "commit"; sha: Sha}`, `Sha` branded by
   `resolveRef`. Files: `lib/compare.ts`, `lib/structure.ts`, `lib/gitref.ts`, `lib/state.ts`,
   `lib/gate-runner.ts`, `hooks/gate-hook.ts`, `scripts/cli.ts`. Proof: `grep -rn '=== "index"'
   lib` empty; typecheck. Blocked by 1.1.
-- [ ] 1.3 The first commit is reported, not blocked. Files: `lib/gate-runner.ts`,
+- [x] 1.3 The first commit is reported, not blocked. Files: `lib/gate-runner.ts`,
   `lib/gate-runner.test.ts`. Proof: scenario "The first commit with a finding" as a test in a fresh
   repo through the real hook.
-- [ ] 1.4 One judge with the policy table of D1; one `describeVerdicts`. Files:
+- [x] 1.4 One judge with the policy table of D1; one `describeVerdicts`. Files:
   `lib/gate-runner.ts`, `hooks/gate-hook.ts`, tests. Proof: the two scenarios of "one rule" as
   tests; the existing gate-hook and gate-runner tests pass unchanged. Blocked by 1.1.
-- [ ] 1.5 The stop gate names untracked files. Files: `hooks/gate-hook.ts`, its test. Proof: a new
+- [x] 1.5 The stop gate names untracked files. Files: `hooks/gate-hook.ts`, its test. Proof: a new
   untracked file at a stop gives `untracked, not scored: <file>` and no block.
 
 ## 2. Batch B: one process runner and one git helper (2, 11, 10, 20)
