@@ -92,7 +92,7 @@
 
 ## 6. Docs and landing
 
-- [ ] 6.1 `README.md` and `USAGE.md`: the four points, their targets and timeouts, the `slow:` line,
+- [x] 6.1 `README.md` and `USAGE.md`: the four points, their targets and timeouts, the `slow:` line,
   the doctor warning. Proof: `bun run validate` and markdownlint pass. Blocked by 3.2 and 5.3.
 - [ ] 6.2 Measure again the table of the design's Context on the same machine and add the after
       column to `measurements.md`. Proof: edit `.ts` under 7.5 s at load 15. Blocked by everything

@@ -603,8 +603,6 @@ interface Evaluation {
   renames: Renames;
 }
 
-/** A side narrowed to one checker, with where its results are kept and the
- * local copy of each rule pack the checker names that the run fetched. */
 /** A side and the local copy of each rule pack its checker names. */
 type RuledSide = Side & { rules: LocalRules };
 
@@ -960,7 +958,7 @@ function engage(selected: readonly CheckSpec[], options: CompareOptions): CheckS
 /** What every checker of a run shares: the store, each binary's version,
  * and where each checker's use of the store is recorded. */
 interface RunContext {
-  /** The limit a checker gets, read when it starts: under a deadline, what is left of it. */
+  /** The limit a checker gets, read when it starts: at the edit point what is left of the shared deadline. */
   timeoutMs: number;
   renames: Renames;
   changed: readonly string[];

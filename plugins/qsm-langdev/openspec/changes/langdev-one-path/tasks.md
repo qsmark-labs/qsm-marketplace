@@ -69,10 +69,12 @@
   no `agent_id`; `claude plugin validate`; then in a real session a staged regression blocks the
   main agent's stop once.
 - [x] 4.2 `doctor`'s language line says what the code does. Files: `scripts/cli.ts`, its test.
-- [ ] 4.3 README, USAGE, INSTALL, `qsm.json` and comments say what the code does: the four
+- [x] 4.3 README, USAGE, INSTALL, `qsm.json` and comments say what the code does: the four
   points, targets, `slow:`, doctor's median, staged only, edit in place, the real install command,
   the test seam named as a test seam. Proof: `grep -rn "against HEAD\|55000\|working tree"
   plugins/qsm-langdev --include=*.md` shows no stale line; `bun run validate`.
+  Done: the grep over the plugin outside `openspec/` leaves only correct lines (the commit gate's
+  index against HEAD, a test's own text); `bun run validate` green.
 - [x] 4.4 One generated negative eval per language plugin; the six copies go. Files:
   `.gates/plugin-eval.ts`, `plugins/qsm-langdev-*/evals/unrelated-negative/`. Proof: `bun run eval
   qsm-langdev-ts` still reports the negative case.

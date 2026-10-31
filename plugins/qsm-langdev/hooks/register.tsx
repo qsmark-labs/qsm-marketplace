@@ -51,7 +51,7 @@ function registerGuard(on: On): void {
   }));
 }
 
-/** After a Write, Edit or NotebookEdit ran, the file's findings against HEAD go to the model as the
+/** After a Write, Edit or NotebookEdit ran, the file's findings, checked in place, go to the model as the
  * result's context. Advisory: a failure leaves the result as the tool made it. */
 function registerEditFindings(on: On): void {
   on("tool.call", async ($, e, next) => {
