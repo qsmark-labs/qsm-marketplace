@@ -37,14 +37,14 @@ jobs:
       # type-aware rules) and oxfmt for its TypeScript gate and fixers,
       # yamllint, taplo, semgrep, lizard and jscpd because the pre-commit gate marks a checker whose
       # tool is absent `worse` and blocks the commit (init writes yaml and toml, a.ts is code),
-      # fish (with fish_indent) and shellmetrics for qsm-langdev's fish and shell checkers that the
+      # fish (with fish_indent), shfmt and shellmetrics for qsm-langdev's fish and shell checkers the
       # gate tests run, imagemagick 7 for the `magick` of qsm-uix (apt ships 6, which has no
       # `magick`), openvpn for the key material of qsm-secrets' capture corpus, and the upstream
       # openspec CLI for qsm-openspec doctor.
       - name: Install the tools the tests run
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install worktrunk gitleaks rumdl markdownlint-cli2 imagemagick yamllint taplo openvpn fish
+          brew install worktrunk gitleaks rumdl markdownlint-cli2 imagemagick yamllint taplo openvpn fish shfmt
           pipx install semgrep
           pipx install lizard
           bun add -g @fission-ai/openspec
