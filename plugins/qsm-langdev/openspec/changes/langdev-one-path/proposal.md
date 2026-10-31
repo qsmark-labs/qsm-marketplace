@@ -13,8 +13,8 @@ slo zjednodusit, a kde by jsme mohli enforcnout lepsi code contracts / interface
 ## What Changes
 
 - One judge: the commit gate and the stop gate classify verdicts through one function and one
-  policy (a failed checker blocks; a missing binary or config blocks the commit and warns the
-  stop).
+  policy (a worse checker blocks both; a missing binary or config, or a checker not measured,
+  blocks the commit and warns the stop).
 - Every process a run starts (checker, probe, fixer, sentrux, gitleaks, detect-secrets, the rule
   pack fetch, the semgrep login probe) is bounded by its point's timeout from the `POINTS` table
   and its process group terminated; the private 15 s and 10 s limits go.

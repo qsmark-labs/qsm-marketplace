@@ -25,9 +25,10 @@ that returns gate outcomes, and one `describeVerdicts`. The policy is one switch
 
 | Verdict kind | Commit and push gate | Stop gate |
 | --- | --- | --- |
-| measured, worse | block | block |
+| measured, worse | block (`worse`) | block |
 | missing-binary, missing-config | block | warn |
-| not-measured, skipped | report | report |
+| not-measured | block (`blocked`: nothing proved the tree no worse) | warn |
+| skipped | report | report |
 
 ### D2. One process runner (2)
 

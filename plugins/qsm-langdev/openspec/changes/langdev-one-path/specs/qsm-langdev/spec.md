@@ -4,9 +4,10 @@
 
 The commit and push gates and the session-stop gate SHALL classify every
 verdict through one judgement with one policy: a measured checker that is
-worse blocks all of them; a missing binary or a missing config blocks the
-commit and the push and is a warning at a stop; a checker that was not
-measured or was skipped is reported and decides nothing.
+worse blocks all of them; a missing binary, a missing config or a checker
+that was not measured blocks the commit and the push (nothing proved the tree
+no worse) and is a warning at a stop; a skipped checker is reported and
+decides nothing.
 
 #### Scenario: A missing config at a commit and at a stop
 
