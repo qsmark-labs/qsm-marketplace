@@ -16,7 +16,7 @@ import {
   type StructureResult,
   verdict,
 } from "./structure.ts";
-import { headOf } from "./test-support.ts";
+import { headOf, processWith } from "./test-support.ts";
 import type { Sha } from "./gitref.ts";
 
 const CAUSES = {
@@ -323,7 +323,7 @@ describe("compareStructure at its limit", () => {
   test("The structural checker hangs", async () => {
     const originalPath = process.env.PATH;
     const bin = sandboxDir("qsm-langdev-structure-bin-");
-    // The engine child sleeps for a number nothing else does, so `pgrep -f` names it.
+    // The engine child sleeps for a number nothing else does, so its command line names it.
     const marker = `${process.pid}${Date.now()}`;
     writeFileSync(join(bin, "sentrux"), `#!/bin/sh\nsleep ${marker}.5 &\nwait\n`);
     chmodSync(join(bin, "sentrux"), 0o755);
@@ -340,7 +340,7 @@ describe("compareStructure at its limit", () => {
         reason: "reference tree: sentrux did not finish within 0.2s",
       });
       expect(verdict(result).pass).toBe(false);
-      expect(spawnSync("pgrep", ["-f", `sleep ${marker}`]).status).toBe(1);
+      expect(processWith(`sleep ${marker}`)).toBe(false);
     } finally {
       process.env.PATH = originalPath;
     }

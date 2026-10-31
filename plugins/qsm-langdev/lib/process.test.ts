@@ -2,18 +2,18 @@
 // starts a run with a sleeping checker, and is sent SIGTERM mid-run.
 
 import { expect, test } from "bun:test";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
+import { processWith } from "./test-support.ts";
 
 const PROCESS = resolve(import.meta.dir, "process.ts");
 
-const marked = (marker: string): boolean =>
-  spawnSync("pgrep", ["-f", `sleep ${marker}`]).status === 0;
+const marked = (marker: string): boolean => processWith(`sleep ${marker}`);
 
 test("SIGTERM to the parent ends the checker's process group before the parent exits", async () => {
   const dir = sandboxDir("qsm-langdev-process-");
-  // The checker sleeps for a number nothing else does, so `pgrep -f` names it.
+  // The checker sleeps for a number nothing else does, so its command line names it.
   const marker = `${process.pid}${Date.now()}`;
   writeIn(
     dir,
