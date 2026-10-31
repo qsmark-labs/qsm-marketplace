@@ -48,7 +48,11 @@ jobs:
           pipx install semgrep
           pipx install lizard
           bun add -g @fission-ai/openspec
-          bun add -g oxlint@1.88.0 oxlint-tsgolint@7.0.2004 oxfmt@0.73.0 jscpd@5.3.2
+          bun add -g oxlint@1.88.0 oxlint-tsgolint@7.0.2004 oxfmt@0.73.0 jscpd@5.3.2 knip@6.38.0 dependency-cruiser@18.4.0
+          uv tool install ruff==0.17.3
+          uv tool install vulture==2.16
+          uv tool install pyright==1.1.414
+          uv tool install bandit==1.9.4
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           # openvpn installs into sbin.
           echo "$(brew --prefix)/sbin" >> "$GITHUB_PATH"
