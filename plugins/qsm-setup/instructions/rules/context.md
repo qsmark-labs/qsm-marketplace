@@ -64,7 +64,13 @@ already said.
 7. An operation that may run over about 60 seconds shows progress (the monitor tool, or a script
    that prints each iteration) and has an iteration cap and a wall-clock timeout, because a
    silent long run looks like a hang.
-8. After two failed attempts at debugging below the application (kernel, drivers, filesystem,
+8. A run that loads the person's machine on purpose (CPU burners, a stress test, a load to
+   measure under) is asked for first, because it is their machine while they work on it. The
+   person in their words: "nedosuj mi PC".
+9. When the person asked to clean up and prepare work, not to finish it, a review's findings
+   become task lines with their decisions, never code in the same round. The person: "zase to
+   neprehanej s tou implementaci ted".
+10. After two failed attempts at debugging below the application (kernel, drivers, filesystem,
    boot), stop and search the exact error message, because someone has hit it and blind
    iteration costs boot cycles.
 

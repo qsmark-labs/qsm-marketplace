@@ -26,6 +26,9 @@ is the writing skill; worktrees are the worktrunk skill; threads are the review-
    because a second round trip costs more than a one-line fix; a fix that changes more than the
    finding's lines gets the reviewer back on that fix. The person in their words: "spis napred
    simplify a potom review".
-5. Ask `gh` for `--json` when the output is read by a program. Read fresh comments with
+5. A merge or push runs only after the commit it carries succeeded: never chain them after a
+   commit in one command, because a gate that blocks the commit leaves the merge carrying the
+   tree without it.
+6. Ask `gh` for `--json` when the output is read by a program. Read fresh comments with
    `gh api repos/<owner>/<repo>/issues/<n>/comments`, because `gh issue list --json comments` lags
    behind.

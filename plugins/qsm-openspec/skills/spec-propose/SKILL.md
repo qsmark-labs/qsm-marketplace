@@ -53,7 +53,10 @@ spec-apply resumes after.
    the completed dependencies. Writer constraints in the instructions are for you, never copied
    in.
 3. **Delta specs carry real requirements and scenarios.** An empty change validates and proves
-   nothing. A scenario title describes the behaviour a user or caller sees.
+   nothing. A scenario title describes the behaviour a user or caller sees. A MODIFIED requirement
+   keeps every scenario the current spec has, because the archive refuses one that drops a
+   scenario: a scenario that must go goes by REMOVED plus ADDED under a new requirement name. A
+   RENAMED `- FROM:` and `- TO:` each stays on one line, or the archive cannot find the name.
 4. **tasks.md is the breakdown of the one task, and stays in the file.** Lines are in dependency
    order: each can be shown working alone, fits one context window, names the files it owns,
    the proof that shows it, and what blocks it, because a line that proves nothing until the

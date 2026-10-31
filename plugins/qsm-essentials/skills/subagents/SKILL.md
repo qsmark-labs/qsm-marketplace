@@ -29,7 +29,9 @@ does what").
    changes. The implementer declares `isolation: worktree`; any other agent that edits gets
    `isolation: "worktree"` on the dispatch. The harness then cuts the worktree through wt from the
    branch of your current directory, your own session's worktree, so change into the target
-   repository first. An implementation worker is your extension: run, implement, sync, as if you
+   repository first and check `git branch --show-current` names your branch: after a merge or
+   push in the main checkout the shell may still stand there, and the worker is then cut from
+   main. An implementation worker is your extension: run, implement, sync, as if you
    wrote it yourself. So sync your branch before dispatch (`git fetch`, then merge `origin/main`
    into it; rebase only when it is needed), and merge the worker's branch back into yours right
    after review, in the same turn.
