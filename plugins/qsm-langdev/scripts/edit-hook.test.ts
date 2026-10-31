@@ -173,6 +173,17 @@ describe("qsm-langdev edit hook: markdown line length", () => {
     expect(readFileSync(join(root, "notes.md"), "utf8")).not.toContain(long);
     expect(r.text ?? "").not.toContain("MD013");
   });
+
+  test("an OpenSpec rename line stays one line while an ordinary long line is rewrapped", () => {
+    const to = `- TO: \`### Requirement: ${"name ".repeat(22)}end\``;
+    expect(to.length).toBeGreaterThan(100);
+    const { root, r } = editMarkdown(`## RENAMED Requirements\n\n${to}\n\n${long}\n`);
+
+    const written = readFileSync(join(root, "notes.md"), "utf8");
+    expect(written.split("\n")).toContain(to);
+    expect(written).not.toContain(long);
+    expect(r.text ?? "").not.toContain("MD013");
+  });
 });
 
 describe("qsm-langdev pre-commit hook: markdown line length", () => {
@@ -199,22 +210,37 @@ describe("qsm-langdev pre-commit hook: static fixers", () => {
   const initRepo = () => {
     const { root } = repoWithFile("seed.ts", "export {};\n");
     runBin(CLI, ["init", root, "--profile", "general"], { env: tmpEnv() });
+    // knip, a commit-point checker, is not measured on either side without a committed package.json
+    writeFileSync(join(root, "package.json"), "{}\n");
+    commit(root, "configs");
     return root;
   };
 
   test("an oxfmt format defect and a markdown rule are fixed in the staged blobs, the hook passes", () => {
     const root = initRepo();
-    writeFileSync(join(root, "a.ts"), "export const a  =  1\n");
+    writeFileSync(join(root, "a.test.ts"), "export const a  =  1\n");
     writeFileSync(join(root, "a.md"), "# A\n\n*   one\n*   two\n");
     git(root, "add", "-A");
 
     const hook = preCommit(root);
 
     expect(hook.exit).toBe(0);
-    expect(staged(root, "a.ts")).toBe("export const a = 1;");
+    expect(staged(root, "a.test.ts")).toBe("export const a = 1;");
     // git() trims its output, so the blob's byte size proves the final newline survived
-    expect(git(root, "cat-file", "-s", ":a.ts")).toBe(String("export const a = 1;\n".length));
+    expect(git(root, "cat-file", "-s", ":a.test.ts")).toBe(String("export const a = 1;\n".length));
     expect(staged(root, "a.md")).toContain("* one\n");
+  }, 60_000);
+
+  test("an unused export is blocked by knip at the commit gate, not left for the push", () => {
+    const root = initRepo();
+    mkdirSync(join(root, "lib"));
+    writeFileSync(join(root, "lib", "a.ts"), "export const a = 1;\n");
+    git(root, "add", "-A");
+
+    const hook = preCommit(root);
+
+    expect(hook.exit).not.toBe(0);
+    expect(hook.stderr).toContain("knip");
   }, 60_000);
 
   test("a finding no fixer can rewrite still blocks", () => {

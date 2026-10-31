@@ -58,6 +58,24 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/b3bfff2af6880443112cdbf2ea449440b30ab9b0/shellmetrics -o "$HOME/.local/bin/shellmetrics"
           chmod +x "$HOME/.local/bin/shellmetrics"
+      # One run names every checker binary the tests drive that the runner lacks, so a missing tool
+      # is not found one failed test at a time. doctor reads the registry; a scratch repository
+      # enables the languages the suite exercises (docs and multi are always on).
+      - name: Every checker binary is on PATH
+        shell: bash
+        run: |
+          probe="$(mktemp -d)"
+          git init -q "$probe"
+          mkdir "$probe/.qsm-langdev"
+          echo '{"languages":["ts","py","shell","fish","rust"]}' > "$probe/.qsm-langdev/gates.json"
+          report="$(bun plugins/qsm-langdev/scripts/cli.ts doctor "$probe" --json || true)"
+          rm -rf "$probe"
+          missing="$(jq -r '.data.checks[] | select(.present | not) | "  \(.binary) (checker \(.check)): \(.install)"' <<<"$report")"
+          if [ -n "$missing" ]; then
+            echo "checker binaries missing from PATH:" >&2
+            echo "$missing" >&2
+            exit 1
+          fi
       # qsm-statusline doctor is `missing` unless the compiled bin is on PATH (AGENTS.md, Iron Law 9).
       - name: Compile the qsm-statusline bin onto PATH
         run: |
