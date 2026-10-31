@@ -49,16 +49,16 @@
 
 ## 3. Batch C: config, registry and less code (4, 7, 8, 14, 15, 19, 24)
 
-- [ ] 3.1 Delete the import graph and `changed+N` (D6). Proof: `grep -rn
+- [x] 3.1 Delete the import graph and `changed+N` (D6). Proof: `grep -rn
   "changedPlus\|import-graph\|noExtractor" plugins/qsm-langdev` empty; suite green.
-- [ ] 3.2 Gates config fails loud; `GateName` and `HookPoint` types (D4, D5). Files:
+- [x] 3.2 Gates config fails loud; `GateName` and `HookPoint` types (D4, D5). Files:
   `lib/config.ts`, `lib/gate-runner.ts`, `lib/registry.ts`, `lib/git-hooks.ts`, tests. Proof: the
   two scenarios of "fails loud" as tests.
-- [ ] 3.3 bandit needs `bandit.yaml`: a per-checker missing config. Files: `lib/registry.ts`,
+- [x] 3.3 bandit needs `bandit.yaml`: a per-checker missing config. Files: `lib/registry.ts`,
   `lib/compare.ts`, a test. Proof: scenario "A checker's own config is missing".
-- [ ] 3.4 Dead plumbing out: `Judged.failedRun`, `module`, `Install.prereq` and `pms`, the second
+- [x] 3.4 Dead plumbing out: `Judged.failedRun`, `module`, `Install.prereq` and `pms`, the second
   `hasNoExtension`, `StructureTree`, `compareIndexSince`. Proof: typecheck, lint, validate green.
-- [ ] 3.5 Hooks shell only; `install --lang` goes from `qsm.json` and the noun. Files:
+- [x] 3.5 Hooks shell only; `install --lang` goes from `qsm.json` and the noun. Files:
   `lib/git-hooks.ts`, its test, `scripts/cli.ts`, `qsm.json`. Proof: an existing python hook is
   named with the line to add; `bun run validate`.
 

@@ -13,7 +13,7 @@ import {
   pathsWithAttr,
   trackedFiles,
 } from "./config.ts";
-import { changedPlusSet, describeSets, givenSet, type SetSize, setName } from "./file-sets.ts";
+import { describeSets, givenSet, type SetSize } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
 import type { Sha, TreeSide } from "./gitref.ts";
@@ -22,7 +22,6 @@ import { recordRun, type Timing } from "./timings.ts";
 import {
   asRunAt,
   type CheckSpec,
-  installLine,
   JOBS,
   type Language,
   type LocalRules,
@@ -571,8 +570,6 @@ interface CheckerResult {
   pass: boolean;
   summary: string;
   notMeasured?: true;
-  /** The cause, when not measured because a run failed. */
-  failedRun?: string;
   output?: string;
   lines?: string[];
   tally?: Tally;
@@ -633,7 +630,7 @@ function unscored(name: string, current: Score, previous: Score, timeoutMs: numb
     (previousCause === undefined ? undefined : `previous version: ${previousCause}`);
   if (failed !== undefined) {
     const summary = `${name}: not measured: ${failed}; retry`;
-    return { pass: false, notMeasured: true, failedRun: failed, summary };
+    return { pass: false, notMeasured: true, summary };
   }
   if ("reason" in current) {
     return { pass: false, summary: `${name}: ${current.reason}` };
@@ -896,16 +893,19 @@ function missingPrerequisiteVerdicts(
       return {
         check: spec.name,
         kind: "missing-binary",
-        summary: `${spec.binary} is not installed — install: ${installLine(spec.install)}`,
+        summary: `${spec.binary} is not installed — install: ${spec.install}`,
       };
     });
 
   return [...missingBinaryVerdicts, ...missingConfigVerdicts(selected, root)];
 }
 
-/** One verdict per language of `selected` that has no profile-scaffolded config here. */
+/**
+ * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
+ * selected checker whose own config file is absent.
+ */
 function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Verdict[] {
-  return [...new Set(selected.map((spec) => spec.language))]
+  const languages = [...new Set(selected.map((spec) => spec.language))]
     .filter((language) => !hasScaffoldedConfig(root, language))
     .map((language) => ({
       check: `${language} config`,
@@ -914,6 +914,16 @@ function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Ve
         `${language}: no profile-scaffolded config in this repository — run ` +
         `'qsm-langdev init', or remove '${language}' from .qsm-langdev/gates.json`,
     }));
+  const own = selected
+    .filter((spec) => spec.ownConfig !== undefined && !existsSync(join(root, spec.ownConfig)))
+    .map((spec) => ({
+      check: `${spec.name} config`,
+      kind: "missing-config" as const,
+      summary:
+        `${spec.name}: ${spec.ownConfig} is missing — create it ('qsm-langdev init'), ` +
+        `or remove ${spec.name} from the selection`,
+    }));
+  return [...languages, ...own];
 }
 
 /**
@@ -937,37 +947,6 @@ function resolveGiven(
 function engage(selected: readonly CheckSpec[], options: CompareOptions): CheckSpec[] {
   const point = options.at ?? "pre-commit";
   return selected.map((spec) => asRunAt(spec, point));
-}
-
-/** Every set a selected checker declares, by name, each computed once:
- * `changed` and `given` are handed in; every `changed+N` is built here from
- * the import graph of both sides. The sizes of the `changed+N` sets are pushed onto `sizes`. */
-async function setsFor(
-  base: {
-    root: string;
-    changed: readonly string[];
-    given: readonly string[];
-  },
-  selected: readonly CheckSpec[],
-  trees: readonly Side[],
-  sizes: SetSize[],
-): Promise<Map<string, ReadonlySet<string>>> {
-  const sets = new Map<string, ReadonlySet<string>>([
-    ["changed", new Set(base.changed)],
-    ["given", new Set(base.given)],
-  ]);
-  const depths = new Set(
-    selected.flatMap((spec) =>
-      typeof spec.fileSet === "string" ? [] : [spec.fileSet.changedPlus],
-    ),
-  );
-  for (const n of [...depths].toSorted((a, b) => a - b)) {
-    const { files, noExtractor } = await changedPlusSet(base.root, trees, base.changed, n);
-    const name = setName({ changedPlus: n });
-    sets.set(name, new Set(files));
-    sizes.push({ set: name, files: files.length, noExtractor });
-  }
-  return sets;
 }
 
 /** What every checker of a run shares: the store, each binary's version,
@@ -1110,12 +1089,6 @@ function scoredASide(use: StoreUse | undefined): boolean {
   return (use?.shipped.scored ?? 0) + (use?.reference?.scored ?? 0) > 0;
 }
 
-/** A verdict, and the cause when it is not measured because a run failed. */
-interface Judged {
-  verdict: Verdict;
-  failedRun?: string;
-}
-
 /** One selected checker over its declared set on both sides; a set holding
  * no file the checker covers on either side is a reported skip, not a run. */
 async function verdictFor(
@@ -1123,15 +1096,15 @@ async function verdictFor(
   sides: Sides<Side>,
   set: ReadonlySet<string>,
   context: RunContext,
-): Promise<Judged> {
+): Promise<Verdict> {
   const narrowed = {
     before: sides.before === null ? null : narrow(sides.before, spec, set),
     after: narrow(sides.after, spec, set),
   };
   if (narrowed.after.files.length === 0 && (narrowed.before?.files.length ?? 0) === 0) {
-    const name = setName(spec.fileSet);
+    const name = spec.fileSet;
     const summary = `${spec.name}: its ${name} set holds no file it covers — not run`;
-    return { verdict: { check: spec.name, kind: "skipped", summary } };
+    return { check: spec.name, kind: "skipped", summary };
   }
   const { before, after } = keptSides(spec, sides, narrowed, context);
   const { renames, timeoutMs } = context;
@@ -1148,7 +1121,7 @@ async function verdictFor(
   if (lines !== undefined) {
     verdict.lines = lines;
   }
-  return { verdict, ...(result.failedRun === undefined ? {} : { failedRun: result.failedRun }) };
+  return verdict;
 }
 
 /** One checker's verdict over the set it declares. */
@@ -1159,12 +1132,12 @@ async function verdictOnEngine(
   context: RunContext,
 ): Promise<Verdict> {
   const setOf = (one: CheckSpec): ReadonlySet<string> => {
-    const set = bySet.get(setName(one.fileSet)) ?? new Set<string>();
+    const set = bySet.get(one.fileSet) ?? new Set<string>();
     return one.guardsSafety === true
       ? set
       : new Set([...set].filter((f) => !context.generated.has(f)));
   };
-  return (await verdictFor(spec, sides, setOf(spec), context)).verdict;
+  return verdictFor(spec, sides, setOf(spec), context);
 }
 
 /** The point a run is at, its target and the limits it applies: the point's, unless a test sets one. */
@@ -1235,7 +1208,6 @@ export async function compareTrees(
   const selected = engage(runnable, options);
   const warnings: string[] = [];
 
-  const base = { root, changed, given };
   const fetchPack = options.fetchPack ?? fetchFromRegistry;
   const { context, verdicts } = await withPacks(selected, fetchPack, async (packs) => {
     const run: RunContext = {
@@ -1254,8 +1226,10 @@ export async function compareTrees(
       timed: [],
     };
     const found = await withBeforeAndAfter(root, beforeRef, after, async (before, afterSide) => {
-      const trees = before === null ? [afterSide] : [before, afterSide];
-      const bySet = await setsFor(base, selected, trees, sets);
+      const bySet = new Map<string, ReadonlySet<string>>([
+        ["changed", new Set(changed)],
+        ["given", new Set(given)],
+      ]);
       return runSelected(selected, { before, after: afterSide }, bySet, run);
     });
     return { context: run, verdicts: found };
@@ -1440,7 +1414,7 @@ export async function doctorRows(
     binary,
     present: probes.get(binary)?.present ?? false,
     timedOut: probes.get(binary)?.timedOut ?? false,
-    install: installLine(install),
+    install,
   }));
 }
 

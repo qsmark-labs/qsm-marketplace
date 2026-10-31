@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { contentDenylistPath } from "../../../lib/paths.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
 import { compareTrees, headline, type Verdict } from "./compare.ts";
 import { gitPaths, readGatesConfig } from "./config.ts";
 import { describeSets } from "./file-sets.ts";
@@ -19,7 +20,7 @@ import {
   pushSkipReason,
   remoteTipMissing,
 } from "./push.ts";
-import type { EnforcementPoint } from "./registry.ts";
+import type { HookPoint, GateName } from "./registry.ts";
 import { describeStore } from "./result-store.ts";
 import { compareStructure, type StructureResult, verdict } from "./structure.ts";
 
@@ -89,7 +90,7 @@ function withSkipped(outcome: GateOutcome, skipped: readonly string[]): GateOutc
 
 function secretsGate(
   root: string,
-  point: EnforcementPoint,
+  point: HookPoint,
   pushLines?: string,
   remote?: string,
 ): GateOutcome {
@@ -399,7 +400,7 @@ async function langdevAt(
   root: string,
   before: Sha | null,
   after: TreeSide,
-  point: EnforcementPoint,
+  point: HookPoint,
 ): Promise<GateOutcome> {
   const { languages } = readGatesConfig(root);
   const { sets, verdicts, store, warnings } = await compareTrees(root, before, after, {
@@ -501,7 +502,7 @@ function settledPush(
     : pass(gate);
 }
 
-async function langdevAtCommit(root: string, point: EnforcementPoint): Promise<GateOutcome> {
+async function langdevAtCommit(root: string, point: HookPoint): Promise<GateOutcome> {
   const skipped = fixStaged(root);
   return withSkipped(
     await langdevAt(root, resolveRef(root, "HEAD"), { kind: "index" }, point),
@@ -531,15 +532,13 @@ async function structureAtCommit(root: string): Promise<GateOutcome> {
   return head === null ? pass("structure") : structureAt(root, head, { kind: "index" });
 }
 
-const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
-
 /** The gates this tool answers for on its own. */
-export const SELF_GATES: readonly string[] = ["langdev", "structure"];
+export const SELF_GATES: readonly GateName[] = ["langdev", "structure"];
 
 async function runGate(
-  name: string,
+  name: GateName,
   root: string,
-  point: EnforcementPoint,
+  point: HookPoint,
   pushLines?: string,
   remote?: string,
 ): Promise<GateOutcome> {
@@ -560,9 +559,7 @@ async function runGate(
         ? structureAtCommit(root)
         : scorePush((before, after) => structureAt(root, before, { kind: "commit", sha: after }));
     default:
-      return fail(name, `unknown gate '${name}' in .qsm-langdev/gates.json`, [
-        `Remove it, or name one of: ${KNOWN_GATES.join(", ")}.`,
-      ]);
+      throw new QsmError("failed", `unknown gate '${String(name satisfies never)}'`);
   }
 }
 
@@ -587,8 +584,8 @@ export function allowed(outcome: GateOutcome, reason?: string): GateOutcome {
 
 export async function runGates(
   root: string,
-  point: EnforcementPoint,
-  names: readonly string[],
+  point: HookPoint,
+  names: readonly GateName[],
   {
     pushLines,
     remote,

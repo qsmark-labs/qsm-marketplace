@@ -125,7 +125,7 @@ const MARKED: CheckSpec = {
   points: ["pre-commit", "pre-push", "ci"],
   extensions: [".txt"],
   binary: "grep",
-  install: { bundled: "ships with the system" },
+  install: "ships with the system",
   fileSet: "changed",
   args: (files) => ["-Hn", MARKER, ...files],
   count: (stdout) => countMarkers(stdout),
@@ -233,7 +233,7 @@ describe("compareTrees: scored files", () => {
       ...MARKED,
       name: "absent",
       binary: "qsm-langdev-no-such-binary",
-      install: { suggest: "install it with your package manager" },
+      install: "install it with your package manager",
     };
 
     const { verdicts } = await run(root, head, [absent]);
@@ -318,6 +318,26 @@ describe("compareTrees: checker availability", () => {
     expect(verdicts[0]?.kind).toBe("missing-config");
     expect(verdicts[0]?.summary).toContain("qsm-langdev init");
   });
+
+  test("A checker's own config is missing", async () => {
+    const { root, head } = repoWith({ "ruff.toml": "line-length = 100\n", "a.py": "x = 1\n" });
+    write(root, { "a.py": "x = 2\n" });
+    stage(root);
+    // grep stands in for bandit's binary, so the verdict is about the config, not the install
+    const bandit: CheckSpec = {
+      ...defined(
+        REGISTRY.find((spec) => spec.name === "bandit"),
+        "bandit",
+      ),
+      binary: "grep",
+    };
+
+    const { verdicts } = await run(root, head, [bandit]);
+
+    expect(verdicts).toHaveLength(1);
+    expect(verdicts[0]?.kind).toBe("missing-config");
+    expect(verdicts[0]?.summary).toContain("bandit.yaml");
+  });
 });
 
 /** A checker that scores nothing and records the files each side handed it,
@@ -331,7 +351,7 @@ function recorder(fileSet: CheckSpec["fileSet"], extensions: readonly string[] =
     points: ["pre-commit", "pre-push", "ci"],
     extensions,
     binary: "printf",
-    install: { bundled: "ships with the system" },
+    install: "ships with the system",
     fileSet,
     args: (files) => ["%s\\n", ...files],
     count: (stdout) => {
@@ -377,25 +397,6 @@ describe("file sets", () => {
       ["a.ts", "b.ts"],
     ]);
     expect(describeSets(sets)).toContain("changed: 2 files");
-  });
-
-  test("A file that another file imports", async () => {
-    const { root, head } = repoWith({
-      "a.ts": "export const a = 1;\n",
-      "b.ts": 'import { a } from "./a";\nexport const b = a;\n',
-      "c.ts": 'import { b } from "./b";\nb;\n',
-    });
-    write(root, { "a.ts": "export const a = 2;\n" });
-    stage(root);
-    const { spec, handed } = recorder({ changedPlus: 1 });
-
-    const { sets } = await runWith(root, head, spec);
-
-    expect(handed).toEqual([
-      ["a.ts", "b.ts"],
-      ["a.ts", "b.ts"],
-    ]);
-    expect(describeSets(sets)).toContain("changed+1: 2 files");
   });
 });
 
@@ -530,17 +531,6 @@ describe("file sets: paths and languages", () => {
     // scores the same content twice.
     expect(handed).toEqual([["src/b.ts", "src/c.ts"]]);
     expect(describeSets(sets)).toBe("changed: 1 file, given: 2 files");
-  });
-
-  test("a language with no import extractor is named in the report", async () => {
-    const { root, head } = repoWith({ "run.sh": "echo 1\n" });
-    write(root, { "run.sh": "echo 2\n" });
-    stage(root);
-    const { spec } = recorder({ changedPlus: 1 }, [".sh"]);
-
-    const { sets } = await runWith(root, head, spec);
-
-    expect(describeSets(sets)).toContain("changed+1: 1 file (no import extractor: shell)");
   });
 });
 

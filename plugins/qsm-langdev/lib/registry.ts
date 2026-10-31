@@ -82,9 +82,6 @@ export interface LanguageInfo {
   /** What people type for the language; `languages add` and `--lang` both
    * resolve through this list. */
   aliases?: readonly string[];
-  /** adapters/claude/modules/<module> carrying this language's dev skill.
-   * null = deliberately module-less. */
-  module: string | null;
   /** A tracked file with one of these extensions means the tree holds this
    * language, so `init` scaffolds its configs. Source extensions only. */
   detects?: readonly string[];
@@ -109,19 +106,18 @@ export type Language = (typeof LANGUAGE_NAMES)[number];
 export const LANGUAGES: readonly Language[] = LANGUAGE_NAMES;
 
 export const LANGUAGE_TABLE = {
-  docs: { alwaysOn: true, module: null },
-  multi: { alwaysOn: true, module: null },
+  docs: { alwaysOn: true },
+  multi: { alwaysOn: true },
   ts: {
     aliases: ["typescript", "javascript", "js"],
-    module: "qsm-langdev-ts",
     detects: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
   },
-  py: { aliases: ["python"], module: "qsm-langdev-py", detects: [".py", ".pyi"] },
-  dotnet: { aliases: ["csharp", "cs"], module: "qsm-langdev-dotnet", detects: [".cs"] },
-  shell: { aliases: ["sh", "bash"], module: "qsm-langdev-shell", detects: [".sh", ".bash"] },
-  zsh: { module: "qsm-langdev-zsh", detects: [".zsh"] },
-  fish: { configless: true, module: "qsm-langdev-fish", detects: [".fish"] },
-  rust: { module: null, detects: [".rs"] },
+  py: { aliases: ["python"], detects: [".py", ".pyi"] },
+  dotnet: { aliases: ["csharp", "cs"], detects: [".cs"] },
+  shell: { aliases: ["sh", "bash"], detects: [".sh", ".bash"] },
+  zsh: { detects: [".zsh"] },
+  fish: { configless: true, detects: [".fish"] },
+  rust: { detects: [".rs"] },
 } as const satisfies Record<Language, LanguageInfo>;
 
 export function isLanguage(name: unknown): name is Language {
@@ -148,12 +144,8 @@ export function resolveLanguage(name: string): Language | null {
   return null;
 }
 
-/** The git hooks langdev installs and runs gates at. */
-export type EnforcementPoint = "pre-commit" | "pre-push";
-export const ENFORCEMENT_POINTS: readonly EnforcementPoint[] = ["pre-commit", "pre-push"];
-
 /** Where a checker runs: the edit hook, the two git hooks, and CI. */
-export type Point = "edit" | EnforcementPoint | "ci";
+export type Point = "edit" | "pre-commit" | "pre-push" | "ci";
 export const POINT_NAMES: readonly Point[] = ["edit", "pre-commit", "pre-push", "ci"];
 
 /**
@@ -174,77 +166,31 @@ export const POINTS = {
 /** A point that compares two trees and stores results; the edit point checks in place. */
 export type ComparedPoint = Exclude<Point, "edit">;
 
+/** The git hooks langdev installs and runs gates at. */
+export type HookPoint = Exclude<ComparedPoint, "ci">;
+export const HOOK_POINTS: readonly HookPoint[] = ["pre-commit", "pre-push"];
+
+/** The gates a hook point may name in gates.json. */
+export const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
+export type GateName = (typeof KNOWN_GATES)[number];
+
 const FROM_COMMIT: readonly Point[] = ["pre-commit", "pre-push", "ci"];
 const FROM_PUSH: readonly Point[] = ["pre-push", "ci"];
 
-/**
- * How a checker's binary gets onto a machine: `run` executes a portable
- * install command itself; `suggest` prints one that needs sudo or an SDK and
- * never runs it; `bundled` means nothing to do, it arrives with something
- * already required.
- */
-export type Install =
-  | {
-      readonly run: {
-        readonly command: string;
-        readonly args: readonly string[];
-        /** Probed before running; its absence is missing-prereq. */
-        readonly prereq?: string;
-      };
-    }
-  | {
-      readonly suggest: string;
-      readonly pms?: readonly { readonly pm: string; readonly command: string }[];
-    }
-  | { readonly bundled: string };
+/** The one line a human can act on: what doctor prints and what a failing checker prints when its
+ * binary is absent. Nothing runs it. */
+export type Install = string;
 
-/**
- * The one line a human can act on: what doctor prints and what a failing checker prints when its
- * binary is absent.
- */
-export function installLine(install: Install): string {
-  if ("run" in install) {
-    const argv = [install.run.command, ...install.run.args.map(shellQuote)];
-    return argv.join(" ");
-  }
-  return "suggest" in install ? install.suggest : install.bundled;
-}
-
-function shellQuote(arg: string): string {
-  if (!/[\s"'$`\\]/.test(arg)) {
-    return arg;
-  }
-  return `'${arg.replaceAll("'", `'\\''`)}'`;
-}
-
-const bunGlobal = (...pkgs: string[]): Install => ({
-  run: { command: "bun", args: ["add", "-g", ...pkgs], prereq: "bun" },
-});
-const uvTool = (pkg: string): Install => ({
-  run: { command: "uv", args: ["tool", "install", pkg], prereq: "uv" },
-});
-const goInstall = (url: string): Install => ({
-  run: { command: "go", args: ["install", url], prereq: "go" },
-});
-const rustupComponent = (component: string): Install => ({
-  run: { command: "rustup", args: ["component", "add", component], prereq: "rustup" },
-});
-const dotnetTool = (pkg: string): Install => ({
-  run: { command: "dotnet", args: ["tool", "install", "-g", pkg], prereq: "dotnet" },
-});
+const bunGlobal = (...pkgs: string[]): Install => `bun add -g ${pkgs.join(" ")}`;
+const uvTool = (pkg: string): Install => `uv tool install ${pkg}`;
+const goInstall = (url: string): Install => `go install ${url}`;
+const rustupComponent = (component: string): Install => `rustup component add ${component}`;
+const dotnetTool = (pkg: string): Install => `dotnet tool install -g ${pkg}`;
 /** shellmetrics ships nowhere packaged; upstream's own install is this curl. */
-const SHELLMETRICS_INSTALL: Install = {
-  run: {
-    command: "sh",
-    args: [
-      "-c",
-      "curl -fsSL https://github.com/shellspec/shellmetrics/raw/master/shellmetrics -o ~/.local/bin/shellmetrics && chmod +x ~/.local/bin/shellmetrics",
-    ],
-    prereq: "curl",
-  },
-};
-const systemPackage = (pkg: string): Install => ({ suggest: `your package manager: ${pkg}` });
-const shipsWith = (what: string): Install => ({ bundled: `ships with ${what}` });
+const SHELLMETRICS_INSTALL: Install =
+  "curl -fsSL https://github.com/shellspec/shellmetrics/raw/master/shellmetrics -o ~/.local/bin/shellmetrics && chmod +x ~/.local/bin/shellmetrics";
+const systemPackage = (pkg: string): Install => `your package manager: ${pkg}`;
+const shipsWith = (what: string): Install => `ships with ${what}`;
 
 /** A shell's own parser as a checker: run the interpreter over each file and
  * count the ones it refused. */
@@ -348,10 +294,8 @@ interface Scoring {
 
 /** The files a checker is handed, computed once per run (lib/compare.ts):
  * `changed` for a tool that judges each file on its own, `given` for one
- * that needs the whole project (the caller's paths, the root by default),
- * `changedPlus` for one whose finding in a file can come from a file within
- * that many import edges of it. */
-export type FileSet = "changed" | "given" | { changedPlus: number };
+ * that needs the whole project (the caller's paths, the root by default). */
+export type FileSet = "changed" | "given";
 
 /** What a check's number is a count of. Beside the parser that produces it,
  * so it cannot drift from the code: `list --json` is the audit table. */
@@ -387,6 +331,9 @@ export type CheckSpec = {
   thresholds?: Record<string, number>;
   /** Globs over repository-relative paths naming the files the tool reads for its configuration. */
   configFiles?: readonly string[];
+  /** A config file the tool is passed by name and never runs without: its absence is a missing
+   * config, because scoring both sides at the tool's defaults would let nothing regress. */
+  ownConfig?: string;
   /** The tool resolves imports through the installed dependencies, so what is installed is part of
    * what it scored: a result scored before `bun install` is not the result after it. */
   resolvesInstalled?: true;
@@ -538,7 +485,7 @@ const SPECS: readonly CheckSpec[] = [
     binary: "bun",
     // `bun check` reports the same errors as tsc, about 2.5 times faster
     // (measured on qsm-marketplace with Bun 1.4.3; older Bun has no `check`).
-    install: { suggest: "bun upgrade" },
+    install: "bun upgrade",
     fileSet: "given",
     configFiles: TS_PROJECT,
     resolvesInstalled: true,
@@ -684,10 +631,8 @@ const SPECS: readonly CheckSpec[] = [
     install: uvTool("bandit"),
     fileSet: "changed",
     configFiles: ["bandit.yaml"],
-    args: (files, root) =>
-      existsSync(join(root, "bandit.yaml"))
-        ? ["-c", "bandit.yaml", "-f", "json", "-q", ...files]
-        : ["-f", "json", "-q", ...files],
+    ownConfig: "bandit.yaml",
+    args: (files) => ["-c", "bandit.yaml", "-f", "json", "-q", ...files],
     count: countBanditJson,
   },
   {
@@ -955,7 +900,7 @@ const SPECS: readonly CheckSpec[] = [
     points: FROM_PUSH,
     extensions: [".cs"],
     binary: "dotnet",
-    install: { suggest: "install the dotnet SDK for your distro" },
+    install: "install the dotnet SDK for your distro",
     fileSet: "given",
     configFiles: DOTNET_PROJECT,
     args: () => ["build", "-tl:off", "--nologo", "-v", "minimal", "-p:TreatWarningsAsErrors=false"],
@@ -1069,7 +1014,7 @@ const SPECS: readonly CheckSpec[] = [
 
 /** A file with no extension at all: `bin/deploy`, `Makefile`. A dotfile
  * counts as having one; nobody puts a program there. */
-function hasNoExtension(file: string): boolean {
+export function hasNoExtension(file: string): boolean {
   return !basename(file).includes(".");
 }
 

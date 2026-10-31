@@ -33,18 +33,12 @@ import {
   writeGatesConfig,
 } from "../lib/config.ts";
 import { type GateOutcome, gatesCode, judge, runGates, SELF_GATES } from "../lib/gate-runner.ts";
-import {
-  HOOK_LANGS,
-  HOOK_NAMES,
-  type HookAction,
-  type HookName,
-  installHooks,
-  uninstallHooks,
-} from "../lib/git-hooks.ts";
+import { type HookAction, installHooks, uninstallHooks } from "../lib/git-hooks.ts";
 import { resolveRef, type Sha } from "../lib/gitref.ts";
 import { type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
 import {
-  ENFORCEMENT_POINTS,
+  HOOK_POINTS,
+  type HookPoint,
   LANGUAGES,
   type Language,
   REGISTRY,
@@ -101,7 +95,7 @@ function resolveAgainst(root: string, against: string, explicit: boolean): Sha |
 }
 
 const check: Handler = async (call) => {
-  const at = optOneOf(call, "at", ENFORCEMENT_POINTS) ?? "pre-commit";
+  const at = optOneOf(call, "at", HOOK_POINTS) ?? "pre-commit";
   const root = requireRepo(dirOf(call));
   if (!isLangdevRepo(root)) {
     throw new QsmError("missing", `qsm-langdev is not set up in ${root}: run qsm-langdev init`);
@@ -372,17 +366,18 @@ function describeInstallAction(action: HookAction): string | null {
 }
 
 const installGitHooks: Handler = (call) => {
-  const lang = optOneOf(call, "lang", HOOK_LANGS) ?? "sh";
   const root = requireRepo(dirOf(call));
-  const actions = installHooks(root, HOOK_NAMES, lang);
+  const actions = installHooks(root);
   const config = readGatesConfig(root);
   const lines = [
     ...actions.map(describeInstallAction).filter((line): line is string => line !== null),
-    ...HOOK_NAMES.map((name) => `${name}: ${config.hooks[name].join(", ") || "(none configured)"}`),
+    ...HOOK_POINTS.map(
+      (name) => `${name}: ${config.hooks[name].join(", ") || "(none configured)"}`,
+    ),
     "A missing gate binary or config fails the hook. Change the selection in " +
       `${root}/.qsm-langdev/gates.json`,
   ];
-  return ok({ root, lang, actions, hooks: config.hooks }, lines.join("\n"));
+  return ok({ root, actions, hooks: config.hooks }, lines.join("\n"));
 };
 
 function describeUninstallAction(action: HookAction): string {
@@ -407,7 +402,7 @@ const uninstallGitHooks: Handler = (call) => {
   return ok({ root, actions }, actions.map(describeUninstallAction).join("\n"));
 };
 
-function reportGateOutcomes(name: HookName, outcomes: readonly GateOutcome[]): void {
+function reportGateOutcomes(name: HookPoint, outcomes: readonly GateOutcome[]): void {
   for (const outcome of outcomes) {
     if (outcome.status === "pass") {
       err(`[${name}] ${outcome.gate}: ${outcome.note ?? "ok"}`);
@@ -432,7 +427,7 @@ function reportGateOutcomes(name: HookName, outcomes: readonly GateOutcome[]): v
 }
 
 const hook: Handler = async (call) => {
-  const name = required(optOneOf(call, "name", HOOK_NAMES), "name");
+  const name = required(optOneOf(call, "name", HOOK_POINTS), "name");
   const root = requireRepo(".");
   if (!isLangdevRepo(root)) {
     return ok({ hook: name, root, outcomes: [] });

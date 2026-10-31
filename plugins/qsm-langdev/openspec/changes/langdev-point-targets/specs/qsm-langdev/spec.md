@@ -119,7 +119,7 @@ come from the repository's secrets.
 Every checker result SHALL be stored in the worktree's own result store, `.qsm-langdev/results/`,
 which git ignores: the directory holds its own `.gitignore` of `*`, written when the store creates
 it, so a repository that never ran `init` sees nothing untracked and its own `.gitignore` is never
-edited; the import graph's cache does the same. A stored result is keyed by the checker, the
+edited. A stored result is keyed by the checker, the
 checker's tool version (what `<binary> --version` prints), a hash of the configuration it read (its
 arguments without the scored files, and the config files it declares in the registry, and, for a
 checker that resolves imports (`tsc`, `depcruise`, `knip`), the names of the packages installed in
