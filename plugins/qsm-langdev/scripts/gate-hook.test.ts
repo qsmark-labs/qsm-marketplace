@@ -1,4 +1,4 @@
-// The classic SubagentStop gate hook, spawned the way the harness spawns it:
+// The classic Stop and SubagentStop gate hook, spawned the way the harness spawns it:
 // a process fed the event JSON on stdin, judged on its stdout, its stderr and
 // its exit. `bun test` ignores plugins/*/hooks/**, so this lives beside the
 // CLI test and spawns the hook's own source, never dist/, which may be stale.
@@ -56,7 +56,7 @@ function runEditHook(stateDir: string, sessionId: string, agentId: string, fileP
   }
 }
 
-function runGateHook(stateDir: string, sessionId: string, agentId: string) {
+function runGateHook(stateDir: string, sessionId: string, agentId?: string) {
   return runHook(GATE_HOOK, stateDir, JSON.stringify({ session_id: sessionId, agent_id: agentId }));
 }
 
@@ -89,6 +89,28 @@ describe("qsm-langdev gate hook", () => {
 
     expect(r.exit).toBe(0);
     expect(r.stdout).toBe("");
+  });
+
+  test("The main agent stops with a worse staged tree", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+
+    // The main agent's events carry no agent_id: the Stop payload names the session only.
+    writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+    runEditHook(stateDir, "s1", "main", join(root, "a.fish"));
+    git(root, "add", "a.fish");
+
+    for (const n of [1, 2]) {
+      const blocked = runGateHook(stateDir, "s1");
+      expect(blocked.stdout).toContain('"decision":"block"');
+      expect(blocked.stdout).toContain(`block ${n}/3`);
+    }
+    // The cap: the third identical stop is let through, with the halt on record.
+    const halted = runGateHook(stateDir, "s1");
+    expect(halted.exit).toBe(0);
+    expect(halted.stdout).not.toContain('"decision":"block"');
+    expect(halted.stderr).toContain("HALT after 3 blocks");
   });
 
   test("An edit the agent did not stage", () => {

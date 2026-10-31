@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
-// classic: SubagentStop has no function event. Claude Code SubagentStop hook: for every tree the stopping agent edited
+// classic: Stop and SubagentStop have no function event. Claude Code Stop and SubagentStop hook
+// (the main agent's stop has no agent_id): for every tree the stopping agent edited
 // this session, compares it against the commit it started from there — both
 // through the per-language finding comparison (the same rule `check` runs)
 // and through the structural-quality comparison (the same rule `structure`
