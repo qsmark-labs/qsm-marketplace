@@ -21,7 +21,6 @@ import { recordRun, type Timing } from "./timings.ts";
 import {
   asRunAt,
   type CheckSpec,
-  installLine,
   JOBS,
   type Language,
   type LocalRules,
@@ -596,8 +595,6 @@ interface CheckerResult {
   pass: boolean;
   summary: string;
   notMeasured?: true;
-  /** The cause, when not measured because a run failed. */
-  failedRun?: string;
   output?: string;
   lines?: string[];
   tally?: Tally;
@@ -658,7 +655,7 @@ function unscored(name: string, current: Score, previous: Score, timeoutMs: numb
     (previousCause === undefined ? undefined : `previous version: ${previousCause}`);
   if (failed !== undefined) {
     const summary = `${name}: not measured: ${failed}; retry`;
-    return { pass: false, notMeasured: true, failedRun: failed, summary };
+    return { pass: false, notMeasured: true, summary };
   }
   if ("reason" in current) {
     return { pass: false, summary: `${name}: ${current.reason}` };
@@ -924,7 +921,7 @@ function missingPrerequisiteVerdicts(
         check: spec.name,
         pass: false,
         missing: true,
-        summary: `${spec.binary} is not installed — install: ${installLine(spec.install)}`,
+        summary: `${spec.binary} is not installed — install: ${spec.install}`,
       };
     });
 
@@ -1108,12 +1105,6 @@ function scoredASide(use: StoreUse | undefined): boolean {
   return (use?.shipped.scored ?? 0) + (use?.reference?.scored ?? 0) > 0;
 }
 
-/** A verdict, and the cause when it is not measured because a run failed. */
-interface Judged {
-  verdict: Verdict;
-  failedRun?: string;
-}
-
 /** One selected checker over its declared set on both sides; a set holding
  * no file the checker covers on either side is a reported skip, not a run. */
 async function verdictFor(
@@ -1121,7 +1112,7 @@ async function verdictFor(
   sides: Sides<Side>,
   set: ReadonlySet<string>,
   context: RunContext,
-): Promise<Judged> {
+): Promise<Verdict> {
   const narrowed = {
     before: sides.before === null ? null : narrow(sides.before, spec, set),
     after: narrow(sides.after, spec, set),
@@ -1129,7 +1120,7 @@ async function verdictFor(
   if (narrowed.after.files.length === 0 && (narrowed.before?.files.length ?? 0) === 0) {
     const name = spec.fileSet;
     const summary = `${spec.name}: its ${name} set holds no file it covers — not run`;
-    return { verdict: { check: spec.name, pass: true, skipped: true, summary } };
+    return { check: spec.name, pass: true, skipped: true, summary };
   }
   const { before, after } = keptSides(spec, sides, narrowed, context);
   const { renames, timeoutMs } = context;
@@ -1148,7 +1139,7 @@ async function verdictFor(
   if (lines !== undefined) {
     verdict.lines = lines;
   }
-  return { verdict, ...(result.failedRun === undefined ? {} : { failedRun: result.failedRun }) };
+  return verdict;
 }
 
 /** One checker's verdict over the set it declares. */
@@ -1164,7 +1155,7 @@ async function verdictOnEngine(
       ? set
       : new Set([...set].filter((f) => !context.generated.has(f)));
   };
-  return (await verdictFor(spec, sides, setOf(spec), context)).verdict;
+  return verdictFor(spec, sides, setOf(spec), context);
 }
 
 /** The point a run is at, its target and the limits it applies: the point's, unless a test sets one. */
@@ -1438,7 +1429,7 @@ export async function doctorRows(
     binary,
     present: probes.get(binary)?.present ?? false,
     timedOut: probes.get(binary)?.timedOut ?? false,
-    install: installLine(install),
+    install,
   }));
 }
 

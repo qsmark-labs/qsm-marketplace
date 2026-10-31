@@ -424,9 +424,3 @@ export async function compareStructure(
     }),
   );
 }
-
-/** The index against the commit at `before` — what a stop gate or
- * `structure` with no `--against` compares. */
-export function compareIndexSince(root: string, before: string): Promise<StructureResult> {
-  return compareStructure(root, before, "index");
-}

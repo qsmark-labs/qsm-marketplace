@@ -124,7 +124,7 @@ const MARKED: CheckSpec = {
   points: ["pre-commit", "pre-push", "ci"],
   extensions: [".txt"],
   binary: "grep",
-  install: { bundled: "ships with the system" },
+  install: "ships with the system",
   fileSet: "changed",
   args: (files) => ["-Hn", MARKER, ...files],
   count: (stdout) => countMarkers(stdout),
@@ -227,7 +227,7 @@ describe("compareTrees: scored files", () => {
       ...MARKED,
       name: "absent",
       binary: "qsm-langdev-no-such-binary",
-      install: { suggest: "install it with your package manager" },
+      install: "install it with your package manager",
     };
 
     const { verdicts } = await run(root, head, [absent]);
@@ -327,7 +327,7 @@ function recorder(fileSet: CheckSpec["fileSet"], extensions: readonly string[] =
     points: ["pre-commit", "pre-push", "ci"],
     extensions,
     binary: "printf",
-    install: { bundled: "ships with the system" },
+    install: "ships with the system",
     fileSet,
     args: (files) => ["%s\\n", ...files],
     count: (stdout) => {

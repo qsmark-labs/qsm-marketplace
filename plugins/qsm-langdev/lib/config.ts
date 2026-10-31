@@ -14,6 +14,7 @@ import {
 import { basename, dirname, join, resolve } from "node:path";
 import { arrayOf } from "./json.ts";
 import {
+  hasNoExtension,
   isLanguage,
   LANGUAGE_TABLE,
   LANGUAGES,
@@ -70,12 +71,6 @@ function shebangExtension(line: string): string | null {
   }
   const normalised = interpreter.replace(/^python[\d.]*$/, "python");
   return INTERPRETER_EXTENSION[normalised] ?? null;
-}
-
-/** True when the file's name carries no extension at all: `bin/deploy`,
- * `Makefile`. A dotfile counts as having one. */
-function hasNoExtension(file: string): boolean {
-  return !basename(file).includes(".");
 }
 
 /**
