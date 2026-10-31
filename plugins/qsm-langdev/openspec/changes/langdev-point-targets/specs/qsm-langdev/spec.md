@@ -10,7 +10,7 @@ under (its target) and the time after which a run is taken for stuck (its timeou
 | `edit` | the edit hook | 5 s | what is left of 7.5 s, inside the engine's 10 s per hook |
 | `pre-commit` | the commit hook, the stop gate, `check` | 30 s | 5 min |
 | `pre-push` | the push hook, `check --at pre-push` | 1 min | 5 min |
-| `ci` | the `langdev` CI job, `check --at ci` | 10 min | 20 min |
+| `ci` | the `langdev` CI job (change `langdev-ci-point`) | 10 min | 20 min |
 
 Every checker SHALL declare, as a required list, the points it runs at; no checker SHALL inherit a
 point it did not declare. Every limit a run applies SHALL be read from this table; no checker and
@@ -19,8 +19,8 @@ no hook SHALL carry a limit of its own. A target is never a limit: a run over it
 #### Scenario: A checker runs only where it is declared
 
 - **WHEN** `semgrep-ts` declares `pre-commit`, `pre-push` and `ci`
-- **THEN** the edit hook SHALL NOT run it, and `check`, the push hook and
-  `check --at ci` SHALL
+- **THEN** the edit hook SHALL NOT run it, and `check` and the push hook
+  SHALL
 
 #### Scenario: A stuck process at a push
 
@@ -85,26 +85,6 @@ points. The gate runs in `bun test`, so a language rules set without them cannot
 
 - **WHEN** `profiles/strict/rust/` does not exist
 - **THEN** the registry gate SHALL fail with `rust: no strict profile`
-
-### Requirement: CI runs the ci point on every push to main
-
-`.github/workflows/ci.yml` SHALL hold a `langdev` job that, on a push to `main`, installs the
-checkers `qsm-langdev doctor` names, builds the bin, and runs
-`qsm-langdev check --at ci --against <the commit the push replaced>`, with `timeout-minutes: 30`.
-When the replaced commit is all zeros or not in the clone's history, the job SHALL report the run
-skipped with that reason and pass, as the push gate does on a first push. `SEMGREP_APP_TOKEN` SHALL
-come from the repository's secrets.
-
-#### Scenario: A push to main
-
-- **WHEN** a push moves `main` from `A` to `B`
-- **THEN** the `langdev` job SHALL compare `B` against `A` at the `ci` point
-  and fail when a checker is worse
-
-#### Scenario: The first push
-
-- **WHEN** the replaced commit is all zeros
-- **THEN** the job SHALL print `skipped` with the reason and pass
 
 ## RENAMED Requirements
 
@@ -186,10 +166,7 @@ whatever the login, and SHALL NOT ask for the login. No semgrep checker SHALL ru
 one file alone took 9.0 s, most of the 10 s the engine gives the edit hook. The Pro engine's
 cross-file run over the whole tree is not a gate on a person's machine: measured on this repository,
 both sides at once took 128 s quiet, 373 s with every core busy, and past 600 s at a load of 15, and
-a run cut short blocks a push for nothing it proved. That run SHALL be every semgrep checker's form
-at the `ci` point: `semgrep scan --pro` over the whole tree, logged in by `SEMGREP_APP_TOKEN` in the
-environment; at `ci` a missing `SEMGREP_APP_TOKEN` SHALL fail the checker, naming the variable, and
-never fall back to the community engine. Nothing SHALL run `semgrep ci`, which uploads.
+a run cut short blocks a push for nothing it proved.
 `doctor` and `install` SHALL report, as a warning and never a failure, when the semgrep CLI is not
 logged in: `semgrep is not logged in: run semgrep login to use qsm-langdev at its fullest`, asking
 the CLI, never reading its token file: `semgrep show identity` exiting 0, or a `SEMGREP_APP_TOKEN`
@@ -236,18 +213,6 @@ agent.
 - **WHEN** the edit hook checks a written `.ts` file
 - **THEN** no semgrep checker SHALL run, and `semgrep-ts` SHALL scan the file
   at the next commit
-
-#### Scenario: A CI run
-
-- **WHEN** `qsm-langdev check --at ci` runs with `SEMGREP_APP_TOKEN` set
-- **THEN** every selected semgrep checker SHALL run `semgrep scan --pro` over
-  the whole tree, and nothing SHALL run `semgrep ci`
-
-#### Scenario: A CI run without the token
-
-- **WHEN** `qsm-langdev check --at ci` runs with no `SEMGREP_APP_TOKEN`
-- **THEN** every selected semgrep checker SHALL fail naming
-  `SEMGREP_APP_TOKEN`, and SHALL NOT scan with the community engine
 
 #### Scenario: Not logged in
 
