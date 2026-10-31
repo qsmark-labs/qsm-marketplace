@@ -4,7 +4,7 @@
 // CLI test and spawns the hook's own source, never dist/, which may be stale.
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
@@ -39,7 +39,12 @@ function runHook(hook: string, stateDir: string, stdin: string, env: Record<stri
   const home = sandboxDir("qsm-langdev-gate-hook-home-");
   return runBin(hook, [], {
     input: stdin,
-    env: isolatedEnv(home, { ...env, QSM_LANGDEV_STATE_DIR: stateDir }),
+    // semgrep makes its own semgrep-mcp directory in its temp root: a sandbox, so none is left behind
+    env: isolatedEnv(home, {
+      ...env,
+      QSM_LANGDEV_STATE_DIR: stateDir,
+      TMPDIR: sandboxDir("qsm-langdev-gate-hook-tmp-"),
+    }),
   });
 }
 
@@ -123,6 +128,60 @@ describe("qsm-langdev gate hook", () => {
     expect(r.exit).toBe(0);
     expect(r.stdout).not.toContain('"decision":"block"');
   });
+});
+
+const CLI = resolve(import.meta.dir, "cli.ts");
+
+/** The commit gate the way git runs it: `qsm-langdev hook pre-commit` in `root`, with only
+ * `langdev` gating the commit. */
+function runCommitGate(root: string) {
+  const config = join(root, ".qsm-langdev", "gates.json");
+  writeFileSync(
+    config,
+    readFileSync(config, "utf8").replace('"pre-commit":[]', '"pre-commit":["langdev"]'),
+  );
+  const home = sandboxDir("qsm-langdev-gate-hook-home-");
+  const env = isolatedEnv(home, { TMPDIR: sandboxDir("qsm-langdev-gate-hook-tmp-") });
+  return runBin(CLI, ["hook", "pre-commit"], { env, cwd: root });
+}
+
+describe("qsm-langdev: the commit gate and the stop gate judge with one rule", () => {
+  test("A missing config blocks the commit and only warns at the stop", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.sh", "#!/bin/sh\necho hi\n");
+    initGates(root, ["shell"]);
+    writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho hi\necho there\n");
+    git(root, "add", "-u");
+    runEditHook(stateDir, "s1", "a1", join(root, "a.sh"));
+    const missing = "shell: no profile-scaffolded config in this repository";
+
+    const commitGate = runCommitGate(root);
+    const stopGate = runGateHook(stateDir, "s1", "a1");
+
+    expect(commitGate.exit).toBe(1);
+    expect(commitGate.stderr).toContain(missing);
+    expect(stopGate.exit).toBe(0);
+    expect(stopGate.stdout).not.toContain('"decision":"block"');
+    expect(stopGate.stderr).toContain(missing);
+  }, 60_000);
+
+  test("A worse checker blocks the commit and the stop with the same description", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+    git(root, "add", "-u");
+    runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    const worse = "WORSE fish-syntax: 0 -> 1";
+
+    const commitGate = runCommitGate(root);
+    const stopGate = runGateHook(stateDir, "s1", "a1");
+
+    expect(commitGate.exit).toBe(1);
+    expect(commitGate.stderr).toContain(worse);
+    expect(stopGate.stdout).toContain('"decision":"block"');
+    expect(stopGate.stdout).toContain(worse);
+  }, 60_000);
 });
 
 /** `fish` and `fish_indent` stand-ins in a fresh bin directory: each names

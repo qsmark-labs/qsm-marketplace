@@ -23,8 +23,9 @@
 
 import { readHookEvent, runMain } from "../../../lib/hooks-kit.ts";
 import { isRecord } from "../../../lib/outcome.ts";
-import { compareTrees, type Verdict } from "../lib/compare.ts";
+import { compareTrees } from "../lib/compare.ts";
 import { gitPaths, isLangdevRepo, readGatesConfig } from "../lib/config.ts";
+import { describeVerdicts, judge } from "../lib/gate-runner.ts";
 import { editorOf } from "../lib/hookio.ts";
 import {
   clearBlocks,
@@ -57,12 +58,6 @@ interface Regression {
   lines: string[];
 }
 
-function describeVerdicts(verdicts: readonly Verdict[]): string[] {
-  return verdicts.flatMap((v) => [v.summary, ...(v.lines ?? [])]);
-}
-
-const gap = (v: Verdict): boolean => v.kind !== "measured" && v.kind !== "skipped";
-
 /**
  * One tree's judgement against its start commit: every regression to block the stop on, plus every
  * warning logged instead.
@@ -91,13 +86,12 @@ async function judgeTree(
     const more = unstaged.length > 5 ? ` and ${unstaged.length - 5} more` : "";
     warnings.push(`unstaged changes not scored: ${named}${more}`);
   }
-  const environment = verdicts.filter(gap);
-  const worse = verdicts.filter((v) => v.kind === "measured" && !v.pass);
-  if (environment.length > 0) {
-    warnings.push(`langdev: ${describeVerdicts(environment).join("; ")}`);
+  const { failed, warned } = judge(verdicts, true, "stop");
+  if (warned.length > 0) {
+    warnings.push(`langdev: ${describeVerdicts(warned).join("; ")}`);
   }
-  if (worse.length > 0) {
-    regressions.push({ comparison: "langdev", lines: describeVerdicts(worse) });
+  if (failed.length > 0) {
+    regressions.push({ comparison: "langdev", lines: describeVerdicts(failed) });
   }
 
   // The stop gate compares against the agent's own start point, so a whole session is judged as one

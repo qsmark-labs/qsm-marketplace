@@ -534,36 +534,6 @@ export type Verdict = { check: string; summary: string; lines?: string[] } & (
   | { kind: "skipped" | "missing-binary" | "missing-config" | "not-measured" }
 );
 
-export type RunCode = "ok" | "worse" | "blocked";
-
-/** Whether a verdict makes the run worse: a measured failure, when there is a reference to be
- * worse than, or a binary or config that is missing. */
-function isWorse(v: Verdict, hasReference: boolean): boolean {
-  if (v.kind === "measured") {
-    return !v.pass && hasReference;
-  }
-  return v.kind === "missing-binary" || v.kind === "missing-config";
-}
-
-/** What a run's verdicts come to, and the verdicts that decide it: `worse`
- * when a measured checker fails, or a binary or a config is missing; else
- * `blocked` when a checker was not measured, since nothing can say the tree
- * is no worse; else `ok`. A tree with no reference is new, so a measured
- * count is a starting point and never worse. */
-export function runOutcome(
-  verdicts: readonly Verdict[],
-  hasReference: boolean,
-): { code: RunCode; deciding: Verdict[] } {
-  const worse = verdicts.filter((v) => isWorse(v, hasReference));
-  if (worse.length > 0) {
-    return { code: "worse", deciding: worse };
-  }
-  const unmeasured = verdicts.filter((v) => v.kind === "not-measured");
-  return unmeasured.length > 0
-    ? { code: "blocked", deciding: unmeasured }
-    : { code: "ok", deciding: [] };
-}
-
 function warn(line: string): void {
   process.stderr.write(`${line}\n`);
 }

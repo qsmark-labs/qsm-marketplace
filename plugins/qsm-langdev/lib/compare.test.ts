@@ -25,10 +25,10 @@ import {
   doctorRows,
   headline,
   resolveBinary,
-  runOutcome,
   type Verdict,
 } from "./compare.ts";
 import { describeSets } from "./file-sets.ts";
+import { judge } from "./gate-runner.ts";
 import type { Sha } from "./gitref.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { type CheckSpec, REGISTRY } from "./registry.ts";
@@ -658,11 +658,17 @@ test("time limit: a run with a checker not measured is blocked, and a worse one 
   };
   const fine: Verdict = { check: "fine", kind: "measured", pass: true, summary: "fine: 0 -> 0" };
 
-  expect(runOutcome([unmeasured, fine], true)).toEqual({ code: "blocked", deciding: [unmeasured] });
-  expect(runOutcome([unmeasured, worse], true)).toEqual({ code: "worse", deciding: [worse] });
-  expect(runOutcome([unmeasured], false).code).toBe("blocked");
-  expect(runOutcome([worse], false).code).toBe("ok");
-  expect(runOutcome([fine], true)).toEqual({ code: "ok", deciding: [] });
+  const none = { failed: [], blocked: [], warned: [] };
+
+  expect(judge([unmeasured, fine], true, "commit")).toEqual({ ...none, blocked: [unmeasured] });
+  expect(judge([unmeasured, worse], true, "commit")).toEqual({
+    ...none,
+    failed: [worse],
+    blocked: [unmeasured],
+  });
+  expect(judge([unmeasured], false, "commit").blocked).toEqual([unmeasured]);
+  expect(judge([worse], false, "commit")).toEqual(none);
+  expect(judge([fine], true, "commit")).toEqual(none);
 });
 
 // --- the result store ---------------------------------------------------------
@@ -1204,7 +1210,7 @@ test("failed run: a checker whose output cannot be read is not measured, its std
   expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
     ["not-measured", "broken: not measured: boom: config broken; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
 });
 
 test("failed run: a Python crash is named by its exception, not by the Traceback line", async () => {
@@ -1244,7 +1250,7 @@ test("failed run: a checker killed by a signal is not measured, never worse", as
   expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
     ["not-measured", "killed: not measured: sh killed by SIGKILL; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
 });
 
 test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s", async (mode) => {
@@ -1260,7 +1266,7 @@ test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s",
       ["measured", "semgrep-ts: 0 -> 1; worse: a.ts 0 -> 1; 1 new"],
     ]);
     expect(warnings).toEqual([]);
-    expect(runOutcome(verdicts, true).code).toBe("worse");
+    expect(judge(verdicts, true, "commit").failed).toHaveLength(1);
     return;
   }
 
@@ -1269,7 +1275,7 @@ test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s",
   expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
     ["not-measured", "semgrep-ts: not measured: semgrep timed out; retry"],
   ]);
-  expect(runOutcome(verdicts, true).code).toBe("blocked");
+  expect(judge(verdicts, true, "commit").blocked).toHaveLength(1);
   expect(headline(defined(verdicts[0], "a verdict"))).not.toContain("WORSE");
   expect(describeStore(again.store).at(-1)).toStartWith("store: 0 hits,");
   expect(entries(root, "semgrep-ts", "pre-push")).toEqual([]);

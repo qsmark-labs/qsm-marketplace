@@ -19,7 +19,6 @@ import {
   doctorRows,
   headline,
   printRunLines,
-  runOutcome,
   type StructuralCheckerStatus,
   structuralCheckerStatus,
   type Verdict,
@@ -33,7 +32,7 @@ import {
   readGatesConfig,
   writeGatesConfig,
 } from "../lib/config.ts";
-import { type GateOutcome, gatesCode, runGates, SELF_GATES } from "../lib/gate-runner.ts";
+import { type GateOutcome, gatesCode, judge, runGates, SELF_GATES } from "../lib/gate-runner.ts";
 import {
   HOOK_LANGS,
   HOOK_NAMES,
@@ -138,8 +137,13 @@ const check: Handler = async (call) => {
     verdicts,
     warnings,
   };
-  const { code, deciding } = runOutcome(verdicts, beforeRef !== null);
-  return code === "ok" ? ok(data) : fail(code, deciding.map((v) => v.summary).join("; "), data);
+  const { failed, blocked } = judge(verdicts, beforeRef !== null, "commit");
+  if (failed.length > 0) {
+    return fail("worse", failed.map((v) => v.summary).join("; "), data);
+  }
+  return blocked.length > 0
+    ? fail("blocked", blocked.map((v) => v.summary).join("; "), data)
+    : ok(data);
 };
 
 const list: Handler = () => {
