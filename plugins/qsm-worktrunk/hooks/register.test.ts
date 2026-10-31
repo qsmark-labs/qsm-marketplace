@@ -248,3 +248,18 @@ test("a prompt submitted toasts and still lets the prompt through when process.r
   expect(toasts.length).toBe(1);
   expect(toasts[0]).toMatch(/^qsm-worktrunk ERROR: prompt\.submit:/);
 });
+
+test("a prompt whose marker fails still reaches the bottom once", async ($, on) => {
+  const bottomRan = stubPromptSubmit(on);
+  on("ui.log", () => ({ value: undefined }));
+  on("ui.toast", () => ({ value: undefined }));
+  on("session.cwd", () => ({ value: "/repo" }));
+  on("env.get", () => ({ value: "/home/p" }));
+  on("process.run", () => {
+    throw new Error("wt is gone");
+  });
+
+  await $.prompt.submit({ text: "hi" });
+
+  expect(bottomRan()).toBe(1);
+});

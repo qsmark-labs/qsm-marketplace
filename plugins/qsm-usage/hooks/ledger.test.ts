@@ -375,11 +375,13 @@ test(
 );
 
 test("A verb that fails leaves the output unchanged", async ($, on) => {
-  toolHost(on, "s10", bashResult(listing(400)), {});
+  const seen = toolHost(on, "s10", bashResult(listing(400)), {});
 
   const ran = await $.tool.call({ tool: "Bash", command: "gh pr list --json number" });
 
   expect(stdoutOf(ran.result)).toBe(listing(400));
+  // The toon hook threw after `next` ran the tool; its catch must not run the tool again.
+  expect(seen.commands).toHaveLength(1);
 });
 
 test("The command output filter's rewrite is the command the tool runs", async ($, on) => {
