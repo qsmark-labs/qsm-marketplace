@@ -24,8 +24,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { YAML } from "bun";
+import { languageSkills, negativeCase } from "./unrelated-negative.ts";
 import { isRecord, root, walk } from "./walk.ts";
 
 const [name, ...args] = process.argv.slice(2);
@@ -79,20 +80,47 @@ function frontmatter(file: string): Record<string, unknown> {
   return doc;
 }
 
-/** The plugin's case directories: a directory with a case.yaml or a prompt.md. */
-function caseDirs(): Entry[] {
-  if (!existsSync(evals)) {
-    return [];
+/** The generated negative case of a language plugin, written to a temp directory that goes with the
+ * process; empty for a plugin with no `*-dev` skill. */
+function generatedCases(): string {
+  const skillsDir = join(plugin, "skills");
+  const skills = languageSkills(
+    existsSync(skillsDir)
+      ? readdirSync(skillsDir, { withFileTypes: true })
+          .filter((d) => d.isDirectory())
+          .map((d) => d.name)
+      : [],
+  );
+  const dir = mkdtempSync(join(tmpdir(), `eval-generated-${name}-`));
+  process.on("exit", () => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+  if (skills.length > 0) {
+    for (const [file, text] of Object.entries(negativeCase(skills))) {
+      const path = join(dir, "unrelated-negative", file);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, text);
+    }
   }
-  return readdirSync(evals, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && d.name !== "results" && d.name !== "mocks")
-    .map((d) => join(evals, d.name))
+  return dir;
+}
+
+const generated = generatedCases();
+
+/** The plugin's case directories, its own and the generated ones: a directory with a case.yaml or a
+ * prompt.md. */
+function caseDirs(): Entry[] {
+  return [evals, generated]
+    .filter((base) => existsSync(base))
+    .flatMap((base) => readdirSync(base, { withFileTypes: true }).map((d) => ({ base, d })))
+    .filter(({ d }) => d.isDirectory() && d.name !== "results" && d.name !== "mocks")
+    .map(({ base, d }) => join(base, d.name))
     .filter((dir) => existsSync(join(dir, "case.yaml")) || existsSync(join(dir, "prompt.md")))
     .map((dir) => {
       const file = existsSync(join(dir, "case.yaml")) ? "case.yaml" : "prompt.md";
       const meta = frontmatter(join(dir, file));
       const tags = Array.isArray(meta.tags) ? meta.tags.map(String) : [];
-      const label = relative(evals, dir);
+      const label = basename(dir);
       return {
         dir,
         label,
@@ -303,6 +331,7 @@ try {
   // A scaffold script gets a scrubbed env, so it finds the repository root in this file, two
   // levels above itself: `cat "$(dirname "$0")/../../.eval-repo"`.
   writeFileSync(join(copy, ".eval-repo"), root);
+  cpSync(generated, join(copy, "evals"), { recursive: true });
   // A skipped case is removed from the copy, so the eval never sees it.
   for (const c of skipped) {
     rmSync(join(copy, "evals", c.label), { recursive: true, force: true });

@@ -1,7 +1,8 @@
 // qsm-langdev's function-hooks module: the Bash guard, and the edit hook that tells the model what
 // an edit did to the file's findings. The guard's rule is lib/blocked-git.ts, the findings are the
 // `edited` verb's. The stop gate (hooks.json, dist/gate-hook) stays a classic command hook: its
-// event is SubagentStop, which has no function form, and a function hook cannot block a stop.
+// events are Stop (the main agent) and SubagentStop, which have no function form, and a function
+// hook cannot block a stop.
 import type { Caught, EngineInterface, On } from "claude-code";
 import { gitDenial } from "../lib/blocked-git.ts";
 import { registerNoun } from "./noun.generated.ts";

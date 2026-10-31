@@ -249,7 +249,7 @@ const languages: Handler = (call) => {
   const selected = applyLanguagesEdit(root, config, action, optionalString(call, "name"));
   const text =
     selected.length === 0
-      ? "(none — tree-derived mode: every language with matching files runs)"
+      ? "(none — only docs and the multi gate run; `qsm-langdev languages add <name>` selects a language)"
       : selected.join("\n");
   return ok({ languages: selected }, text);
 };
