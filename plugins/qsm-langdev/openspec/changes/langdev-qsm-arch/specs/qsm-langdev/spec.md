@@ -12,7 +12,8 @@ missing its architectural rules file SHALL be reported as not scored, never
 as failed.
 
 Quality SHALL score a layered architecture by the shape it declares, with the
-layers and their `order` in `.sentrux/rules.toml` as the only configuration.
+layers and their `order` in `.qsm-arch/rules.toml` as the only configuration; the structural checker
+is `qsm-arch`.
 An import or call from a module in a higher layer into a module in a lower
 layer SHALL cost nothing in modularity; an edge between two modules of one
 layer, an upward edge and an edge with an unlayered end SHALL be charged as
@@ -78,31 +79,24 @@ a sibling slice or an upward edge.
 
 Install SHALL compile this plugin's binary and its classic hook through
 the shared install base, and SHALL handle the structural checker as one extra
-step: `already` when the checker on PATH reports the version this plugin's patch
-builds (`0.5.7-qsm.3`), so an older patched build is rebuilt;
-otherwise it SHALL run this plugin's build script and report `installed` on
-success, `error` with the build command on failure, and `missing-prereq`
-naming `cargo` when `cargo` is not on PATH. A dry run SHALL name the build
-command and run nothing.
+step: `already` when `qsm-arch` on PATH reports the pinned release's version;
+otherwise it SHALL download the pinned release binary, check its pinned
+sha256, install it into the user's bin directory and report `installed`, or
+report `error` naming the URL when the download fails or the sum differs. A
+dry run SHALL name the URL and download nothing.
 
 #### Scenario: No compatible checker present
 
-- **WHEN** install runs, `cargo` is on PATH, and no checker reporting a
-  qsm-patched version is on PATH
-- **THEN** install SHALL run the build script and report `installed`
+- **WHEN** install runs and no `qsm-arch` at the pinned version is on PATH
+- **THEN** install SHALL download the pinned release, check its sha256 and
+  report `installed`
 
-#### Scenario: The build fails
+#### Scenario: The checksum differs
 
-- **WHEN** the build script exits non-zero
-- **THEN** install SHALL report `error` carrying the command to run by hand
-
-#### Scenario: No cargo
-
-- **WHEN** no compatible checker and no `cargo` is on PATH
-- **THEN** install SHALL report `missing-prereq` naming `cargo` and build
-  nothing
+- **WHEN** the downloaded binary's sha256 is not the pinned one
+- **THEN** install SHALL report `error` naming the URL and install nothing
 
 #### Scenario: A compatible checker is already present
 
-- **WHEN** the checker on PATH reports a qsm-patched version
-- **THEN** install SHALL report `already` and build nothing
+- **WHEN** `qsm-arch --version` reports the pinned version
+- **THEN** install SHALL report `already` and download nothing
