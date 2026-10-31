@@ -84,6 +84,8 @@
 
 - [x] 6.1 `README.md` and `USAGE.md`: the four points, their targets and timeouts, the `slow:` line,
   the doctor warning. Proof: `bun run validate` and markdownlint pass. Blocked by 3.2 and 5.3.
-- [ ] 6.2 Measure again the table of the design's Context on the same machine and add the after
+- [x] 6.2 Measure again the table of the design's Context on the same machine and add the after
       column to `measurements.md`. Proof: edit `.ts` under 7.5 s at load 15. Blocked by everything
       above.
+      Done 2026-10-31 at load 3.6 to 7 (edit `.ts` 1.1 to 1.4 s); the run at load 15 was not made, by
+      the owner's choice. The numbers are in `measurements.md`, After.

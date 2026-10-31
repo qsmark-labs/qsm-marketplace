@@ -1,5 +1,24 @@
 ## ADDED Requirements
 
+### Requirement: Every run computes its two file sets once
+
+Before any checker runs, the run SHALL compute two file sets, `changed` and
+`given`, and hand each checker the one it declares. They are computed once per run, never per
+checker, and the run reports each set's size.
+
+#### Scenario: A commit that touches two files
+
+- **WHEN** the index differs from `HEAD` in `a.ts` and `b.ts` and a
+  per-file checker covers TypeScript
+- **THEN** that checker SHALL be handed exactly `a.ts` and `b.ts`, and the
+  report SHALL say `changed: 2 files`
+
+#### Scenario: The whole project on request
+
+- **WHEN** the caller names no files and a checker declares `given`
+- **THEN** that checker SHALL be handed every file under the repository root
+  that git does not ignore
+
 ### Requirement: The commit gate and the stop gate judge with one rule
 
 The commit and push gates and the session-stop gate SHALL classify every
@@ -113,25 +132,6 @@ and SHALL NOT tell the person to install it.
 - **WHEN** Python is selected, `ruff.toml` exists and `bandit.yaml` does not
 - **THEN** `check` SHALL fail naming `bandit.yaml`, and bandit SHALL NOT run
   at its defaults
-
-### Requirement: Every run computes its file sets once
-
-Before any checker runs, the run SHALL compute two file sets, `changed` and
-`given`, and hand each checker the one it declares. They are computed once per run, never per
-checker, and the run reports each set's size.
-
-#### Scenario: A commit that touches two files
-
-- **WHEN** the index differs from `HEAD` in `a.ts` and `b.ts` and a
-  per-file checker covers TypeScript
-- **THEN** that checker SHALL be handed exactly `a.ts` and `b.ts`, and the
-  report SHALL say `changed: 2 files`
-
-#### Scenario: The whole project on request
-
-- **WHEN** the caller names no files and a checker declares `given`
-- **THEN** that checker SHALL be handed every file under the repository root
-  that git does not ignore
 
 ### Requirement: The session-stop gate blocks a worsened tree, capped
 
@@ -280,3 +280,10 @@ nothing.
 served nothing.
 
 **Migration**: none; a checker that needs importers declares `given`.
+
+### Requirement: Every run computes its file sets once
+
+**Reason**: its `changed+N` set and the scenario "A file that another file imports" went with the
+import graph; the requirement is restated as "Every run computes its two file sets once".
+
+**Migration**: none.

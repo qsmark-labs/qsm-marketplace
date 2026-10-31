@@ -188,3 +188,16 @@ against HEAD and runs the edit set on the live file (no scratch trees, no versio
 | --- | --- | --- |
 | 1.3 | 3.7 s at 7.4 | 1.1, 1.1, 1.2 s |
 | 7.2-8.8, every core also busy with a burner | 8.2, 8.4, 10.4 s at 11.4-13.1 | 3.2, 3.5, 3.5 s |
+
+## After (2026-10-31, langdev-point-targets and langdev-one-path landed, main 20f2ebde)
+
+Measured through `bun plugins/qsm-langdev/scripts/cli.ts` in a worktree at load 3.6 to 7, three
+runs each; the first `check` of each kind ran on an empty result store. No run under load: the
+owner stopped it ("nedosuj mi PC, a nech to tak jak to je s merenim na current").
+
+| Point | Before | After | Target |
+| --- | --- | --- | --- |
+| edit `.ts` | 8.4, 12.0 s (load 2.4) | 1.4, 1.1, 1.2 s | 5 s |
+| edit `.md` | 4.6, 5.3, 6.0 s (load 15 to 18) | 0.7, 0.6, 0.6 s | 5 s |
+| `check` at pre-commit (commit hook, stop gate) | 5.2, 9.3, 9.4 s | 12.1 cold, 3.7, 3.7 s | 30 s per checker |
+| `check` at pre-push | 12.8 s | 14.3 cold, 7.6, 7.7 s | 1 min per checker |

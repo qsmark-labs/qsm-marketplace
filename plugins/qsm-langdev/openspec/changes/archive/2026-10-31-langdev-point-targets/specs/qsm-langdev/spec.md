@@ -89,8 +89,8 @@ points. The gate runs in `bun test`, so a language rules set without them cannot
 ## RENAMED Requirements
 
 - FROM: `### Requirement: The edit hook reports a file's own regression and never blocks`
-- TO:
-  `### Requirement: The edit hook checks the written file against the project's rules and never blocks`
+<!-- markdownlint-disable-next-line MD013 -- OpenSpec reads the rename from one line -->
+- TO: `### Requirement: The edit hook checks the written file against the project's rules and never blocks`
 
 ## MODIFIED Requirements
 
@@ -320,6 +320,12 @@ blocks, it names each staged file it skipped for unstaged changes.
   or not its version at HEAD carried it
 - **THEN** the hook SHALL report the finding to the editor and SHALL NOT block
   the edit
+
+#### Scenario: A written file gained a finding
+
+- **WHEN** an edit adds a finding to the file
+- **THEN** the hook SHALL report it, as it reports every finding the file carries under the
+  project's rules, and SHALL NOT block the edit
 
 #### Scenario: A new file git does not track
 

@@ -9,32 +9,27 @@ structural checker, behind a single CLI.
 
 ### Requirement: A check compares a reference tree against the shipped tree
 
-`check` SHALL score every selected checker against two sides: the reference,
-which is the last commit (`HEAD`), and the shipped side, which is every tracked
-file as the working tree holds it (a staged change, an unstaged change, and a
-file added to the index). An untracked file is not measured: a file git does
-not track is not on its way into a commit, so a finding in it decides nothing
-about the commit under the gate. Each side SHALL be scored in a scratch tree that holds
-the inputs the repository's own commands read, so a checker measures there
-what it measures in the live checkout: every dependency directory the live
-checkout installed (`node_modules`, `.venv`) at any depth, and every ignored
-path a tsconfig's `include` or `files` names, linked in from the live
-checkout. A generated file stays on disk for the code that imports it; the
-file sets leave it unscored. A checker SHALL pass only when the shipped side's total
-is no higher than the reference side's; where the checker names files, no file
-SHALL carry more findings than before, a moved file compared under its old
-name; and where the checker reports individual findings, no finding SHALL
-occur more often than before. A finding is identified by its rule and message,
-never by its line, so code moving above it does not make it new. The run SHALL
-stop at the first checker that fails and name it with both totals and the
-newly-occurring lines. A checker that is not measured (it ran past its time
-limit, or its output could not be read) does not stop the run: it decides
-nothing, so the checkers after it still run and the report is whole. A
-checker is selected only when its file set holds a file of a type it covers.
-Each side is scored at most once per content: the
-reference side comes from the result store whenever it holds that content, so
-a run scores only what the store does not know (see "A checker runs once per
-content, against a stored result").
+`check` SHALL score every selected checker against two sides: the reference, which is the last
+commit (`HEAD`), and the shipped side, which is the index: every file as it is staged. An unstaged
+change and an untracked file are not measured anywhere, at no point: only what is staged or
+committed is on its way out, so a change nobody staged decides nothing about the commit under the
+gate, and a file another session left on disk never reaches a gate. Each side SHALL be scored in a
+scratch tree that holds the inputs the repository's own commands read, so a checker measures there
+what it measures in the live checkout: every dependency directory the live checkout installed
+(`node_modules`, `.venv`) at any depth, and every ignored path a tsconfig's `include` or `files`
+names, linked in from the live checkout. A generated file stays on disk for the code that imports
+it; the file sets leave it unscored. A checker SHALL pass only when the shipped side's total is no
+higher than the reference side's; where the checker names files, no file SHALL carry more findings
+than before, a moved file compared under its old name; and where the checker reports individual
+findings, no finding SHALL occur more often than before. A finding is identified by its rule and
+message, never by its line, so code moving above it does not make it new. The run SHALL stop at the
+first checker that fails and name it with both totals and the newly-occurring lines. A checker that
+is not measured (it ran past its time limit, or its output could not be read) does not stop the run:
+it decides nothing, so the checkers after it still run and the report is whole. A checker is
+selected only when its file set holds a file of a type it covers. Each side is scored at most once
+per content: the reference side comes from the result store whenever it holds that content, so a run
+scores only what the store does not know (see "A checker runs once per content, against a stored
+result").
 
 #### Scenario: A new finding blocks
 
@@ -42,6 +37,13 @@ content, against a stored result").
   reference tree
 - **THEN** `check` SHALL fail, name the checker, both totals, and the new
   finding's location
+
+#### Scenario: An unstaged change is not measured
+
+- **WHEN** `a.ts` is staged with one change and then edited again without
+  staging, and `b.ts` is edited without staging
+- **THEN** `check` SHALL score the staged `a.ts` only, and `changed` SHALL hold
+  `a.ts` alone
 
 #### Scenario: An untracked file is not measured
 
@@ -88,62 +90,12 @@ commit that added them. A whole-tree jscpd run takes well under a second on this
 - **WHEN** a commit adds a block that repeats one already in the tree, and nothing else
 - **THEN** its pre-commit gate SHALL report jscpd worse and block the commit
 
-### Requirement: Every run computes its file sets once
-
-Before any checker runs, the run SHALL compute three file sets and hand each
-checker the one it declares. They are computed once per run, never per
-checker, and the run reports each set's size.
-
-#### Scenario: A commit that touches two files
-
-- **WHEN** the working tree differs from `HEAD` in `a.ts` and `b.ts` and a
-  per-file checker covers TypeScript
-- **THEN** that checker SHALL be handed exactly `a.ts` and `b.ts`, and the
-  report SHALL say `changed: 2 files`
-
-#### Scenario: A file that another file imports
-
-- **WHEN** `a.ts` changed, `b.ts` imports `a.ts`, `c.ts` imports `b.ts`, and a
-  checker declares `changed+N` with N = 1
-- **THEN** that checker SHALL be handed `a.ts` and `b.ts`, not `c.ts`
-
-#### Scenario: The whole project on request
-
-- **WHEN** the caller names no files and a checker declares `given`
-- **THEN** that checker SHALL be handed every file under the repository root
-  that git does not ignore
-
-### Requirement: The import graph is one module every language feeds
-
-qsm-langdev SHALL own one import graph, independent of the structural checker
-(sentrux) and of any other tool, that any checker, verb or plugin of the
-langdev family can query. Each language contributes one extractor that reads a
-file's own import statements and resolves them to files in the repository:
-TypeScript and JavaScript (`import`, `export ... from`, `require`, dynamic
-`import()`), Python (`import`, `from ... import`), and shell (`source`, `.`).
-An import that resolves to nothing in the repository (a package, a builtin) is
-not an edge. The graph SHALL be cached per file content, so a run re-reads
-only files whose content changed since the last run. The query SHALL answer
-the files within N edges of a given set, in both directions. A language with
-no extractor contributes no edges and is named in the report, never silently
-treated as having no imports.
-
-#### Scenario: A relative import
-
-- **WHEN** `b.ts` holds `import { x } from "./a"` and `a.ts` exists
-- **THEN** the graph SHALL hold the edge `b.ts -> a.ts`
-
-#### Scenario: A package import
-
-- **WHEN** `b.ts` holds `import { z } from "zod"`
-- **THEN** the graph SHALL hold no edge for it
-
 ### Requirement: A checker runs once per content, against a stored result
 
 Every checker result SHALL be stored in the worktree's own result store, `.qsm-langdev/results/`,
 which git ignores: the directory holds its own `.gitignore` of `*`, written when the store creates
 it, so a repository that never ran `init` sees nothing untracked and its own `.gitignore` is never
-edited; the import graph's cache does the same. A stored result is keyed by the checker, the
+edited. A stored result is keyed by the checker, the
 checker's tool version (what `<binary> --version` prints), a hash of the configuration it read (its
 arguments without the scored files, and the config files it declares in the registry, and, for a
 checker that resolves imports (`tsc`, `depcruise`, `knip`), the names of the packages installed in
@@ -168,13 +120,14 @@ with no store), or whose answer depends on something no key holds (dotnet's advi
 network), SHALL never be stored and SHALL be scored every run, and the report SHALL name it and why.
 A failed run is never stored, and an entry the store cannot read is a miss. The store SHALL keep
 each enforcement point's entries apart, `results/<checker>/<point>/`, because one checker runs
-another set and engine at a push than at a commit; the edit hook and the stop gate run at the
-pre-commit point and share its entries. After a run the store SHALL keep, for every checker the run
-used and at the run's point only, the entries the reference and shipped sides of that run used, so
-it never grows without bound and a commit never evicts what a push stored, nor a push what a commit
-stored. An entry outside a point's directory is a miss and is removed by the next run of its
-checker. Nothing SHALL run a checker twice over the same content, the two sides of one run included.
-The report SHALL say, per checker, whether each side was a hit or scored, and the run's total.
+another set and engine at a push than at a commit; the stop gate runs at the pre-commit point, and
+the `ci` point keeps its own entries. The edit point keeps none: it checks the live file in place.
+After a run the store SHALL keep, for every checker the run used and at the run's point only, the
+entries the reference and shipped sides of that run used, so it never grows without bound and a
+commit never evicts what a push stored, nor a push what a commit stored. An entry outside a point's
+directory is a miss and is removed by the next run of its checker. Nothing SHALL run a checker twice
+over the same content, the two sides of one run included. The report SHALL say, per checker, whether
+each side was a hit or scored, and the run's total.
 
 #### Scenario: The first run in a fresh worktree
 
@@ -203,13 +156,13 @@ The report SHALL say, per checker, whether each side was a hit or scored, and th
 
 Semgrep's community engine analyses each file on its own: a flow from one file into another is not
 found even when both files are scanned together. Every semgrep checker SHALL scan the `changed` set
-with the community engine at every point, pre-commit (the commit hook, the edit hook, the stop gate,
-and `check`, whose default is pre-commit) and pre-push (the push hook and `check --at pre-push`)
-alike, whatever the login, and SHALL NOT ask for the login. The Pro engine's cross-file run over the
-whole tree is not a gate on a person's machine: measured on this repository, both sides at once took
-128 s quiet, 373 s with every core busy, and past 600 s at a load of 15, and a run cut short blocks
-a push for nothing it proved. That run belongs to a CI job, which does not exist yet; until it does,
-no checker declares a Pro form and nothing runs `semgrep --pro` or `semgrep ci` (which uploads).
+with the community engine at the pre-commit point (the commit hook, the stop gate, and `check`,
+whose default is pre-commit) and the pre-push point (the push hook and `check --at pre-push`) alike,
+whatever the login, and SHALL NOT ask for the login. No semgrep checker SHALL run at the edit point:
+one file alone took 9.0 s, most of the 10 s the engine gives the edit hook. The Pro engine's
+cross-file run over the whole tree is not a gate on a person's machine: measured on this repository,
+both sides at once took 128 s quiet, 373 s with every core busy, and past 600 s at a load of 15, and
+a run cut short blocks a push for nothing it proved.
 `doctor` and `install` SHALL report, as a warning and never a failure, when the semgrep CLI is not
 logged in: `semgrep is not logged in: run semgrep login to use qsm-langdev at its fullest`, asking
 the CLI, never reading its token file: `semgrep show identity` exiting 0, or a `SEMGREP_APP_TOKEN`
@@ -251,6 +204,12 @@ agent.
 - **THEN** every semgrep checker SHALL scan the changed files with the
   community engine, as a commit does
 
+#### Scenario: An edit
+
+- **WHEN** the edit hook checks a written `.ts` file
+- **THEN** no semgrep checker SHALL run, and `semgrep-ts` SHALL scan the file
+  at the next commit
+
 #### Scenario: Not logged in
 
 - **WHEN** semgrep is on PATH and `semgrep show identity` exits 2
@@ -275,10 +234,11 @@ agent.
 `check` SHALL fail, naming the checker and its install command, when a selected checker's binary is
 not resolvable. `check` SHALL also fail, naming the missing file and that it must be created or the
 checker removed from selection, when a selected language has no scaffolded config in the repository,
-since scoring both sides at a tool's defaults would let nothing ever regress. A binary whose
-`--version` presence probe does not answer in time (five minutes, the limit for any process the gate
-starts) is not missing: `check` SHALL report that checker as not measured, naming the probe and its
-limit and asking for a retry, and SHALL NOT tell the person to install it.
+or a selected checker that names a config file of its own lacks that file, since scoring both sides
+at a tool's defaults would let nothing ever regress. A binary whose `--version` presence probe does
+not answer in time (five minutes, the limit for any process the gate starts) is not missing: `check`
+SHALL report that checker as not measured, naming the probe and its limit and asking for a retry,
+and SHALL NOT tell the person to install it.
 
 #### Scenario: A checker's binary is absent
 
@@ -298,6 +258,12 @@ limit and asking for a retry, and SHALL NOT tell the person to install it.
   repository
 - **THEN** `check` SHALL fail, naming the missing file and `init` as the
   remedy
+
+#### Scenario: A checker's own config is missing
+
+- **WHEN** Python is selected, `ruff.toml` exists and `bandit.yaml` does not
+- **THEN** `check` SHALL fail naming `bandit.yaml`, and bandit SHALL NOT run
+  at its defaults
 
 ### Requirement: A repository that never ran init is left alone
 
@@ -445,7 +411,7 @@ command and run nothing.
 ### Requirement: Doctor reports each checker's binary as present or missing
 
 `doctor` SHALL report, for every checker in the languages currently selected
-(or, with no selection, every language the tree's files touch), whether its
+and the always-on languages, whether its
 binary resolves and, when it does not, the command to install it. `doctor`
 SHALL also report whether the structural checker on the machine reports a
 qsm-patched version, distinguishing that from an unpatched upstream checker
@@ -474,9 +440,10 @@ nothing.
 
 ### Requirement: List reports the registry as data
 
-`list` SHALL report every checker with its language, its enforcement point,
+`list` SHALL report every checker with its language, the points it runs at,
 and its thresholds, read live from the one registry every other verb reads.
-`list --json` SHALL emit the same as data.
+`list --json` SHALL emit the same as data, each row's `points` a list out of
+`edit`, `pre-commit`, `pre-push` and `ci`.
 
 #### Scenario: A registry entry appears identically everywhere
 
@@ -759,34 +726,6 @@ already have a file of that name, and SHALL record the chosen profile.
 - **THEN** `init` SHALL leave that file untouched and report it as already
   present
 
-### Requirement: The edit hook reports a file's own regression and never blocks
-
-After a file is written, the hook, through its door `qsm-langdev edited <file>`, SHALL run the same
-comparison as `check` scoped to that one file against its version at the reference commit, and SHALL
-surface the verdict, current findings marked whether newly occurring. The hook SHALL exit
-successfully regardless of the verdict; it is advisory only. The checkers SHALL run under what is
-left of 7.5 seconds from the start of the binary, at least 1 second, because the engine gives the
-noun call 10 seconds and the fixers and the start take their share first; a checker past its budget
-SHALL be reported as not measured, never as a failed hook, so several edits made at once still each
-get the checkers that finished.
-
-Before the comparison the hook, and the pre-commit gate over staged files with no unstaged changes,
-SHALL run each static fixer that covers the file and re-stage what the gate fixed. The fixers are
-the safe fix modes of the checkers langdev runs (`rumdl` and `markdownlint-cli2 --fix`,
-`oxlint --fix` and `oxfmt`, `ruff check --fix` and `ruff format`, `shfmt -w`, `fish_indent -w`,
-`rustfmt`), never an unsafe or code-deleting fix; a fixer whose binary is missing is skipped.
-`dotnet format` is no fixer: it loads a project and its analyzers on every run, 24 s measured, which
-no edit can carry, so `dotnet-format` only reports, once per owning project (`groupBy`), scoped to
-the changed files and with `--no-restore`, and the person runs the fix. When the pre-commit gate
-blocks, it names each staged file it skipped for unstaged changes.
-
-#### Scenario: A written file gained a finding
-
-- **WHEN** the edited file now carries one more finding than its reference
-  version
-- **THEN** the hook SHALL report the new finding to the editor and SHALL NOT
-  block the edit
-
 ### Requirement: The session-stop gate blocks a worsened tree, capped
 
 At an agent's session stop, one gate SHALL compare every tree that agent
@@ -799,10 +738,24 @@ through the same rule as `check`, and the architectural quality comparison,
 through the same rule as `structure`, in one run. A regression in either
 comparison SHALL block the stop, reporting the changed files and, for the
 comparison that regressed, the totals or the quality before and after. The
-gate SHALL allow the stop when both comparisons held or improved. When a tree
+gate SHALL allow the stop when both comparisons held or improved. The edited
+tree's side is its index, as for `check`: an edit the agent did not stage is
+not scored, and the gate SHALL name each file with an unstaged change in a
+warning (`unstaged changes not scored:`) and each untracked file in a warning
+(`untracked, not scored:`) rather than pass over it in silence; a file staged
+and then edited again is scored as staged and named too. The gate SHALL run
+at a subagent's stop and at the main agent's stop alike, with one cap per
+session and agent. When a tree
 has no ruleset to score one comparison under, or the checker that comparison
 needs is unavailable, the gate SHALL allow the stop and report a warning for
-that comparison rather than a block.
+that comparison rather than a block. The gate SHALL run at the pre-commit
+point, with that point's target and timeout for every checker.
+
+#### Scenario: A checker slower than the commit target at a stop
+
+- **WHEN** a checker takes 45 seconds in the stop gate
+- **THEN** the gate SHALL score it, report it slow against the 30-second
+  target, and SHALL NOT report it not measured
 
 #### Scenario: A worktree agent is judged on its own tree
 
@@ -811,6 +764,12 @@ that comparison rather than a block.
   directory
 - **THEN** the gate SHALL judge the first agent only on its worktree against
   its own start commit there
+
+#### Scenario: An edit the agent did not stage
+
+- **WHEN** the stopping agent edited a tracked file and staged none of it
+- **THEN** the gate SHALL pass without scoring that edit and SHALL warn
+  `unstaged changes not scored:` naming the file
 
 #### Scenario: An agent with no recorded edit
 
@@ -831,6 +790,12 @@ that comparison rather than a block.
 - **THEN** the gate SHALL allow the stop, record the regression instead of
   blocking again, and SHALL NOT block that agent for the same regression
   again in the session
+
+#### Scenario: The main agent stops with a worse staged tree
+
+- **WHEN** the main agent of a session staged a change that makes a checker
+  worse and its turn ends
+- **THEN** the gate SHALL block that stop as it blocks a subagent's
 
 ### Requirement: Architecture data is queryable during a session
 
@@ -853,8 +818,10 @@ carries the remote name git hands the hook as its first argument. `install` SHAL
 block it wrote earlier up to the current call, so a repository is never left on a stale one, by
 replacing only its earlier call line: whatever the person added to a hook `install` wrote whole
 stays as it was. A hook `install` wrote whole that holds neither the current nor the earlier call
-line SHALL be left untouched and named with the line to add by hand. `uninstall` SHALL remove
-exactly what `install` added and nothing the repository already had.
+line SHALL be left untouched and named with the line to add by hand. An existing hook
+that is not a shell script SHALL be left untouched and named with the line
+to add by hand. `uninstall` SHALL remove exactly what `install` added and
+nothing the repository already had.
 
 #### Scenario: Installing beside an existing hook
 
@@ -882,9 +849,14 @@ exactly what `install` added and nothing the repository already had.
 
 ### Requirement: The checker deadline terminates its owned process group
 
-The existing checker runner SHALL start each checker in its own process group and terminate
-that group when the outer deadline expires, including engine children started by a launcher.
-It SHALL retain the existing deadline values and not-measured outcome. It SHALL NOT identify
+One process runner SHALL start every process a run starts (a checker, a
+presence probe, a fixer, the structural checker, the secrets scanners, the
+rule pack fetch and the semgrep login probe) in its own process group and
+terminate that group at the limit, including engine children started by a
+launcher. The limit SHALL be the run's point's timeout from the point table,
+or at the edit point what is left of its deadline; no process SHALL carry a
+limit of its own and none SHALL run without one. A process that hits the
+limit SHALL be reported not measured. It SHALL NOT identify
 processes for termination by executable name or terminate unrelated user processes.
 
 #### Scenario: A timed-out launcher has a running engine child
@@ -892,6 +864,12 @@ processes for termination by executable name or terminate unrelated user process
 - **WHEN** a checker launcher starts an engine child and the checker exceeds its outer deadline
 - **THEN** the runner SHALL terminate the owned launcher and engine group, report not measured,
   and leave no running engine from that invocation after cleanup
+
+#### Scenario: The structural checker hangs
+
+- **WHEN** the structural checker does not exit before the point's timeout
+- **THEN** its process group SHALL be terminated and the structure verdict
+  SHALL be not measured, naming the limit
 
 ### Requirement: Semgrep rule timeouts and fatal errors invalidate measurements
 
@@ -924,12 +902,11 @@ measured result.
 ### Requirement: Semgrep rule execution stays inside the checker deadline
 
 The common Semgrep argument builder SHALL explicitly use `--timeout 0` to avoid a separate native
-per-rule cutoff within the already bounded checker execution. The existing outer deadline, five
-minutes for any process the gate starts, at a commit and a push alike, SHALL remain unchanged and
-enforced. Reaching that deadline SHALL report not measured and SHALL NOT store a score. The changed
-argv SHALL participate in the existing store key so entries collected under the native default are
-not reused in this mode. No rule, quality threshold, reference commit or engine-selection policy
-SHALL change.
+per-rule cutoff within the already bounded checker execution. The outer deadline is the point's
+timeout, five minutes at a commit and a push alike and twenty at `ci`, and SHALL be enforced.
+Reaching that deadline SHALL report not measured and SHALL NOT store a score. The changed argv SHALL
+participate in the existing store key so entries collected under the native default are not reused
+in this mode. No rule, quality threshold, reference commit or engine-selection policy SHALL change.
 
 #### Scenario: The rule needs more than the native default allows
 
@@ -947,3 +924,234 @@ SHALL change.
 - **WHEN** the result store holds a score collected without the explicit timeout argument
 - **THEN** that entry SHALL NOT answer a scan using the new argv, without changing the baseline
   commit or manually deleting cache files
+
+### Requirement: The edit hook checks the written file against the project's rules and never blocks
+
+After a file is written, the hook, through its door `qsm-langdev edited <file>`, SHALL run the
+checkers that declare the `edit` point, never the whole pre-commit set, on that one file in place,
+in the live checkout with the project's own configuration, and compare it against nothing: no
+reference commit, no scratch tree, no stored result. A file git does not track yet is checked the
+same way. The hook SHALL exit successfully whatever it finds; it is advisory only. The ratchet
+against a reference belongs to the commit, the push and CI, which score the file again. The hook
+stays a function hook, where the engine gives every hook 10 seconds that no plugin can raise, so the
+edit point has no five-minute timeout: the checkers SHALL run under what is left of 7.5 seconds from
+the start of the binary, at least 1 second, because the fixers and the start take their share first;
+a checker past its budget SHALL be reported as not measured, never as a failed hook, so several
+edits made at once still each get the checkers that finished. A checker SHALL declare the `edit`
+point only when it scores one file, one run measures under 1 second on a quiet machine, because the
+edit set runs at once and a load of 15 made the same run about five times slower, and it finds in
+that file type something the project's rules flag that no faster edit checker already finds.
+
+What the hook gives the model SHALL be the errors the project's own rules raise in the edited file
+and nothing else: each finding with its rule and line. A file
+with no finding SHALL give the model nothing. A checker that did not run, was not measured, or was
+slow SHALL NOT be told to the model; it SHALL go to the hook's log, because the commit gate scores
+the file again and the model cannot act on it.
+
+Before its checkers the hook, and the pre-commit gate over staged files with no unstaged changes,
+SHALL run each static fixer that covers the file and re-stage what the gate fixed. The fixers are
+the safe fix modes of the checkers langdev runs (`rumdl` and `markdownlint-cli2 --fix`,
+`oxlint --fix` and `oxfmt`, `ruff check --fix` and `ruff format`, `shfmt -w`, `fish_indent -w`,
+`rustfmt`), never an unsafe or code-deleting fix; a fixer whose binary is missing is skipped.
+`dotnet format` is no fixer: it loads a project and its analyzers on every run, 24 s measured, which
+no edit can carry, so `dotnet-format` only reports, once per owning project (`groupBy`), scoped to
+the changed files and with `--no-restore`, and the person runs the fix. When the pre-commit gate
+blocks, it names each staged file it skipped for unstaged changes.
+
+#### Scenario: A written file breaks a rule
+
+- **WHEN** the edited file carries a finding under the project's rules, whether
+  or not its version at HEAD carried it
+- **THEN** the hook SHALL report the finding to the editor and SHALL NOT block
+  the edit
+
+#### Scenario: A written file gained a finding
+
+- **WHEN** an edit adds a finding to the file
+- **THEN** the hook SHALL report it, as it reports every finding the file carries under the
+  project's rules, and SHALL NOT block the edit
+
+#### Scenario: A new file git does not track
+
+- **WHEN** the model writes a new `.ts` file that is not staged
+- **THEN** the hook SHALL check it like any other file and report its findings
+
+#### Scenario: A TypeScript edit under load
+
+- **WHEN** a `.ts` file is written at a load of 15 on 12 cores
+- **THEN** the hook SHALL answer inside the engine's 10 seconds with the
+  findings of the TypeScript edit set, and no semgrep checker SHALL run
+
+#### Scenario: A clean edit says nothing
+
+- **WHEN** a written file has no finding under the project's rules
+- **THEN** the hook SHALL add nothing to the model's context
+
+#### Scenario: A checker covers no file of the edit
+
+- **WHEN** a `.md` file is written and the TypeScript checkers cover none of it
+- **THEN** the model SHALL NOT see a line such as
+  `oxlint: its changed set holds no file it covers — not run`
+
+#### Scenario: A hooks module checked in place
+
+- **WHEN** a `hooks/register.tsx` that oxlint passes in the checkout is written
+- **THEN** the hook SHALL report no `no-unsafe-*` finding the checkout does
+  not have
+
+### Requirement: Every point has a target per checker and a timeout
+
+qsm-langdev SHALL hold one table of four points, each with the time one checker is meant to finish
+under (its target) and the time after which a run is taken for stuck (its timeout):
+
+| Point | Who runs it | Target per checker | Timeout |
+| --- | --- | --- | --- |
+| `edit` | the edit hook | 5 s | what is left of 7.5 s, inside the engine's 10 s per hook |
+| `pre-commit` | the commit hook, the stop gate, `check` | 30 s | 5 min |
+| `pre-push` | the push hook, `check --at pre-push` | 1 min | 5 min |
+| `ci` | the `langdev` CI job (change `langdev-ci-point`) | 10 min | 20 min |
+
+Every checker SHALL declare, as a required list, the points it runs at; no checker SHALL inherit a
+point it did not declare. Every limit a run applies SHALL be read from this table; no checker and
+no hook SHALL carry a limit of its own. A target is never a limit: a run over its target goes on.
+
+#### Scenario: A checker runs only where it is declared
+
+- **WHEN** `semgrep-ts` declares `pre-commit`, `pre-push` and `ci`
+- **THEN** the edit hook SHALL NOT run it, and `check` and the push hook
+  SHALL
+
+#### Scenario: A stuck process at a push
+
+- **WHEN** a checker's process at a push gives no answer for 5 minutes
+- **THEN** the run SHALL stop its process group and report it
+  `not measured: timed out after 300.0s; retry`
+
+### Requirement: A run over its target is reported slow and never fails
+
+A checker that scored a side SHALL record the wall time of its run at the point. When that time is
+above the point's target, the report SHALL carry the line
+`slow: <checker> <seconds> s at <point>, target <seconds> s`, and the verdict SHALL NOT change for
+it. At the edit point the line SHALL go to the hook's log, never to the model. A store hit SHALL
+record nothing. A run stopped at its timeout SHALL record the timeout.
+
+#### Scenario: A slow commit checker
+
+- **WHEN** oxlint takes 42.0 seconds in a commit hook and finds nothing new
+- **THEN** the report SHALL carry `slow: oxlint 42.0 s at pre-commit, target 30.0 s`
+  and the commit SHALL pass
+
+#### Scenario: A store hit
+
+- **WHEN** both sides of a checker are store hits
+- **THEN** no time SHALL be recorded for it and no slow line SHALL be printed
+
+### Requirement: Doctor names a checker that is slow at a point
+
+Each recorded time SHALL be appended to `.qsm-langdev/timings/<point>.jsonl` in the worktree, a
+directory that holds its own `.gitignore` of `*` as the store does, one JSON line with the checker,
+the milliseconds and the time of the run, and a write SHALL keep only the last 10 lines per checker.
+`doctor` SHALL name every checker whose median over its recorded runs at a point is above that
+point's target, with the median, the target and the number of runs, as a warning that does not
+change its exit code.
+
+#### Scenario: A checker slow every time
+
+- **WHEN** the last 10 recorded runs of `semgrep-ts` at `pre-commit` have a
+  median of 41 seconds
+- **THEN** `doctor` SHALL warn
+  `semgrep-ts is slow at pre-commit: median 41.0 s over 10 runs, target 30.0 s`
+
+#### Scenario: One slow run
+
+- **WHEN** one of a checker's 10 recorded runs took 90 seconds and its median
+  is 4 seconds
+- **THEN** `doctor` SHALL NOT name it
+
+### Requirement: Every language has both profiles and a checker at every point
+
+The registry gate SHALL fail, naming the language and what it lacks, when a language that reads
+configuration (every language but `fish`) has no `profiles/general/<language>/` or no
+`profiles/strict/<language>/`, and when any language has no checker declaring one of the four
+points. The gate runs in `bun test`, so a language rules set without them cannot land.
+
+#### Scenario: A language without an edit checker
+
+- **WHEN** every `dotnet` checker leaves out the `edit` point
+- **THEN** the registry gate SHALL fail with `dotnet: no checker at edit`
+
+#### Scenario: A language without its strict profile
+
+- **WHEN** `profiles/strict/rust/` does not exist
+- **THEN** the registry gate SHALL fail with `rust: no strict profile`
+
+### Requirement: Every run computes its two file sets once
+
+Before any checker runs, the run SHALL compute two file sets, `changed` and
+`given`, and hand each checker the one it declares. They are computed once per run, never per
+checker, and the run reports each set's size.
+
+#### Scenario: A commit that touches two files
+
+- **WHEN** the index differs from `HEAD` in `a.ts` and `b.ts` and a
+  per-file checker covers TypeScript
+- **THEN** that checker SHALL be handed exactly `a.ts` and `b.ts`, and the
+  report SHALL say `changed: 2 files`
+
+#### Scenario: The whole project on request
+
+- **WHEN** the caller names no files and a checker declares `given`
+- **THEN** that checker SHALL be handed every file under the repository root
+  that git does not ignore
+
+### Requirement: The commit gate and the stop gate judge with one rule
+
+The commit and push gates and the session-stop gate SHALL classify every
+verdict through one judgement with one policy: a measured checker that is
+worse blocks all of them; a missing binary, a missing config or a checker
+that was not measured blocks the commit and the push (nothing proved the tree
+no worse) and is a warning at a stop; a skipped checker is reported and
+decides nothing.
+
+#### Scenario: A missing config at a commit and at a stop
+
+- **WHEN** a selected checker's config file is absent
+- **THEN** the commit gate SHALL block naming the file, and the stop gate
+  SHALL pass with a warning naming the same file
+
+#### Scenario: A worse checker at a commit and at a stop
+
+- **WHEN** a measured checker is worse on the staged side
+- **THEN** the commit gate and the stop gate SHALL both block with the same
+  description of the checker
+
+### Requirement: The gates config fails loud
+
+Reading `.qsm-langdev/gates.json` SHALL fail with the project's `failed`
+error, naming the file and the field, when it does not parse, is not an
+object, or names a language or a gate this tool does not know. An absent
+file SHALL read as the default configuration.
+
+#### Scenario: An unknown language in the config
+
+- **WHEN** `gates.json` lists `"languages": ["nope"]`
+- **THEN** every verb and gate that reads it SHALL fail naming `languages`,
+  `nope` and the known languages
+
+#### Scenario: A config that does not parse
+
+- **WHEN** `gates.json` is not valid JSON
+- **THEN** every verb and gate that reads it SHALL fail naming the file,
+  never run as if no language were selected
+
+### Requirement: The first commit of a repository is reported, never blocked
+
+When there is no commit to compare against, the commit gate SHALL report the
+staged side's totals and pass, as `check` does, because no reference exists
+for anything to be worse than.
+
+#### Scenario: The first commit with a finding
+
+- **WHEN** a fresh repository with langdev installed commits its first file,
+  which carries a finding
+- **THEN** the commit gate SHALL pass and report the finding's total

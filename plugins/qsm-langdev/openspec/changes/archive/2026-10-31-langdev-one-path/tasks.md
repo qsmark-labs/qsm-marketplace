@@ -5,11 +5,12 @@
   case 4.1 names (a language without a checker at `edit`); both leave `doctor`. Files:
   `lib/profiles.test.ts`, `lib/registry.test.ts`, `scripts/cli.ts`. Proof: those two test files
   green, and a registry copy without dotnet's edit checker fails the test. Blocked by nothing.
-- [ ] 0.2 Move tasks 5.2 to 5.4 and the CI-job requirement of `langdev-point-targets` into a new
+- [x] 0.2 Move tasks 5.2 to 5.4 and the CI-job requirement of `langdev-point-targets` into a new
   change `langdev-ci-point`, waiting for `SEMGREP_APP_TOKEN`; 6.1 (docs) is done by 4.3 below and
   6.2 re-measures; then archive `langdev-point-targets`. Files: both changes' directories, the main
   spec. Proof: `openspec validate --strict` on both; `grep -n "working tree holds"
   openspec/specs/qsm-langdev/spec.md` empty. Blocked by 0.1 and 4.3.
+  Done 2026-10-31: moved to `langdev-ci-point` (8eeddf77), `langdev-point-targets` archived.
 
 ## 1. Batch A: verdicts, sides and one judge (5, 6, 16, 9, 3, 17, 14 partly)
 
