@@ -59,6 +59,8 @@ type State = {
   sys?: Record<string, Tree>;
   pipewire?: Pipewire;
   dbus?: Dbus;
+  nm?: unknown;
+  updates?: unknown;
 };
 type Render = (s: State, proc: Proc, up: number) => string;
 // fifo: generated at each read; ticking: rewritten in place every TICK_MS; fixed: written once.
@@ -158,10 +160,22 @@ function writeTree(path: string, tree: Tree): void {
   }
 }
 
-const RECORDS = ["clock", "http", "ps", "df", "proc", "net", "sys", "pipewire", "dbus"];
+const RECORDS = [
+  "clock",
+  "http",
+  "ps",
+  "df",
+  "nm",
+  "updates",
+  "proc",
+  "net",
+  "sys",
+  "pipewire",
+  "dbus",
+];
 // What the slot reads while it runs: the shims on every call, the fake D-Bus by its values.
 // Everything else is laid out when the slot starts.
-const LIVE = ["http", "ps", "df", "dbus"];
+const LIVE = ["http", "ps", "df", "nm", "updates", "dbus"];
 
 // What prepare refuses before the slot starts, and a mock before it lands. A record the fake
 // machine does not know would leave the real one showing through (an old hwmon array).
@@ -174,7 +188,33 @@ function valid(s: State): void {
       throw new Error(`dbus.${key} is no bus; the records are dbus.system and dbus.session`);
   if (s.net !== undefined) procOf(s);
   check(s.dbus);
+  // The nmcli and checkupdates shims print strings: another shape makes them fail with nothing on
+  // stdout, and the shell shows "wifi off, up to date" as if the machine had said so.
+  const { nm, updates } = s;
+  if (
+    nm !== undefined &&
+    (!isRecord(nm) ||
+      !["device", "wifi", "connection", "radio"].every((k) => rows(nm[k])) ||
+      typeof nm.connectivity !== "string")
+  )
+    throw new Error(
+      "nm holds device, wifi, connection and radio as rows of string fields, and connectivity as a string",
+    );
+  if (
+    updates !== undefined &&
+    !(Array.isArray(updates) && updates.every((u) => typeof u === "string"))
+  )
+    throw new Error("updates is a list of `name old -> new` lines");
 }
+
+// Every row of a list holds the same string fields: the shim fails the whole list on one it lacks.
+const fieldsOf = (row: unknown): string | undefined =>
+  isRecord(row) && Object.values(row).every((f) => typeof f === "string")
+    ? Object.keys(row).toSorted().join(",")
+    : undefined;
+const rows = (v: unknown): boolean =>
+  Array.isArray(v) &&
+  v.every((row) => fieldsOf(row) !== undefined && fieldsOf(row) === fieldsOf(v[0]));
 
 // One step of a jq path, when the state holds it: jq's path() names an object member by string
 // and an array element by number.
