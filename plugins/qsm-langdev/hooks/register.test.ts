@@ -6,7 +6,7 @@
 import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
-const FINDINGS = "qsm-langdev on notes.md against HEAD (+ marks what this tree added):\n+ MD018";
+const FINDINGS = "qsm-langdev on notes.md:\nMD018";
 const SKIPPING = "git commit --no-verify -m x";
 
 const created = (filePath: string, content: string) => ({

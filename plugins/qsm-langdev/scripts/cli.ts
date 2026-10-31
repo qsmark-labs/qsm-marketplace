@@ -176,12 +176,12 @@ function describeStructuralCheck(structural: StructuralCheckerStatus): string {
   if (structural.present) {
     return (
       "MISSING  structural checker (sentrux on PATH is unpatched upstream, not ready) — install: " +
-      "bun plugins/qsm-langdev/scripts/install.ts"
+      "qsm-setup install qsm-langdev"
     );
   }
   return (
     "MISSING  structural checker (sentrux not on PATH) — install: " +
-    "bun plugins/qsm-langdev/scripts/install.ts"
+    "qsm-setup install qsm-langdev"
   );
 }
 

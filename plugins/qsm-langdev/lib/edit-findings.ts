@@ -1,8 +1,8 @@
 // What the edit hook tells the model after a file edit: the errors the project's own rules raise in
 // that one file, checked in place in the live checkout, against nothing else. Advisory only, except
 // that an edited file is first fixed (lib/fixers.ts), so what a tool can rewrite is never a finding.
-// How the run went goes to the hook's log: the model cannot act on it, and the commit compares the
-// file against HEAD again.
+// How the run went goes to the hook's log: the model cannot act on it, and the commit scores the
+// staged file against HEAD again.
 
 import { dirname, relative } from "node:path";
 import { checkInPlace, scoredAtCommit } from "./compare.ts";
