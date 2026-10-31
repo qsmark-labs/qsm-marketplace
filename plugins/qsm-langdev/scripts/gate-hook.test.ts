@@ -118,6 +118,21 @@ describe("qsm-langdev gate hook", () => {
     expect(halted.stderr).toContain("HALT after 3 blocks");
   });
 
+  test("A gates config that cannot be read holds the stop and names the cause", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    writeFileSync(join(root, "a.fish"), "echo alpha\necho beta\n");
+    runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    writeFileSync(join(root, ".qsm-langdev", "gates.json"), "{bad");
+
+    const r = runGateHook(stateDir, "s1", "a1");
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).toContain('"decision":"block"');
+    expect(r.stdout).toContain("gates.json");
+  });
+
   test("An edit the agent did not stage", () => {
     const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
     const root = repoWithFile("a.fish", "echo alpha\n");

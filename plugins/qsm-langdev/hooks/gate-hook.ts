@@ -24,6 +24,7 @@
 
 import { readHookEvent, runMain } from "../../../lib/hooks-kit.ts";
 import { isRecord } from "../../../lib/outcome.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
 import { compareTrees } from "../lib/compare.ts";
 import { gitPaths, isLangdevRepo, readGatesConfig } from "../lib/config.ts";
 import { describeVerdicts, judge } from "../lib/gate-runner.ts";
@@ -55,7 +56,7 @@ function log(msg: string): void {
 }
 
 interface Regression {
-  comparison: "langdev" | "structure";
+  comparison: "config" | "langdev" | "structure";
   lines: string[];
 }
 
@@ -78,7 +79,17 @@ async function judgeTree(
   const regressions: Regression[] = [];
   const warnings: string[] = [];
 
-  const { languages } = readGatesConfig(tree.root);
+  let languages;
+  try {
+    ({ languages } = readGatesConfig(tree.root));
+  } catch (error) {
+    // A config that cannot be read gates nothing; the stop is held until it is fixed, never let
+    // through in silence.
+    if (error instanceof QsmError) {
+      return { regressions: [{ comparison: "config", lines: [error.message] }], warnings };
+    }
+    throw error;
+  }
   const { verdicts } = await compareTrees(
     tree.root,
     tree.start,

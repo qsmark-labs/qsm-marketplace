@@ -566,14 +566,13 @@ function narrow(side: Side, spec: CheckSpec, set: ReadonlySet<string>): Side {
   return { root: side.root, files: matchingFiles(side.root, scoped, spec.extensions, spec.names) };
 }
 
-interface CheckerResult {
-  pass: boolean;
+/** One checker's comparison: measured with its verdict, or not measured with the cause. */
+type CheckerResult = {
   summary: string;
-  notMeasured?: true;
   output?: string;
   lines?: string[];
   tally?: Tally;
-}
+} & ({ kind: "measured"; pass: boolean } | { kind: "not-measured" });
 
 /** The lines a verdict carries under its summary: the checker's own parsed
  * findings when it gave us any, else the raw output reduced to the lines
@@ -584,10 +583,11 @@ function verdictLines(
   changed: readonly string[],
   all: boolean,
 ): string[] | undefined {
-  if (result.lines !== undefined && (!result.pass || all)) {
+  const passed = result.kind === "measured" && result.pass;
+  if (result.lines !== undefined && (!passed || all)) {
     return capped(occurrenceLines(result.lines, result.tally, all));
   }
-  if (!result.pass && result.output !== undefined && !looksLikeJson(result.output)) {
+  if (!passed && result.output !== undefined && !looksLikeJson(result.output)) {
     return capped(linesNaming(result.output, changed));
   }
   return undefined;
@@ -622,7 +622,7 @@ const failedCause = (one: Score): string | undefined =>
 function unscored(name: string, current: Score, previous: Score, timeoutMs: number): CheckerResult {
   if ([current, previous].some((one) => "kind" in one && one.kind === "timed-out")) {
     const summary = `${name}: not measured: timed out after ${(timeoutMs / 1000).toFixed(1)}s; retry`;
-    return { pass: false, notMeasured: true, summary };
+    return { kind: "not-measured", summary };
   }
   const previousCause = failedCause(previous);
   const failed =
@@ -630,13 +630,13 @@ function unscored(name: string, current: Score, previous: Score, timeoutMs: numb
     (previousCause === undefined ? undefined : `previous version: ${previousCause}`);
   if (failed !== undefined) {
     const summary = `${name}: not measured: ${failed}; retry`;
-    return { pass: false, notMeasured: true, summary };
+    return { kind: "not-measured", summary };
   }
   if ("reason" in current) {
-    return { pass: false, summary: `${name}: ${current.reason}` };
+    return { kind: "measured", pass: false, summary: `${name}: ${current.reason}` };
   }
   const reason = "reason" in previous ? previous.reason : "no score";
-  return { pass: false, summary: `${name}: previous version: ${reason}` };
+  return { kind: "measured", pass: false, summary: `${name}: previous version: ${reason}` };
 }
 
 async function evalChecker({
@@ -673,6 +673,7 @@ function compared(
     ...(gained ? [`${fresh.gained} new`] : []),
   ];
   return {
+    kind: "measured",
     pass: current.tally.total <= previous.tally.total && worse.length === 0 && !gained,
     summary: notes.length === 0 ? totals : `${totals}; ${notes.join("; ")}`,
     output: current.output,
@@ -904,6 +905,13 @@ function missingPrerequisiteVerdicts(
  * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
  * selected checker whose own config file is absent.
  */
+/** Whether a checker has the config it reads: neither its language's nor its own file is named
+ * by a missing-config verdict among `verdicts`. */
+function hasConfig(verdicts: readonly Verdict[]): (spec: CheckSpec) => boolean {
+  const missing = new Set(verdicts.filter((v) => v.kind === "missing-config").map((v) => v.check));
+  return (spec) => !missing.has(`${spec.language} config`) && !missing.has(`${spec.name} config`);
+}
+
 function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Verdict[] {
   const languages = [...new Set(selected.map((spec) => spec.language))]
     .filter((language) => !hasScaffoldedConfig(root, language))
@@ -1114,7 +1122,7 @@ async function verdictFor(
     context.timed.push({ checker: spec.name, ms: performance.now() - started });
   }
   const verdict: Verdict =
-    result.notMeasured === true
+    result.kind === "not-measured"
       ? { check: spec.name, kind: "not-measured", summary: result.summary }
       : { check: spec.name, kind: "measured", pass: result.pass, summary: result.summary };
   const lines = verdictLines(result, context.changed, context.all);
@@ -1197,11 +1205,12 @@ export async function compareTrees(
   // A binary that is missing or slow to answer takes its own checkers out of the run, never the
   // run: the others still measure, and its verdict stands beside theirs. A language without its
   // config has nothing to measure with.
-  const runnable = applicable.filter((spec) => probes.get(spec.binary)?.present === true);
-  if (
-    missingVerdicts.some((verdict) => verdict.kind === "missing-config") ||
-    runnable.length === 0
-  ) {
+  // A missing config takes out only the checkers it belongs to, as a missing binary does.
+  const configured = hasConfig(missingVerdicts);
+  const runnable = applicable.filter(
+    (spec) => probes.get(spec.binary)?.present === true && configured(spec),
+  );
+  if (runnable.length === 0) {
     const verdicts = [...skipVerdicts, ...missingVerdicts];
     return { changed, sets, verdicts, store: unused, warnings: [] };
   }
@@ -1293,9 +1302,7 @@ export async function checkInPlace(
   const covering = selected.filter((spec) => !generated || spec.guardsSafety === true);
   const unconfigured = missingConfigVerdicts(covering, root);
   const log = [...skipVerdicts, ...unconfigured].map(headline);
-  const runnable = covering.filter(
-    (spec) => !unconfigured.some((verdict) => verdict.check === `${spec.language} config`),
-  );
+  const runnable = covering.filter(hasConfig(unconfigured));
   const left = () => Math.max(DEADLINE_FLOOR_MS, options.deadlineMs - performance.now());
   const runs = await withPacks(runnable, options.fetchPack ?? fetchFromRegistry, (packs) =>
     mapLimit(runnable, JOBS, async (spec) => {

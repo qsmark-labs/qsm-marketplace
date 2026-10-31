@@ -338,6 +338,33 @@ describe("compareTrees: checker availability", () => {
     expect(verdicts[0]?.kind).toBe("missing-config");
     expect(verdicts[0]?.summary).toContain("bandit.yaml");
   });
+
+  test("a checker's missing own config takes out that checker only, the others still measure", async () => {
+    const { root, head } = repoWith({ "ruff.toml": "line-length = 100\n", "a.py": "x = 1\n" });
+    write(root, { "a.py": `x = 2  # ${MARKER}\n` });
+    stage(root);
+    const bandit: CheckSpec = {
+      ...defined(
+        REGISTRY.find((spec) => spec.name === "bandit"),
+        "bandit",
+      ),
+      binary: "grep",
+    };
+    const pyMarker: CheckSpec = {
+      ...MARKED,
+      name: "py-marker",
+      language: "py",
+      extensions: [".py"],
+    };
+
+    const { verdicts } = await run(root, head, [bandit, pyMarker]);
+
+    expect(verdicts.map((v) => [v.check, v.kind])).toEqual([
+      ["bandit config", "missing-config"],
+      ["py-marker", "measured"],
+    ]);
+    expect(verdicts[1]).toMatchObject({ kind: "measured", pass: false });
+  });
 });
 
 /** A checker that scores nothing and records the files each side handed it,
@@ -1308,6 +1335,27 @@ describe("compareTrees: run times", () => {
 });
 
 describe("checkInPlace: the edit point", () => {
+  test("a checker whose own config is missing is named and never run", async () => {
+    const { root } = repoWith({ "ruff.toml": "line-length = 100\n", "a.py": "x = 1\n" });
+    const bandit: CheckSpec = {
+      ...defined(
+        REGISTRY.find((spec) => spec.name === "bandit"),
+        "bandit",
+      ),
+      binary: "grep",
+    };
+
+    const { log } = await checkInPlace(root, "a.py", {
+      languages: ["py"],
+      deadlineMs: performance.now() + 5000,
+      registry: [bandit],
+    });
+
+    // The config line is the only one: a run would add its findings or a not-measured line.
+    expect(log).toHaveLength(1);
+    expect(log[0]).toContain("bandit.yaml is missing");
+  });
+
   test("a checker past the deadline is not measured, and the run ends by the deadline", async () => {
     const { root } = repoWith({ "a.txt": "alpha\n" });
     const started = performance.now();
