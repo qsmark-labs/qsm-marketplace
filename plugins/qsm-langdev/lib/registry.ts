@@ -504,7 +504,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "knip",
     measures: { counts: "unused files, exports, types and dependencies, one per reported item" },
     language: "ts",
-    points: FROM_PUSH,
+    points: FROM_COMMIT,
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     binary: "knip",
     install: bunGlobal("knip"),
