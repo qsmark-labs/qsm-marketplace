@@ -109,9 +109,14 @@ export function matchingFiles(
   });
 }
 
-/** A NUL-separated git listing as paths, or null when git could not answer. */
-export function gitPaths(root: string, args: readonly string[], input?: string): string[] | null {
-  const result = git(root, args, input === undefined ? {} : { input });
+/** A NUL-separated git listing as paths, or null when git could not answer. `env` is for a scratch
+ * tree (see `scratchEnv`). */
+export function gitPaths(
+  root: string,
+  args: readonly string[],
+  options: { input?: string; env?: NodeJS.ProcessEnv } = {},
+): string[] | null {
+  const result = git(root, args, options);
   if (result.status !== 0) {
     return null;
   }
@@ -124,12 +129,17 @@ export function pathsWithAttr(
   attr: string,
   values: readonly string[],
   paths: readonly string[],
+  env?: NodeJS.ProcessEnv,
 ): Set<string> {
   const found = new Set<string>();
   if (paths.length === 0) {
     return found;
   }
-  const fields = gitPaths(root, ["check-attr", "-z", "--stdin", attr], paths.join("\0")) ?? [];
+  const fields =
+    gitPaths(root, ["check-attr", "-z", "--stdin", attr], {
+      input: paths.join("\0"),
+      ...(env === undefined ? {} : { env }),
+    }) ?? [];
   for (let at = 0; at + 2 < fields.length; at += 3) {
     const [path, , value] = fields.slice(at, at + 3);
     if (path !== undefined && value !== undefined && values.includes(value)) {
@@ -142,10 +152,14 @@ export function pathsWithAttr(
 /** The paths among `paths` that `.gitattributes` marks generated: the one definition of
  * "generated" here, the `linguist-generated` or `export-ignore` attribute the repository already
  * carries. */
-export function generatedPaths(root: string, paths: readonly string[]): Set<string> {
+export function generatedPaths(
+  root: string,
+  paths: readonly string[],
+  env?: NodeJS.ProcessEnv,
+): Set<string> {
   return new Set([
-    ...pathsWithAttr(root, "linguist-generated", ["set", "true"], paths),
-    ...pathsWithAttr(root, "export-ignore", ["set"], paths),
+    ...pathsWithAttr(root, "linguist-generated", ["set", "true"], paths, env),
+    ...pathsWithAttr(root, "export-ignore", ["set"], paths, env),
   ]);
 }
 

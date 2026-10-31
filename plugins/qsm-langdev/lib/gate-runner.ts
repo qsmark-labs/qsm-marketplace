@@ -406,6 +406,20 @@ export function judge(
   return judgement;
 }
 
+/** What a block line says: each count only when it is not zero, so a missing binary or config is
+ * never called worse. */
+function countsLine(failed: readonly Verdict[], blocked: readonly Verdict[]): string {
+  const worse = failed.filter((v) => v.kind === "measured").length;
+  const missing = failed.length - worse;
+  return [
+    worse > 0 ? `${worse} checker(s) worse` : null,
+    missing > 0 ? `${missing} checker(s) missing (binary or config)` : null,
+    blocked.length > 0 ? `${blocked.length} checker(s) not measured` : null,
+  ]
+    .filter((part) => part !== null)
+    .join(", ");
+}
+
 /** The langdev gate over one run's verdicts: failed when a checker is worse,
  * a binary or a config missing included; blocked when a checker was not
  * measured, naming it and the retry; else passed with the set sizes. */
@@ -419,7 +433,7 @@ export function langdevOutcome(
     const measured = failed.every((v) => v.kind === "measured") ? true : undefined;
     return fail(
       "langdev",
-      `${failed.length} checker(s) worse`,
+      countsLine(failed, blocked),
       [sizes, ...describeVerdicts(failed)],
       measured,
     );
@@ -428,7 +442,7 @@ export function langdevOutcome(
     return {
       gate: "langdev",
       status: "blocked",
-      reason: `${blocked.length} checker(s) not measured`,
+      reason: countsLine([], blocked),
       remedy: [sizes, ...describeVerdicts(blocked)],
     };
   }

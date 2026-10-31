@@ -5,6 +5,9 @@
 // scoring one, gets `scratchEnv`, so that index never leaks into a repository it is not about.
 
 import { spawnSync } from "node:child_process";
+import { QsmError } from "../../../lib/qsm-error.ts";
+import { timedOut } from "./process.ts";
+import { POINTS } from "./registry.ts";
 
 declare const shaBrand: unique symbol;
 
@@ -47,18 +50,30 @@ export interface GitRun {
   stderr: string;
 }
 
-/** `git -C root args`; `input` goes to its stdin and `env` replaces the inherited environment. */
+/** `git -C root args`; `input` goes to its stdin, `env` replaces the inherited environment, and
+ * `timeoutMs` is the limit (the commit point's, as for every process) after which git is killed and
+ * the call fails loud. git stays synchronous: it is local plumbing. */
 export function git(
   root: string,
   args: readonly string[],
-  options: { input?: string; env?: NodeJS.ProcessEnv } = {},
+  options: { input?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number } = {},
 ): GitRun {
+  const timeoutMs = options.timeoutMs ?? POINTS["pre-commit"].timeoutMs;
   const result = spawnSync("git", ["-C", root, ...args], {
     encoding: "utf8",
     maxBuffer: 256 * 1024 * 1024,
+    timeout: timeoutMs,
+    killSignal: "SIGKILL",
     ...(options.input === undefined ? {} : { input: options.input }),
     ...(options.env === undefined ? {} : { env: options.env }),
   });
+  if (timedOut(result)) {
+    throw new QsmError(
+      "failed",
+      `git ${args[0] ?? ""} did not finish within ${(timeoutMs / 1000).toFixed(1)}s`,
+      { next: "check that the repository and its filesystem respond, then run it again" },
+    );
+  }
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
 

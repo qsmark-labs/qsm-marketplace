@@ -46,7 +46,8 @@ export function isTestFile(path: string): boolean {
 /** The materialized tree without its test files and its generated files, the latter by the
  * repository's own `.gitattributes` marker, the definition the language checkers use. */
 function leaveOutNonProduct(dir: string): Kept {
-  const generated = generatedPaths(dir, gitPaths(dir, ["ls-files", "-z"]) ?? []);
+  const env = scratchEnv();
+  const generated = generatedPaths(dir, gitPaths(dir, ["ls-files", "-z"], { env }) ?? [], env);
   return leaveOut(dir, (path) => isTestFile(path) || generated.has(path));
 }
 
