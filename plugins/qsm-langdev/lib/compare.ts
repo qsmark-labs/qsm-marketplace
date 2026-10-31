@@ -901,10 +901,6 @@ function missingPrerequisiteVerdicts(
   return [...missingBinaryVerdicts, ...missingConfigVerdicts(selected, root)];
 }
 
-/**
- * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
- * selected checker whose own config file is absent.
- */
 /** Whether a checker has the config it reads: neither its language's nor its own file is named
  * by a missing-config verdict among `verdicts`. */
 function hasConfig(verdicts: readonly Verdict[]): (spec: CheckSpec) => boolean {
@@ -912,6 +908,10 @@ function hasConfig(verdicts: readonly Verdict[]): (spec: CheckSpec) => boolean {
   return (spec) => !missing.has(`${spec.language} config`) && !missing.has(`${spec.name} config`);
 }
 
+/**
+ * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
+ * selected checker whose own config file is absent.
+ */
 function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Verdict[] {
   const languages = [...new Set(selected.map((spec) => spec.language))]
     .filter((language) => !hasScaffoldedConfig(root, language))

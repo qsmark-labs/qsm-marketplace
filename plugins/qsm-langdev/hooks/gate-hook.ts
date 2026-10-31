@@ -184,7 +184,8 @@ async function main(): Promise<void> {
         reason:
           `[qsm-langdev] ${tree.root} is worse than this agent's start commit ${tree.start.slice(0, 12)} ` +
           `(block ${blocks}/${MAX_BLOCKS}): ${standing}. ` +
-          "Fix the regressed counts or architecture in the files you touched. " +
+          "Fix what is named here: a regressed count or the architecture in the files you touched, " +
+          "or the config that cannot be read. " +
           "Bypassing the gate is orchestrator/user-only, not a worker exit from this loop.",
       }),
     );
