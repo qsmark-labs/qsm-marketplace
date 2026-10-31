@@ -8,11 +8,15 @@ import { allowed, gatesCode, langdevOutcome, runGates } from "./gate-runner.ts";
 
 const unmeasured: Verdict = {
   check: "semgrep-ts",
-  pass: false,
-  notMeasured: true,
+  kind: "not-measured",
   summary: "semgrep-ts: not measured: timed out after 60s; retry",
 };
-const worse: Verdict = { check: "oxlint", pass: false, summary: "oxlint: 0 -> 1" };
+const worse: Verdict = {
+  check: "oxlint",
+  kind: "measured",
+  pass: false,
+  summary: "oxlint: 0 -> 1",
+};
 
 test("a checker not measured blocks the langdev gate with its cause, never as worse", () => {
   const outcome = langdevOutcome([unmeasured], "file sets: changed: 1 file", true);
@@ -49,8 +53,7 @@ test("A regression the author allows once", () => {
 test("A check that could not run is not allowed", () => {
   const missing: Verdict = {
     check: "oxlint",
-    pass: false,
-    missing: true,
+    kind: "missing-binary",
     summary: "oxlint missing",
   };
 

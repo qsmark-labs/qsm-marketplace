@@ -151,7 +151,7 @@ describe("compareTrees", () => {
 
     expect(verdicts).toHaveLength(1);
     const only = defined(verdicts[0], "a verdict");
-    expect(only.pass).toBe(false);
+    expect(only).toMatchObject({ kind: "measured", pass: false });
     expect(only.summary).toContain("marked: 0 -> 1");
     expect((only.lines ?? []).join("\n")).toContain("a.txt");
   });
@@ -168,7 +168,7 @@ describe("compareTrees", () => {
     const { verdicts } = await run(root, head);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
     expect(verdicts[0]?.summary).toContain("marked: 2 -> 2");
   });
 
@@ -182,7 +182,7 @@ describe("compareTrees", () => {
 
     const { verdicts } = await run(root, head);
 
-    expect(verdicts[0]?.pass).toBe(false);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: false });
     expect(verdicts[0]?.summary).toContain("marked: 2 -> 1");
     expect(verdicts[0]?.summary).toContain("b.txt 0 -> 1");
   });
@@ -206,7 +206,7 @@ describe("compareTrees: scored files", () => {
     const { changed, verdicts } = await run(root, head);
 
     expect(changed).toEqual(["a.txt"]);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   });
 
   test("a path marked linguist-generated is not scored, unless the checker guards safety", async () => {
@@ -215,8 +215,8 @@ describe("compareTrees: scored files", () => {
     const { verdicts } = await run(root, head);
     const guarding = await run(root, head, [{ ...MARKED, guardsSafety: true }]);
 
-    expect(verdicts[0]?.pass).toBe(true);
-    expect(guarding.verdicts[0]?.pass).toBe(false);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
+    expect(guarding.verdicts[0]).toMatchObject({ kind: "measured", pass: false });
   });
 
   test("A checker's binary is absent", async () => {
@@ -233,8 +233,7 @@ describe("compareTrees: scored files", () => {
     const { verdicts } = await run(root, head, [absent]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(false);
-    expect(verdicts[0]?.missing).toBe(true);
+    expect(verdicts[0]?.kind).toBe("missing-binary");
     expect(verdicts[0]?.summary).toContain("install it with your package manager");
   });
 });
@@ -265,8 +264,8 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await runWith(root, head, SLOW_PROBE, { probeTimeoutMs: 200 });
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.missing).toBeUndefined();
-    expect(verdicts[0]?.notMeasured).toBe(true);
+    expect(verdicts[0]?.kind).not.toBe("missing-binary");
+    expect(verdicts[0]?.kind).toBe("not-measured");
     expect(verdicts[0]?.summary).toBe(
       "slow-probe: not measured: 'qsm-langdev-slow-version --version' timed out after 0.2s; retry",
     );
@@ -297,7 +296,7 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await run(root, head, [local]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.missing).toBeUndefined();
+    expect(verdicts[0]?.kind).not.toBe("missing-binary");
     expect(verdicts[0]?.summary).toContain("local: 0 -> 1");
   });
 
@@ -310,8 +309,7 @@ describe("compareTrees: checker availability", () => {
     const { verdicts } = await run(root, head, [needsConfig]);
 
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.pass).toBe(false);
-    expect(verdicts[0]?.missingConfig).toBe(true);
+    expect(verdicts[0]?.kind).toBe("missing-config");
     expect(verdicts[0]?.summary).toContain("qsm-langdev init");
   });
 });
@@ -472,7 +470,7 @@ describe("file sets: deletions and the reference", () => {
 
     expect(changed).toEqual(["a.ts"]);
     expect(handed).toEqual([["a.ts"]]);
-    expect(verdicts[0]?.pass).toBe(true);
+    expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   });
 
   test("a checker whose set holds nothing it covers does not run, and says so", async () => {
@@ -485,7 +483,7 @@ describe("file sets: deletions and the reference", () => {
 
     expect(handed).toEqual([]);
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.skipped).toBe(true);
+    expect(verdicts[0]?.kind).toBe("skipped");
     expect(verdicts[0]?.summary).toContain("recorder: its given set holds no file it covers");
     expect(describeSets(sets)).toContain("given: 1 file");
   });
@@ -587,7 +585,7 @@ test("A timeout stops the launcher's engine child", async () => {
   try {
     const { verdicts } = await runWith(root, head, checker, { timeoutMs: 200 });
     expect(verdicts).toHaveLength(1);
-    expect(verdicts[0]?.notMeasured).toBe(true);
+    expect(verdicts[0]?.kind).toBe("not-measured");
     expect(verdicts[0]?.summary).toBe("slow: not measured: timed out after 0.2s; retry");
     expect(headline(defined(verdicts[0], "a verdict"))).not.toContain("WORSE");
     const pids = readdirSync(engines).map((file) => readFileSync(join(engines, file), "utf8"));
@@ -621,16 +619,28 @@ test("time limit: the checkers after one not measured still run, so the report i
     jobs: 1,
   });
 
-  expect(verdicts.map((v) => [v.check, v.notMeasured === true, v.pass])).toEqual([
-    ["slow", true, false],
-    ["marked", false, false],
+  expect(verdicts.map((v) => [v.check, v.kind])).toEqual([
+    ["slow", "not-measured"],
+    ["marked", "measured"],
   ]);
 });
 
+test("a verdict that is both passing and missing does not compile", () => {
+  // @ts-expect-error a verdict is one kind; there is no optional `missing` beside `pass`
+  const both: Verdict = { check: "x", pass: true, missing: true, summary: "x" };
+
+  expect(both.check).toBe("x");
+});
+
 test("time limit: a run with a checker not measured is blocked, and a worse one still worse", () => {
-  const unmeasured: Verdict = { check: "slow", pass: false, notMeasured: true, summary: "slow: …" };
-  const worse: Verdict = { check: "marked", pass: false, summary: "marked: 0 -> 1" };
-  const fine: Verdict = { check: "fine", pass: true, summary: "fine: 0 -> 0" };
+  const unmeasured: Verdict = { check: "slow", kind: "not-measured", summary: "slow: …" };
+  const worse: Verdict = {
+    check: "marked",
+    kind: "measured",
+    pass: false,
+    summary: "marked: 0 -> 1",
+  };
+  const fine: Verdict = { check: "fine", kind: "measured", pass: true, summary: "fine: 0 -> 0" };
 
   expect(runOutcome([unmeasured, fine], true)).toEqual({ code: "blocked", deciding: [unmeasured] });
   expect(runOutcome([unmeasured, worse], true)).toEqual({ code: "worse", deciding: [worse] });
@@ -715,7 +725,7 @@ test("store: the same content again is a hit on both sides: nothing scores", asy
   const { store, verdicts } = await runWith(root, head, spec);
 
   expect(handed).toHaveLength(2);
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(describeStore(store)).toEqual([
     "store: recorder: reference hit, shipped hit",
     "store: 2 hits, 0 scored",
@@ -894,7 +904,7 @@ test("store: a checker whose version cannot be read is never stored, and the rep
 
   const { store, verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(handed).toHaveLength(4);
   expect(entries(root)).toEqual([]);
   expect(describeStore(store)[0]).toBe(
@@ -931,7 +941,7 @@ test("store: an unreadable or wrong-shaped entry is a miss, never a crash", asyn
 
   const { verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(handed).toHaveLength(4);
 });
 
@@ -942,7 +952,7 @@ test("store: a failed run is not stored", async () => {
 
   const { verdicts } = await runWith(root, head, spec);
 
-  expect(verdicts[0]?.pass).toBe(false);
+  expect(verdicts[0]?.kind).toBe("not-measured");
   expect(entries(root)).toEqual([]);
 });
 
@@ -998,7 +1008,7 @@ test("packs: each pack is fetched once per run, and the checker runs the local c
 
   const { verdicts } = await runWith(root, head, spec, { fetchPack: source.fetchPack });
 
-  expect(verdicts[0]?.pass).toBe(true);
+  expect(verdicts[0]).toMatchObject({ kind: "measured", pass: true });
   expect(source.fetched).toEqual(["p/x"]);
   expect(configs).toEqual(["rules: [one]\n", "rules: [one]\n"]);
 });
@@ -1175,8 +1185,8 @@ test("failed run: a checker whose output cannot be read is not measured, its std
 
   const { verdicts } = await runWith(root, head, broken);
 
-  expect(verdicts.map((v) => [v.notMeasured === true, v.summary])).toEqual([
-    [true, "broken: not measured: boom: config broken; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "broken: not measured: boom: config broken; retry"],
   ]);
   expect(runOutcome(verdicts, true).code).toBe("blocked");
 });
@@ -1215,8 +1225,8 @@ test("failed run: a checker killed by a signal is not measured, never worse", as
 
   const { verdicts } = await runWith(root, head, killed);
 
-  expect(verdicts.map((v) => [v.notMeasured === true, v.summary])).toEqual([
-    [true, "killed: not measured: sh killed by SIGKILL; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "killed: not measured: sh killed by SIGKILL; retry"],
   ]);
   expect(runOutcome(verdicts, true).code).toBe("blocked");
 });
@@ -1230,8 +1240,8 @@ test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s",
   const { verdicts, warnings } = await runWith(root, head, spec, { ...RULES, ...PUSH });
 
   if (mode === "ok") {
-    expect(verdicts.map((v) => [v.pass, v.notMeasured === true, v.summary])).toEqual([
-      [false, false, "semgrep-ts: 0 -> 1; worse: a.ts 0 -> 1; 1 new"],
+    expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+      ["measured", "semgrep-ts: 0 -> 1; worse: a.ts 0 -> 1; 1 new"],
     ]);
     expect(warnings).toEqual([]);
     expect(runOutcome(verdicts, true).code).toBe("worse");
@@ -1240,8 +1250,8 @@ test.each(["ok", "timeout"] as const)("Semgrep findings at a non-zero exit: %s",
 
   const again = await runWith(root, head, spec, { ...RULES, ...PUSH });
 
-  expect(verdicts.map((v) => [v.pass, v.notMeasured === true, v.summary])).toEqual([
-    [false, true, "semgrep-ts: not measured: semgrep timed out; retry"],
+  expect(verdicts.map((v) => [v.kind, v.summary])).toEqual([
+    ["not-measured", "semgrep-ts: not measured: semgrep timed out; retry"],
   ]);
   expect(runOutcome(verdicts, true).code).toBe("blocked");
   expect(headline(defined(verdicts[0], "a verdict"))).not.toContain("WORSE");
@@ -1263,7 +1273,7 @@ describe("compareTrees: run times", () => {
     const first = await runWith(root, head, MARKED, { targetMs: 0 });
     const again = await runWith(root, head, MARKED, { targetMs: 0 });
 
-    expect(first.verdicts.map((v) => v.pass)).toEqual([true]);
+    expect(first.verdicts.map((v) => v.kind === "measured" && v.pass)).toEqual([true]);
     const slow = first.warnings.filter((w) => w.startsWith("slow: "));
     expect(slow).toHaveLength(1);
     expect(slow[0]).toMatch(/^slow: marked \d+\.\d s at pre-commit, target 0\.0 s$/);

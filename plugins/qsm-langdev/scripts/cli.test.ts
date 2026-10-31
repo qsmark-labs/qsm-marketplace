@@ -136,7 +136,11 @@ describe("qsm-langdev cli: repository state", () => {
     expect(r.exit).toBe(3);
     const envelope = envelopeOf(r.stdout);
     expect(envelope).toMatchObject({ code: "worse", exit: 3 });
-    expect(recordsOf(recordOf(envelope.data)?.verdicts)?.some((v) => v.pass !== true)).toBe(true);
+    expect(
+      recordsOf(recordOf(envelope.data)?.verdicts)?.some(
+        (v) => v.kind !== "skipped" && v.pass !== true,
+      ),
+    ).toBe(true);
   }, 60_000);
 
   test("check hands the paths it is given to the given set and reports each set's size", () => {

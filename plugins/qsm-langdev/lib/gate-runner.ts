@@ -327,9 +327,7 @@ export function langdevOutcome(
     return pass("langdev", sizes);
   }
   const remedy = [sizes, ...describeVerdicts(deciding)];
-  const measured = deciding.every((v) => v.missing !== true && v.missingConfig !== true)
-    ? true
-    : undefined;
+  const measured = deciding.every((v) => v.kind === "measured") ? true : undefined;
   return code === "worse"
     ? fail("langdev", `${deciding.length} checker(s) worse`, remedy, measured)
     : {

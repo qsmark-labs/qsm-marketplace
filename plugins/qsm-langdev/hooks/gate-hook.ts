@@ -61,8 +61,7 @@ function describeVerdicts(verdicts: readonly Verdict[]): string[] {
   return verdicts.flatMap((v) => [v.summary, ...(v.lines ?? [])]);
 }
 
-const gap = (v: Verdict): boolean =>
-  v.missing === true || v.missingConfig === true || v.notMeasured === true;
+const gap = (v: Verdict): boolean => v.kind !== "measured" && v.kind !== "skipped";
 
 /**
  * One tree's judgement against its start commit: every regression to block the stop on, plus every
@@ -87,8 +86,8 @@ async function judgeTree(
     const more = unstaged.length > 5 ? ` and ${unstaged.length - 5} more` : "";
     warnings.push(`unstaged changes not scored: ${named}${more}`);
   }
-  const environment = verdicts.filter((v) => !v.pass && gap(v));
-  const worse = verdicts.filter((v) => !(v.pass || gap(v)));
+  const environment = verdicts.filter(gap);
+  const worse = verdicts.filter((v) => v.kind === "measured" && !v.pass);
   if (environment.length > 0) {
     warnings.push(`langdev: ${describeVerdicts(environment).join("; ")}`);
   }
