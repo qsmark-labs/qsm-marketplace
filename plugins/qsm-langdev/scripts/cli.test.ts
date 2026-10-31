@@ -248,6 +248,17 @@ describe("qsm-langdev languages: opt-in", () => {
     expect(gates?.languages).toEqual(["ts"]);
   });
 
+  test("`languages` with no selection names what runs and how to select", () => {
+    const home = repoWithTsAndPy([]);
+
+    const r = run(["languages"], { home });
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).toContain("only docs and the multi gate run");
+    expect(r.stdout).toContain("qsm-langdev languages add <name>");
+    expect(r.stdout).not.toContain("tree-derived");
+  });
+
   test("an explicit languages list gates only the languages it names", () => {
     const home = repoWithTsAndPy(["ts"]);
 
