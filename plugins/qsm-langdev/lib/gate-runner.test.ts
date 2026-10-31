@@ -1,10 +1,16 @@
 // What a git hook answers when a checker could not be measured: blocked,
 // with its own code, never the failure a worse tree gets.
 import { spawnSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { expect, test } from "bun:test";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { cliShim, fakeBin } from "../../../lib/fixtures/bin.ts";
+import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
+import { commit, git as plainGit } from "../../../lib/fixtures/git.ts";
+import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import type { Verdict } from "./compare.ts";
 import { allowed, gatesCode, langdevOutcome, runGates } from "./gate-runner.ts";
+import { installHooks } from "./git-hooks.ts";
 
 const unmeasured: Verdict = {
   check: "semgrep-ts",
@@ -92,3 +98,48 @@ test("a push whose every ref is skipped says why, per ref, instead of a bare pas
     );
   }
 });
+
+test("git commit <paths> is scored on the files it commits, never on the rest of the index", () => {
+  const root = sandboxDir("qsm-langdev-partial-");
+  const bin = join(root, "bin");
+  mkdirSync(bin);
+  // quality is 1000 minus the files the checker was handed
+  fakeBin(
+    bin,
+    "sentrux",
+    `cd "$3" || exit 1
+c='{"score":0.5}'
+printf '{"quality":%d,"cross_module_edges":[],"root_causes":{"modularity":%s,"equality":%s,"redundancy":%s,"depth":%s,"acyclicity":%s}}' $((1000 - $(git ls-files | wc -l))) "$c" "$c" "$c" "$c" "$c"`,
+  );
+  cliShim(bin, "qsm-langdev", resolve(import.meta.dir, "../scripts/cli.ts"));
+  const repo = join(root, "repo");
+  writeIn(repo, ".sentrux/rules.toml", "[constraints]\nmax_cycles = 0\n");
+  writeIn(
+    repo,
+    ".qsm-langdev/gates.json",
+    `${JSON.stringify({ hooks: { "pre-commit": ["structure"], "pre-push": [] } })}\n`,
+  );
+  plainGit(root, "init", "-q", repo);
+  commit(repo, "first");
+  installHooks(repo, ["pre-commit"]);
+  writeIn(repo, "a.ts", "export const a = 1;\n");
+  writeIn(repo, "b.ts", "export const b = 2;\n");
+  plainGit(repo, "add", "a.ts", "b.ts");
+
+  // fixtures/git.ts turns hooks off, so this is git itself running the installed hook
+  const committed = spawnSync("git", ["commit", "-q", "-m", "a only", "a.ts"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: isolatedEnv(root, {
+      PATH: `${bin}:${process.env.PATH ?? ""}`,
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_AUTHOR_NAME: "t",
+      GIT_AUTHOR_EMAIL: "t@t",
+      GIT_COMMITTER_NAME: "t",
+      GIT_COMMITTER_EMAIL: "t@t",
+    }),
+  });
+
+  expect(committed.stderr).toContain("structure quality: 998 -> 997 (-1)");
+  expect(committed.status).toBe(0);
+}, 60_000);

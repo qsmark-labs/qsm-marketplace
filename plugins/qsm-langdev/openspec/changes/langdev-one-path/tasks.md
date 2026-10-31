@@ -32,20 +32,24 @@
 
 ## 2. Batch B: one process runner and one git helper (2, 11, 10, 20)
 
-- [ ] 2.1 `lib/process.ts` owns the runner; sentrux, gitleaks, detect-secrets, fixers, rumdl,
+- [x] 2.1 `lib/process.ts` owns the runner; sentrux, gitleaks, detect-secrets, fixers, rumdl,
   probes, the pack fetch and the login probe go through it with the point's limit; the private
   limits go. Files: `lib/process.ts`, `lib/compare.ts`, `lib/structure.ts`, `lib/gate-runner.ts`,
   `lib/fixers.ts`, `lib/markdown-wrap.ts`, `lib/rule-packs.ts`, `lib/semgrep-login.ts`, tests.
   Proof: scenario "The structural checker hangs" with a fake sentrux that sleeps and a 200 ms
   limit, no child left (`pgrep`). Blocked by batch A.
-- [ ] 2.2 Prove which index `git commit <paths>` scores, as a test; then one `git(root, args)` in
+- [x] 2.2 Prove which index `git commit <paths>` scores, as a test; then one `git(root, args)` in
   `lib/gitref.ts` with that one env policy, `state.ts`'s copy of `resolveRef` gone. Files:
   `lib/gitref.ts`, `lib/config.ts`, `lib/tree.ts`, `lib/state.ts`, `lib/push.ts`,
   `lib/structure.ts`, `lib/git-hooks.ts`, `lib/gate-runner.ts`. Proof: the test; suite green.
   Blocked by 2.1.
-- [ ] 2.3 Measure, then decide: one run-wide `JOBS` limiter (10), and `gitIndexInto` only for
-  structure (20). Proof: `check` timed before and after on this repository with load named; lands
-  only with a gain of at least 1 s, else the line closes with the numbers. Blocked by 2.2.
+- [x] 2.3 Measure, then decide: one run-wide `JOBS` limiter (10), and `gitIndexInto` only for
+  structure (20). Proof: `check --against HEAD~3` over a cold result store, three runs each, on
+  this repository (12 cores; the 1-minute load, 6 to 15, is largely the runs themselves). As it
+  was: 20.0, 19.5, 18.9 s, median 19.5 s. One run-wide limiter of `JOBS` (a semaphore in
+  `spawnAsync`): 19.2, 20.3, 17.2 s, median 19.2 s, a gain of 0.3 s. `gitIndexInto` only for
+  structure: 19.4, 18.7, 27.5 s, median 19.4 s, a gain of 0.1 s. Neither reaches 1 s, so neither
+  landed and the line closes with the numbers and no code.
 
 ## 3. Batch C: config, registry and less code (4, 7, 8, 14, 15, 19, 24)
 

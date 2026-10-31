@@ -30,8 +30,8 @@ function recordingFetch(): string[] {
 test("a pack and a single rule are fetched from the registry under the name semgrep takes", async () => {
   const urls = recordingFetch();
 
-  await fetchFromRegistry("p/python");
-  await fetchFromRegistry("r/bash.curl.security.curl-eval");
+  await fetchFromRegistry("p/python", 15_000);
+  await fetchFromRegistry("r/bash.curl.security.curl-eval", 15_000);
 
   expect(urls).toEqual([
     "https://semgrep.dev/c/p/python",
@@ -42,10 +42,15 @@ test("a pack and a single rule are fetched from the registry under the name semg
 test("our own rules come from the binary, never from the network, and are keyed on their content", async () => {
   const dir = sandboxDir("qsm-langdev-rule-packs-");
   const fetched: string[] = [];
-  const resolved = await resolvePacks(["qsm/bash"], dir, (pack) => {
-    fetched.push(pack);
-    return Promise.reject(new Error("offline"));
-  });
+  const resolved = await resolvePacks(
+    ["qsm/bash"],
+    dir,
+    (pack) => {
+      fetched.push(pack);
+      return Promise.reject(new Error("offline"));
+    },
+    1000,
+  );
 
   const bash = resolved.get("qsm/bash");
   const text = defined(OWN_RULES.bash, "the bash rules");
@@ -58,7 +63,12 @@ test("our own rules come from the binary, never from the network, and are keyed 
 
 test("an own rules name with no rules file is named unfetched, never run empty", async () => {
   const dir = sandboxDir("qsm-langdev-rule-packs-");
-  const resolved = await resolvePacks(["qsm/cobol"], dir, () => Promise.resolve("rules: []\n"));
+  const resolved = await resolvePacks(
+    ["qsm/cobol"],
+    dir,
+    () => Promise.resolve("rules: []\n"),
+    1000,
+  );
 
   expect(resolved.get("qsm/cobol")).toEqual({
     reason: "qsm/cobol could not be fetched: qsm-langdev ships no rules/cobol.yaml",

@@ -37,6 +37,7 @@ import {
   recordBlock,
   writeHalt,
 } from "../lib/state.ts";
+import { POINTS } from "../lib/registry.ts";
 import { compareStructure, verdict } from "../lib/structure.ts";
 
 const GATE = "langdev";
@@ -115,9 +116,15 @@ async function judgeTree(
 
   // The stop gate compares against the agent's own start point, so a whole session is judged as one
   // aggregate drift rather than commit by commit.
-  const structure = await compareStructure(tree.root, tree.start, { kind: "index" });
+  const structure = await compareStructure(
+    tree.root,
+    tree.start,
+    { kind: "index" },
+    testBudgetMs().timeoutMs ?? POINTS["pre-commit"].timeoutMs,
+  );
   const structureVerdict = verdict(structure);
-  if (structureVerdict.pass) {
+  // Not measured is a warning at a stop, as for a checker: it must not hold an agent hostage.
+  if (structureVerdict.pass || structure.status === "not-measured") {
     // Each summary says what it is — a quality line, or a tree sentrux had no ruleset to score.
     // Both are the orchestrator's to read when it reviews this worktree; neither stops the agent.
     warnings.push(structureVerdict.summary);

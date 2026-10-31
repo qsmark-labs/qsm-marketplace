@@ -23,19 +23,18 @@ export function ruleIdOf(checkId: string): string {
   return checkId.replace(SCRATCH_IN_RULE_ID, "");
 }
 
-/** Answers a pack's rules as text, or throws naming why it could not. */
-export type FetchPack = (pack: string) => Promise<string>;
+/** Answers a pack's rules as text within `timeoutMs`, or throws naming why it could not. */
+export type FetchPack = (pack: string, timeoutMs: number) => Promise<string>;
 
 const REGISTRY_URL = "https://semgrep.dev/c/";
-const FETCH_TIMEOUT_MS = 15_000;
 
 /**
  * The pack as semgrep itself resolves `--config p/<pack>`: one YAML document of rules from its
  * registry.
  */
-export const fetchFromRegistry: FetchPack = async (pack) => {
+export const fetchFromRegistry: FetchPack = async (pack, timeoutMs) => {
   const response = await fetch(`${REGISTRY_URL}${pack}`, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -49,9 +48,9 @@ const OWN_RULES_PREFIX = "qsm/";
 
 /** A pack's text: our own rules from the binary, anything else from
  * `fetchPack`. */
-function rulesText(pack: string, fetchPack: FetchPack): Promise<string> {
+function rulesText(pack: string, fetchPack: FetchPack, timeoutMs: number): Promise<string> {
   if (!pack.startsWith(OWN_RULES_PREFIX)) {
-    return fetchPack(pack);
+    return fetchPack(pack, timeoutMs);
   }
   const language = pack.slice(OWN_RULES_PREFIX.length);
   const text = OWN_RULES[language];
@@ -69,12 +68,13 @@ export async function resolvePacks(
   packs: readonly string[],
   dir: string,
   fetchPack: FetchPack,
+  timeoutMs: number,
 ): Promise<Map<string, ResolvedPack>> {
   const unique = [...new Set(packs)];
   const resolved = await Promise.all(
     unique.map(async (pack, index): Promise<[string, ResolvedPack]> => {
       try {
-        const text = await rulesText(pack, fetchPack);
+        const text = await rulesText(pack, fetchPack, timeoutMs);
         if (text.trim() === "") {
           throw new Error("the answer was empty");
         }
