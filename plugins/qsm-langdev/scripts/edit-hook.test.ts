@@ -173,6 +173,17 @@ describe("qsm-langdev edit hook: markdown line length", () => {
     expect(readFileSync(join(root, "notes.md"), "utf8")).not.toContain(long);
     expect(r.text ?? "").not.toContain("MD013");
   });
+
+  test("an OpenSpec rename line stays one line while an ordinary long line is rewrapped", () => {
+    const to = `- TO: \`### Requirement: ${"name ".repeat(22)}end\``;
+    expect(to.length).toBeGreaterThan(100);
+    const { root, r } = editMarkdown(`## RENAMED Requirements\n\n${to}\n\n${long}\n`);
+
+    const written = readFileSync(join(root, "notes.md"), "utf8");
+    expect(written.split("\n")).toContain(to);
+    expect(written).not.toContain(long);
+    expect(r.text ?? "").not.toContain("MD013");
+  });
 });
 
 describe("qsm-langdev pre-commit hook: markdown line length", () => {
