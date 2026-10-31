@@ -37,6 +37,25 @@ test("a worse checker fails the langdev gate even beside one not measured", () =
   expect(langdevOutcome([unmeasured, worse], "sizes", true).status).toBe("failed");
 });
 
+test("a missing config fails the gate and the block line says missing, never worse", () => {
+  const noConfig: Verdict = {
+    check: "oxlint",
+    kind: "missing-config",
+    summary: "oxlint: no config",
+  };
+
+  const outcome = langdevOutcome([noConfig], "sizes", true);
+
+  expect(outcome.status).toBe("failed");
+  expect(outcome.status === "failed" ? outcome.reason : "").toBe(
+    "1 checker(s) missing (binary or config)",
+  );
+  const mixed = langdevOutcome([noConfig, worse, unmeasured], "sizes", true);
+  expect(mixed.status === "failed" ? mixed.reason : "").toBe(
+    "1 checker(s) worse, 1 checker(s) missing (binary or config), 1 checker(s) not measured",
+  );
+});
+
 test("the hook's code: failed over blocked over ok", () => {
   const blocked = langdevOutcome([unmeasured], "sizes", true);
   const failed = langdevOutcome([worse], "sizes", true);
