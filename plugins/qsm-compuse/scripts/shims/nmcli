@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# The desktop slot's nmcli: NetworkManager as the state's `nm` record holds it, for the reads a
+# desktop asks, in terse mode (-t): `device`, `device wifi list`, `connection show` and `radio` are
+# rows of fields (`nm.device`, `nm.wifi`, `nm.connection`, `nm.radio`), chosen and
+# ordered by -f; `networking connectivity` is `nm.connectivity`. `device wifi rescan` succeeds and
+# changes nothing. Anything else, a write included, fails loud, because the fake machine does not
+# model it. A state without the record means the slot shows the real nmcli.
+state="${DRIVE_STATE:?the nmcli shim runs only inside a desktop slot}"
+jq -e 'has("nm")' "$state" >/dev/null || exec /usr/bin/nmcli "$@"
+terse="" fields="" words=()
+while (($#)); do
+  case "$1" in
+    -t | --terse) terse=1 ;;
+    -f | --fields) fields="$2" && shift ;;
+    -w | --wait | --rescan) shift ;;
+    *) words+=("$1") ;;
+  esac
+  shift
+done
+command="${words[*]}"
+declare -A records=([device]=.nm.device ["device wifi list"]=.nm.wifi
+  ["connection show"]=.nm.connection [radio]=.nm.radio)
+[[ "$command" == "networking connectivity" ]] && exec jq -er .nm.connectivity "$state"
+[[ "$command" == "device wifi rescan" ]] && exit 0
+rows="${records[$command]:-}"
+[[ -n "$rows" ]] || {
+  printf 'Error: the slot'"'"'s nmcli does not model "nmcli %s"\n' "$command" >&2
+  exit 1
+}
+[[ -n "$terse" && -n "$fields" ]] || {
+  printf 'Error: the slot'"'"'s nmcli answers rows only as -t -f FIELDS (got: nmcli %s)\n' "$command" >&2
+  exit 2
+}
+# Terse mode escapes a backslash and a colon inside a value, as the real nmcli does.
+jq -r --arg fields "$fields" "$rows"' | .[] as $row
+  | [$fields | split(",")[] | $row[.] // error("Error: the nm record has no field \(.)")]
+  | map(gsub("\\\\"; "\\\\") | gsub(":"; "\\:")) | join(":")' "$state"
