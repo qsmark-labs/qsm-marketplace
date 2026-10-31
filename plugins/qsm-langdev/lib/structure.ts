@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Glob, TOML } from "bun";
 import { generatedPaths, gitPaths } from "./config.ts";
+import type { Sha, TreeSide } from "./gitref.ts";
 import { arrayOf, num, recordOf, recordsOf, str, type Rec } from "./json.ts";
 import { type Kept, leaveOut, withCommitTree, withIndexTree } from "./tree.ts";
 
@@ -64,20 +65,20 @@ function overlayRules(root: string, dir: string): void {
   writeFileSync(join(dir, RULES_REL), staged.stdout);
 }
 
-/** The tree at `ref` as an on-disk directory with its test files left out:
+/** The tree of `side` as an on-disk directory with its test files left out:
  * a scratch materialization of the index (never the live directory
  * itself — see lib/tree.ts), or a materialized commit with today's rules
  * overlaid on top of it. Both sides go through here, so both are filtered
  * by the one `isTestFile`. */
 async function withTree<T>(
   root: string,
-  ref: string,
+  side: TreeSide,
   fn: (dir: string, kept: Kept) => T,
 ): Promise<T> {
-  if (ref === "index") {
+  if (side.kind === "index") {
     return withIndexTree(root, (dir) => fn(dir, leaveOutNonProduct(dir)));
   }
-  return withCommitTree(root, ref, (dir) => {
+  return withCommitTree(root, side.sha, (dir) => {
     overlayRules(root, dir);
     return fn(dir, leaveOutNonProduct(dir));
   });
@@ -409,10 +410,10 @@ export function verdict(result: StructureResult): StructureVerdict {
  * compare a tree with itself. */
 export async function compareStructure(
   root: string,
-  before: string,
-  after: string,
+  before: Sha,
+  after: TreeSide,
 ): Promise<StructureResult> {
-  return withTree(root, before, (referenceTree, referenceKept) =>
+  return withTree(root, { kind: "commit", sha: before }, (referenceTree, referenceKept) =>
     withTree(root, after, (shippedTree, shippedKept): StructureResult => {
       if (referenceKept.listing === shippedKept.listing) {
         return {
@@ -423,10 +424,4 @@ export async function compareStructure(
       return score(referenceTree, shippedTree, shippedKept.leftOut);
     }),
   );
-}
-
-/** The index against the commit at `before` — what a stop gate or
- * `structure` with no `--against` compares. */
-export function compareIndexSince(root: string, before: string): Promise<StructureResult> {
-  return compareStructure(root, before, "index");
 }

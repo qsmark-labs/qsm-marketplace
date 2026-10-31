@@ -21,7 +21,7 @@ import type { ComparedPoint } from "./registry.ts";
  */
 export type Score =
   | { tally: Tally; output: string }
-  | { reason: string; timedOut?: true; failedRun?: true };
+  | { kind: "timed-out" | "failed-run" | "missing"; reason: string };
 
 /** The stored form of a score, raised whenever what a stored score means changes (its form, or
  * the inputs a side is scored with), so an entry an older qsm-langdev wrote is scored again. */

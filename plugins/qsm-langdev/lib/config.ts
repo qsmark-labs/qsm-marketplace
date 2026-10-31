@@ -12,9 +12,15 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { arrayOf } from "./json.ts";
+import { messageOf } from "../../../lib/outcome.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
+import { arrayOf, recordOf } from "./json.ts";
 import {
+  type GateName,
+  type HookPoint,
+  hasNoExtension,
   isLanguage,
+  KNOWN_GATES,
   LANGUAGE_TABLE,
   LANGUAGES,
   type Language,
@@ -70,12 +76,6 @@ function shebangExtension(line: string): string | null {
   }
   const normalised = interpreter.replace(/^python[\d.]*$/, "python");
   return INTERPRETER_EXTENSION[normalised] ?? null;
-}
-
-/** True when the file's name carries no extension at all: `bin/deploy`,
- * `Makefile`. A dotfile counts as having one. */
-function hasNoExtension(file: string): boolean {
-  return !basename(file).includes(".");
 }
 
 /**
@@ -211,7 +211,7 @@ export function detectLanguages(root: string): Language[] | null {
 }
 
 export interface GatesConfig {
-  hooks: { "pre-commit": string[]; "pre-push": string[] };
+  hooks: Record<HookPoint, GateName[]>;
   /** Opt-in: a language gates only when named here (the always-on languages gate regardless). */
   languages: Language[];
   /** The scaffolded profile `init` last recorded; absent until init runs. */
@@ -234,11 +234,66 @@ export function isLangdevRepo(repoRoot: string): boolean {
   return existsSync(configPath(repoRoot));
 }
 
-function knownLanguages(value: unknown): Language[] {
-  return (arrayOf(value) ?? []).filter((name): name is Language => isLanguage(name));
+function failedConfig(path: string, field: string, why: string): QsmError {
+  return new QsmError("failed", `${path}: ${field} ${why}`);
 }
 
-/** The repository's gate selection, or the default when it has written none. */
+function languagesOf(path: string, value: unknown): Language[] {
+  if (value === undefined) {
+    return [];
+  }
+  const names = arrayOf(value);
+  if (names === null) {
+    throw failedConfig(path, "languages", "must be a list of language names");
+  }
+  return names.map((name) => {
+    if (!isLanguage(name)) {
+      throw failedConfig(
+        path,
+        "languages",
+        `names '${String(name)}', which is not a language; known: ${LANGUAGES.join(", ")}`,
+      );
+    }
+    return name;
+  });
+}
+
+function targetsOf(path: string, value: unknown): Record<string, string> {
+  const targets = recordOf(value);
+  if (targets === null || !Object.values(targets).every((target) => typeof target === "string")) {
+    throw failedConfig(path, "targets", "must map a language to its target name");
+  }
+  return Object.fromEntries(
+    Object.entries(targets).map(([language, target]) => [language, String(target)]),
+  );
+}
+
+function gatesOf(path: string, point: HookPoint, value: unknown): GateName[] {
+  if (value === undefined) {
+    return [];
+  }
+  const names = arrayOf(value);
+  if (names === null) {
+    throw failedConfig(path, `hooks.${point}`, "must be a list of gate names");
+  }
+  return names.map((name) => {
+    const gate = KNOWN_GATES.find((known) => known === name);
+    if (gate === undefined) {
+      throw failedConfig(
+        path,
+        `hooks.${point}`,
+        `names unknown gate '${String(name)}'; known: ${KNOWN_GATES.join(", ")}`,
+      );
+    }
+    return gate;
+  });
+}
+
+/**
+ * The repository's gate selection, or the default when it has written none. A file that does not
+ * parse or names what this tool does not know fails, because running as if it said nothing would
+ * gate nothing in silence.
+ */
 export function readGatesConfig(repoRoot: string): GatesConfig {
   const path = configPath(repoRoot);
   if (!existsSync(path)) {
@@ -247,20 +302,25 @@ export function readGatesConfig(repoRoot: string): GatesConfig {
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return DEFAULT_CONFIG;
+  } catch (error) {
+    throw failedConfig(path, "file", `is not valid JSON: ${messageOf(error)}`);
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return DEFAULT_CONFIG;
+  const raw = recordOf(parsed);
+  if (raw === null) {
+    throw failedConfig(path, "file", "must be a JSON object");
   }
-  const raw = parsed as Partial<GatesConfig>;
+  const hooks = raw.hooks === undefined ? {} : recordOf(raw.hooks);
+  if (hooks === null) {
+    throw failedConfig(path, "hooks", "must be an object keyed by hook point");
+  }
+  const targets = raw.targets === undefined ? undefined : targetsOf(path, raw.targets);
   return {
     hooks: {
-      "pre-commit": raw.hooks?.["pre-commit"] ?? DEFAULT_CONFIG.hooks["pre-commit"],
-      "pre-push": raw.hooks?.["pre-push"] ?? DEFAULT_CONFIG.hooks["pre-push"],
+      "pre-commit": gatesOf(path, "pre-commit", hooks["pre-commit"]),
+      "pre-push": gatesOf(path, "pre-push", hooks["pre-push"]),
     },
-    languages: knownLanguages(raw.languages),
-    ...(raw.targets === undefined ? {} : { targets: raw.targets }),
+    languages: languagesOf(path, raw.languages),
+    ...(targets === undefined ? {} : { targets }),
     ...(typeof raw.profile === "string" ? { profile: raw.profile } : {}),
   };
 }

@@ -50,6 +50,20 @@ describe("installHooks", () => {
     expect(readFileSync(`${hookPath(root, "pre-commit")}.qsm-backup`, "utf8")).toBe(THEIRS);
   });
 
+  test("An existing hook that is not a shell script is named, never edited", () => {
+    const root = repo();
+    const python = "#!/usr/bin/env python3\nprint('their own check')\n";
+    writeFileSync(hookPath(root, "pre-commit"), python, { mode: 0o755 });
+
+    const action = installHooks(root, ["pre-commit"])[0];
+
+    expect(action?.kind).toBe("manual");
+    expect(action?.kind === "manual" ? action.line : "").toBe(
+      "qsm-langdev hook pre-commit || exit 1",
+    );
+    expect(readFileSync(hookPath(root, "pre-commit"), "utf8")).toBe(python);
+  });
+
   test("a second install adds nothing further", () => {
     const root = repo();
     writeFileSync(hookPath(root, "pre-commit"), THEIRS, { mode: 0o755 });

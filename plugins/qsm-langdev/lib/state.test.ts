@@ -17,6 +17,8 @@ import {
   recordBlock,
   recordStartPoint,
 } from "./state.ts";
+import { headOf } from "./test-support.ts";
+import type { Sha } from "./gitref.ts";
 
 const previousStateDir = process.env.QSM_LANGDEV_STATE_DIR;
 
@@ -42,7 +44,7 @@ function git(root: string, args: string[]): string {
   return result.stdout.trim();
 }
 
-function repo(): { root: string; head: string } {
+function repo(): { root: string; head: Sha } {
   const root = sandboxDir("qsm-langdev-repo-");
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.email", "test@example.invalid"]);
@@ -50,7 +52,7 @@ function repo(): { root: string; head: string } {
   writeFileSync(join(root, "a.txt"), "alpha\n");
   git(root, ["add", "-A"]);
   git(root, ["commit", "-q", "-m", "base"]);
-  return { root, head: git(root, ["rev-parse", "HEAD"]) };
+  return { root, head: headOf(root) };
 }
 
 const WORKER: Editor = { sessionId: "session-1", agentId: "worker" };

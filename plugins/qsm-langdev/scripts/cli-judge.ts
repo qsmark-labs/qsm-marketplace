@@ -6,19 +6,20 @@ import { fail, ok } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { editFindings } from "../lib/edit-findings.ts";
 import { resolveRef } from "../lib/gitref.ts";
-import { type Editor, editedTrees, MAIN_AGENT, readStartPoint } from "../lib/state.ts";
 import {
-  compareIndexSince,
+  type EditedTree,
+  type Editor,
+  editedTrees,
+  MAIN_AGENT,
+  readStartPoint,
+} from "../lib/state.ts";
+import {
+  compareStructure,
   type StructureResult,
   type StructureVerdict,
   verdict,
 } from "../lib/structure.ts";
 import { err, requireRepo } from "./call.ts";
-
-interface StructureTree {
-  root: string;
-  start: string;
-}
 
 /**
  * The commit `structure` compares against with no `--against`: the agent's own start point in this
@@ -53,7 +54,7 @@ function namedCommit(
 function structureTreesToJudge(
   target: string | undefined,
   values: { against?: string; session?: string; agent?: string },
-): StructureTree[] {
+): EditedTree[] {
   if (target !== undefined || values.agent === undefined) {
     const root = requireRepo(target ?? ".");
     const named = namedCommit(root, values.against, values.session, values.agent);
@@ -71,15 +72,15 @@ function structureTreesToJudge(
 
 /** The first failing tree's verdict, else the last tree's, else the
  * report of an agent that edited nothing. */
-async function structureJudgeAll(trees: StructureTree[]): Promise<
+async function structureJudgeAll(trees: EditedTree[]): Promise<
   StructureVerdict & {
-    tree: StructureTree | null;
+    tree: EditedTree | null;
     result: StructureResult | null;
   }
 > {
-  let last: (StructureVerdict & { tree: StructureTree; result: StructureResult }) | null = null;
+  let last: (StructureVerdict & { tree: EditedTree; result: StructureResult }) | null = null;
   for (const tree of trees) {
-    const result = await compareIndexSince(tree.root, tree.start);
+    const result = await compareStructure(tree.root, tree.start, { kind: "index" });
     last = { tree, result, ...verdict(result) };
     if (!last.pass) {
       return last;

@@ -16,6 +16,8 @@ import {
   type StructureResult,
   verdict,
 } from "./structure.ts";
+import { headOf } from "./test-support.ts";
+import type { Sha } from "./gitref.ts";
 
 const CAUSES = {
   modularity: 0.6,
@@ -194,15 +196,15 @@ function write(root: string, files: Record<string, string>): void {
   }
 }
 
-function commit(root: string): string {
+function commit(root: string): Sha {
   git(root, ["add", "-A"]);
   git(root, ["commit", "-q", "-m", "change"]);
-  return git(root, ["rev-parse", "HEAD"]);
+  return headOf(root);
 }
 
 /** A repository whose base commit already carries a test importing the
  * shared helper, so the reference side has a test to leave out too. */
-function repo(): { root: string; base: string } {
+function repo(): { root: string; base: Sha } {
   const root = sandboxDir("qsm-langdev-structure-");
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.email", "test@example.invalid"]);
@@ -249,7 +251,7 @@ describe("compareStructure leaves test files out of both trees", () => {
     const { root, base } = repo();
     write(root, { ...TESTS_ONLY, "lib/gen.ts": 'import { helper } from "./helper.ts";\n' });
 
-    const result = await compareStructure(root, base, "index");
+    const result = await compareStructure(root, base, { kind: "index" });
     const judged = verdict(result);
 
     expect(result.status).toBe("not-scored");
@@ -263,7 +265,7 @@ describe("compareStructure leaves test files out of both trees", () => {
     write(root, { ...TESTS_ONLY, "lib/b.ts": 'import { helper } from "./helper.ts";\n' });
     const head = commit(root);
 
-    const result = await compareStructure(root, base, head);
+    const result = await compareStructure(root, base, { kind: "commit", sha: head });
 
     expect(result.status).toBe("scored");
     if (result.status !== "scored") {
@@ -281,7 +283,7 @@ describe("compareStructure leaves test files out of both trees", () => {
     write(root, { "lib/a.ts": 'import { helper } from "./helper.ts";\n' });
     git(root, ["add", "-A"]);
 
-    const result = await compareStructure(root, base, "index");
+    const result = await compareStructure(root, base, { kind: "index" });
 
     expect(result.status).toBe("scored");
     if (result.status === "scored") {

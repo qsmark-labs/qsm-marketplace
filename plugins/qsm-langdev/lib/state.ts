@@ -9,11 +9,11 @@
 // judges only the trees the stopping agent itself edited, whatever
 // directory the harness happens to run it in.
 
-import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runtimeDir, stateDir } from "../../../lib/paths.ts";
+import { resolveRef, type Sha } from "./gitref.ts";
 import { recordOf } from "./json.ts";
 
 /** Who edited: the session, and the agent within it. The orchestrator has no
@@ -28,7 +28,7 @@ export const MAIN_AGENT = "main";
 /** A tree an agent edited, and the commit it is judged against there. */
 export interface EditedTree {
   root: string;
-  start: string;
+  start: Sha;
 }
 
 /** Per-user, never a shared /tmp path: a second user's write to a shared path would EACCES and the
@@ -60,15 +60,12 @@ export function recordStartPoint(editor: Editor, root: string): void {
   if (existsSync(path)) {
     return;
   }
-  const head = spawnSync("git", ["rev-parse", "--verify", "-q", "HEAD"], {
-    cwd: root,
-    encoding: "utf8",
-  });
-  if (head.status !== 0) {
+  const head = resolveRef(root, "HEAD");
+  if (head === null) {
     return;
   }
   mkdirSync(editorDir("start", editor), { recursive: true });
-  const tree: EditedTree = { root, start: head.stdout.trim() };
+  const tree: EditedTree = { root, start: head };
   writeFileSync(path, JSON.stringify(tree));
 }
 
@@ -78,15 +75,14 @@ function readTree(path: string): EditedTree | null {
     if (typeof parsed?.root !== "string" || typeof parsed.start !== "string") {
       return null;
     }
-    return /^[0-9a-f]{40,64}$/.test(parsed.start)
-      ? { root: parsed.root, start: parsed.start }
-      : null;
+    const start = resolveRef(parsed.root, parsed.start);
+    return start === null ? null : { root: parsed.root, start };
   } catch {
     return null;
   }
 }
 
-export function readStartPoint(editor: Editor, root: string): string | null {
+export function readStartPoint(editor: Editor, root: string): Sha | null {
   return readTree(startPointPath(editor, root))?.start ?? null;
 }
 

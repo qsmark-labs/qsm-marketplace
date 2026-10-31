@@ -31,7 +31,6 @@ export type Langdev = {
   }): Promise<unknown>;
   install(options: {
     dir?: string;
-    lang?: "sh" | "py" | "ts";
   }): Promise<unknown>;
   uninstall(options: {
     dir?: string;
