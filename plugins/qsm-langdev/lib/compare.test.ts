@@ -314,6 +314,26 @@ describe("compareTrees: checker availability", () => {
     expect(verdicts[0]?.missingConfig).toBe(true);
     expect(verdicts[0]?.summary).toContain("qsm-langdev init");
   });
+
+  test("A checker's own config is missing", async () => {
+    const { root, head } = repoWith({ "ruff.toml": "line-length = 100\n", "a.py": "x = 1\n" });
+    write(root, { "a.py": "x = 2\n" });
+    stage(root);
+    // grep stands in for bandit's binary, so the verdict is about the config, not the install
+    const bandit: CheckSpec = {
+      ...defined(
+        REGISTRY.find((spec) => spec.name === "bandit"),
+        "bandit",
+      ),
+      binary: "grep",
+    };
+
+    const { verdicts } = await run(root, head, [bandit]);
+
+    expect(verdicts).toHaveLength(1);
+    expect(verdicts[0]?.missingConfig).toBe(true);
+    expect(verdicts[0]?.summary).toContain("bandit.yaml");
+  });
 });
 
 /** A checker that scores nothing and records the files each side handed it,

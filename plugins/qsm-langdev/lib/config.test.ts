@@ -8,7 +8,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
-import { isLangdevRepo, languageEnabled } from "./config.ts";
+import { isLangdevRepo, languageEnabled, readGatesConfig } from "./config.ts";
 
 describe("isLangdevRepo", () => {
   test("false when the repository never wrote .qsm-langdev/gates.json", () => {
@@ -38,5 +38,40 @@ describe("languageEnabled", () => {
   test("a non-empty selection enables only what it names", () => {
     expect(languageEnabled("ts", ["ts"])).toBe(true);
     expect(languageEnabled("py", ["ts"])).toBe(false);
+  });
+});
+
+describe("readGatesConfig", () => {
+  function configured(text: string): string {
+    const root = sandboxDir("qsm-langdev-config-");
+    mkdirSync(join(root, ".qsm-langdev"), { recursive: true });
+    writeFileSync(join(root, ".qsm-langdev", "gates.json"), text);
+    return root;
+  }
+
+  test("An absent file reads as the default", () => {
+    expect(readGatesConfig(sandboxDir("qsm-langdev-config-")).languages).toEqual([]);
+  });
+
+  test("An unknown language in the config", () => {
+    const root = configured('{ "languages": ["nope"] }');
+
+    expect(() => readGatesConfig(root)).toThrow(/languages.*nope.*known: .*ts/);
+  });
+
+  test("An unknown gate in the config", () => {
+    const root = configured('{ "hooks": { "pre-commit": ["nonsense"] } }');
+
+    expect(() => readGatesConfig(root)).toThrow(/hooks\.pre-commit.*nonsense/);
+  });
+
+  test("A config that does not parse", () => {
+    const root = configured("{ not json");
+
+    expect(() => readGatesConfig(root)).toThrow(/gates\.json: file is not valid JSON/);
+  });
+
+  test("A config that is not an object", () => {
+    expect(() => readGatesConfig(configured("[]"))).toThrow(/must be a JSON object/);
   });
 });

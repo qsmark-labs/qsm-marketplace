@@ -24,7 +24,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   languages: { words: ["qsm-langdev","languages"], args: [{ name: "action", flag: null }, { name: "name", flag: null }] },
   init: { words: ["qsm-langdev","init"], args: [{ name: "dir", flag: null }, { name: "profile", flag: "--profile" }, { name: "target", flag: "--target" }] },
   structure: { words: ["qsm-langdev","structure"], args: [{ name: "path", flag: null }, { name: "against", flag: "--against" }, { name: "session", flag: "--session" }, { name: "agent", flag: "--agent" }] },
-  install: { words: ["qsm-langdev","install"], args: [{ name: "dir", flag: null }, { name: "lang", flag: "--lang" }] },
+  install: { words: ["qsm-langdev","install"], args: [{ name: "dir", flag: null }] },
   uninstall: { words: ["qsm-langdev","uninstall"], args: [{ name: "dir", flag: null }] },
   edited: { words: ["qsm-langdev","edited"], args: [{ name: "file", flag: null }, { name: "session", flag: "--session" }, { name: "agent", flag: "--agent" }] },
   hook: { words: ["qsm-langdev","hook"], args: [{ name: "name", flag: null }, { name: "remote", flag: null }] },

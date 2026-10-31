@@ -928,9 +928,12 @@ function missingPrerequisiteVerdicts(
   return [...missingBinaryVerdicts, ...missingConfigVerdicts(selected, root)];
 }
 
-/** One verdict per language of `selected` that has no profile-scaffolded config here. */
+/**
+ * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
+ * selected checker whose own config file is absent.
+ */
 function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Verdict[] {
-  return [...new Set(selected.map((spec) => spec.language))]
+  const languages = [...new Set(selected.map((spec) => spec.language))]
     .filter((language) => !hasScaffoldedConfig(root, language))
     .map((language) => ({
       check: `${language} config`,
@@ -940,6 +943,17 @@ function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Ve
         `${language}: no profile-scaffolded config in this repository — run ` +
         `'qsm-langdev init', or remove '${language}' from .qsm-langdev/gates.json`,
     }));
+  const own = selected
+    .filter((spec) => spec.ownConfig !== undefined && !existsSync(join(root, spec.ownConfig)))
+    .map((spec) => ({
+      check: `${spec.name} config`,
+      pass: false,
+      missingConfig: true as const,
+      summary:
+        `${spec.name}: ${spec.ownConfig} is missing — create it ('qsm-langdev init'), ` +
+        `or remove ${spec.name} from the selection`,
+    }));
+  return [...languages, ...own];
 }
 
 /**

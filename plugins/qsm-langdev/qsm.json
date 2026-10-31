@@ -131,12 +131,6 @@
             "type": "string",
             "positional": true,
             "description": "repository path (defaults to cwd)"
-          },
-          {
-            "name": "lang",
-            "type": "string",
-            "choices": ["sh", "py", "ts"],
-            "description": "hook script language (defaults to sh)"
           }
         ]
       },

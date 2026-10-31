@@ -144,12 +144,8 @@ export function resolveLanguage(name: string): Language | null {
   return null;
 }
 
-/** The git hooks langdev installs and runs gates at. */
-export type EnforcementPoint = "pre-commit" | "pre-push";
-export const ENFORCEMENT_POINTS: readonly EnforcementPoint[] = ["pre-commit", "pre-push"];
-
 /** Where a checker runs: the edit hook, the two git hooks, and CI. */
-export type Point = "edit" | EnforcementPoint | "ci";
+export type Point = "edit" | "pre-commit" | "pre-push" | "ci";
 export const POINT_NAMES: readonly Point[] = ["edit", "pre-commit", "pre-push", "ci"];
 
 /**
@@ -169,6 +165,14 @@ export const POINTS = {
 
 /** A point that compares two trees and stores results; the edit point checks in place. */
 export type ComparedPoint = Exclude<Point, "edit">;
+
+/** The git hooks langdev installs and runs gates at. */
+export type HookPoint = Exclude<ComparedPoint, "ci">;
+export const HOOK_POINTS: readonly HookPoint[] = ["pre-commit", "pre-push"];
+
+/** The gates a hook point may name in gates.json. */
+export const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
+export type GateName = (typeof KNOWN_GATES)[number];
 
 const FROM_COMMIT: readonly Point[] = ["pre-commit", "pre-push", "ci"];
 const FROM_PUSH: readonly Point[] = ["pre-push", "ci"];
@@ -327,6 +331,9 @@ export type CheckSpec = {
   thresholds?: Record<string, number>;
   /** Globs over repository-relative paths naming the files the tool reads for its configuration. */
   configFiles?: readonly string[];
+  /** A config file the tool is passed by name and never runs without: its absence is a missing
+   * config, because scoring both sides at the tool's defaults would let nothing regress. */
+  ownConfig?: string;
   /** The tool resolves imports through the installed dependencies, so what is installed is part of
    * what it scored: a result scored before `bun install` is not the result after it. */
   resolvesInstalled?: true;
@@ -624,10 +631,8 @@ const SPECS: readonly CheckSpec[] = [
     install: uvTool("bandit"),
     fileSet: "changed",
     configFiles: ["bandit.yaml"],
-    args: (files, root) =>
-      existsSync(join(root, "bandit.yaml"))
-        ? ["-c", "bandit.yaml", "-f", "json", "-q", ...files]
-        : ["-f", "json", "-q", ...files],
+    ownConfig: "bandit.yaml",
+    args: (files) => ["-c", "bandit.yaml", "-f", "json", "-q", ...files],
     count: countBanditJson,
   },
   {
