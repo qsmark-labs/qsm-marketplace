@@ -15,7 +15,7 @@ import {
 import { describeSets, givenSet, type SetSize } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
-import type { Sha, TreeSide } from "./gitref.ts";
+import { type Sha, scratchEnv, type TreeSide } from "./gitref.ts";
 import { hasScaffoldedConfig } from "./profiles.ts";
 import { type Spawned, spawnAsync, timedOut } from "./process.ts";
 import { recordRun, type Timing } from "./timings.ts";
@@ -215,7 +215,7 @@ async function readOne(run: OneRun): Promise<Score> {
   const { spec, root, args, timeoutMs, readReport } = run;
   const { binary } = spec;
   const where = run.where ?? "";
-  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs);
+  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs, scratchEnv());
   const exitCode = spawnStatus(result, binary);
   if (typeof exitCode !== "number") {
     return { ...exitCode, reason: `${where}${exitCode.reason}` };

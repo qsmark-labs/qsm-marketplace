@@ -38,7 +38,7 @@
   `lib/fixers.ts`, `lib/markdown-wrap.ts`, `lib/rule-packs.ts`, `lib/semgrep-login.ts`, tests.
   Proof: scenario "The structural checker hangs" with a fake sentrux that sleeps and a 200 ms
   limit, no child left (`pgrep`). Blocked by batch A.
-- [ ] 2.2 Prove which index `git commit <paths>` scores, as a test; then one `git(root, args)` in
+- [x] 2.2 Prove which index `git commit <paths>` scores, as a test; then one `git(root, args)` in
   `lib/gitref.ts` with that one env policy, `state.ts`'s copy of `resolveRef` gone. Files:
   `lib/gitref.ts`, `lib/config.ts`, `lib/tree.ts`, `lib/state.ts`, `lib/push.ts`,
   `lib/structure.ts`, `lib/git-hooks.ts`, `lib/gate-runner.ts`. Proof: the test; suite green.

@@ -1,6 +1,5 @@
 // The git-hook gates: what `qsm-langdev hook <name>` runs for one enforcement point.
 
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { contentDenylistPath } from "../../../lib/paths.ts";
@@ -9,7 +8,7 @@ import { compareTrees, headline, type Verdict } from "./compare.ts";
 import { gitPaths, readGatesConfig } from "./config.ts";
 import { describeSets } from "./file-sets.ts";
 import { fixFiles, isFixable } from "./fixers.ts";
-import { resolveRef, type Sha, type TreeSide } from "./gitref.ts";
+import { git, resolveRef, type Sha, type TreeSide } from "./gitref.ts";
 import { recordsOf } from "./json.ts";
 import { spawnAsync, timedOut } from "./process.ts";
 import {
@@ -86,7 +85,7 @@ function stagedPaths(root: string): string[] | null {
 }
 
 function isDirty(root: string, file: string): boolean {
-  return spawnSync("git", ["diff", "--quiet", "--", file], { cwd: root }).status === 1;
+  return git(root, ["diff", "--quiet", "--", file]).status === 1;
 }
 
 /** Staged files are fixed and staged again before the check, so what a tool can rewrite never
@@ -100,7 +99,7 @@ async function fixStaged(root: string): Promise<string[]> {
     () => POINTS["pre-commit"].timeoutMs,
   );
   if (fixed.length > 0) {
-    spawnSync("git", ["add", "--", ...fixed], { cwd: root });
+    git(root, ["add", "--", ...fixed]);
   }
   return dirty.filter((f) => isFixable(root, f));
 }

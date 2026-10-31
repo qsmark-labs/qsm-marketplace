@@ -19,11 +19,12 @@ export function spawnAsync(
   command: string,
   args: readonly string[],
   timeoutMs: number,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<Spawned> {
   return new Promise((resolvePromise, rejectPromise) => {
     // `env` named: Bun resolves the binary against the PATH the process started with unless it is
     // handed one, and a test puts a fake first.
-    const child = spawnChild(command, args, { cwd, detached: true, env: process.env });
+    const child = spawnChild(command, args, { cwd, detached: true, env });
     // A tool that reads stdin sees the end of it, as it did under spawnSync.
     child.stdin.end();
     let stdout = "";

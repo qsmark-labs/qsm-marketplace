@@ -2,12 +2,11 @@
 // language checker in compare.ts applies, scored by `sentrux check --json` instead of a
 // per-language linter.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Glob, TOML } from "bun";
 import { generatedPaths, gitPaths } from "./config.ts";
-import type { Sha, TreeSide } from "./gitref.ts";
+import { git, scratchEnv, type Sha, type TreeSide } from "./gitref.ts";
 import { arrayOf, num, recordOf, recordsOf, str, type Rec } from "./json.ts";
 import { spawnAsync, timedOut } from "./process.ts";
 import { type Kept, leaveOut, withCommitTree, withIndexTree } from "./tree.ts";
@@ -58,7 +57,7 @@ function overlayRules(root: string, dir: string): void {
   if ((gitPaths(root, ["ls-files", "-z", "--cached", "--", RULES_REL]) ?? []).length === 0) {
     return;
   }
-  const staged = spawnSync("git", ["-C", root, "show", `:${RULES_REL}`], { encoding: "utf8" });
+  const staged = git(root, ["show", `:${RULES_REL}`]);
   if (staged.status !== 0) {
     throw new Error(`git show :${RULES_REL} failed: ${staged.stderr.trim()}`);
   }
@@ -220,7 +219,13 @@ const unreadable = (reason: string): ScoreDir => ({ reason, timedOut: false });
  * violations.
  */
 async function scoreDir(dir: string, timeoutMs: number): Promise<ScoreDir> {
-  const result = await spawnAsync(dir, "sentrux", ["check", "--json", dir], timeoutMs);
+  const result = await spawnAsync(
+    dir,
+    "sentrux",
+    ["check", "--json", dir],
+    timeoutMs,
+    scratchEnv(),
+  );
   if (timedOut(result)) {
     return {
       reason: `sentrux did not finish within ${(timeoutMs / 1000).toFixed(1)}s`,

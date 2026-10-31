@@ -1,6 +1,5 @@
 // The repository's own gate selection: .qsm-langdev/gates.json.
 
-import { spawnSync } from "node:child_process";
 import {
   closeSync,
   existsSync,
@@ -14,6 +13,7 @@ import {
 import { basename, dirname, join, resolve } from "node:path";
 import { messageOf } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
+import { git } from "./gitref.ts";
 import { arrayOf, recordOf } from "./json.ts";
 import {
   type GateName,
@@ -111,12 +111,7 @@ export function matchingFiles(
 
 /** A NUL-separated git listing as paths, or null when git could not answer. */
 export function gitPaths(root: string, args: readonly string[], input?: string): string[] | null {
-  const result = spawnSync("git", args, {
-    cwd: root,
-    ...(input === undefined ? {} : { input }),
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const result = git(root, args, input === undefined ? {} : { input });
   if (result.status !== 0) {
     return null;
   }
