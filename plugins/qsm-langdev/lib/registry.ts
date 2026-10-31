@@ -179,7 +179,7 @@ const FROM_PUSH: readonly Point[] = ["pre-push", "ci"];
 
 /** The one line a human can act on: what doctor prints and what a failing checker prints when its
  * binary is absent. Nothing runs it. */
-export type Install = string;
+type Install = string;
 
 const bunGlobal = (...pkgs: string[]): Install => `bun add -g ${pkgs.join(" ")}`;
 const uvTool = (pkg: string): Install => `uv tool install ${pkg}`;
@@ -295,7 +295,7 @@ interface Scoring {
 /** The files a checker is handed, computed once per run (lib/compare.ts):
  * `changed` for a tool that judges each file on its own, `given` for one
  * that needs the whole project (the caller's paths, the root by default). */
-export type FileSet = "changed" | "given";
+type FileSet = "changed" | "given";
 
 /** What a check's number is a count of. Beside the parser that produces it,
  * so it cannot drift from the code: `list --json` is the audit table. */
