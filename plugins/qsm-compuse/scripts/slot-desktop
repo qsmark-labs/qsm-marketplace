@@ -14,13 +14,15 @@ mkdir -p "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
 
 # One session bus for the whole slot, at a path the host reaches too: sway, niri, Hyprland, every
 # client Hyprland starts and the shell share it, so a real client (notify-send) reaches the shell.
+# And one system bus, empty unless the fake machine owns a daemon's name on it (UPower, BlueZ).
 dbus-daemon --session --nofork --nopidfile --address="unix:path=$rt/bus" >"$dir/dbus.log" 2>&1 &
+dbus-daemon --config-file="${0%/*}/system-bus.conf" --nofork --nopidfile --address="unix:path=$rt/system_bus" >"$dir/system-bus.log" 2>&1 &
 for ((i = 0; i < 50; i++)); do
-  [[ -S "$rt/bus" ]] && break
+  [[ -S "$rt/bus" && -S "$rt/system_bus" ]] && break
   sleep 0.1
 done
-[[ -S "$rt/bus" ]] || exit 2
-export DBUS_SESSION_BUS_ADDRESS="unix:path=$rt/bus"
+[[ -S "$rt/bus" && -S "$rt/system_bus" ]] || exit 2
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$rt/bus" DBUS_SYSTEM_BUS_ADDRESS="unix:path=$rt/system_bus"
 
 # The fake machine: with a mock, its readings are the slot's state (DRIVE_STATE, a copy), and the
 # tools in shims/ answer from it ahead of the real ones on PATH, for every process in the slot.
@@ -76,7 +78,8 @@ if [[ -n "${DRIVE_FAKETIME:-}" ]]; then
   chmod +x "$dir/bin/hyprlock"
   PATH="$dir/bin:$PATH"
 fi
-# The shell connects to the fake machine's PipeWire once, at start, so it waits for the machine.
+# The shell connects to the fake machine's PipeWire, UPower and BlueZ once, at start, so it waits
+# for the machine.
 if [[ -d "$dir/fake" ]]; then
   for ((i = 0; i < 100; i++)); do
     [[ -e "$dir/fake/ready" ]] && break

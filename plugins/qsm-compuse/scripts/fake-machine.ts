@@ -5,8 +5,9 @@
 //
 //   proc.uptime, proc.stat.busy, proc.meminfo  ->  /proc/uptime, /proc/stat, /proc/meminfo
 //   net.<if>.rx_bytes|tx_bytes|rx_rate|tx_rate  ->  /sys/class/net/<if>/statistics/{rx,tx}_bytes
-//   hwmon[i] (name and files, device: files)    ->  /sys/class/hwmon/hwmon<i>, fixed files
+//   sys.<class> (a tree of dirs and files)      ->  /sys/class/<class>, files as written
 //   pipewire (defaults and nodes)               ->  the slot's own PipeWire daemon, null devices
+//   dbus (objects on the system and session bus) ->  fake daemons, see fake-dbus.ts
 //
 // A reader that divides a counter delta by an uptime delta (a network rate) needs both read at
 // one moment, so uptime and the network counters are FIFOs: every read gets content generated at
@@ -16,6 +17,11 @@
 // programs in the slot read it too (Xwayland about ten times a second, measured), and two readers
 // of one FIFO share one copy, which leaves one of them empty; CPU usage is a ratio of two
 // counters that advance together, so it is exact whenever the file is read.
+//
+// `serve` owns the state while the slot runs: a mock (drive slot mock) arrives as DIR/mock.req,
+// {"path": [...], "value": V}, and is answered in DIR/mock.res, "ok" or why not; a client's write to
+// a fake D-Bus property lands in the same state. One process writes the file, so neither undoes
+// the other.
 //   fake-machine prepare|serve DIR
 import {
   closeSync,
@@ -24,15 +30,20 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  rmSync,
+  watch,
   writeFileSync,
   writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { writeAtomic } from "../../../lib/fs.ts";
+import { isRecord, messageOf } from "../../../lib/outcome.ts";
 import { runtimeDir } from "../../../lib/paths.ts";
+import { type Dbus, check, serveDbus, shape } from "./fake-dbus.ts";
 
 type Proc = { uptime: number; stat: { busy: number }; meminfo: Record<string, number> };
 type Net = { rx_bytes: number; tx_bytes: number; rx_rate: number; tx_rate: number };
-type Hwmon = Record<string, string | number | Record<string, string | number>>;
+type Tree = { [name: string]: string | number | Tree };
 type PwNode = {
   "node.name": string;
   "node.description": string;
@@ -45,8 +56,9 @@ type State = {
   clock?: string;
   proc?: Proc;
   net?: Record<string, Net>;
-  hwmon?: Hwmon[];
+  sys?: Record<string, Tree>;
   pipewire?: Pipewire;
+  dbus?: Dbus;
 };
 type Render = (s: State, proc: Proc, up: number) => string;
 // fifo: generated at each read; ticking: rewritten in place every TICK_MS; fixed: written once.
@@ -69,10 +81,10 @@ if (dir === "" || statePath === "" || (verb !== "prepare" && verb !== "serve"))
 
 const isState = (value: unknown): value is State => typeof value === "object" && value !== null;
 
-// Read once: the state is fixed for the slot's life, and a failure shows before the first read.
-const state = (): State => {
-  const value: unknown = JSON.parse(readFileSync(statePath, "utf8"));
-  if (!isState(value)) throw new Error(`the slot state ${statePath} is not a JSON object`);
+// Read at start, so a failure shows before the first read; serve then owns it.
+const state = (path: string): State => {
+  const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+  if (!isState(value)) throw new Error(`the slot state ${path} is not a JSON object`);
   return value;
 };
 
@@ -137,8 +149,88 @@ const errno = (error: unknown): string | undefined =>
     ? error.code
     : undefined;
 
-function prepare(s: State): void {
+// Directories and files as the state nests them; a tool may write a file back (brightnessctl).
+function writeTree(path: string, tree: Tree): void {
+  mkdirSync(path, { recursive: true });
+  for (const [name, value] of Object.entries(tree)) {
+    if (typeof value === "object") writeTree(join(path, name), value);
+    else writeFileSync(join(path, name), `${value}\n`);
+  }
+}
+
+const RECORDS = ["clock", "http", "ps", "df", "proc", "net", "sys", "pipewire", "dbus"];
+// What the slot reads while it runs: the shims on every call, the fake D-Bus by its values.
+// Everything else is laid out when the slot starts.
+const LIVE = ["http", "ps", "df", "dbus"];
+
+// What prepare refuses before the slot starts, and a mock before it lands. A record the fake
+// machine does not know would leave the real one showing through (an old hwmon array).
+function valid(s: State): void {
+  for (const key of Object.keys(s))
+    if (!RECORDS.includes(key))
+      throw new Error(`the slot state has no record named ${key} (records: ${RECORDS.join(", ")})`);
+  for (const key of Object.keys(s.dbus ?? {}))
+    if (key !== "system" && key !== "session")
+      throw new Error(`dbus.${key} is no bus; the records are dbus.system and dbus.session`);
   if (s.net !== undefined) procOf(s);
+  check(s.dbus);
+}
+
+// One step of a jq path, when the state holds it: jq's path() names an object member by string
+// and an array element by number.
+function step(
+  parent: unknown,
+  key: unknown,
+): { get: () => unknown; set: (value: unknown) => void } | undefined {
+  if (Array.isArray(parent)) {
+    const list: unknown[] = parent;
+    if (typeof key !== "number" || !Number.isInteger(key) || key < 0 || key >= list.length)
+      return undefined;
+    return {
+      get: () => list[key],
+      set: (value) => {
+        list[key] = value;
+      },
+    };
+  }
+  if (!isRecord(parent) || typeof key !== "string" || !(key in parent)) return undefined;
+  return {
+    get: () => parent[key],
+    set: (value) => {
+      parent[key] = value;
+    },
+  };
+}
+
+// A mock changes a reading the slot shows live: a shim's record, or a value the fake D-Bus serves.
+function mocked(current: State, request: unknown): State {
+  if (!isRecord(request) || !Array.isArray(request.path) || !("value" in request))
+    throw new Error(
+      `a mock request is {"path": [...], "value": V}, got ${JSON.stringify(request)}`,
+    );
+  const path: unknown[] = request.path;
+  const [root] = path;
+  if (typeof root !== "string" || !LIVE.includes(root))
+    throw new Error(
+      `${String(root)} is laid out when the slot starts; a mock changes ${LIVE.join(", ")}`,
+    );
+  const next = structuredClone(current);
+  let parent: unknown = next;
+  for (const key of path.slice(0, -1)) parent = step(parent, key)?.get();
+  const target = step(parent, path.at(-1));
+  if (target === undefined) throw new Error(`the state holds nothing at ${JSON.stringify(path)}`);
+  target.set(request.value);
+  valid(next);
+  if (JSON.stringify(shape(next.dbus)) !== JSON.stringify(shape(current.dbus)))
+    throw new Error(
+      "a mock changes dbus values, never which objects, interfaces or members it serves",
+    );
+  return next;
+}
+
+function prepare(s: State): void {
+  valid(s);
+  mkdirSync(dir, { recursive: true });
   const binds: string[] = [];
   for (const file of files(s)) {
     const path = join(dir, file.path);
@@ -153,21 +245,9 @@ function prepare(s: State): void {
     if (file.target !== "") binds.push(`${path}\t${file.target}`);
   }
   if (s.net !== undefined) binds.push(`${join(dir, "net")}\t/sys/class/net`);
-  if (s.hwmon !== undefined) {
-    for (const [i, entry] of s.hwmon.entries()) {
-      const root = join(dir, "hwmon", `hwmon${i}`);
-      mkdirSync(root, { recursive: true });
-      for (const [key, value] of Object.entries(entry)) {
-        if (typeof value !== "object") {
-          writeFileSync(join(root, key), `${value}\n`);
-          continue;
-        }
-        mkdirSync(join(root, key), { recursive: true });
-        for (const [file, content] of Object.entries(value))
-          writeFileSync(join(root, key, file), `${content}\n`);
-      }
-    }
-    binds.push(`${join(dir, "hwmon")}\t/sys/class/hwmon`);
+  for (const [name, tree] of Object.entries(s.sys ?? {})) {
+    writeTree(join(dir, "sys", name), tree);
+    binds.push(`${join(dir, "sys", name)}\t/sys/class/${name}`);
   }
   if (s.pipewire !== undefined) {
     const conf = join(dir, "pipewire", "pipewire.conf.d", "fake.conf");
@@ -287,11 +367,42 @@ async function tick(path: string, render: Render, s: State, proc: Proc): Promise
   }
 }
 
-// slot-desktop starts the shell once `ready` exists: the shell connects to PipeWire once, at start.
-const current = state();
+// PipeWire and the fake D-Bus do not wait for each other, so `ready` costs the slower of the two.
+// Then every mock is applied, saved and emitted before its answer, so a mock that returned is
+// already on the bus.
+async function serve(start: State): Promise<void> {
+  let live = start;
+  const save = (): void => {
+    writeAtomic(statePath, `${JSON.stringify(live, null, 2)}\n`);
+  };
+  const [, emit] = await Promise.all([
+    start.pipewire === undefined ? undefined : startPipewire(start.pipewire),
+    start.dbus === undefined ? undefined : serveDbus(start.dbus, save),
+  ]);
+  const request = join(dir, "mock.req");
+  watch(dir, (_event, file) => {
+    // The rename of mock.req and its removal both report the name.
+    if (file !== "mock.req" || !existsSync(request)) return;
+    const body = readFileSync(request, "utf8");
+    rmSync(request);
+    let reply = "ok";
+    try {
+      live = mocked(live, JSON.parse(body));
+      save();
+      emit?.(live.dbus ?? {});
+    } catch (error) {
+      reply = messageOf(error);
+    }
+    writeAtomic(join(dir, "mock.res"), `${reply}\n`);
+  });
+}
+
+// slot-desktop starts the shell once `ready` exists: the shell connects to PipeWire, UPower and
+// BlueZ once, at start.
+const current = state(statePath);
 if (verb === "prepare") prepare(current);
 else {
-  if (current.pipewire !== undefined) await startPipewire(current.pipewire);
+  await serve(current);
   writeFileSync(join(dir, "ready"), "");
 }
 if (verb === "serve" && current.proc !== undefined) {

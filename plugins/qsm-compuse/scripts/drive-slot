@@ -242,8 +242,9 @@ slot_aquamarine() {
 }
 
 # Only the render node exists in the sandbox's /dev, so the nested Aquamarine cannot open a card:
-# with a card node it started a DRM backend on the real panel. /run is empty (no system bus,
-# no logind seat) and the root is read-only, so nothing in it reaches the owner's session.
+# with a card node it started a DRM backend on the real panel. /run is empty (not the host's
+# system bus, no logind seat; the slot's own buses live in its runtime dir) and the root is
+# read-only, so nothing in it reaches the owner's session.
 slot_start_desktop() {
   local name="$1" size="$2" scale="$3" qs_path="$4" hypr="$5" mock="$6" clock="" dir rt node aq i inside=/run/drive-slot
   # The shell reaches Hyprland's event socket, $rt/hypr/<signature of up to 62>/.socket2.sock,
@@ -359,9 +360,10 @@ slot_run() {
   [[ -n "$name" && "${2:-}" == "--" && $# -ge 3 ]] || die "slot run needs NAME -- CMD..."
   slot_load "$name"
   shift 2
-  # A desktop slot's clients join the nested Hyprland and the slot's session bus, and hyprctl talks to it alone.
+  # A desktop slot's clients join the nested Hyprland and the slot's buses, and hyprctl talks to it alone.
   [[ "${SLOT_KIND:-}" != desktop ]] || exec env -u DISPLAY QT_QPA_PLATFORM=wayland XDG_RUNTIME_DIR="$SLOT_RT" \
-    WAYLAND_DISPLAY="$SLOT_CLIENT_DISPLAY" HYPRLAND_INSTANCE_SIGNATURE="$SLOT_HYPR_SIG" DBUS_SESSION_BUS_ADDRESS="unix:path=$SLOT_RT/bus" "$@"
+    WAYLAND_DISPLAY="$SLOT_CLIENT_DISPLAY" HYPRLAND_INSTANCE_SIGNATURE="$SLOT_HYPR_SIG" DBUS_SESSION_BUS_ADDRESS="unix:path=$SLOT_RT/bus" \
+    DBUS_SYSTEM_BUS_ADDRESS="unix:path=$SLOT_RT/system_bus" "$@"
   # A slot client must never reach the owner's compositor: a Hyprland-aware shell would dispatch to it.
   QT_QPA_PLATFORM=wayland exec env -u HYPRLAND_INSTANCE_SIGNATURE -u DISPLAY "$@"
 }
@@ -395,6 +397,29 @@ slot_kill() {
   kill -9 $(slot_pids "$name") 2>/dev/null
   rm -rf "${SLOT_ROOT:?}/${name:?}" "$(slot_desktop_rt "$name")"
   rmdir "$SLOT_ROOT" 2>/dev/null
+}
+
+# One reading of a running desktop slot's fake machine, changed in place: PATH is a jq path into the
+# state (.dbus.system["org.freedesktop.UPower"]...) that must already exist, JSON its new value.
+# The fake machine owns the state: it takes the request, refuses what it cannot show, and answers
+# once the change is saved and on the bus (fake-machine.ts).
+slot_mock() {
+  local name="${1:-}" path="${2:-}" value="${3:-}" fake request i
+  [[ $# -eq 3 ]] || die "slot mock needs NAME PATH JSON"
+  fake="$(slot_dir "$name")/fake"
+  [[ -e "$fake/ready" ]] || die "slot '$name' has no fake machine (drive slot start NAME --desktop DIR --mock FILE)"
+  request="$(jq -cn --argjson value "$value" "{path: path($path), value: \$value}")" \
+    || die "slot mock needs a jq PATH and a JSON value, got: $path $value"
+  rm -f "$fake/mock.res"
+  printf '%s\n' "$request" >"$fake/mock.req.new"
+  command mv -f "$fake/mock.req.new" "$fake/mock.req"
+  for ((i = 0; i < 50; i++)); do
+    [[ -s "$fake/mock.res" ]] && break
+    sleep 0.1
+  done
+  [[ -s "$fake/mock.res" ]] || die "the fake machine did not answer the mock in 5 s (see $(slot_dir "$name")/fake-machine.log)"
+  [[ "$(<"$fake/mock.res")" == ok ]] || die "slot mock refused $path: $(<"$fake/mock.res")"
+  rm -f "$fake/mock.res"
 }
 
 slot_stop() {
@@ -510,8 +535,8 @@ cmd_slot() {
   local verb="${1:-}"
   shift || true
   case "$verb" in
-    start | run | bench | stop | ls | budget | tree | aquamarine) "slot_$verb" "$@" ;;
-    *) die "slot needs start NAME | run NAME -- CMD | bench NAME ROOT KEY | stop NAME | ls | budget | tree NAME | aquamarine" ;;
+    start | run | bench | mock | stop | ls | budget | tree | aquamarine) "slot_$verb" "$@" ;;
+    *) die "slot needs start NAME | run NAME -- CMD | bench NAME ROOT KEY | mock NAME PATH JSON | stop NAME | ls | budget | tree NAME | aquamarine" ;;
   esac
 }
 
