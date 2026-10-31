@@ -43,13 +43,12 @@ import {
   uninstallHooks,
 } from "../lib/git-hooks.ts";
 import { resolveRef } from "../lib/gitref.ts";
-import { profileGaps, type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
+import { type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
 import {
   ENFORCEMENT_POINTS,
   LANGUAGES,
   type Language,
   REGISTRY,
-  registryGaps,
   resolveLanguage,
 } from "../lib/registry.ts";
 import { semgrepLogin, semgrepLoginWarning } from "../lib/semgrep-login.ts";
@@ -194,10 +193,9 @@ const doctor: Handler = async (call) => {
   const config = readGatesConfig(root);
   const specs = REGISTRY.filter((spec) => languageEnabled(spec.language, config.languages));
   const rows = await doctorRows(specs);
-  const gaps = [...registryGaps(), ...profileGaps()];
   const structural = await structuralCheckerStatus();
   const text = [...rows.map(describeCheckRow), describeStructuralCheck(structural)].join("\n");
-  const warnings = gaps.map((gap) => `registry or profile gap: ${gap}`);
+  const warnings: string[] = [];
   // an absent semgrep is its MISSING row above, never a login question
   const semgrep = rows.some((row) => row.binary === "semgrep" && row.present);
   const login = semgrep ? semgrepLoginWarning(semgrepLogin()) : null;
@@ -205,7 +203,7 @@ const doctor: Handler = async (call) => {
     warnings.push(login);
   }
   warnings.push(...slowCheckers(root));
-  const data = { checks: rows, gaps, structural };
+  const data = { checks: rows, structural };
   // a gate binary that is absent fails the hook, so it is the verdict, not a row
   const gone = rows.some((row) => !row.present && !row.timedOut) || !structural.patched;
   // a probe that only ran out of time proves nothing absent: the run is blocked until a retry

@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { matchingFiles } from "./config.ts";
-import { asRunAt, REGISTRY } from "./registry.ts";
+import { asRunAt, REGISTRY, registryGaps } from "./registry.ts";
 import { OWN_RULES } from "./rules-data.ts";
 
 const semgrep = REGISTRY.filter((spec) => spec.binary === "semgrep");
@@ -148,5 +148,19 @@ describe("measures", () => {
         expect(spec.extensions.some((extension) => theirs.includes(extension))).toBe(true);
       }
     }
+  });
+});
+
+describe("registryGaps", () => {
+  test("every language has a checker at every point", () => {
+    expect(registryGaps()).toEqual([]);
+  });
+
+  test("a registry without dotnet's edit checkers shows the gap", () => {
+    const without = REGISTRY.filter(
+      (spec) => !(spec.language === "dotnet" && spec.points.includes("edit")),
+    );
+
+    expect(registryGaps(without)).toEqual(["dotnet: no edit checker"]);
   });
 });
