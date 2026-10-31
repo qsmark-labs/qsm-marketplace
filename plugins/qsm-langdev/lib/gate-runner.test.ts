@@ -15,7 +15,7 @@ const unmeasured: Verdict = {
 const worse: Verdict = { check: "oxlint", pass: false, summary: "oxlint: 0 -> 1" };
 
 test("a checker not measured blocks the langdev gate with its cause, never as worse", () => {
-  const outcome = langdevOutcome([unmeasured], "file sets: changed: 1 file");
+  const outcome = langdevOutcome([unmeasured], "file sets: changed: 1 file", true);
 
   expect(outcome.status).toBe("blocked");
   const said = outcome.status === "blocked" ? [outcome.reason, ...outcome.remedy] : [];
@@ -24,13 +24,13 @@ test("a checker not measured blocks the langdev gate with its cause, never as wo
 });
 
 test("a worse checker fails the langdev gate even beside one not measured", () => {
-  expect(langdevOutcome([unmeasured, worse], "sizes").status).toBe("failed");
+  expect(langdevOutcome([unmeasured, worse], "sizes", true).status).toBe("failed");
 });
 
 test("the hook's code: failed over blocked over ok", () => {
-  const blocked = langdevOutcome([unmeasured], "sizes");
-  const failed = langdevOutcome([worse], "sizes");
-  const passed = langdevOutcome([], "sizes");
+  const blocked = langdevOutcome([unmeasured], "sizes", true);
+  const failed = langdevOutcome([worse], "sizes", true);
+  const passed = langdevOutcome([], "sizes", true);
 
   expect(gatesCode([passed])).toBe("ok");
   expect(gatesCode([passed, blocked])).toBe("blocked");
@@ -38,7 +38,7 @@ test("the hook's code: failed over blocked over ok", () => {
 });
 
 test("A regression the author allows once", () => {
-  const outcome = allowed(langdevOutcome([worse], "sizes"), "known");
+  const outcome = allowed(langdevOutcome([worse], "sizes", true), "known");
 
   expect(outcome.status).toBe("pass");
   const said = outcome.status === "pass" ? (outcome.note ?? "") : "";
@@ -54,9 +54,9 @@ test("A check that could not run is not allowed", () => {
     summary: "oxlint missing",
   };
 
-  expect(allowed(langdevOutcome([missing], "sizes"), "known").status).toBe("failed");
-  expect(allowed(langdevOutcome([unmeasured], "sizes"), "known").status).toBe("blocked");
-  expect(allowed(langdevOutcome([worse], "sizes")).status).toBe("failed");
+  expect(allowed(langdevOutcome([missing], "sizes", true), "known").status).toBe("failed");
+  expect(allowed(langdevOutcome([unmeasured], "sizes", true), "known").status).toBe("blocked");
+  expect(allowed(langdevOutcome([worse], "sizes", true)).status).toBe("failed");
 });
 
 test("a push whose every ref is skipped says why, per ref, instead of a bare pass", async () => {

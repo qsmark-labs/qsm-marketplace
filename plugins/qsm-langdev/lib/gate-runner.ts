@@ -317,8 +317,12 @@ function describeVerdicts(verdicts: readonly Verdict[]): string[] {
 /** The langdev gate over one run's verdicts: failed when a checker is worse,
  * a binary or a config missing included; blocked when a checker was not
  * measured, naming it and the retry; else passed with the set sizes. */
-export function langdevOutcome(verdicts: readonly Verdict[], sizes: string): GateOutcome {
-  const { code, deciding } = runOutcome(verdicts, true);
+export function langdevOutcome(
+  verdicts: readonly Verdict[],
+  sizes: string,
+  hasReference: boolean,
+): GateOutcome {
+  const { code, deciding } = runOutcome(verdicts, hasReference);
   if (code === "ok") {
     return pass("langdev", sizes);
   }
@@ -358,7 +362,7 @@ async function langdevAt(
   // The store's total only: the per-checker lines are `qsm-langdev check`'s.
   const total = describeStore(store).at(-1);
   const notes = [total, ...warnings].join("; ");
-  return langdevOutcome(verdicts, `file sets: ${describeSets(sets)}; ${notes}`);
+  return langdevOutcome(verdicts, `file sets: ${describeSets(sets)}; ${notes}`, before !== null);
 }
 
 /** The failure for a pre-push call that carries no remote name. */

@@ -179,6 +179,24 @@ describe("qsm-langdev cli: gates", () => {
     expect(r.stderr).toContain("unknown gate 'nonsense'");
   }, 60_000);
 
+  test("The first commit of a repository is reported, never blocked", () => {
+    const home = sandbox();
+    const root = join(home, "work");
+    git(root, "init", "-q");
+    writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho $1\n");
+    expect(run(["init"], { home }).exit).toBe(0);
+    writeFileSync(
+      join(root, ".qsm-langdev", "gates.json"),
+      `${JSON.stringify({ hooks: { "pre-commit": ["langdev"], "pre-push": [] }, languages: ["shell"] })}\n`,
+    );
+    git(root, "add", ".");
+
+    const r = run(["hook", "pre-commit"], { home });
+
+    expect(r.stderr).toContain("langdev: file sets:");
+    expect(r.exit).toBe(0);
+  }, 60_000);
+
   test("The installed git hook in an un-init'd repository", () => {
     const home = plainRepo();
     const r = run(["hook", "pre-commit"], { home });
