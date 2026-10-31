@@ -37,13 +37,14 @@ jobs:
       # type-aware rules) and oxfmt for its TypeScript gate and fixers,
       # yamllint, taplo, semgrep, lizard and jscpd because the pre-commit gate marks a checker whose
       # tool is absent `worse` and blocks the commit (init writes yaml and toml, a.ts is code),
-      # imagemagick 7 for the `magick` of qsm-uix (apt ships 6, which has no `magick`), openvpn
-      # for the key material of qsm-secrets' capture corpus, and the upstream openspec CLI for
-      # qsm-openspec doctor.
+      # fish (with fish_indent) and shellmetrics for qsm-langdev's fish and shell checkers that the
+      # gate tests run, imagemagick 7 for the `magick` of qsm-uix (apt ships 6, which has no
+      # `magick`), openvpn for the key material of qsm-secrets' capture corpus, and the upstream
+      # openspec CLI for qsm-openspec doctor.
       - name: Install the tools the tests run
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install worktrunk gitleaks rumdl markdownlint-cli2 imagemagick yamllint taplo openvpn
+          brew install worktrunk gitleaks rumdl markdownlint-cli2 imagemagick yamllint taplo openvpn fish
           pipx install semgrep
           pipx install lizard
           bun add -g @fission-ai/openspec
@@ -53,6 +54,10 @@ jobs:
           echo "$(brew --prefix)/sbin" >> "$GITHUB_PATH"
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # shellmetrics ships nowhere packaged: one script, pinned to upstream's last commit.
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/b3bfff2af6880443112cdbf2ea449440b30ab9b0/shellmetrics -o "$HOME/.local/bin/shellmetrics"
+          chmod +x "$HOME/.local/bin/shellmetrics"
       # qsm-statusline doctor is `missing` unless the compiled bin is on PATH (AGENTS.md, Iron Law 9).
       - name: Compile the qsm-statusline bin onto PATH
         run: |
