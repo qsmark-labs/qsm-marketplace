@@ -369,25 +369,6 @@ describe("file sets", () => {
     ]);
     expect(describeSets(sets)).toContain("changed: 2 files");
   });
-
-  test("A file that another file imports", async () => {
-    const { root, head } = repoWith({
-      "a.ts": "export const a = 1;\n",
-      "b.ts": 'import { a } from "./a";\nexport const b = a;\n',
-      "c.ts": 'import { b } from "./b";\nb;\n',
-    });
-    write(root, { "a.ts": "export const a = 2;\n" });
-    stage(root);
-    const { spec, handed } = recorder({ changedPlus: 1 });
-
-    const { sets } = await runWith(root, head, spec);
-
-    expect(handed).toEqual([
-      ["a.ts", "b.ts"],
-      ["a.ts", "b.ts"],
-    ]);
-    expect(describeSets(sets)).toContain("changed+1: 2 files");
-  });
 });
 
 describe("file sets: whole project and changes", () => {
@@ -521,17 +502,6 @@ describe("file sets: paths and languages", () => {
     // scores the same content twice.
     expect(handed).toEqual([["src/b.ts", "src/c.ts"]]);
     expect(describeSets(sets)).toBe("changed: 1 file, given: 2 files");
-  });
-
-  test("a language with no import extractor is named in the report", async () => {
-    const { root, head } = repoWith({ "run.sh": "echo 1\n" });
-    write(root, { "run.sh": "echo 2\n" });
-    stage(root);
-    const { spec } = recorder({ changedPlus: 1 }, [".sh"]);
-
-    const { sets } = await runWith(root, head, spec);
-
-    expect(describeSets(sets)).toContain("changed+1: 1 file (no import extractor: shell)");
   });
 });
 

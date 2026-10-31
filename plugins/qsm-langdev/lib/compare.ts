@@ -13,7 +13,7 @@ import {
   pathsWithAttr,
   trackedFiles,
 } from "./config.ts";
-import { changedPlusSet, describeSets, givenSet, type SetSize, setName } from "./file-sets.ts";
+import { describeSets, givenSet, type SetSize } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
 import { hasScaffoldedConfig } from "./profiles.ts";
@@ -968,37 +968,6 @@ function engage(selected: readonly CheckSpec[], options: CompareOptions): CheckS
   return selected.map((spec) => asRunAt(spec, point));
 }
 
-/** Every set a selected checker declares, by name, each computed once:
- * `changed` and `given` are handed in; every `changed+N` is built here from
- * the import graph of both sides. The sizes of the `changed+N` sets are pushed onto `sizes`. */
-async function setsFor(
-  base: {
-    root: string;
-    changed: readonly string[];
-    given: readonly string[];
-  },
-  selected: readonly CheckSpec[],
-  trees: readonly Side[],
-  sizes: SetSize[],
-): Promise<Map<string, ReadonlySet<string>>> {
-  const sets = new Map<string, ReadonlySet<string>>([
-    ["changed", new Set(base.changed)],
-    ["given", new Set(base.given)],
-  ]);
-  const depths = new Set(
-    selected.flatMap((spec) =>
-      typeof spec.fileSet === "string" ? [] : [spec.fileSet.changedPlus],
-    ),
-  );
-  for (const n of [...depths].toSorted((a, b) => a - b)) {
-    const { files, noExtractor } = await changedPlusSet(base.root, trees, base.changed, n);
-    const name = setName({ changedPlus: n });
-    sets.set(name, new Set(files));
-    sizes.push({ set: name, files: files.length, noExtractor });
-  }
-  return sets;
-}
-
 /** What every checker of a run shares: the store, each binary's version,
  * and where each checker's use of the store is recorded. */
 interface RunContext {
@@ -1158,7 +1127,7 @@ async function verdictFor(
     after: narrow(sides.after, spec, set),
   };
   if (narrowed.after.files.length === 0 && (narrowed.before?.files.length ?? 0) === 0) {
-    const name = setName(spec.fileSet);
+    const name = spec.fileSet;
     const summary = `${spec.name}: its ${name} set holds no file it covers — not run`;
     return { verdict: { check: spec.name, pass: true, skipped: true, summary } };
   }
@@ -1190,7 +1159,7 @@ async function verdictOnEngine(
   context: RunContext,
 ): Promise<Verdict> {
   const setOf = (one: CheckSpec): ReadonlySet<string> => {
-    const set = bySet.get(setName(one.fileSet)) ?? new Set<string>();
+    const set = bySet.get(one.fileSet) ?? new Set<string>();
     return one.guardsSafety === true
       ? set
       : new Set([...set].filter((f) => !context.generated.has(f)));
@@ -1263,7 +1232,6 @@ export async function compareTrees(
   const selected = engage(runnable, options);
   const warnings: string[] = [];
 
-  const base = { root, changed, given };
   const fetchPack = options.fetchPack ?? fetchFromRegistry;
   const { context, verdicts } = await withPacks(selected, fetchPack, async (packs) => {
     const run: RunContext = {
@@ -1282,8 +1250,10 @@ export async function compareTrees(
       timed: [],
     };
     const found = await withBeforeAndAfter(root, beforeRef, after, async (before, afterSide) => {
-      const trees = before === null ? [afterSide] : [before, afterSide];
-      const bySet = await setsFor(base, selected, trees, sets);
+      const bySet = new Map<string, ReadonlySet<string>>([
+        ["changed", new Set(changed)],
+        ["given", new Set(given)],
+      ]);
       return runSelected(selected, { before, after: afterSide }, bySet, run);
     });
     return { context: run, verdicts: found };
