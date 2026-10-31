@@ -64,15 +64,15 @@
 
 ## 4. Batch D and E: stop hook, docs, evals (21, 12, 13, 23)
 
-- [ ] 4.1 A classic `Stop` entry in `hooks/hooks.json`; the comments in `register.tsx` and
+- [x] 4.1 A classic `Stop` entry in `hooks/hooks.json`; the comments in `register.tsx` and
   `gate-hook.ts`. Proof: scenario "The main agent stops with a worse staged tree" as a test with
   no `agent_id`; `claude plugin validate`; then in a real session a staged regression blocks the
   main agent's stop once.
-- [ ] 4.2 `doctor`'s language line says what the code does. Files: `scripts/cli.ts`, its test.
+- [x] 4.2 `doctor`'s language line says what the code does. Files: `scripts/cli.ts`, its test.
 - [ ] 4.3 README, USAGE, INSTALL, `qsm.json` and comments say what the code does: the four
   points, targets, `slow:`, doctor's median, staged only, edit in place, the real install command,
   the test seam named as a test seam. Proof: `grep -rn "against HEAD\|55000\|working tree"
   plugins/qsm-langdev --include=*.md` shows no stale line; `bun run validate`.
-- [ ] 4.4 One generated negative eval per language plugin; the six copies go. Files:
+- [x] 4.4 One generated negative eval per language plugin; the six copies go. Files:
   `.gates/plugin-eval.ts`, `plugins/qsm-langdev-*/evals/unrelated-negative/`. Proof: `bun run eval
   qsm-langdev-ts` still reports the negative case.
