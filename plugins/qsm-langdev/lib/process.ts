@@ -14,6 +14,46 @@ export type Spawned = Pick<
 export const timedOut = (result: Spawned): boolean =>
   isErrno(result.error) && result.error.code === "ETIMEDOUT";
 
+// The groups still running. A hook the harness ends (SIGTERM at its timeout, SIGINT) must leave no
+// detached checker behind, and a detached group does not die with its parent.
+const live = new Set<number>();
+let armed = false;
+
+/** Ends the group, or says why it could not: a group already gone is fine, the launcher can exit
+ * while its engine keeps scanning. */
+function killGroup(pid: number, command: string): Error | null {
+  try {
+    process.kill(-pid, "SIGKILL");
+    return null;
+  } catch (cause) {
+    return isErrno(cause) && cause.code === "ESRCH"
+      ? null
+      : new Error(`could not stop ${command}'s process group`, { cause });
+  }
+}
+
+function killLiveOnSignal(): void {
+  if (armed) {
+    return;
+  }
+  armed = true;
+  for (const [signal, code] of [
+    ["SIGTERM", 143],
+    ["SIGINT", 130],
+  ] as const) {
+    process.on(signal, () => {
+      // Every group is ended before the first failure is thrown.
+      const failure = [...live]
+        .map((pid) => killGroup(pid, "a running checker"))
+        .find((result) => result !== null);
+      if (failure !== undefined) {
+        throw failure;
+      }
+      process.exit(code);
+    });
+  }
+}
+
 export function spawnAsync(
   cwd: string,
   command: string,
@@ -38,22 +78,26 @@ export function spawnAsync(
     });
     const timer = setTimeout(() => {
       error = Object.assign(new Error(`${command} timed out`), { code: "ETIMEDOUT" });
-      // The launcher can exit while its engine keeps scanning. This group belongs to this run.
+      // This group belongs to this run.
       if (child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch (cause) {
-          if (!isErrno(cause) || cause.code !== "ESRCH") {
-            rejectPromise(new Error(`could not stop ${command}'s process group`, { cause }));
-          }
+        const failure = killGroup(child.pid, command);
+        if (failure !== null) {
+          rejectPromise(failure);
         }
       }
     }, timeoutMs);
+    if (child.pid !== undefined) {
+      live.add(child.pid);
+      killLiveOnSignal();
+    }
     child.on("error", (err: NodeJS.ErrnoException) => {
       error = err;
     });
     child.on("close", (status, signal) => {
       clearTimeout(timer);
+      if (child.pid !== undefined) {
+        live.delete(child.pid);
+      }
       resolvePromise({ status, signal, stdout, stderr, ...(error === undefined ? {} : { error }) });
     });
   });
