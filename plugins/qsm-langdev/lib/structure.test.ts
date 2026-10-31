@@ -293,6 +293,32 @@ describe("compareStructure leaves test files out of both trees", () => {
   });
 });
 
+describe("compareStructure under a hook's GIT_INDEX_FILE", () => {
+  test("a generated file the staged index lacks is still left out of the reference tree", async () => {
+    const restorePath = installFakeSentrux();
+    const { root } = repo();
+    write(root, { "lib/gen.ts": "export const gen = 1;\n" });
+    const base = commit(root);
+    write(root, { "lib/b.ts": 'import { helper } from "./helper.ts";\n' });
+    git(root, ["rm", "-q", "lib/gen.ts"]);
+    git(root, ["add", "-A"]);
+    // A hook runs with the staged index named absolutely: the listing of a scratch tree must not
+    // read it, or the reference side keeps the generated file the staged side deleted.
+    process.env.GIT_INDEX_FILE = join(root, ".git", "index");
+    try {
+      const result = await compareStructure(root, base, { kind: "index" }, 60_000);
+
+      expect(result.status).toBe("scored");
+      if (result.status === "scored") {
+        expect(result.shipped.quality - result.reference.quality).toBe(-1);
+      }
+    } finally {
+      delete process.env.GIT_INDEX_FILE;
+      restorePath();
+    }
+  });
+});
+
 describe("compareStructure at its limit", () => {
   test("The structural checker hangs", async () => {
     const originalPath = process.env.PATH;
