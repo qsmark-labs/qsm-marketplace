@@ -47,6 +47,9 @@ const MAX_BLOCKS = 3;
  * number of milliseconds, so a test reaches the not-measured path without waiting; otherwise none,
  * and the run takes the pre-commit timeout from POINTS.
  */
+/** The stop hook's own 960 s in hooks.json, less a margin for writing its answer. */
+const HOOK_BUDGET_MS = 950_000;
+
 function testBudgetMs(): { timeoutMs?: number } {
   const override = Number(process.env.QSM_LANGDEV_GATE_BUDGET_MS);
   return Number.isInteger(override) && override > 0 ? { timeoutMs: override } : {};
@@ -155,7 +158,18 @@ async function main(): Promise<void> {
   // same as the edit hook staying quiet in it.
   const gated = trees.filter((tree) => isLangdevRepo(tree.root));
 
+  // One deadline for the whole hook run: a tree is judged only while its worst case (langdev and
+  // both structure sides, each up to the point's timeout) still fits before the engine kills us.
+  const deadline = performance.now() + HOOK_BUDGET_MS;
+  const treeWorstMs = 3 * (testBudgetMs().timeoutMs ?? POINTS["pre-commit"].timeoutMs);
   for (const tree of gated) {
+    if (deadline - performance.now() < treeWorstMs) {
+      log(
+        `${tree.root}: not judged: the stop hook's time would run out first; ` +
+          "run `qsm-langdev check` there",
+      );
+      continue;
+    }
     const { regressions, warnings } = await judgeTree(tree);
     for (const warning of warnings) {
       log(`${tree.root}: ${warning}`);

@@ -67,10 +67,17 @@ function runGateHook(stateDir: string, sessionId: string, agentId?: string) {
 
 /** Agent a1 of session s1 writes a fish syntax regression (`if` with no `end`) into a.fish, then
  * stops: the stop gate's run. */
-function stopAfterFishRegression(stateDir: string, root: string) {
+function stopAfterFishRegression(
+  stateDir: string,
+  root: string,
+  { staged = false, env }: { staged?: boolean; env?: Record<string, string> } = {},
+) {
   writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+  if (staged) {
+    git(root, "add", "-u");
+  }
   runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
-  return runGateHook(stateDir, "s1", "a1");
+  return runHook(GATE_HOOK, stateDir, JSON.stringify({ session_id: "s1", agent_id: "a1" }), env);
 }
 
 describe("qsm-langdev gate hook", () => {
@@ -131,6 +138,22 @@ describe("qsm-langdev gate hook", () => {
     expect(r.exit).toBe(0);
     expect(r.stdout).toContain('"decision":"block"');
     expect(r.stdout).toContain("gates.json");
+  });
+
+  test("A tree the stop hook has no time left for is named, never judged in silence", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+
+    // Three times a 400 s point timeout is past the hook's 950 s, so not even one tree fits.
+    const r = stopAfterFishRegression(stateDir, root, {
+      staged: true,
+      env: { QSM_LANGDEV_GATE_BUDGET_MS: "400000" },
+    });
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).not.toContain('"decision":"block"');
+    expect(r.stderr).toContain("not judged: the stop hook's time would run out first");
   });
 
   test("An edit the agent did not stage", () => {
