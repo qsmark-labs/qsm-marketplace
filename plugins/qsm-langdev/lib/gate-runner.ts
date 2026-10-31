@@ -8,7 +8,7 @@ import { compareTrees, headline, runOutcome, type Verdict } from "./compare.ts";
 import { gitPaths, readGatesConfig } from "./config.ts";
 import { describeSets } from "./file-sets.ts";
 import { fixFiles, isFixable } from "./fixers.ts";
-import { resolveRef } from "./gitref.ts";
+import { resolveRef, type Sha, type TreeSide } from "./gitref.ts";
 import { recordsOf } from "./json.ts";
 import {
   commitCount,
@@ -348,8 +348,8 @@ export function gatesCode(outcomes: readonly GateOutcome[]): "ok" | "failed" | "
 
 async function langdevAt(
   root: string,
-  before: string | null,
-  after: string,
+  before: Sha | null,
+  after: TreeSide,
   point: EnforcementPoint,
 ): Promise<GateOutcome> {
   const { languages } = readGatesConfig(root);
@@ -370,7 +370,7 @@ function noRemote(gate: string): GateOutcome {
   ]);
 }
 
-type PushScore = (before: string, after: string) => Promise<GateOutcome>;
+type PushScore = (before: Sha, after: Sha) => Promise<GateOutcome>;
 
 /** The pre-push half the scoring gates share: each pushed ref is scored against what the remote
  * holds, the first failure returns at once, and a block is kept so every ref is still scored. */
@@ -398,7 +398,13 @@ async function scorePushedRefs(
       skipped.push(pushSkipReason(root, ref, remote));
       continue;
     }
-    const outcome = await score(before, ref.localOid);
+    const [from, to] = [resolveRef(root, before), resolveRef(root, ref.localOid)];
+    if (from === null || to === null) {
+      return fail(gate, `${ref.remoteRef} names a commit this clone does not hold`, [
+        "Run git fetch, then push again: the pushed range cannot be scored without both commits.",
+      ]);
+    }
+    const outcome = await score(from, to);
     if (outcome.status === "failed") {
       return outcome;
     }
@@ -412,7 +418,10 @@ async function scorePushedRefs(
 
 async function langdevAtCommit(root: string, point: EnforcementPoint): Promise<GateOutcome> {
   const skipped = fixStaged(root);
-  return withSkipped(await langdevAt(root, resolveRef(root, "HEAD"), "index", point), skipped);
+  return withSkipped(
+    await langdevAt(root, resolveRef(root, "HEAD"), { kind: "index" }, point),
+    skipped,
+  );
 }
 
 /** The one verdict from lib/structure.ts, mapped onto a gate outcome. */
@@ -428,13 +437,13 @@ function structureOutcome(result: StructureResult): GateOutcome {
   return fail("structure", summary, remedy, result.status === "scored" || undefined);
 }
 
-async function structureAt(root: string, before: string, after: string): Promise<GateOutcome> {
+async function structureAt(root: string, before: Sha, after: TreeSide): Promise<GateOutcome> {
   return structureOutcome(await compareStructure(root, before, after));
 }
 
 async function structureAtCommit(root: string): Promise<GateOutcome> {
   const head = resolveRef(root, "HEAD");
-  return head === null ? pass("structure") : structureAt(root, head, "index");
+  return head === null ? pass("structure") : structureAt(root, head, { kind: "index" });
 }
 
 const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
@@ -458,11 +467,13 @@ async function runGate(
     case "langdev":
       return point === "pre-commit"
         ? langdevAtCommit(root, point)
-        : scorePush((before, after) => langdevAt(root, before, after, point));
+        : scorePush((before, after) =>
+            langdevAt(root, before, { kind: "commit", sha: after }, point),
+          );
     case "structure":
       return point === "pre-commit"
         ? structureAtCommit(root)
-        : scorePush((before, after) => structureAt(root, before, after));
+        : scorePush((before, after) => structureAt(root, before, { kind: "commit", sha: after }));
     default:
       return fail(name, `unknown gate '${name}' in .qsm-langdev/gates.json`, [
         `Remove it, or name one of: ${KNOWN_GATES.join(", ")}.`,

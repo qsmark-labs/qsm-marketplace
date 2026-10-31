@@ -16,6 +16,7 @@ import {
 import { changedPlusSet, describeSets, givenSet, type SetSize, setName } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
+import type { Sha, TreeSide } from "./gitref.ts";
 import { hasScaffoldedConfig } from "./profiles.ts";
 import { recordRun, type Timing } from "./timings.ts";
 import {
@@ -66,27 +67,34 @@ interface Side {
   files: readonly string[];
 }
 
-/** Hands `fn` the tree at `ref`: a scratch materialization of the working
- * tree (never the live directory itself — an ignored path such as
+/** Hands `fn` the tree of `side`: a scratch materialization of the index
+ * (never the live directory itself — an ignored path such as
  * node_modules/ or dist/ must never enter a score just because it sits on
  * disk), or a scratch copy of a commit. Either way removed once `fn`
  * settles. */
-function withSide<T>(root: string, ref: string, fn: (side: Side) => Promise<T>): Promise<T> {
-  const files = sidePaths(root, ref);
+function withSide<T>(root: string, side: TreeSide, fn: (side: Side) => Promise<T>): Promise<T> {
+  const files = sidePaths(root, side);
   if (files === null) {
-    throw new Error(`git could not list the tree at ${ref}`);
+    throw new Error(
+      `git could not list the tree at ${side.kind === "index" ? "the index" : side.sha}`,
+    );
   }
-  if (ref === "index") {
+  if (side.kind === "index") {
     return withIndexTree(root, (dir) => fn({ root: dir, files }));
   }
-  return withCommitTree(root, ref, (dir) => fn({ root: dir, files }));
+  return withCommitTree(root, side.sha, (dir) => fn({ root: dir, files }));
 }
 
-/** Every path the tree at `ref` holds, or null when git could not list it. */
-function sidePaths(root: string, ref: string): string[] | null {
-  return ref === "index"
+/** Every path the tree of `side` holds, or null when git could not list it. */
+function sidePaths(root: string, side: TreeSide): string[] | null {
+  return side.kind === "index"
     ? indexPaths(root)
-    : gitPaths(root, ["ls-tree", "-r", "-z", "--name-only", ref]);
+    : gitPaths(root, ["ls-tree", "-r", "-z", "--name-only", side.sha]);
+}
+
+/** The `git diff` arguments naming the commit and the side shipped after it. */
+function diffRange(before: Sha, after: TreeSide): string[] {
+  return after.kind === "index" ? ["--cached", before] : [before, after.sha];
 }
 
 type Spawned = Pick<SpawnSyncReturns<string>, "status" | "signal" | "error" | "stdout" | "stderr">;
@@ -723,8 +731,8 @@ export function scoredAtCommit(root: string, file: string): boolean {
   return !isIgnored(root, file) && scoredPaths(root, [file]).length === 1;
 }
 
-function changedBetween(root: string, beforeRef: string, after: string): string[] | null {
-  const range = after === "index" ? ["--cached", beforeRef] : [beforeRef, after];
+function changedBetween(root: string, beforeRef: Sha, after: TreeSide): string[] | null {
+  const range = diffRange(beforeRef, after);
   // --no-renames: a moved file is in the set under both names.
   // Against the index, git diff lists every staged file that differs from the commit; an unstaged
   // change and an untracked file are not measured.
@@ -735,8 +743,8 @@ function changedBetween(root: string, beforeRef: string, after: string): string[
   return scoredPaths(root, [...new Set(changed)].toSorted());
 }
 
-function renamedBetween(root: string, beforeRef: string, after: string): Renames {
-  const range = after === "index" ? ["--cached", beforeRef] : [beforeRef, after];
+function renamedBetween(root: string, beforeRef: Sha, after: TreeSide): Renames {
+  const range = diffRange(beforeRef, after);
   const fields = gitPaths(root, ["diff", "--name-status", "-z", "-M", ...range]);
   const renames = new Map<string, string>();
   if (fields === null) {
@@ -855,7 +863,7 @@ async function probeAll(
  * The paths a comparison scores: every path the tree holds when there is no previous commit to diff
  * against, or else whatever changed between the two sides.
  */
-function resolveChanged(root: string, beforeRef: string | null, after: string): string[] {
+function resolveChanged(root: string, beforeRef: Sha | null, after: TreeSide): string[] {
   if (beforeRef === null) {
     return trackedFiles(root) ?? [];
   }
@@ -944,12 +952,12 @@ function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Ve
  */
 function resolveGiven(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   options: CompareOptions,
 ): string[] {
   const listed = [
-    ...(beforeRef === null ? [] : (sidePaths(root, beforeRef) ?? [])),
+    ...(beforeRef === null ? [] : (sidePaths(root, { kind: "commit", sha: beforeRef }) ?? [])),
     ...(sidePaths(root, after) ?? []),
   ];
   return scoredPaths(root, givenSet(listed, options.given ?? []));
@@ -1207,13 +1215,13 @@ function runLimits(options: CompareOptions): {
 }
 
 /**
- * Compares the tree at `beforeRef` against `after` (a commit, or the index) through every
+ * Compares the tree at commit `beforeRef` against `after` (a commit, or the index) through every
  * checker the change selects, each over the file set it declares.
  */
 export async function compareTrees(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   options: CompareOptions = {},
 ): Promise<{
   changed: string[];
@@ -1422,14 +1430,14 @@ function withPacks<T>(
 
 function withBeforeAndAfter<T>(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   fn: (before: Side | null, after: Side) => Promise<T>,
 ): Promise<T> {
   if (beforeRef === null) {
     return withSide(root, after, (afterSide) => fn(null, afterSide));
   }
-  return withSide(root, beforeRef, (beforeSide) =>
+  return withSide(root, { kind: "commit", sha: beforeRef }, (beforeSide) =>
     withSide(root, after, (afterSide) => fn(beforeSide, afterSide)),
   );
 }

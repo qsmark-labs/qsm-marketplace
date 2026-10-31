@@ -29,10 +29,11 @@ import {
   type Verdict,
 } from "./compare.ts";
 import { describeSets } from "./file-sets.ts";
+import type { Sha } from "./gitref.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { type CheckSpec, REGISTRY } from "./registry.ts";
 import { describeStore } from "./result-store.ts";
-import { defined } from "./test-support.ts";
+import { defined, headOf } from "./test-support.ts";
 
 function git(root: string, args: string[]): string {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -44,7 +45,7 @@ function git(root: string, args: string[]): string {
 
 /** A sandbox git repository with one commit holding `files`, and that
  * commit's id. */
-function repoWith(files: Record<string, string>): { root: string; head: string } {
+function repoWith(files: Record<string, string>): { root: string; head: Sha } {
   const root = sandboxDir("qsm-langdev-compare-");
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.email", "test@example.invalid"]);
@@ -52,7 +53,7 @@ function repoWith(files: Record<string, string>): { root: string; head: string }
   write(root, files);
   git(root, ["add", "-A"]);
   git(root, ["commit", "-q", "-m", "base"]);
-  return { root, head: git(root, ["rev-parse", "HEAD"]) };
+  return { root, head: headOf(root) };
 }
 
 function write(root: string, files: Record<string, string>): void {
@@ -70,7 +71,7 @@ function stage(root: string): void {
 
 /** A repo whose gen.txt carries `attribute` in .gitattributes, with a marked
  * line added to gen.txt and a plain edit to a.txt staged. */
-function stagedGeneratedChange(attribute: string): { root: string; head: string } {
+function stagedGeneratedChange(attribute: string): { root: string; head: Sha } {
   const { root, head } = repoWith({
     ".gitattributes": `gen.txt ${attribute}\n`,
     "a.txt": "alpha\n",
@@ -133,12 +134,17 @@ const MARKED: CheckSpec = {
 /** `languages` is opt-in in production; a ratchet test is not about that
  * selection, so this always opts the registry's own languages in, the same
  * way a repository's gates.json would once it named them. */
-function run(root: string, head: string | null, registry: readonly CheckSpec[] = [MARKED]) {
-  return compareTrees(root, head, "index", {
-    registry,
-    at: "pre-commit",
-    languages: [...new Set(registry.map((spec) => spec.language))],
-  });
+function run(root: string, head: Sha | null, registry: readonly CheckSpec[] = [MARKED]) {
+  return compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry,
+      at: "pre-commit",
+      languages: [...new Set(registry.map((spec) => spec.language))],
+    },
+  );
 }
 
 describe("compareTrees", () => {
@@ -239,7 +245,7 @@ describe("compareTrees: scored files", () => {
 });
 
 /** A repo whose staged edit is `edit` over a.txt, with an empty, ignored node_modules/.bin. */
-function stagedWithLocalBin(edit: string): { root: string; head: string; bin: string } {
+function stagedWithLocalBin(edit: string): { root: string; head: Sha; bin: string } {
   const { root, head } = repoWith({ "a.txt": "alpha\n", ".gitignore": "node_modules/\n" });
   write(root, { "a.txt": edit });
   stage(root);
@@ -343,13 +349,18 @@ function recorder(fileSet: CheckSpec["fileSet"], extensions: readonly string[] =
 
 /** Opts `spec`'s own language in by default, same reasoning as `run` above;
  * an `options.languages` the caller passes still wins. */
-function runWith(root: string, head: string | null, spec: CheckSpec, options: CompareOptions = {}) {
-  return compareTrees(root, head, "index", {
-    registry: [spec],
-    at: "pre-commit",
-    languages: [spec.language],
-    ...options,
-  });
+function runWith(root: string, head: Sha | null, spec: CheckSpec, options: CompareOptions = {}) {
+  return compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry: [spec],
+      at: "pre-commit",
+      languages: [spec.language],
+      ...options,
+    },
+  );
 }
 
 describe("file sets", () => {
@@ -611,13 +622,18 @@ test("time limit: the checkers after one not measured still run, so the report i
   write(root, { "a.txt": `alpha\n${MARKER} fresh\n` });
   stage(root);
 
-  const { verdicts } = await compareTrees(root, head, "index", {
-    registry: [SLOW, MARKED],
-    languages: ["fish"],
-    at: "pre-commit",
-    timeoutMs: 200,
-    jobs: 1,
-  });
+  const { verdicts } = await compareTrees(
+    root,
+    head,
+    { kind: "index" },
+    {
+      registry: [SLOW, MARKED],
+      languages: ["fish"],
+      at: "pre-commit",
+      timeoutMs: 200,
+      jobs: 1,
+    },
+  );
 
   expect(verdicts.map((v) => [v.check, v.kind])).toEqual([
     ["slow", "not-measured"],
@@ -686,10 +702,10 @@ function localPrinter(root: string, name: string): string {
   return bin;
 }
 
-function commitAll(root: string, message: string): string {
+function commitAll(root: string, message: string): Sha {
   stage(root);
   git(root, ["commit", "-q", "-m", message]);
-  return git(root, ["rev-parse", "HEAD"]);
+  return headOf(root);
 }
 
 /** A sandbox whose only commit holds `files`, with `a.ts` then changed to
@@ -826,7 +842,7 @@ test("A new ruleset", async () => {
   write(root, { "rules.cfg": "strict = true\n" });
   git(root, ["commit", "-q", "-m", "rules", "rules.cfg"]);
 
-  await runWith(root, git(root, ["rev-parse", "HEAD"]), spec);
+  await runWith(root, headOf(root), spec);
 
   expect(handed).toHaveLength(4);
   const after = entries(root);

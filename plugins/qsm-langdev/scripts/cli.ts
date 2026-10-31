@@ -42,7 +42,7 @@ import {
   installHooks,
   uninstallHooks,
 } from "../lib/git-hooks.ts";
-import { resolveRef } from "../lib/gitref.ts";
+import { resolveRef, type Sha } from "../lib/gitref.ts";
 import { type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
 import {
   ENFORCEMENT_POINTS,
@@ -93,7 +93,7 @@ function printVerdicts(verdicts: readonly Verdict[], changedCount: number): void
  * `against` resolved to a commit id, or null when the tree has no previous commit yet — the
  * caller's own default, "HEAD".
  */
-function resolveAgainst(root: string, against: string, explicit: boolean): string | null {
+function resolveAgainst(root: string, against: string, explicit: boolean): Sha | null {
   const beforeRef = resolveRef(root, against);
   if (beforeRef === null && explicit) {
     throw new QsmError("usage", `unknown commit '${against}'`);
@@ -116,7 +116,7 @@ const check: Handler = async (call) => {
   const { changed, sets, verdicts, store, warnings } = await compareTrees(
     root,
     beforeRef,
-    "index",
+    { kind: "index" },
     {
       at,
       languages: lang === undefined ? config.languages : parseLanguages(lang),
