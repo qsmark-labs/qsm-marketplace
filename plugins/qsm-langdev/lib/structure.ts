@@ -9,6 +9,7 @@ import { Glob, TOML } from "bun";
 import { generatedPaths, gitPaths } from "./config.ts";
 import type { Sha, TreeSide } from "./gitref.ts";
 import { arrayOf, num, recordOf, recordsOf, str, type Rec } from "./json.ts";
+import { spawnAsync, timedOut } from "./process.ts";
 import { type Kept, leaveOut, withCommitTree, withIndexTree } from "./tree.ts";
 
 const RULES_REL = join(".sentrux", "rules.toml");
@@ -210,27 +211,30 @@ interface DirReport {
   edges: string[];
   violations: string[];
 }
-type ScoreDir = DirReport | { reason: string };
+type ScoreDir = DirReport | { reason: string; timedOut: boolean };
+
+const unreadable = (reason: string): ScoreDir => ({ reason, timedOut: false });
 
 /**
  * sentrux's report for a directory: the shape numbers, the cross-module edges, and the rule
  * violations.
  */
-function scoreDir(dir: string): ScoreDir {
-  // `env` named: Bun resolves the binary against the PATH the process
-  // started with unless it is handed one, and a test puts a fake first.
-  const result = spawnSync("sentrux", ["check", "--json", dir], {
-    encoding: "utf8",
-    env: process.env,
-  });
+async function scoreDir(dir: string, timeoutMs: number): Promise<ScoreDir> {
+  const result = await spawnAsync(dir, "sentrux", ["check", "--json", dir], timeoutMs);
+  if (timedOut(result)) {
+    return {
+      reason: `sentrux did not finish within ${(timeoutMs / 1000).toFixed(1)}s`,
+      timedOut: true,
+    };
+  }
   if (result.error) {
-    return { reason: `sentrux could not run: ${result.error.message}` };
+    return unreadable(`sentrux could not run: ${result.error.message}`);
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(result.stdout ?? "");
   } catch {
-    return { reason: "sentrux printed no JSON — this needs the qsm-patched build" };
+    return unreadable("sentrux printed no JSON — this needs the qsm-patched build");
   }
   return readReport(recordOf(parsed) ?? {}, dir);
 }
@@ -239,11 +243,11 @@ function scoreDir(dir: string): ScoreDir {
 function readReport(report: Rec, dir: string): ScoreDir {
   const edgeList = recordsOf(report.cross_module_edges);
   if (typeof report.quality !== "number" || edgeList === null) {
-    return { reason: "sentrux's JSON carries no quality or edge list" };
+    return unreadable("sentrux's JSON carries no quality or edge list");
   }
   const causes = readCauses(recordOf(report.root_causes));
   if (causes === null) {
-    return { reason: "sentrux's JSON carries no root-cause breakdown" };
+    return unreadable("sentrux's JSON carries no root-cause breakdown");
   }
   const violations = arrayOf(recordOf(report.rules)?.violations) ?? [];
   const layers = readLayers(readFileSync(join(dir, RULES_REL), "utf8"));
@@ -267,36 +271,44 @@ export type StructureResult =
       /** How many test files the shipped tree left out of the score. */
       testFiles: number;
     }
-  | { status: "not-scored"; reason: string; install?: string };
+  | { status: "not-scored"; reason: string; install?: string }
+  /** sentrux ran out of its limit: nothing proves the tree no worse, so a retry is asked for. */
+  | { status: "not-measured"; reason: string };
 
 function added(before: string[], after: string[]): string[] {
   const had = new Set(before);
   return after.filter((entry) => !had.has(entry)).toSorted((a, b) => a.localeCompare(b));
 }
 
+/** The result for a side sentrux gave no score for: not measured when it ran out of time, else a
+ * tool to install. */
+function unscored(side: string, failure: { reason: string; timedOut: boolean }): StructureResult {
+  const reason = `${side}: ${failure.reason}`;
+  return failure.timedOut
+    ? { status: "not-measured", reason }
+    : { status: "not-scored", reason, install: INSTALL_LINE };
+}
+
 /** Scores two already-on-disk directory trees against each other: never touches git. */
-function score(referenceTree: string, shippedTree: string, testFiles: number): StructureResult {
+async function score(
+  referenceTree: string,
+  shippedTree: string,
+  testFiles: number,
+  timeoutMs: number,
+): Promise<StructureResult> {
   if (!(existsSync(join(referenceTree, RULES_REL)) && existsSync(join(shippedTree, RULES_REL)))) {
     return {
       status: "not-scored",
       reason: `${RULES_REL} is absent, so sentrux has no ruleset to score under`,
     };
   }
-  const reference = scoreDir(referenceTree);
+  const reference = await scoreDir(referenceTree, timeoutMs);
   if ("reason" in reference) {
-    return {
-      status: "not-scored",
-      reason: `reference tree: ${reference.reason}`,
-      install: INSTALL_LINE,
-    };
+    return unscored("reference tree", reference);
   }
-  const shipped = scoreDir(shippedTree);
+  const shipped = await scoreDir(shippedTree, timeoutMs);
   if ("reason" in shipped) {
-    return {
-      status: "not-scored",
-      reason: `shipped tree: ${shipped.reason}`,
-      install: INSTALL_LINE,
-    };
+    return unscored("shipped tree", shipped);
   }
   return {
     status: "scored",
@@ -373,6 +385,9 @@ function faultsOf(violations: number, edges: number, qualityDrop: number): strin
  * three cannot drift apart.
  */
 export function verdict(result: StructureResult): StructureVerdict {
+  if (result.status === "not-measured") {
+    return { pass: false, summary: `structure: not measured: ${result.reason}; retry`, detail: [] };
+  }
   if (result.status === "not-scored") {
     return notScoredVerdict(result);
   }
@@ -412,16 +427,17 @@ export async function compareStructure(
   root: string,
   before: Sha,
   after: TreeSide,
+  timeoutMs: number,
 ): Promise<StructureResult> {
   return withTree(root, { kind: "commit", sha: before }, (referenceTree, referenceKept) =>
-    withTree(root, after, (shippedTree, shippedKept): StructureResult => {
+    withTree(root, after, (shippedTree, shippedKept): Promise<StructureResult> => {
       if (referenceKept.listing === shippedKept.listing) {
-        return {
+        return Promise.resolve({
           status: "not-scored",
           reason: `no product file changed (${shippedKept.leftOut} test file(s) left out of the score)`,
-        };
+        });
       }
-      return score(referenceTree, shippedTree, shippedKept.leftOut);
+      return score(referenceTree, shippedTree, shippedKept.leftOut, timeoutMs);
     }),
   );
 }

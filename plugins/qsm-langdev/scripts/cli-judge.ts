@@ -6,6 +6,7 @@ import { fail, ok } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { editFindings } from "../lib/edit-findings.ts";
 import { resolveRef } from "../lib/gitref.ts";
+import { POINTS } from "../lib/registry.ts";
 import {
   type EditedTree,
   type Editor,
@@ -80,7 +81,12 @@ async function structureJudgeAll(trees: EditedTree[]): Promise<
 > {
   let last: (StructureVerdict & { tree: EditedTree; result: StructureResult }) | null = null;
   for (const tree of trees) {
-    const result = await compareStructure(tree.root, tree.start, { kind: "index" });
+    const result = await compareStructure(
+      tree.root,
+      tree.start,
+      { kind: "index" },
+      POINTS["pre-commit"].timeoutMs,
+    );
     last = { tree, result, ...verdict(result) };
     if (!last.pass) {
       return last;

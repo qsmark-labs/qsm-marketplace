@@ -1,6 +1,7 @@
 // Whether the semgrep CLI is logged in.
 
-import { spawnSync } from "node:child_process";
+import { spawnAsync } from "./process.ts";
+import { PROBE_MS } from "./registry.ts";
 
 export type SemgrepLogin = "logged-in" | "logged-out" | "rejected" | "unknown";
 
@@ -9,23 +10,21 @@ export type SemgrepLogin = "logged-in" | "logged-out" | "rejected" | "unknown";
 export type RunExit = (
   cmd: string,
   args: readonly string[],
-) => { status: number | null; output: string };
+) => Promise<{ status: number | null; output: string }>;
 
-const PROBE_TIMEOUT_MS = 10_000;
-
-const runExit: RunExit = (cmd, args) => {
-  const r = spawnSync(cmd, args, { encoding: "utf8", timeout: PROBE_TIMEOUT_MS });
+const runExit: RunExit = async (cmd, args) => {
+  const r = await spawnAsync(process.cwd(), cmd, args, PROBE_MS);
   return { status: r.status, output: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 };
 
-export function semgrepLogin(
+export async function semgrepLogin(
   env: Record<string, string | undefined> = process.env,
   run: RunExit = runExit,
-): SemgrepLogin {
+): Promise<SemgrepLogin> {
   if ((env.SEMGREP_APP_TOKEN ?? "") !== "") {
     return "logged-in";
   }
-  const { status, output } = run("semgrep", ["show", "identity"]);
+  const { status, output } = await run("semgrep", ["show", "identity"]);
   if (status === 0) {
     return "logged-in";
   }

@@ -196,7 +196,7 @@ const doctor: Handler = async (call) => {
   const warnings: string[] = [];
   // an absent semgrep is its MISSING row above, never a login question
   const semgrep = rows.some((row) => row.binary === "semgrep" && row.present);
-  const login = semgrep ? semgrepLoginWarning(semgrepLogin()) : null;
+  const login = semgrep ? semgrepLoginWarning(await semgrepLogin()) : null;
   if (login !== null) {
     warnings.push(login);
   }

@@ -32,7 +32,7 @@
 
 ## 2. Batch B: one process runner and one git helper (2, 11, 10, 20)
 
-- [ ] 2.1 `lib/process.ts` owns the runner; sentrux, gitleaks, detect-secrets, fixers, rumdl,
+- [x] 2.1 `lib/process.ts` owns the runner; sentrux, gitleaks, detect-secrets, fixers, rumdl,
   probes, the pack fetch and the login probe go through it with the point's limit; the private
   limits go. Files: `lib/process.ts`, `lib/compare.ts`, `lib/structure.ts`, `lib/gate-runner.ts`,
   `lib/fixers.ts`, `lib/markdown-wrap.ts`, `lib/rule-packs.ts`, `lib/semgrep-login.ts`, tests.

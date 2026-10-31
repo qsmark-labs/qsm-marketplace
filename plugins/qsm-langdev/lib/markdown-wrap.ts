@@ -3,17 +3,22 @@
 // the length, the code blocks and the tables, so what it wraps to is what markdownlint then checks.
 // Every other markdown rule is left to markdownlint-cli2, which reports it as before.
 
-import { spawnSync } from "node:child_process";
+import { spawnAsync } from "./process.ts";
 
 export const isMarkdown = (path: string): boolean => /\.(md|markdown)$/i.test(path);
 
 /** Rewraps `files` (relative to `root`) in place. False when rumdl is not on PATH: nothing was
  * rewrapped, and markdownlint reports the long lines as it always did. */
-export function rewrapMarkdown(root: string, files: readonly string[]): boolean {
+export async function rewrapMarkdown(
+  root: string,
+  files: readonly string[],
+  timeoutMs: number,
+): Promise<boolean> {
   if (files.length === 0) {
     return false;
   }
-  const result = spawnSync(
+  const result = await spawnAsync(
+    root,
     "rumdl",
     [
       "check",
@@ -26,7 +31,7 @@ export function rewrapMarkdown(root: string, files: readonly string[]): boolean 
       "MD013.reflow = true",
       ...files,
     ],
-    { cwd: root, stdio: "ignore" },
+    timeoutMs,
   );
   return result.error === undefined;
 }

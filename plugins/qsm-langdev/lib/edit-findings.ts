@@ -5,7 +5,7 @@
 // file against HEAD again.
 
 import { dirname, relative } from "node:path";
-import { checkInPlace, scoredAtCommit } from "./compare.ts";
+import { checkInPlace, leftOf, scoredAtCommit } from "./compare.ts";
 import { findRepoRoot, isLangdevRepo, readGatesConfig } from "./config.ts";
 import { fixFiles } from "./fixers.ts";
 import { POINTS } from "./registry.ts";
@@ -52,7 +52,7 @@ export async function editFindings(editor: Editor, file: string): Promise<EditRe
   if (relPath.startsWith("..") || !scoredAtCommit(root, relPath)) {
     return NOTHING;
   }
-  fixFiles(root, [relPath]);
+  await fixFiles(root, [relPath], leftOf(POINTS.edit.timeoutMs));
   // The edit point's timeout counts from the binary's start, so the start and the fixers come out of
   // it, and several edits at once still answer inside the engine's 10 s, a slow checker not measured.
   const { findings, log } = await checkInPlace(root, relPath, {

@@ -4,16 +4,17 @@
 // PATH is skipped and the checker reports as before. The edit hook and the pre-commit gate both
 // call `fixFiles`; a new fixer is one more entry here.
 
-import { spawnSync } from "node:child_process";
 import { languageEnabled, readGatesConfig } from "./config.ts";
 import { isMarkdown, rewrapMarkdown } from "./markdown-wrap.ts";
+import { spawnAsync } from "./process.ts";
 import { type Language, RUSTFMT, SHFMT_STYLE } from "./registry.ts";
 
 interface Fixer {
   readonly language: Language;
   readonly covers: (path: string) => boolean;
-  /** Rewrites `files` (relative to root) in place; false when it could not run. */
-  readonly fix: (root: string, files: readonly string[]) => boolean;
+  /** Rewrites `files` (relative to root) in place within `timeoutMs`; false when it could not run
+   * or ran out of time. */
+  readonly fix: (root: string, files: readonly string[], timeoutMs: number) => Promise<boolean>;
 }
 
 /** A fixer that runs `command... files`. Its exit status is ignored: a tool exits non-zero for what
@@ -23,9 +24,9 @@ function tool(language: Language, extensions: RegExp, command: readonly string[]
   return {
     language,
     covers: (path) => extensions.test(path),
-    fix: (root, files) =>
+    fix: async (root, files, timeoutMs) =>
       files.length > 0 &&
-      spawnSync(binary, [...args, ...files], { cwd: root, stdio: "ignore" }).error === undefined,
+      (await spawnAsync(root, binary, [...args, ...files], timeoutMs)).error === undefined,
   };
 }
 
@@ -42,9 +43,14 @@ const FIXERS: readonly Fixer[] = [
   tool("rust", /\.rs$/, ["rustfmt", "--edition", String(RUSTFMT.edition)]),
 ];
 
-/** Runs every fixer over the files it covers, for the languages the repository gates; returns the
- * files some fixer ran on, which the caller re-stages when it is a commit. */
-export function fixFiles(root: string, files: readonly string[]): string[] {
+/** Runs every fixer over the files it covers, for the languages the repository gates, each within
+ * what `limitMs` says when it starts; returns the files some fixer ran on, which the caller
+ * re-stages when it is a commit. */
+export async function fixFiles(
+  root: string,
+  files: readonly string[],
+  limitMs: () => number,
+): Promise<string[]> {
   const { languages } = readGatesConfig(root);
   const fixed = new Set<string>();
   for (const fixer of FIXERS) {
@@ -52,7 +58,7 @@ export function fixFiles(root: string, files: readonly string[]): string[] {
       continue;
     }
     const mine = files.filter(fixer.covers);
-    if (fixer.fix(root, mine)) {
+    if (await fixer.fix(root, mine, limitMs())) {
       for (const f of mine) {
         fixed.add(f);
       }
