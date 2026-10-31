@@ -37,9 +37,8 @@ and the Pro semgrep run the spec gives to CI has no job.
   hooks module no longer scores dozens of false `no-unsafe-*` findings.
 - **BREAKING** for the stop gate: its per-checker budget of 55 s becomes the `pre-commit` timeout of
   5 min, with the 30 s target.
-- A new `langdev` job in `.github/workflows/ci.yml` runs `qsm-langdev check --at ci` against the
-  commit the push replaced, with the Pro semgrep run over the whole tree. CI is red since
-  2026-10-21; the job lands on a green CI.
+- CI, red since 2026-10-21, is green again. The `langdev` job that runs the `ci` point moved to
+  change `langdev-ci-point` on 2026-10-31.
 
 ## Capabilities
 
@@ -60,8 +59,7 @@ None.
 - `lib/compare.ts`, `lib/edit-findings.ts`, `hooks/gate-hook.ts`: limits read from the point table;
   `slow` lines; run times recorded.
 - `lib/result-store.ts` or a sibling: the run-time record `doctor` reads.
-- `.github/workflows/ci.yml`: the lockfile and test failures fixed, the `langdev` job added; the
-  repo secret `SEMGREP_APP_TOKEN` is the owner's to add.
+- `.github/workflows/ci.yml`: the lockfile and test failures fixed.
 - `README.md`, `USAGE.md`: the points, targets and the `slow` line.
 
 ## Critiques

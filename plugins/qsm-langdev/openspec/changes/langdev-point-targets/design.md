@@ -149,19 +149,10 @@ target. Alternative rejected: a machine-wide file, because every worktree would 
 at one of the four points. The gate already runs in `bun test`, so a new language without both
 profiles and every point cannot land.
 
-### D7. CI runs the `ci` point as its own job
+### D7. The CI job moved
 
-A `langdev` job in `.github/workflows/ci.yml`, next to the existing one, on a push to `main`:
-
-1. installs the checkers `qsm-langdev doctor` names and builds the bin;
-2. runs `qsm-langdev check --at ci --against ${{ github.event.before }}`; an all-zero or unknown
-   `before` is skipped with its reason, as the push gate skips a first push;
-3. has `timeout-minutes: 30`.
-
-At `ci`, semgrep runs `semgrep scan --pro` over the whole tree with `SEMGREP_APP_TOKEN` from a repo
-secret, and never `semgrep ci`, which uploads. A missing token fails the job naming the secret: one
-path, no community fallback. That `scan --pro` with only the token neither uploads nor needs
-`semgrep login` is unverified; task 5 checks it first.
+The `langdev` CI job and semgrep's `ci` form moved to change `langdev-ci-point` on 2026-10-31;
+its design holds them.
 
 ## Risks / Trade-offs
 

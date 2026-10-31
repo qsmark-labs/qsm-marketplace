@@ -24,6 +24,9 @@ None.
 
 ## Impact
 
+Archive order: `langdev-point-targets` first, because this change's MODIFIED semgrep requirement is
+written against the text that change archives.
+
 `plugins/qsm-langdev/lib/registry.ts` (semgrep's ci args), `scripts/cli.ts` (`--at ci`),
 `.github/workflows/ci.yml`, the repository secret `SEMGREP_APP_TOKEN`.
 

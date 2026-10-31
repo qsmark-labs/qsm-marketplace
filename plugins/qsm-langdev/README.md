@@ -82,5 +82,6 @@ project that does not need it.
   `! QSM_LANGDEV_ALLOW="<why>" git commit`. An agent's allow and `--no-verify` are denied in a
   session.
 - semgrep scans the changed files with its community engine at every point; the Pro engine's
-  cross-file run is a CI job's, not a gate on a person's machine.
+  cross-file run belongs to the `ci` point, whose CI job is not built yet: nothing runs `ci`
+  today, and `check --at` takes `pre-commit` and `pre-push`.
 - Everything else: `qsm-langdev --help`.
