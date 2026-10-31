@@ -58,6 +58,15 @@ interface Regression {
   lines: string[];
 }
 
+/** The warning naming the first five of `files` as not scored, or none when there are none. */
+function notScored(what: string, files: readonly string[]): string[] {
+  if (files.length === 0) {
+    return [];
+  }
+  const more = files.length > 5 ? ` and ${files.length - 5} more` : "";
+  return [`${what} not scored: ${files.slice(0, 5).join(", ")}${more}`];
+}
+
 /**
  * One tree's judgement against its start commit: every regression to block the stop on, plus every
  * warning logged instead.
@@ -79,13 +88,11 @@ async function judgeTree(
       ...testBudgetMs(),
     },
   );
-  // Only what is staged is scored; an edit the agent left unstaged is named, never judged in silence.
+  // Only what is staged is scored; an edit the agent left unstaged, or a file it never added, is
+  // named, never judged in silence.
   const unstaged = gitPaths(tree.root, ["diff", "--name-only", "-z"]) ?? [];
-  if (unstaged.length > 0) {
-    const named = unstaged.slice(0, 5).join(", ");
-    const more = unstaged.length > 5 ? ` and ${unstaged.length - 5} more` : "";
-    warnings.push(`unstaged changes not scored: ${named}${more}`);
-  }
+  const untracked = gitPaths(tree.root, ["ls-files", "--others", "--exclude-standard", "-z"]) ?? [];
+  warnings.push(...notScored("unstaged changes", unstaged), ...notScored("untracked", untracked));
   const { failed, warned } = judge(verdicts, true, "stop");
   if (warned.length > 0) {
     warnings.push(`langdev: ${describeVerdicts(warned).join("; ")}`);

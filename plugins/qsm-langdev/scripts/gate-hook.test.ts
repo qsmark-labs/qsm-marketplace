@@ -109,6 +109,21 @@ describe("qsm-langdev gate hook", () => {
     expect(r.stderr).toContain("unstaged changes not scored: a.fish");
   });
 
+  test("A new file the agent never added", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    writeFileSync(join(root, "b.fish"), "if true\necho beta\n");
+
+    const r = runGateHook(stateDir, "s1", "a1");
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).not.toContain('"decision":"block"');
+    expect(r.stderr).toContain("untracked not scored: ");
+    expect(r.stderr).toContain("b.fish");
+  });
+
   test("a tree back to its start commit never blocks the stop", () => {
     const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
     const root = repoWithFile("notes.txt", "alpha\n");
