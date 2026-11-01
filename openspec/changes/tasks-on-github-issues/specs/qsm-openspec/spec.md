@@ -4,7 +4,8 @@
 
 A change and its feature SHALL be bound by the label `change:<change-id>` on the feature, written
 and read through the task tool. spec-propose SHALL look the label up before it writes and, finding
-no feature with it, bind the feature the change plans. It SHALL create no task. When the task tool
+no feature with it, bind the filed feature with `edit <n> --spec <change-id>`. It SHALL create no
+task. When the task tool
 is not reachable (no GitHub remote, no login, no board), spec-propose SHALL stop before writing and
 name the cause. The skills SHALL say "the task tool" and never name a binary.
 
@@ -24,23 +25,23 @@ name the cause. The skills SHALL say "the task tool" and never name a binary.
 - **WHEN** the repository has no GitHub remote, the person is not logged in or no board is linked
 - **THEN** spec-propose SHALL stop, name the cause, and SHALL NOT write the change
 
-### Requirement: Archive runs on the feature branch and closes nothing
+### Requirement: Archive runs on the feature branch at step 9 and closes nothing
 
-spec-archive SHALL archive a feature's change on `feature/<n>` after QA has shown every path, so the
-feature pull request carries the code and the archived specs into main in one merge. It SHALL close
-no issue, set no Status, and report what the feature waits for: open tasks, the QA agent, or the
-owner's merge.
+spec-archive SHALL run on `feature/<n>` when the feature is In Test with no open sub-issue and its
+latest comment from QA starts with `QA passed`, archive the change there, and then the agent SHALL
+open the feature pull request to main. It SHALL close no issue and set no Status: the owner's merge
+of the feature pull request closes the feature.
 
 #### Scenario: QA passed
 
-- **WHEN** QA has shown every path of feature 3 and spec-archive runs on `feature/3`
-- **THEN** the change is archived in a commit on `feature/3`, feature 3 stays open, and the reply
-  says it waits for the owner's merge of the feature pull request
+- **WHEN** feature 3 is In Test with no open sub-issue and its last QA note starts with `QA passed`
+- **THEN** the change is archived in a commit on `feature/3`, the feature pull request to main is
+  opened, and feature 3 stays open
 
-#### Scenario: Tasks remain
+#### Scenario: No verdict yet
 
-- **WHEN** spec-archive is asked to run while a task of the feature is open
-- **THEN** spec-archive SHALL name the open tasks and archive nothing
+- **WHEN** spec-archive is asked to run on a feature In Test with no `QA passed` note
+- **THEN** it archives nothing and says the feature waits for the QA agent
 
 ## REMOVED Requirements
 
@@ -56,6 +57,5 @@ task list is written into the change.
 **Reason**: The feature no longer closes at archive: it closes when the owner merges the feature
 pull request into main, and there is no test-it task to check.
 
-**Migration**: "Archive runs on the feature branch and closes nothing" and the qsm-tasks
-requirement "Tasks close on merge into their feature branch, a feature on its merge into
-main".
+**Migration**: "Archive runs on the feature branch at step 9 and closes nothing" and the qsm-tasks
+requirement "A feature holds the intent and the change, its tasks are its pull requests".

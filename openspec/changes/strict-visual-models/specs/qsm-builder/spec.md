@@ -3,15 +3,15 @@
 ### Requirement: The lens shows the models
 
 The lens SHALL show, on a plugin's page, a Models section with every SVG of the plugin's `models/`,
-and on the overview the marketplace's C4 container view and one entry per change in flight with
-the first screen of its proposal and its SVGs. A BPMN file SHALL open in a pan-and-zoom viewer
-the lens serves from its own pinned copy, so the page still requests nothing outside 127.0.0.1.
-A plugin with no models SHALL show the section saying so.
+and on the overview the marketplace's C4 container view and one entry per change on main that is not
+archived, with the first screen of its proposal and its pictures. A BPMN file SHALL open in a
+pan-and-zoom viewer the lens serves from its own pinned copy, so the page still requests nothing
+outside 127.0.0.1. A plugin with no models SHALL show the section saying so.
 
 #### Scenario: The owner reads a feature in flight
 
 - **WHEN** the owner opens the lens while `feature-flow` is in flight
-- **THEN** the overview lists it with its proposal's first screen and its three SVGs, and clicking
+- **THEN** the overview lists it with its proposal's first screen and its pictures, and clicking
   `flow.bpmn` opens it in the viewer with no request outside 127.0.0.1
 
 #### Scenario: The owner asks for a change to a model (path p-c46882)

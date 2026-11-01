@@ -1,4 +1,4 @@
-![How the Action derives a feature's Status, BPMN](models/feature-status.svg)
+![How the Action derives a feature's Status, BPMN](models/qsm-tasks/feature-status.svg)
 
 Where this sits in the whole flow: `../feature-flow/models/flow.svg` (the GitHub lane).
 
@@ -19,8 +19,10 @@ feature's Status true to its tasks.
   Status field, Priority P0 to P2, Feedback its own issue type with `area:`, `kind:`, `from:`.
 - **A change binds to its feature** by the label `change:<id>`.
 - **One Action, `.github/workflows/qsm-tasks.yml`**: it derives a feature's Status (the model
-  above) and closes the issues a pull request names when it merges into `feature/*`, which GitHub
-  does itself only for the default branch.
+  above): In Dev when the split adds the first task; when the last task closes it brings
+  `feature/<n>` up to date with main and sets Ready For Test, or files a conflict task. It also
+  closes the issues a pull request names when it merges into `feature/*`, which GitHub does itself
+  only for the default branch.
 - **The owner's merge of the feature pull request into main is the accept**; GitHub closes the
   feature and the board sets Done. No verb accepts.
 - **`doctor` and `setup`** check and create what the API allows and name the rest.

@@ -1,5 +1,6 @@
 // C4 levels 1 and 2 of the marketplace, for the feature flow.
-// Every element name is the lane name a BPMN process uses for the same actor.
+// Every element name is the lane name a BPMN process uses for the same actor. Relations between
+// containers are the plugin dependencies after this feature and the ones it waits on.
 model {
   owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features'
 
@@ -53,6 +54,10 @@ model {
       technology 'Bun binary'
       metadata { path 'plugins/qsm-index' }
     }
+    essentials = container 'qsm-essentials' 'The core: worker agents and the skills every session loads' {
+      technology 'Skills and agents'
+      metadata { path 'plugins/qsm-essentials' }
+    }
     lens = container 'qsm-builder lens' 'A static page of every plugin, its spec and its models' {
       technology 'Bun binary'
       metadata { path 'plugins/qsm-builder' }
@@ -74,8 +79,21 @@ model {
   reviewer -> mp.review 'reviews with'
   reviewer -> mp.forge 'posts findings with'
 
-  qa -> mp.models 'reads the paths to test from'
+  qa -> mp.models 'reads the cover paths from'
   qa -> mp.tasks 'files fix tasks with'
+
+  qa -> mp.review 'runs as an agent of'
+
+  mp.plan -> mp.tasks 'files and splits features with'
+  mp.plan -> mp.spec 'hands the change to'
+  mp.spec -> mp.essentials 'hands disjoint work to the agents of'
+  mp.spec -> mp.tasks 'binds the change to its feature with'
+  mp.spec -> mp.models 'lints, renders and walks models with'
+  mp.spec -> mp.forge 'opens the task PR with'
+  mp.review -> mp.forge 'posts reviews with'
+  mp.review -> mp.models 'reads the cover paths with'
+  mp.lens -> mp.tasks 'saves a pen edit with'
+  mp.lens -> mp.spec 'reads the changes with'
 
   mp.tasks -> github 'reads and writes issues and the board'
   mp.forge -> github 'opens PRs, reads threads'

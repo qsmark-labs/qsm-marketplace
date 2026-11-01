@@ -9,23 +9,25 @@
         <bpmn:flowNodeRef>event</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>stored</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>completed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>todoOpen</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>toInDev</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>todoLeft</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>readyJoin</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>endInDev</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endSplit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endTodo</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>left</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endWorking</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sync</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>conflict</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>toReady</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endReady</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>conflictTask</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endConflict</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>endDropped</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>readyOpen</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>backToDev</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>testOpen</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>toBlocked</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>endTodo</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>endWorking</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>endNoneDone</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>endReady</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>endBack</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>endReadyStays</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>testOpen</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>toBlocked</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>endBlocked</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>endTestStays</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>endOther</bpmn:flowNodeRef>
@@ -40,45 +42,63 @@
     </bpmn:serviceTask>
     <bpmn:exclusiveGateway id="stored" name="Stored Status?">
       <bpmn:incoming>f_read_stored</bpmn:incoming>
-      <bpmn:outgoing>f_stored_completed</bpmn:outgoing>
+      <bpmn:outgoing>f_stored_todoOpen</bpmn:outgoing>
       <bpmn:outgoing>f_stored_left</bpmn:outgoing>
       <bpmn:outgoing>f_stored_readyOpen</bpmn:outgoing>
       <bpmn:outgoing>f_stored_testOpen</bpmn:outgoing>
       <bpmn:outgoing>f_stored_endOther</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:exclusiveGateway id="completed" name="This child closed as completed?">
-      <bpmn:incoming>f_stored_completed</bpmn:incoming>
-      <bpmn:outgoing>f_completed_toInDev</bpmn:outgoing>
-      <bpmn:outgoing>f_completed_endTodo</bpmn:outgoing>
+    <bpmn:exclusiveGateway id="todoOpen" name="A sub-issue open?">
+      <bpmn:incoming>f_stored_todoOpen</bpmn:incoming>
+      <bpmn:outgoing>f_todoOpen_toInDev</bpmn:outgoing>
+      <bpmn:outgoing>f_todoOpen_endTodo</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="toInDev" name="Set In Dev">
-      <bpmn:incoming>f_completed_toInDev</bpmn:incoming>
-      <bpmn:outgoing>f_toInDev_todoLeft</bpmn:outgoing>
+      <bpmn:incoming>f_todoOpen_toInDev</bpmn:incoming>
+      <bpmn:outgoing>f_toInDev_endSplit</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="todoLeft" name="Open sub-issue left after it?">
-      <bpmn:incoming>f_toInDev_todoLeft</bpmn:incoming>
-      <bpmn:outgoing>f_todoLeft_endInDev</bpmn:outgoing>
-      <bpmn:outgoing>f_todoLeft_readyJoin</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:exclusiveGateway id="readyJoin" name="Ready for QA">
-      <bpmn:incoming>f_todoLeft_readyJoin</bpmn:incoming>
-      <bpmn:incoming>f_left_readyJoin</bpmn:incoming>
-      <bpmn:outgoing>f_readyJoin_toReady</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:endEvent id="endInDev" name="In development">
-      <bpmn:incoming>f_todoLeft_endInDev</bpmn:incoming>
+    <bpmn:endEvent id="endSplit" name="Split: in development">
+      <bpmn:incoming>f_toInDev_endSplit</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endTodo" name="Still planned: Todo">
+      <bpmn:incoming>f_todoOpen_endTodo</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:exclusiveGateway id="left" name="Open sub-issue left?">
       <bpmn:incoming>f_stored_left</bpmn:incoming>
       <bpmn:outgoing>f_left_endWorking</bpmn:outgoing>
-      <bpmn:outgoing>f_left_readyJoin</bpmn:outgoing>
-      <bpmn:outgoing>f_left_endNoneDone</bpmn:outgoing>
+      <bpmn:outgoing>f_left_sync</bpmn:outgoing>
+      <bpmn:outgoing>f_left_endDropped</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="endWorking" name="Tasks still open: unchanged">
+      <bpmn:incoming>f_left_endWorking</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="sync" name="Bring feature/&#60;n&#62; up to date with main">
+      <bpmn:incoming>f_left_sync</bpmn:incoming>
+      <bpmn:outgoing>f_sync_conflict</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="conflict" name="Conflict?">
+      <bpmn:incoming>f_sync_conflict</bpmn:incoming>
+      <bpmn:outgoing>f_conflict_conflictTask</bpmn:outgoing>
+      <bpmn:outgoing>f_conflict_toReady</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="toReady" name="Set Ready For Test">
-      <bpmn:incoming>f_readyJoin_toReady</bpmn:incoming>
+      <bpmn:incoming>f_conflict_toReady</bpmn:incoming>
       <bpmn:outgoing>f_toReady_endReady</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="readyOpen" name="Open sub-issue?">
+    <bpmn:endEvent id="endReady" name="Waits for QA">
+      <bpmn:incoming>f_toReady_endReady</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="conflictTask" name="File a conflict task under the feature">
+      <bpmn:incoming>f_conflict_conflictTask</bpmn:incoming>
+      <bpmn:outgoing>f_conflictTask_endConflict</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endConflict" name="A conflict task is open">
+      <bpmn:incoming>f_conflictTask_endConflict</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endDropped" name="Every task dropped: unchanged">
+      <bpmn:incoming>f_left_endDropped</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="readyOpen" name="Open sub-issue while it waits?">
       <bpmn:incoming>f_stored_readyOpen</bpmn:incoming>
       <bpmn:outgoing>f_readyOpen_backToDev</bpmn:outgoing>
       <bpmn:outgoing>f_readyOpen_endReadyStays</bpmn:outgoing>
@@ -87,6 +107,12 @@
       <bpmn:incoming>f_readyOpen_backToDev</bpmn:incoming>
       <bpmn:outgoing>f_backToDev_endBack</bpmn:outgoing>
     </bpmn:serviceTask>
+    <bpmn:endEvent id="endBack" name="Back in development">
+      <bpmn:incoming>f_backToDev_endBack</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endReadyStays" name="Still waits for QA">
+      <bpmn:incoming>f_readyOpen_endReadyStays</bpmn:incoming>
+    </bpmn:endEvent>
     <bpmn:exclusiveGateway id="testOpen" name="Open sub-issue under test?">
       <bpmn:incoming>f_stored_testOpen</bpmn:incoming>
       <bpmn:outgoing>f_testOpen_toBlocked</bpmn:outgoing>
@@ -96,24 +122,6 @@
       <bpmn:incoming>f_testOpen_toBlocked</bpmn:incoming>
       <bpmn:outgoing>f_toBlocked_endBlocked</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:endEvent id="endTodo" name="Still planned: Todo">
-      <bpmn:incoming>f_completed_endTodo</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:endEvent id="endWorking" name="Tasks still open: unchanged">
-      <bpmn:incoming>f_left_endWorking</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:endEvent id="endNoneDone" name="Nothing completed: unchanged">
-      <bpmn:incoming>f_left_endNoneDone</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:endEvent id="endReady" name="Waits for QA">
-      <bpmn:incoming>f_toReady_endReady</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:endEvent id="endBack" name="Back in development">
-      <bpmn:incoming>f_backToDev_endBack</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:endEvent id="endReadyStays" name="Still waits for QA">
-      <bpmn:incoming>f_readyOpen_endReadyStays</bpmn:incoming>
-    </bpmn:endEvent>
     <bpmn:endEvent id="endBlocked" name="Blocked by a fix task">
       <bpmn:incoming>f_toBlocked_endBlocked</bpmn:incoming>
     </bpmn:endEvent>
@@ -125,20 +133,21 @@
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="f_event_read" sourceRef="event" targetRef="read" />
     <bpmn:sequenceFlow id="f_read_stored" sourceRef="read" targetRef="stored" />
-    <bpmn:sequenceFlow id="f_stored_completed" name="Todo" sourceRef="stored" targetRef="completed" />
+    <bpmn:sequenceFlow id="f_stored_todoOpen" name="Todo" sourceRef="stored" targetRef="todoOpen" />
     <bpmn:sequenceFlow id="f_stored_left" name="In Dev or Blocked" sourceRef="stored" targetRef="left" />
     <bpmn:sequenceFlow id="f_stored_readyOpen" name="Ready For Test" sourceRef="stored" targetRef="readyOpen" />
     <bpmn:sequenceFlow id="f_stored_testOpen" name="In Test" sourceRef="stored" targetRef="testOpen" />
     <bpmn:sequenceFlow id="f_stored_endOther" name="Done" sourceRef="stored" targetRef="endOther" />
-    <bpmn:sequenceFlow id="f_completed_toInDev" name="yes" sourceRef="completed" targetRef="toInDev" />
-    <bpmn:sequenceFlow id="f_completed_endTodo" name="no" sourceRef="completed" targetRef="endTodo" />
-    <bpmn:sequenceFlow id="f_toInDev_todoLeft" sourceRef="toInDev" targetRef="todoLeft" />
-    <bpmn:sequenceFlow id="f_todoLeft_endInDev" name="yes" sourceRef="todoLeft" targetRef="endInDev" />
-    <bpmn:sequenceFlow id="f_todoLeft_readyJoin" name="no" sourceRef="todoLeft" targetRef="readyJoin" />
+    <bpmn:sequenceFlow id="f_todoOpen_toInDev" name="yes" sourceRef="todoOpen" targetRef="toInDev" />
+    <bpmn:sequenceFlow id="f_todoOpen_endTodo" name="no" sourceRef="todoOpen" targetRef="endTodo" />
+    <bpmn:sequenceFlow id="f_toInDev_endSplit" sourceRef="toInDev" targetRef="endSplit" />
     <bpmn:sequenceFlow id="f_left_endWorking" name="yes" sourceRef="left" targetRef="endWorking" />
-    <bpmn:sequenceFlow id="f_left_readyJoin" name="no, one completed" sourceRef="left" targetRef="readyJoin" />
-    <bpmn:sequenceFlow id="f_left_endNoneDone" name="no, none completed" sourceRef="left" targetRef="endNoneDone" />
-    <bpmn:sequenceFlow id="f_readyJoin_toReady" sourceRef="readyJoin" targetRef="toReady" />
+    <bpmn:sequenceFlow id="f_left_sync" name="no, one completed" sourceRef="left" targetRef="sync" />
+    <bpmn:sequenceFlow id="f_left_endDropped" name="no, none completed" sourceRef="left" targetRef="endDropped" />
+    <bpmn:sequenceFlow id="f_sync_conflict" sourceRef="sync" targetRef="conflict" />
+    <bpmn:sequenceFlow id="f_conflict_conflictTask" name="yes" sourceRef="conflict" targetRef="conflictTask" />
+    <bpmn:sequenceFlow id="f_conflict_toReady" name="no" sourceRef="conflict" targetRef="toReady" />
+    <bpmn:sequenceFlow id="f_conflictTask_endConflict" sourceRef="conflictTask" targetRef="endConflict" />
     <bpmn:sequenceFlow id="f_toReady_endReady" sourceRef="toReady" targetRef="endReady" />
     <bpmn:sequenceFlow id="f_readyOpen_backToDev" name="yes" sourceRef="readyOpen" targetRef="backToDev" />
     <bpmn:sequenceFlow id="f_readyOpen_endReadyStays" name="no" sourceRef="readyOpen" targetRef="endReadyStays" />
@@ -150,15 +159,15 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_feature_status_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_feature_status_collab" bpmnElement="feature_status_collab">
       <bpmndi:BPMNShape id="BPMNShape_feature_status_pool" bpmnElement="feature_status_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="1968" height="1314" />
+        <dc:Bounds x="80" y="80" width="1818" height="1344" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" isHorizontal="true">
-        <dc:Bounds x="110" y="80" width="1938" height="1314" />
+        <dc:Bounds x="110" y="80" width="1788" height="1344" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_event" bpmnElement="event">
         <dc:Bounds x="150" y="574" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="128" y="615" width="80" height="56" />
+          <dc:Bounds x="148" y="615" width="80" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read">
@@ -170,112 +179,118 @@
           <dc:Bounds x="444" y="622" width="55" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_completed" bpmnElement="completed" isMarkerVisible="true">
-        <dc:Bounds x="1122" y="567" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_todoOpen" bpmnElement="todoOpen" isMarkerVisible="true">
+        <dc:Bounds x="1472" y="567" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1109" y="520" width="77" height="42" />
+          <dc:Bounds x="1457" y="534" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toInDev" bpmnElement="toInDev">
-        <dc:Bounds x="1272" y="552" width="100" height="80" />
+        <dc:Bounds x="1622" y="552" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_todoLeft" bpmnElement="todoLeft" isMarkerVisible="true">
-        <dc:Bounds x="1472" y="567" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_endSplit" bpmnElement="endSplit">
+        <dc:Bounds x="1822" y="574" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1462" y="506" width="71" height="56" />
+          <dc:Bounds x="1778" y="615" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_readyJoin" bpmnElement="readyJoin" isMarkerVisible="true">
-        <dc:Bounds x="1622" y="727" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_endTodo" bpmnElement="endTodo">
+        <dc:Bounds x="1654" y="734" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1523" y="782" width="88" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endInDev" bpmnElement="endInDev">
-        <dc:Bounds x="1629" y="574" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1585" y="615" width="84" height="28" />
+          <dc:Bounds x="1642" y="687" width="60" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" isMarkerVisible="true">
-        <dc:Bounds x="636" y="872" width="50" height="50" />
+        <dc:Bounds x="636" y="727" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="628" y="825" width="67" height="42" />
+          <dc:Bounds x="628" y="680" width="67" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_endWorking" bpmnElement="endWorking">
+        <dc:Bounds x="818" y="734" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="796" y="687" width="80" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_sync" bpmnElement="sync">
+        <dc:Bounds x="786" y="872" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_conflict" bpmnElement="conflict" isMarkerVisible="true">
+        <dc:Bounds x="986" y="887" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="977" y="942" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toReady" bpmnElement="toReady">
-        <dc:Bounds x="1772" y="712" width="100" height="80" />
+        <dc:Bounds x="1136" y="712" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_endReady" bpmnElement="endReady">
+        <dc:Bounds x="1336" y="734" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1309" y="775" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_conflictTask" bpmnElement="conflictTask">
+        <dc:Bounds x="1136" y="872" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_endConflict" bpmnElement="endConflict">
+        <dc:Bounds x="1336" y="894" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1313" y="935" width="82" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_endDropped" bpmnElement="endDropped">
+        <dc:Bounds x="818" y="436" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="800" y="477" width="73" height="42" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_readyOpen" bpmnElement="readyOpen" isMarkerVisible="true">
         <dc:Bounds x="636" y="291" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="624" y="258" width="74" height="28" />
+          <dc:Bounds x="628" y="346" width="67" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_backToDev" bpmnElement="backToDev">
         <dc:Bounds x="786" y="276" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_testOpen" bpmnElement="testOpen" isMarkerVisible="true">
-        <dc:Bounds x="636" y="1133" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="622" y="1086" width="78" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_toBlocked" bpmnElement="toBlocked">
-        <dc:Bounds x="786" y="1118" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endTodo" bpmnElement="endTodo">
-        <dc:Bounds x="1304" y="879" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1292" y="832" width="60" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endWorking" bpmnElement="endWorking">
-        <dc:Bounds x="818" y="879" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="796" y="832" width="80" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endNoneDone" bpmnElement="endNoneDone">
-        <dc:Bounds x="818" y="436" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="798" y="477" width="77" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endReady" bpmnElement="endReady">
-        <dc:Bounds x="1972" y="734" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1945" y="775" width="90" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endBack" bpmnElement="endBack">
-        <dc:Bounds x="986" y="298" width="36" height="36" />
+        <dc:Bounds x="993" y="298" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="962" y="265" width="84" height="28" />
+          <dc:Bounds x="969" y="339" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endReadyStays" bpmnElement="endReadyStays">
-        <dc:Bounds x="818" y="1002" width="36" height="36" />
+        <dc:Bounds x="818" y="1032" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="795" y="1043" width="83" height="28" />
+          <dc:Bounds x="795" y="1073" width="83" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_endBlocked" bpmnElement="endBlocked">
-        <dc:Bounds x="986" y="1140" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_testOpen" bpmnElement="testOpen" isMarkerVisible="true">
+        <dc:Bounds x="636" y="1163" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="962" y="1181" width="84" height="28" />
+          <dc:Bounds x="622" y="1116" width="78" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_toBlocked" bpmnElement="toBlocked">
+        <dc:Bounds x="786" y="1148" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_endBlocked" bpmnElement="endBlocked">
+        <dc:Bounds x="993" y="1170" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="969" y="1251" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endTestStays" bpmnElement="endTestStays">
-        <dc:Bounds x="818" y="1278" width="36" height="36" />
+        <dc:Bounds x="818" y="1308" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="807" y="1319" width="59" height="28" />
+          <dc:Bounds x="807" y="1349" width="59" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endOther" bpmnElement="endOther">
         <dc:Bounds x="643" y="160" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="628" y="201" width="67" height="42" />
+          <dc:Bounds x="608" y="201" width="67" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_f_event_read" bpmnElement="f_event_read">
@@ -286,37 +301,41 @@
         <di:waypoint x="386" y="592" />
         <di:waypoint x="486" y="592" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_completed" bpmnElement="f_stored_completed">
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_todoOpen" bpmnElement="f_stored_todoOpen">
         <di:waypoint x="536" y="592" />
-        <di:waypoint x="1122" y="592" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="812" y="570" width="34" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_completed_toInDev" bpmnElement="f_completed_toInDev">
-        <di:waypoint x="1172" y="592" />
-        <di:waypoint x="1272" y="592" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1210" y="570" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_toInDev_todoLeft" bpmnElement="f_toInDev_todoLeft">
-        <di:waypoint x="1372" y="592" />
         <di:waypoint x="1472" y="592" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_todoLeft_endInDev" bpmnElement="f_todoLeft_endInDev">
-        <di:waypoint x="1522" y="592" />
-        <di:waypoint x="1629" y="592" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1563" y="570" width="25" height="14" />
+          <dc:Bounds x="987" y="570" width="34" height="14" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_toInDev" bpmnElement="f_todoOpen_toInDev">
+        <di:waypoint x="1522" y="592" />
+        <di:waypoint x="1622" y="592" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1560" y="570" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_toInDev_endSplit" bpmnElement="f_toInDev_endSplit">
+        <di:waypoint x="1722" y="592" />
+        <di:waypoint x="1822" y="592" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_left_endWorking" bpmnElement="f_left_endWorking">
-        <di:waypoint x="686" y="897" />
-        <di:waypoint x="818" y="897" />
+        <di:waypoint x="686" y="752" />
+        <di:waypoint x="818" y="752" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="740" y="875" width="25" height="14" />
+          <dc:Bounds x="740" y="730" width="25" height="14" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_conflictTask" bpmnElement="f_conflict_conflictTask">
+        <di:waypoint x="1036" y="912" />
+        <di:waypoint x="1136" y="912" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1074" y="890" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_endConflict" bpmnElement="f_conflictTask_endConflict">
+        <di:waypoint x="1236" y="912" />
+        <di:waypoint x="1336" y="912" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_backToDev" bpmnElement="f_readyOpen_backToDev">
         <di:waypoint x="686" y="316" />
@@ -327,25 +346,25 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_backToDev_endBack" bpmnElement="f_backToDev_endBack">
         <di:waypoint x="886" y="316" />
-        <di:waypoint x="986" y="316" />
+        <di:waypoint x="993" y="316" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_toBlocked" bpmnElement="f_testOpen_toBlocked">
-        <di:waypoint x="686" y="1158" />
-        <di:waypoint x="786" y="1158" />
+        <di:waypoint x="686" y="1188" />
+        <di:waypoint x="786" y="1188" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="724" y="1136" width="25" height="14" />
+          <dc:Bounds x="724" y="1166" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_toBlocked_endBlocked" bpmnElement="f_toBlocked_endBlocked">
-        <di:waypoint x="886" y="1158" />
-        <di:waypoint x="986" y="1158" />
+        <di:waypoint x="886" y="1188" />
+        <di:waypoint x="993" y="1188" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_stored_left" bpmnElement="f_stored_left">
         <di:waypoint x="511" y="617" />
-        <di:waypoint x="511" y="897" />
-        <di:waypoint x="636" y="897" />
+        <di:waypoint x="511" y="752" />
+        <di:waypoint x="636" y="752" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="541" y="864" width="65" height="28" />
+          <dc:Bounds x="541" y="719" width="65" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_stored_readyOpen" bpmnElement="f_stored_readyOpen">
@@ -358,10 +377,10 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_stored_testOpen" bpmnElement="f_stored_testOpen">
         <di:waypoint x="511" y="617" />
-        <di:waypoint x="511" y="1158" />
-        <di:waypoint x="636" y="1158" />
+        <di:waypoint x="511" y="1188" />
+        <di:waypoint x="636" y="1188" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="516" y="1021" width="54" height="14" />
+          <dc:Bounds x="516" y="963" width="54" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_stored_endOther" bpmnElement="f_stored_endOther">
@@ -372,68 +391,69 @@
           <dc:Bounds x="516" y="240" width="34" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_completed_endTodo" bpmnElement="f_completed_endTodo">
-        <di:waypoint x="1147" y="617" />
-        <di:waypoint x="1147" y="897" />
-        <di:waypoint x="1304" y="897" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1153" y="750" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_todoLeft_readyJoin" bpmnElement="f_todoLeft_readyJoin">
+      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_endTodo" bpmnElement="f_todoOpen_endTodo">
         <di:waypoint x="1497" y="617" />
         <di:waypoint x="1497" y="752" />
-        <di:waypoint x="1622" y="752" />
+        <di:waypoint x="1654" y="752" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1503" y="678" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_left_readyJoin" bpmnElement="f_left_readyJoin">
-        <di:waypoint x="661" y="922" />
-        <di:waypoint x="661" y="935" />
-        <di:waypoint x="1622" y="935" />
-        <di:waypoint x="1622" y="797" />
-        <di:waypoint x="1647" y="797" />
-        <di:waypoint x="1647" y="777" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_left_sync" bpmnElement="f_left_sync">
+        <di:waypoint x="661" y="777" />
+        <di:waypoint x="661" y="912" />
+        <di:waypoint x="786" y="912" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1547" y="852" width="70" height="28" />
+          <dc:Bounds x="666" y="841" width="70" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endNoneDone" bpmnElement="f_left_endNoneDone">
-        <di:waypoint x="661" y="922" />
-        <di:waypoint x="661" y="935" />
-        <di:waypoint x="1685" y="935" />
-        <di:waypoint x="1685" y="454" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endDropped" bpmnElement="f_left_endDropped">
+        <di:waypoint x="661" y="777" />
+        <di:waypoint x="661" y="797" />
+        <di:waypoint x="1878" y="797" />
+        <di:waypoint x="1878" y="454" />
         <di:waypoint x="854" y="454" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1599" y="940" width="70" height="28" />
+          <dc:Bounds x="1235" y="802" width="70" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_toReady" bpmnElement="f_conflict_toReady">
+        <di:waypoint x="1011" y="887" />
+        <di:waypoint x="1011" y="752" />
+        <di:waypoint x="1136" y="752" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1017" y="813" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_endReadyStays" bpmnElement="f_readyOpen_endReadyStays">
-        <di:waypoint x="661" y="341" />
-        <di:waypoint x="661" y="361" />
-        <di:waypoint x="1692" y="361" />
-        <di:waypoint x="1692" y="1020" />
-        <di:waypoint x="854" y="1020" />
+        <di:waypoint x="661" y="291" />
+        <di:waypoint x="661" y="278" />
+        <di:waypoint x="699" y="278" />
+        <di:waypoint x="699" y="140" />
+        <di:waypoint x="130" y="140" />
+        <di:waypoint x="130" y="1233" />
+        <di:waypoint x="1049" y="1233" />
+        <di:waypoint x="1049" y="1050" />
+        <di:waypoint x="854" y="1050" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1168" y="339" width="18" height="14" />
+          <dc:Bounds x="406" y="118" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_endTestStays" bpmnElement="f_testOpen_endTestStays">
-        <di:waypoint x="661" y="1183" />
-        <di:waypoint x="661" y="1296" />
-        <di:waypoint x="818" y="1296" />
+        <di:waypoint x="661" y="1213" />
+        <di:waypoint x="661" y="1326" />
+        <di:waypoint x="818" y="1326" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="667" y="1233" width="18" height="14" />
+          <dc:Bounds x="667" y="1263" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_readyJoin_toReady" bpmnElement="f_readyJoin_toReady">
-        <di:waypoint x="1672" y="752" />
-        <di:waypoint x="1772" y="752" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_sync_conflict" bpmnElement="f_sync_conflict">
+        <di:waypoint x="886" y="912" />
+        <di:waypoint x="986" y="912" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_toReady_endReady" bpmnElement="f_toReady_endReady">
-        <di:waypoint x="1872" y="752" />
-        <di:waypoint x="1972" y="752" />
+        <di:waypoint x="1236" y="752" />
+        <di:waypoint x="1336" y="752" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

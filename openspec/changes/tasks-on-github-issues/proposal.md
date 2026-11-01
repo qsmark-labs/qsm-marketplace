@@ -1,6 +1,7 @@
-![After the move: who talks to the task store, C4 containers](models/task-store.containers.svg)
+![After the move: who talks to the task store, C4
+containers](models/task-store.containers.drawio.svg)
 
-![C4 context](models/task-store.context.svg)
+![C4 context](models/task-store.context.drawio.svg)
 
 ## Why
 
@@ -17,8 +18,9 @@ picture above shows.
   definitions instead of copying them.
 - **The model in GitHub's terms**: a feature (issue type Feature) holds the intent, the models and
   the spec, bound by the label `change:<id>`; its tasks are sub-issues created when the owner and
-  the agent split it, each closed by the merge of its pull request into `feature/<n>`; the
-  owner's merge of the feature pull request into main closes the feature. No test-it task, no
+  the agent split it, each closed by the merge of its pull request into `feature/<n>`; QA's
+  verdict is a note that starts `QA passed`, after which the change is archived on the branch;
+  the owner's merge of the feature pull request into main closes the feature. No test-it task, no
   tasks.md, no `accept`.
 - **Feedback** is filed by `qsm-tasks feedback` into its own issue type, never by an issue number.
 - **The readers of `br` go**: the worktree redirect, the task lines of `orient`, the cockpit's

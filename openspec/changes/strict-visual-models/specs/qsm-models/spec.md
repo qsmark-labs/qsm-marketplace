@@ -66,10 +66,10 @@ already has geometry.
 
 ### Requirement: render commits a picture beside every source
 
-`render` SHALL write `<name>.svg` beside each BPMN file, and for a C4 source one SVG per generated
-view (`<name>.context.svg`, `<name>.containers.svg`, `<name>.components.svg` when they exist) and
-one `<name>.drawio` whose shapes carry draw.io's C4 attributes. `render --check` SHALL write nothing
-and exit `worse` naming each output that differs from what it would write.
+`render` SHALL write `<name>.svg` beside each BPMN file, and for a C4 source one
+`<name>.<level>.drawio.svg` per generated view: the picture, with the view's draw.io diagram, its
+shapes carrying draw.io's C4 attributes, in the root element's `content` attribute. `render
+--check` SHALL write nothing and exit `worse` naming each output that differs.
 
 #### Scenario: A model changed and its SVG did not (path p-95e6fc)
 
@@ -82,18 +82,20 @@ and exit `worse` naming each output that differs from what it would write.
 - **WHEN** the agent looks at a rendered SVG and a label is cut or two shapes overlap
 - **THEN** it changes the model and renders again before the model reaches a spec
 
-### Requirement: paths lists the scenarios QA must cover
+### Requirement: paths lists the cover of a process
 
-`paths <file.bpmn>` SHALL walk every path from a start to an end event, each flow taken at most
-twice, and print the fewest paths it finds that together take every flow, each with an id that is a
-hash of its flows and the answers it takes. `--all` SHALL print every path. With `--specs <dir>` it
-SHALL exit `worse` naming each printed path no scenario cites and each cited id that does not exist.
+A path SHALL run from a start to an end event taking each flow at most twice, so each loop goes
+round at most once; its id SHALL be `p-` and the first six hex digits of the SHA-256 of its flow
+ids joined by spaces. The cover SHALL be built by taking, until every flow is taken, the path that
+adds the most flows not yet taken, a tie going to the fewer flows, then the lowest id. `paths`
+SHALL print the cover, `--all` every path; `--specs <dir>` SHALL exit `worse` per cover path no
+scenario cites and per cited id that does not exist.
 
-#### Scenario: Every path is cited
+#### Scenario: Every cover path is cited
 
-- **WHEN** `paths flow.bpmn --specs specs/` runs on a change whose scenarios cite the seven ids of
+- **WHEN** `paths flow.bpmn --specs specs/` runs on a change whose scenarios cite the four ids of
   its cover
-- **THEN** it prints the seven paths and exits `ok`
+- **THEN** it prints the four paths and exits `ok`, the same ids on every run
 
 #### Scenario: A path with no end
 
@@ -106,6 +108,7 @@ SHALL exit `worse` naming each printed path no scenario cites and each cited id 
 two internal containers that the source's `plugin.json` does not declare as a dependency, a
 declared dependency with no relation, and a generated `.dependency-cruiser.models.cjs` that differs
 from the model. `check --write` SHALL regenerate that file, one allowed rule per component relation.
+The generator is proved before the first task that depends on it (design, Verify 1).
 
 #### Scenario: The model and the manifest disagree
 

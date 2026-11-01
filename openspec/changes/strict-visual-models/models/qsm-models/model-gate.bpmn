@@ -73,7 +73,7 @@
       <bpmn:incoming>f_specJoin_paths</bpmn:incoming>
       <bpmn:outgoing>f_paths_covered</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="covered" name="Every path cited?">
+    <bpmn:exclusiveGateway id="covered" name="Every cover path cited?">
       <bpmn:incoming>f_paths_covered</bpmn:incoming>
       <bpmn:outgoing>f_covered_scenario</bpmn:outgoing>
       <bpmn:outgoing>f_covered_commit</bpmn:outgoing>
@@ -184,7 +184,7 @@
       <bpmndi:BPMNShape id="BPMNShape_covered" bpmnElement="covered" isMarkerVisible="true">
         <dc:Bounds x="1886" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1875" y="142" width="73" height="28" />
+          <dc:Bounds x="1871" y="142" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_scenario" bpmnElement="scenario">

@@ -30,6 +30,7 @@ model {
     }
   }
   owner -> github 'reads the board, merges PRs'
+  owner -> mp.cockpit 'watches the loop in'
   agent -> mp.tasks 'reads, creates and moves tasks with'
   agent -> mp.memory 'starts a session with'
   agent -> mp.worktrunk 'makes a worktree with'

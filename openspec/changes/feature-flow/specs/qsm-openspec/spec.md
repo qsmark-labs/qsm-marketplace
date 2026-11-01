@@ -2,11 +2,11 @@
 
 ### Requirement: spec-propose creates an apply-ready change
 
-Triggered by a request to propose a change, write a spec for a feature, or turn a settled
-brainstorm into a plan, spec-propose SHALL write a change on the feature schema: a one-screen
-proposal, the models (BPMN and C4, linted and rendered), delta specs whose scenarios cite the
-paths, and a design of decisions and critiques. It SHALL write no task list. It SHALL go back to
-grilling on an open decision, edit no code, and name the split as next only after the owner's yes.
+Triggered by a request to propose a change, write a spec for a feature, or turn a settled brainstorm
+into a plan, spec-propose SHALL write a change on the feature schema: a one-screen proposal, the
+models (BPMN and C4, linted and rendered), delta specs whose scenarios cite the paths, and a design
+of decisions and critiques. It SHALL write no task list, go back to grilling on an open decision,
+edit no code, and open the change as a pull request to main for the owner's yes.
 
 #### Scenario: Settled brainstorm becomes a proposal
 
@@ -14,13 +14,12 @@ grilling on an open decision, edit no code, and name the split as next only afte
   already resolved
 - **THEN** spec-propose SHALL create the proposal, the models, the delta specs and the design, no
   tasks.md, and SHALL NOT mark the change apply-ready until every required artifact and critique
-  pass is present, and SHALL name the split as the next step once the person has said yes
+  pass is present, and SHALL name the split as the next step once the owner merged the change
 
 #### Scenario: Code does not start without the person's yes
 
-- **WHEN** the change is apply-ready and the person has not yet said yes to
-  the proposal, the models and the specs
-- **THEN** spec-propose SHALL ask for the yes and SHALL NOT hand to the split
+- **WHEN** the change is apply-ready and the owner has not merged its pull request
+- **THEN** spec-propose SHALL NOT hand to the split
 
 #### Scenario: An open decision sends it back to grilling
 
@@ -31,7 +30,7 @@ grilling on an open decision, edit no code, and name the split as next only afte
 
 #### Scenario: A path no scenario cites
 
-- **WHEN** the model tool lists a path of the change's BPMN that no scenario cites
+- **WHEN** the model tool lists a cover path of the change's BPMN that no scenario cites
 - **THEN** spec-propose SHALL write the scenario or change the model before calling the change
   apply-ready
 
@@ -81,3 +80,21 @@ and code in the same move.
 - **THEN** spec-propose SHALL name that task and the decision, and the main agent SHALL file a fix
   task under the feature rather than leave the merged work standing against a plan it no longer
   matches
+
+### Requirement: Dependencies
+
+qsm-openspec SHALL declare `qsm-essentials`, `qsm-tasks`, `qsm-models` and `qsm-forge` in the
+`dependencies` array of its plugin.json, each for one reason, and SHALL have no fallback for any.
+
+- `qsm-essentials`: the core; spec-apply hands disjoint work to its subagents skill.
+- `qsm-tasks`: serves the task port, where a change is bound to its feature.
+- `qsm-models`: spec-propose lints, renders and walks the change's models.
+- `qsm-forge`: spec-apply opens the task's pull request into `feature/<n>`.
+
+qsm-openspec SHALL NOT depend on `qsm-plan`: the flow calls the spec port, never the reverse.
+
+#### Scenario: The plugin is installed
+
+- **WHEN** the plugin is installed
+- **THEN** `claude plugin install` installs `qsm-essentials`, `qsm-tasks`, `qsm-models` and
+  `qsm-forge` with it
