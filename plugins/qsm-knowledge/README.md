@@ -1,17 +1,17 @@
 # qsm-knowledge
 
-Grounded knowledge work for one person: a NotebookLM notebook holds your sources and answers with
+Grounded knowledge work for one person: a Gemini Notebook holds your sources and answers with
 citations, and a markdown vault holds the notes you write from those answers.
 
 ## Why it exists
 
 Knowledge gathered in one session is lost by the next, because the conversation's memory ends with
 the session and a web search returns pages nobody can reopen as a set. qsm-knowledge puts it where
-it can be asked and cited: NotebookLM holds the sources and answers with citations, the Obsidian
-vault holds the notes written from those answers. It takes the stance that a note is worth writing
-only when it is grounded in a source someone can open. It refuses to be a scratchpad, a bookmark
-pile, or a second memory for the agent. When a session can be grounded in our sources without either
-tool, this plugin has no reason to exist.
+it can be asked and cited: Gemini Notebook holds the sources and answers with citations, the
+Obsidian vault holds the notes written from those answers. It takes the stance that a note is worth
+writing only when it is grounded in a source someone can open. It refuses to be a scratchpad, a
+bookmark pile, or a second memory for the agent. When a session can be grounded in our sources
+without either tool, this plugin has no reason to exist.
 
 ## What you get
 
