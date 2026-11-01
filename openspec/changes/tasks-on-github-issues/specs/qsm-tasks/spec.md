@@ -4,10 +4,7 @@
 
 The `task-tool` skill SHALL state the model in GitHub's terms: a feature is an issue of type
 `Feature` bound to its change by `change:<change-id>`; a task is a sub-issue of type `Task`,
-created at the split and closed by the Action when its pull request merges into `feature/<n>` with
-`Closes #<n>`, or by `close --reason` when no pull request exists. No task SHALL be created at
-planning, and no test-it task SHALL exist. Only the owner's merge of the feature pull request into
-main SHALL close a feature.
+created at the split. No task SHALL be created at planning, and no test-it task SHALL exist.
 
 #### Scenario: A feature is planned, then split
 
@@ -15,16 +12,30 @@ main SHALL close a feature.
 - **THEN** feature 3 carries `change:<change-id>`, its tasks carry none, no test-it task exists,
   and feature 3 is In Dev from its first task
 
+#### Scenario: A fix
+
+- **WHEN** the work is a fix
+- **THEN** the agent creates neither a feature nor a task, and the commit message carries the why
+
+### Requirement: A task closes when its pull request merges into the feature branch
+
+The Action SHALL close a task when its pull request merges into `feature/<n>` with `Closes #<n>`;
+`close --reason` SHALL close it when no pull request exists.
+
+#### Scenario: A task without a pull request
+
+- **WHEN** a task is done with no pull request and the agent runs `close 12 --reason "no change"`
+- **THEN** task 12 is closed with the reason as a comment
+
+### Requirement: Only the owner's merge closes a feature
+
+Only the owner's merge of the feature pull request into main SHALL close a feature.
+
 #### Scenario: The last task closes
 
 - **WHEN** the last open sub-issue of a feature closes
 - **THEN** the agent does not close the feature, and its reply says the feature waits for the
   update from main and then for QA
-
-#### Scenario: A fix
-
-- **WHEN** the work is a fix
-- **THEN** the agent creates neither a feature nor a task, and the commit message carries the why
 
 ### Requirement: GitHub Issues is the task tool, reached through the qsm-tasks verbs only
 
@@ -88,7 +99,7 @@ the owner's name, naming no agent or AI.
 
 **Reason**: A feature closes on the owner's merge of the feature pull request; there is no test-it.
 
-**Migration**: "A feature holds the intent and the change, its tasks are its pull requests".
+**Migration**: "Only the owner's merge closes a feature".
 
 ### Requirement: One skill names br
 
