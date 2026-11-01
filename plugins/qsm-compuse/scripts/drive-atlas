@@ -8,6 +8,8 @@
 #   hypr FILE               the Hyprland lua config the nested desktop reads
 #   mock FILE               recorded readings the shell shows instead of live ones (DRIVE_MOCK)
 #   settle SECONDS          the pause after each step (default 0.6)
+#   ready SECONDS           the pause after the shell answers, before the first step (default 1);
+#                           raise it past the timers a shell starts with
 #   check CMD               the consumer's laws, run after every shot (see atlas_check)
 #   journey NAME            starts a journey; the steps below belong to it
 # Steps: the route steps (move-to X Y, hover-wait MS, press, release, click, key COMBO, wheel DY),
@@ -33,7 +35,7 @@ atlas_path() { printf '%s\n' "${1/#\~/$HOME}"; }
 # The scenario's settings as NAME=VALUE lines; they end at the first journey, whose own steps
 # share some of their names (mock).
 atlas_settings() {
-  awk '$1 == "journey" { exit } $1 ~ /^(desktop|hypr|mock|settle|check)$/ { k = $1; $1 = ""; sub(/^ /, ""); print k "=" $0 }' "$1"
+  awk '$1 == "journey" { exit } $1 ~ /^(desktop|hypr|mock|settle|ready|check)$/ { k = $1; $1 = ""; sub(/^ /, ""); print k "=" $0 }' "$1"
 }
 
 # The steps of one journey, without indentation or comments.
@@ -135,14 +137,14 @@ atlas_check() {
 
 # One journey in a fresh desktop slot; prints "journey<TAB>shot<TAB>step<TAB>still<TAB>fails" per shot.
 atlas_journey() {
-  local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" check="$6" n line name still fails
+  local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line name still fails
   local -a steps
-  shift 6
+  shift 7
   slot_start "$slot" "$@" >/dev/null
   export DRIVE_SLOT="$slot"
   slot_load "$slot"
   atlas_wait_shell "$slot"
-  sleep 1
+  sleep "$ready"
   mapfile -t steps < <(atlas_steps "$scenario" "$journey")
   for ((n = 0; n < ${#steps[@]}; n++)); do
     line="${steps[n]}"
@@ -174,7 +176,7 @@ atlas_journey() {
 
 # A run is built under a dot name and renamed when it completes, so a failed run is never a baseline.
 atlas_run() {
-  local scenario="${1:-}" desktop="" hypr="" mock="" check="" settle=0.6 opt dir id run slot journey prev failed
+  local scenario="${1:-}" desktop="" hypr="" mock="" check="" settle=0.6 ready=1 opt dir id run slot journey prev failed
   local -a start
   [[ -f "$scenario" ]] || die "atlas run needs a SCENARIO file"
   while IFS= read -r opt; do printf -v "${opt%%=*}" '%s' "${opt#*=}"; done < <(atlas_settings "$scenario")
@@ -184,6 +186,10 @@ atlas_run() {
   check="$(atlas_path "$check")"
   [[ -n "$desktop" ]] || die "the scenario names no desktop"
   [[ -n "$(atlas_journeys "$scenario")" ]] || die "the scenario has no journey"
+  # A pause that sleep refuses would be no pause at all, and the race it covers would pass.
+  for opt in settle ready; do
+    [[ "${!opt}" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "$opt needs SECONDS, a number: '${!opt}'"
+  done
   dir="$ATLAS_ROOT/$(basename "${scenario%.*}")"
   prev="$(atlas_runs "$dir" | tail -1)"
   id="$(date +%Y%m%d-%H%M%S)-$(printf '%04x' "$RANDOM")"
@@ -198,7 +204,7 @@ atlas_run() {
   trap 'slot_kill "'"$slot"'" 2>/dev/null; rm -rf "'"$run"'"' EXIT
   for journey in $(atlas_journeys "$scenario"); do
     printf 'journey %s\n' "$journey" >&2
-    atlas_journey "$scenario" "$journey" "$run" "$slot" "$settle" "$check" "${start[@]}" >>"$run/shots.tsv"
+    atlas_journey "$scenario" "$journey" "$run" "$slot" "$settle" "$ready" "$check" "${start[@]}" >>"$run/shots.tsv"
   done
   trap - EXIT
   command mv "$run" "$dir/$id"
