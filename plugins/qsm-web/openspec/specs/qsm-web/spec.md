@@ -346,14 +346,15 @@ and never jump. A mouse step SHALL name one target: a point in the window
 tab's cursor to (the top-left corner before any; a person's moves in the live
 view are not seen), with an optional `click` there. A target outside the page's
 visible area, scrollbars excluded, SHALL be held at its edge. A click step SHALL
-click the first element its selector matches, at the centre of its box, and
-leave the cursor there.
+click the first element its selector matches at a random point of its box,
+most often near the middle and never on its outer tenth, report that point,
+and leave the cursor there.
 
 #### Scenario: A relative mouse move starts where the cursor is
 
 - **WHEN** a script clicks an element, then runs a mouse step with `dx` and `dy`
-- **THEN** the cursor SHALL travel from the element's centre to that centre
-  plus the offset, along a path of many points, and the step SHALL report
+- **THEN** the cursor SHALL travel from the point the click landed on to that
+  point plus the offset, along a path of many points, and the step SHALL report
   where it ended
 
 #### Scenario: A mouse step without one whole target is refused

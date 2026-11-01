@@ -14,6 +14,7 @@ included, follows a recorded human path inside the browser.
 from __future__ import annotations
 
 import logging
+import random
 import time
 import weakref
 from collections.abc import Callable, Mapping, Sequence
@@ -82,8 +83,22 @@ _cursor: weakref.WeakKeyDictionary[Page, tuple[float, float]] = (
 )
 
 
+_rng = random.SystemRandom()
+
+
+def _near_centre(size: float) -> float:
+    """Pick a point along one side of a box, where a hand lands.
+
+    Most often near the middle, never the same twice, never the outer tenth.
+    """
+    return min(max(_rng.gauss(size / 2, size / 6), size * 0.1), size * 0.9)
+
+
 def _click(page: Page, step: Step) -> Outcome:
-    """Click the first match at the centre of its box, the point the cursor is left at."""
+    """Click the first match at a random point near the middle of its box.
+
+    The cursor is left at that point.
+    """
     selector = _text(step, "selector")
     target = page.locator(selector).first
     target.wait_for(state="visible", timeout=_timeout(step))
@@ -95,11 +110,12 @@ def _click(page: Page, step: Step) -> Outcome:
     # A click position counts from inside the element's border, the box
     # from outside it, so the border's width is taken off.
     left, top = target.evaluate("e => [e.clientLeft, e.clientTop]")
-    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-    centre: Position = {"x": x - box["x"] - left, "y": y - box["y"] - top}
-    target.click(position=centre, timeout=_timeout(step))
+    x = box["x"] + _near_centre(box["width"])
+    y = box["y"] + _near_centre(box["height"])
+    point: Position = {"x": x - box["x"] - left, "y": y - box["y"] - top}
+    target.click(position=point, timeout=_timeout(step))
     _cursor[page] = (x, y)
-    return {"selector": selector, "url": page.url}
+    return {"selector": selector, "x": x, "y": y, "url": page.url}
 
 
 def _mouse(page: Page, step: Step) -> Outcome:
