@@ -388,6 +388,14 @@ one tab waits, other tabs and instances SHALL stay usable.
   with no browser to open, it SHALL fail naming that address and how to read
   the password
 
+#### Scenario: The browser fills the live view
+
+- **WHEN** a script opens the instance's first page, and later when the live
+  view's tab is resized
+- **THEN** the browser window SHALL fill the instance's display, which follows
+  the size of the live view's tab, so the person sees the whole page and not
+  a part of a larger window
+
 #### Scenario: Human clears the wall
 
 - **WHEN** an agent arms takeover on a blocked tab and a human solves the

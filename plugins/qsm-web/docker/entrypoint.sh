@@ -80,8 +80,10 @@ xrandr --addmode screen 1280x800
 xrandr --output screen --mode 1280x800
 
 # Camoufox sizes its own window after the window manager placed it, so a window manager rule does
-# not hold. Maximize every window when a window is mapped, resized or moved and when the display is
-# resized: all are X events, so the watcher sleeps between them. A window already maximized is left
+# not hold. Maximize every window when a window is mapped, resized or moved, when the display is
+# resized, and when the root window's properties change: all are X events, so the watcher sleeps
+# between them. The property change matters because a new window is configured before openbox lists
+# it in _NET_CLIENT_LIST, so the configure event alone finds nothing to fit, and nothing follows. A window already maximized is left
 # alone, so the watcher's own change raises no further work. A window that vanishes between the
 # list and the call is not an error: the next event fits what is left.
 fit_windows() {
@@ -96,10 +98,10 @@ main_pid=$$
 exec 3>&2
 (
   set +e
-  stdbuf -oL xev -root -event randr -event substructure \
+  stdbuf -oL xev -root -event randr -event substructure -event property \
     | while read -r line; do
       case "$line" in
-        RRScreenChangeNotify* | ConfigureNotify*) sleep 0.3 && fit_windows ;;
+        RRScreenChangeNotify* | ConfigureNotify* | PropertyNotify*) sleep 0.3 && fit_windows ;;
         *) ;;
       esac
     done

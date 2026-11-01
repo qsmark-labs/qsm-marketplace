@@ -43,10 +43,6 @@ assert v < (1, 60), f"playwright {version('playwright')} needs a pin below 1.60"
 print("playwright pin holds:", version("playwright"))
 PY
 
-COPY driver/ /opt/driver/
-COPY entrypoint.sh /opt/entrypoint.sh
-RUN chmod +x /opt/entrypoint.sh
-
 # The entrypoint runs as whatever user the instance is started as, the host user's own uid, so a
 # file written to /out (bind-mounted from the host) is the host user's. /run is writable by any
 # user: the driver's socket and the live-view token live there. The browser cache belongs to box
@@ -56,5 +52,10 @@ RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin box \
 USER box
 
 RUN camoufox fetch
+
+# Our own files come last, so a change to the driver or the entrypoint rebuilds only these two
+# layers, not the browser download above. The entrypoint keeps its executable bit from git.
+COPY driver/ /opt/driver/
+COPY entrypoint.sh /opt/entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/opt/entrypoint.sh"]
