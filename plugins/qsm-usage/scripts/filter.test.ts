@@ -31,8 +31,8 @@ interface Answer {
   deny: string | null;
 }
 
-function ask(filterBin: string, command: string, subagent = false): Answer {
-  const args = ["filter", "--command", command, ...(subagent ? ["--subagent"] : []), "--json"];
+function ask(filterBin: string, command: string): Answer {
+  const args = ["filter", "--command", command, "--json"];
   const ran = runBin(CLI, args, {
     env: isolatedEnv(sandboxDir("qsm-usage-home-"), { QSM_FILTER_BIN: filterBin }),
   });
@@ -43,7 +43,7 @@ function ask(filterBin: string, command: string, subagent = false): Answer {
   return envelope.data;
 }
 
-const REWRITE = '{"hookSpecificOutput":{"updatedInput":{"command":"rtk git status"}}}';
+const REWRITE = '{"hookSpecificOutput":{"updatedInput":{"command":"rtk ls -la"}}}';
 const NOTHING: Answer = { command: null, deny: null };
 
 describe("qsm-usage filter", () => {
@@ -53,8 +53,8 @@ describe("qsm-usage filter", () => {
 
   test("answers with the command the filter rewrote it to", () => {
     const { bin, capture } = stubFilter(0, REWRITE);
-    expect(ask(bin, "git status")).toEqual({ command: "rtk git status", deny: null });
-    expect(readFileSync(capture, "utf8")).toContain('"command":"git status"');
+    expect(ask(bin, "ls -la")).toEqual({ command: "rtk ls -la", deny: null });
+    expect(readFileSync(capture, "utf8")).toContain('"command":"ls -la"');
     expect(readFileSync(capture, "utf8")).toContain('"tool_name":"Bash"');
   });
 
@@ -87,22 +87,10 @@ describe("qsm-usage filter", () => {
     expect(readFileSync(argsFile, "utf8").trim().split("\n")).toEqual([...FILTER_HOOK_ARGS]);
   });
 
-  test("a subagent's git command never reaches the filter", () => {
+  test("a git command never reaches the filter, so a worktree-isolated session can push", () => {
     const { bin, capture } = stubFilter(0, REWRITE);
-    expect(ask(bin, "git branch --show-current", true)).toEqual(NOTHING);
+    expect(ask(bin, "git push origin main")).toEqual(NOTHING);
     expect(() => readFileSync(capture, "utf8")).toThrow();
-  });
-
-  test("a subagent's non-git command still reaches the filter", () => {
-    const { bin, capture } = stubFilter(0);
-    ask(bin, "echo hello", true);
-    expect(readFileSync(capture, "utf8")).toContain('"command":"echo hello"');
-  });
-
-  test("a main-thread git command still reaches the filter", () => {
-    const { bin, capture } = stubFilter(0);
-    ask(bin, "git branch --show-current");
-    expect(readFileSync(capture, "utf8")).toContain('"command":"git branch --show-current"');
   });
 
   test("a command that redirects stdout to a file never reaches the filter", () => {

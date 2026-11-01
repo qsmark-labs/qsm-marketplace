@@ -22,7 +22,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   toonDecode: { words: ["qsm-usage","toon","decode"], args: [{ name: "file", flag: null }] },
   toonSize: { words: ["qsm-usage","toon","size"], args: [{ name: "file", flag: null }, { name: "frontmatter", flag: "--frontmatter", boolean: true }, { name: "table", flag: "--table", boolean: true }, { name: "section", flag: "--section" }] },
   toonWrap: { words: ["qsm-usage","toon","wrap"], args: [{ name: "stdin", flag: "--stdin", boolean: true }] },
-  filter: { words: ["qsm-usage","filter"], args: [{ name: "command", flag: "--command" }, { name: "subagent", flag: "--subagent", boolean: true }] },
+  filter: { words: ["qsm-usage","filter"], args: [{ name: "command", flag: "--command" }] },
   doctor: { words: ["qsm-usage","doctor"], args: [] },
   count: { words: ["qsm-usage","count"], args: [{ name: "files", flag: null }, { name: "stdin", flag: "--stdin", boolean: true }, { name: "total", flag: "--total", boolean: true }, { name: "mode", flag: "--mode" }, { name: "model", flag: "--model" }] },
   drop: { words: ["qsm-usage","drop"], args: [{ name: "key", flag: null }] },

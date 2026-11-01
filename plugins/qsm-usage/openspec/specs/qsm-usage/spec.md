@@ -457,24 +457,28 @@ without a table SHALL exit non-zero with the reason on stderr and nothing on std
 
 ### Requirement: Shell output is filtered when the filter is present
 
-The hooks module's `tool.call` hook on the Bash tool SHALL ask `qsm-usage filter`, which routes
-the call through the command output filter when it is on PATH (`QSM_FILTER_BIN` names another):
-the filter's rewritten command is the command the tool runs, its refusal (exit 2) refuses the
-call, and an absent or failing filter lets the call through unfiltered and unblocked. The verb
-SHALL NOT route a subagent's git command through the
-filter, because the filter's rewrite hands the filter binary a git operand, which the harness's
-worktree-isolation guard refuses inside a subagent regardless of whether that subagent is
-isolated. The verb SHALL NOT route a command one of whose segments starts with `git log`, `grep` or
-`find` through the filter, because the filter changes what their output says: its `git log` drops
-merge commits, its `grep` searches in another regex dialect, and its `find` folds paths into a
-tree, so an agent reading the filtered output draws a wrong conclusion. The installer SHALL NOT
-fetch the filter; it SHALL report the install command at the pinned upstream revision, and the
-documentation SHALL warn that the bare crates.io name installs an unrelated package.
+The hooks module's `tool.call` hook on the Bash tool SHALL ask `qsm-usage filter`, which routes the
+call through the command output filter when it is on PATH (`QSM_FILTER_BIN` names another): the
+filter's rewritten command is the command the tool runs, its refusal (exit 2) refuses the call, and
+an absent or failing filter lets the call through unfiltered and unblocked. The verb SHALL NOT route
+a git command through the filter, because the filter's rewrite hands the filter binary a git
+operand, which the harness's worktree-isolation guard refuses in every session or subagent working
+in a worktree, and every session works in one. The verb SHALL NOT route a command one of whose
+segments starts with `grep` or `find` through the filter, because the filter changes what their
+output says: its `grep` searches in another regex dialect and its `find` folds paths into a tree, so
+an agent reading the filtered output draws a wrong conclusion. The installer SHALL NOT fetch the
+filter; it SHALL report the install command at the pinned upstream revision, and the documentation
+SHALL warn that the bare crates.io name installs an unrelated package.
+
+#### Scenario: A git command in a worktree session
+
+- **WHEN** a session that moved into its worktree with EnterWorktree runs `git push origin main`
+- **THEN** the call runs as written and the worktree-isolation guard lets it through
 
 #### Scenario: A command whose meaning the filter changes
 
-- **WHEN** the main agent runs `git log --oneline -6` on a branch whose newest commit is a merge
-- **THEN** the call runs as written and its output lists the merge commit
+- **WHEN** the main agent runs `grep -n 'a\|b' notes.txt`
+- **THEN** the call runs as written and its output lists the lines holding `a` or `b`
 
 #### Scenario: Filter missing at call time
 
