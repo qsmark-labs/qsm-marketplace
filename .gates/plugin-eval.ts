@@ -11,7 +11,6 @@
 // A case whose files, and the plugin's skills/agents/instructions, are unchanged since it last met
 // the bar is not run again; `--force` runs everything. `--case` or `--tag` from the caller runs
 // one plain call with the caller's flags and skips nothing.
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -319,6 +318,23 @@ const todo = all.filter((c) => !skipped.includes(c));
 
 const copy = mkdtempSync(join(tmpdir(), `eval-${name}-`));
 let code = 0;
+// A stopped run removes its copy too. The eval runs as a child the event loop awaits, so a signal
+// reaches this handler instead of killing the process past the `finally` below. The handler only
+// stops the child and marks the run: the main flow wakes when the child has exited (an interrupted
+// eval still writes its partial report into the copy), starts no further call, records nothing,
+// removes the copy and exits 128 plus the signal's number.
+let running: Bun.Subprocess | undefined;
+let stoppedBy = 0;
+function stop(signal: "SIGTERM" | "SIGINT", number: number): void {
+  stoppedBy = 128 + number;
+  running?.kill(signal);
+}
+process.on("SIGTERM", () => {
+  stop("SIGTERM", 15);
+});
+process.on("SIGINT", () => {
+  stop("SIGINT", 2);
+});
 try {
   cpSync(plugin, copy, { recursive: true });
   const manifestPath = join(copy, ".claude-plugin", "plugin.json");
@@ -356,10 +372,18 @@ try {
   const results = join(copy, "evals", "results");
   const seen = new Set(existsSync(results) ? readdirSync(results) : []);
   for (const call of calls) {
-    const run = spawnSync("claude", ["plugin", "eval", copy, ...defaults, ...call, ...flags], {
-      stdio: "inherit",
+    if (stoppedBy !== 0) {
+      break;
+    }
+    running = Bun.spawn(["claude", "plugin", "eval", copy, ...defaults, ...call, ...flags], {
+      stdio: ["inherit", "inherit", "inherit"],
     });
-    code = code || (run.status ?? 1);
+    code = code || (await running.exited);
+  }
+  // A stopped run judged nothing: no verdict, no copied results, no hash for the next skip.
+  if (stoppedBy !== 0) {
+    rmSync(copy, { recursive: true, force: true });
+    process.exit(stoppedBy);
   }
   const fresh = (existsSync(results) ? readdirSync(results) : [])
     .filter((d) => !seen.has(d) && existsSync(join(results, d, "aggregate-result.json")))
