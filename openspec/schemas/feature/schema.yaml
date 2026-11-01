@@ -1,0 +1,60 @@
+---
+name: feature
+version: 1
+description: A feature of the qsm flow - proposal, models, specs, design; its tasks live on GitHub
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: One screen - why, what, what not, the owner's decisions
+    template: proposal.md
+    instruction: |
+      One screen, read first. Open with the models: link each SVG of models/ as an image,
+      then the summary. Sections: Why (the business need in at most five sentences), What
+      (bullets of what the owner sees change), Not in this feature, Decisions of the owner
+      (dated, quoted). No SHALL text, no design, no tasks. A stub holds Why, What and Open
+      decisions only and says it is a stub in its first line.
+    requires: []
+  - id: models
+    generates: "models/*.svg"
+    description: BPMN for behaviour, C4 for structure, each source with its SVG beside it
+    template: models.md
+    instruction: |
+      Behaviour is a BPMN process (models/<name>.bpmn), structure a C4 model. Write them with the
+      model tool: lint clean, rendered, the SVG committed beside the source and looked at.
+      Lanes are actors of the C4 model. Run the model tool's paths verb: every path it lists is
+      a blackbox scenario QA will run, and the specs cite it.
+    requires:
+      - proposal
+  - id: specs
+    generates: "specs/**/*.md"
+    description: SHALL requirements and scenarios; scenarios cite the BPMN paths they cover
+    template: spec.md
+    instruction: |
+      Delta specs as in spec-driven: ADDED, MODIFIED, REMOVED requirements, SHALL text, every
+      requirement with a scenario of four hashes, a description of 500 characters or less.
+      A scenario that walks a BPMN path names it in its title, as "(path p-xxxxxx)". Every path
+      of the cover is cited by at least one scenario; a scenario may also check a detail below
+      the process level and cite no path.
+    requires:
+      - proposal
+      - models
+  - id: design
+    generates: design.md
+    description: Decisions only - each with its options, the choice, the reason, the tripwire
+    template: design.md
+    instruction: |
+      Decisions only: context in three sentences, then one numbered decision each with the
+      options (doing nothing included), the choice, the reason and what reopens it. Then the
+      critiques (devil's advocate, future archaeologist, scope sniper), each fixed or waived
+      with its reason. Never restate the spec. No tasks: they are created on the board when the
+      feature is split, and a task's plan is the whiteboard of the session that builds it.
+    requires:
+      - specs
+apply:
+  requires:
+    - design
+  tracks: null
+  instruction: |
+    A feature is never applied as one piece. It is split on the board into tasks, sub-issues of
+    the feature, each a pull request a person can review, merged into feature/<n>. Build one task
+    per session: read the feature, its models and specs, then the task.
