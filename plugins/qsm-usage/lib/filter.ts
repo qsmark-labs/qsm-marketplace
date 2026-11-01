@@ -5,9 +5,10 @@ import { isPlainObject } from "./toon-scalar.ts";
 
 const FILTER_REPO = "https://github.com/rtk-ai/rtk";
 
-const FILTER_REVISION = "5d32d0736f686b69d1e8b9dc45c007d4eb77a0a2";
+const FILTER_REVISION = "753a3b0e939f2e4490fc24e3a1984010f40a103c";
 
-export const FILTER_INSTALL_COMMAND = `cargo install --git ${FILTER_REPO} --rev ${FILTER_REVISION} --locked`;
+// The repository holds two packages with binaries (rtk, rtk-proxy), so the package is named.
+export const FILTER_INSTALL_COMMAND = `cargo install --git ${FILTER_REPO} --rev ${FILTER_REVISION} --locked rtk`;
 
 /** The subcommand the filter is handed on a tool call. */
 export const FILTER_HOOK_ARGS = ["hook", "claude"] as const;
