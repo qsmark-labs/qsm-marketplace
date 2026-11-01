@@ -35,8 +35,11 @@ class _FakeLocator:
         super().__init__()
         self.page = page
 
-    def scroll_into_view_if_needed(self, **_: object) -> None:
+    def wait_for(self, **_: object) -> None:
         self.page.maybe_fail("click")
+
+    def scroll_into_view_if_needed(self, **_: object) -> None:
+        pass
 
     @property
     def first(self) -> _FakeLocator:

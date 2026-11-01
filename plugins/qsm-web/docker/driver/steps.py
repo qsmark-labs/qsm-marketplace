@@ -86,6 +86,7 @@ def _click(page: Page, step: Step) -> Outcome:
     """Click the first match at the centre of its box, the point the cursor is left at."""
     selector = _text(step, "selector")
     target = page.locator(selector).first
+    target.wait_for(state="visible", timeout=_timeout(step))
     target.scroll_into_view_if_needed(timeout=_timeout(step))
     box = target.bounding_box(timeout=_timeout(step))
     if box is None:
@@ -96,10 +97,8 @@ def _click(page: Page, step: Step) -> Outcome:
     left, top = target.evaluate("e => [e.clientLeft, e.clientTop]")
     x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
     centre: Position = {"x": x - box["x"] - left, "y": y - box["y"] - top}
-    # Recorded before the click, because the click moves the cursor there
-    # first, even when it then fails.
-    _cursor[page] = (x, y)
     target.click(position=centre, timeout=_timeout(step))
+    _cursor[page] = (x, y)
     return {"selector": selector, "url": page.url}
 
 
