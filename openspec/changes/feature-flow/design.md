@@ -13,12 +13,14 @@ review-threads, `/simplify`, the review skill. Nothing in `.github/` but `ci.yml
 2. **Models come before specs.** `specs` requires `models`, so the SHALL text is written against
    a drawn process. `flow.bpmn` models our own process, not product behaviour: its cover paths
    are the scenarios of this spec. A product feature's BPMN models what QA runs.
-3. **The change reaches main before the build, and is archived at step 9.** Planning opens the
-   change as a pull request to main; the owner's merge is his yes to the plan, the lens on main
-   shows it, and the issue's picture links resolve. The split branches `feature/<n>` from main, a
-   revision during the build is a commit on that branch, and at step 9 the agent archives the
-   change there and opens the feature pull request (the archive rule is in
-   `tasks-on-github-issues`).
+3. **The change lives on `feature/<n>` from the owner's yes, and is archived after the accept.**
+   The planning session works in its own worktree (git rule 1) on the local branch `feature/<n>`
+   cut from main; the owner's yes is given in the session (`plan.bpmn` 2.7), so no pull request
+   carries the plan, and only then is the change committed. Step 3 pushes the branch. The lens
+   reads local `feature/*` branches, so the plan shows before the push. A revision during the
+   build is a commit on the branch. At step 9 the change is archived only after the owner accepts
+   the feature pull request (`land.bpmn`), so a round of fixes never archives it twice (the archive
+   rule is in `tasks-on-github-issues`).
 4. **Tasks are cut at the split, on the board.** `qsm-tasks add --feature <n>` with `--after`
    for order; the first sub-issue makes the feature In Dev (the Action). A task is one concern
    the owner reads in one sitting, and every fake it adds has a later task that replaces it, so
@@ -49,22 +51,19 @@ elsewhere: `task-tool`, `spec-archive` (`tasks-on-github-issues`). New elsewhere
    and `gh issue view --json issueType`. If it does not, the spec is revised; there is no second
    path that sets it.
 
-## Open decisions
+## Decided by rule
 
-1. **When is `feature/<n>` created?** At the split from main, as agreed (built). Alternative: at
-   the end of planning, with the change committed on the branch; main then never holds a plan for
-   unbuilt code, but the lens on main and the issue's links do not show it until the feature
-   merges.
-2. **How do pull requests merge?** Recommended: task pull requests squash into `feature/<n>`, the
-   feature pull request merges into main with a merge commit. Alternative: everything squashes.
-3. **An issue form for feedback?** Recommended no: `qsm-tasks feedback` checks for private data.
-4. **A fake marker and a check** (not built): each fake carries `qsm-fake: #<task>` and a check on
-   pull requests into main fails while one is left. Recommended yes, because "fakes never reach
-   main" is otherwise checked by reading.
-5. **Ways back the agreed flow does not draw** (not built): the owner asks for changes on a task
-   pull request; the owner rejects the feature pull request as a fix task under the feature; a
-   plan the owner drops (closed as not planned). Recommended: all three, as written, because
-   GitHub offers the first and the others need one rule each.
+1. **Pull requests merge with a merge commit**, task pull requests into `feature/<n>` and the
+   feature pull request into main (git rule 1: merge, never rebase; the context rule takes a
+   branch by merge commit).
+2. **No issue form for feedback**: an agent files feedback through the task tool (CLAUDE.md), and
+   `qsm-tasks feedback` checks for private data.
+3. **A fake marker and a check** (not built): each fake carries `qsm-fake: #<task>` and a check on
+   pull requests into main fails while one is left, because the gates check what a machine can
+   (AGENTS.md).
+4. **The three ways back are drawn**: the owner's comments on a task pull request
+   (`build-task.bpmn` 6.2), changes asked on the feature pull request (`land.bpmn` 9.5), a plan
+   the owner drops (`plan.bpmn` 2.10). A model that leaves them out would say less than happens.
 
 ## Critiques
 

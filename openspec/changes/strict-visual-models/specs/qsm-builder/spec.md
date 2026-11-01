@@ -2,11 +2,11 @@
 
 ### Requirement: The lens shows the models
 
-The lens SHALL show, on a plugin's page, a Models section with every SVG of the plugin's `models/`,
-and on the overview the marketplace's C4 container view and one entry per change on main that is not
-archived, with the first screen of its proposal and its pictures. A BPMN file SHALL open in a
-pan-and-zoom viewer the lens serves from its own pinned copy, so the page still requests nothing
-outside 127.0.0.1. A plugin with no models SHALL show the section saying so.
+The lens SHALL show, on a plugin's page, every SVG of the plugin's `models/`, or say it has none,
+and on the overview the marketplace's C4 container view and one entry per unarchived change on main
+or on a local `feature/*` branch, with its proposal's first screen and pictures. A BPMN file SHALL
+open in a pan-and-zoom viewer served from the lens's own pinned copy, so the page requests nothing
+outside 127.0.0.1.
 
 #### Scenario: The owner reads a feature in flight
 

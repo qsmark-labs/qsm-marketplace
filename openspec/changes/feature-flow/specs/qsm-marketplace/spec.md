@@ -2,39 +2,104 @@
 
 ### Requirement: A feature moves from request to main along one process
 
-A feature SHALL move along `models/flow.bpmn`: request, planning, the owner's merge of the change,
-the split onto `feature/<n>`, every task built (the called `models/build-task.bpmn`: build,
-review, the owner's merge, then main merged in), QA, the archive and the feature pull request,
-whose merge by the owner is the accept and closes the feature. Every cover path of both processes
+A feature SHALL move along `models/flow.bpmn`, the agreed steps 1 to 9: request, planning, the
+split, every open task built, main merged into `feature/<n>`, QA, and landing on main. An activity
+SHALL carry its step number, and N.k when step N has several activities in one diagram. A step of
+several actions SHALL be a call activity with its own diagram. Every cover path of every diagram
 SHALL have a scenario here.
 
-#### Scenario: One task, one review finding, no conflict (path p-8798e1)
+#### Scenario: Main moved and the update conflicts (path p-5b3d94)
 
-- **WHEN** the review of the only task finds something, the agent fixes it, the review finds
-  nothing more, the owner merges, and the update from main is clean
-- **THEN** the task is closed and the feature is set Ready For Test
+- **WHEN** every open task is built and merging main into `feature/<n>` conflicts
+- **THEN** a conflict task is filed under the feature and built like any task, main is merged
+  again, and QA starts only after a clean merge
 
-#### Scenario: A second task is built after the first merges (path p-bc080f)
-
-- **WHEN** the review of a task finds nothing, the owner merges it into `feature/<n>`, and another
-  task of the feature is still open
-- **THEN** the merged task is closed, the next task is built, and the branch is brought up to date
-  with main only after the last task closes
-
-#### Scenario: Main moved and the update conflicts (path p-873b6c)
-
-- **WHEN** the review of the last task finds nothing, the owner merges it, and bringing
-  `feature/<n>` up to date with main conflicts
-- **THEN** a conflict task is filed under the feature, an agent resolves it in a pull request that
-  the review agent reviews first and the owner merges, and the feature is Ready For Test only after
-  a clean update
-
-#### Scenario: QA finds a contract bug, then passes (path p-472d73)
+#### Scenario: QA finds a contract bug, then passes (path p-ca848b)
 
 - **WHEN** QA finds that a cover scenario of the feature does not hold
-- **THEN** a fix task is filed under the feature and built like any task; after the next clean
-  update QA runs again and passes, the agent archives the change and opens the feature pull
-  request, and the owner's merge into main closes the feature
+- **THEN** a fix task is filed per finding and built like any task; after the next clean merge of
+  main QA runs again, passes, and the feature lands on main
+
+#### Scenario: The owner drops the plan (path p-fbd761)
+
+- **WHEN** the owner answers "Plan approved?" with no
+- **THEN** the feature ends as not planned and no branch reaches GitHub
+
+#### Scenario: The owner asks for changes on the feature PR (path p-a0b9b1)
+
+- **WHEN** QA passed and the owner does not accept the feature pull request
+- **THEN** the changes asked become fix tasks, built like any task, then main is merged, QA runs,
+  and the owner reads the feature pull request again
+
+### Requirement: Planning ends in the owner's yes
+
+Step 2 SHALL follow `models/plan.bpmn`: the agent gathers the context, writes the intent, asks the
+open questions, draws the models and writes the specs; the owner reads the plan. The session works
+in its own worktree on the local branch `feature/<n>`, and the change is committed there only after
+the owner's yes. No pull request is opened in this step.
+
+#### Scenario: The owner asks for changes, then approves (path p-60dd67)
+
+- **WHEN** the owner reads the plan and asks for changes
+- **THEN** the agent asks the open questions again and revises; after the owner's yes the change is
+  committed onto `feature/<n>` and the feature issue is updated
+
+#### Scenario: The owner drops the feature (path p-3f29e4)
+
+- **WHEN** the owner reads the plan and drops it
+- **THEN** the agent closes the feature as not planned and nothing is committed
+
+### Requirement: The split pushes the branch and files the tasks
+
+Step 3 SHALL follow `models/split.bpmn`: the agent pushes `feature/<n>`, cuts the feature into
+tasks a person can review, with fakes and mocks so each task leaves working code, and files them
+under the feature once the owner agrees.
+
+#### Scenario: The owner asks for a different cut (path p-dd7cc5)
+
+- **WHEN** the owner reads the task list and does not agree
+- **THEN** the agent cuts again, and files the tasks only after the owner agrees
+
+### Requirement: Every open task is built, reviewed and merged
+
+Steps 4 to 6 SHALL follow `models/build-task.bpmn` once per open task, and step 4 SHALL follow
+`models/consume-task.bpmn`: claim, gather the context, draw the whiteboard, write the code,
+simplify, review the change, open the pull request into `feature/<n>`. The review agent reviews the
+pull request, the owner reads and merges it, and the Action closes the task it names.
+
+#### Scenario: One review finding (path p-0a25f2)
+
+- **WHEN** the review agent finds something in the task pull request
+- **THEN** the agent fixes it, the review runs again and finds nothing, the owner reads and merges,
+  and the task is closed
+
+#### Scenario: The owner asks for changes on a task PR (path p-8e0eff)
+
+- **WHEN** the review finds nothing and the owner does not accept the task pull request
+- **THEN** the agent fixes the owner's comments, the review agent reviews again, and the owner reads
+  the pull request again before any merge
+
+#### Scenario: The task becomes a pull request (path p-ef7dfb)
+
+- **WHEN** an agent consumes an open task
+- **THEN** it claims the task, and the pull request it opens targets `feature/<n>` only after the
+  simplify pass and its own review
+
+### Requirement: The owner lands the feature on main
+
+Step 9 SHALL follow `models/land.bpmn`: the agent opens the feature pull request, the owner reads
+it, and only after the owner accepts does the agent archive the change and the owner merge.
+
+#### Scenario: The owner accepts (path p-de66ab)
+
+- **WHEN** the owner accepts the feature pull request
+- **THEN** the agent archives the change in a commit on `feature/<n>`, and the owner's merge into
+  main closes the feature
+
+#### Scenario: The owner asks for changes (path p-530307)
+
+- **WHEN** the owner does not accept the feature pull request
+- **THEN** the agent files a fix task per change asked and the change is not archived
 
 ### Requirement: A feature change uses the feature schema
 

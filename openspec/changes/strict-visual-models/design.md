@@ -40,7 +40,8 @@ none of it in the tree.
    C4 elements merge by id: persons, systems and containers into the root marketplace model,
    components into the model of the plugin their container's path names.
 8. **Paths become scenarios through the cover.** The cover's definition is in the spec, once.
-   Measured (paths, cover): `flow.bpmn` 2, 1; `build-task.bpmn` 4, 3; `feature-status.bpmn` 11,
+   Measured (paths, cover): `flow.bpmn` 5, 4; `plan.bpmn` 4, 2; `split.bpmn` 2, 1;
+   `build-task.bpmn` 3, 2; `consume-task.bpmn` 1, 1; `land.bpmn` 2, 2; `feature-status.bpmn` 11,
    11; `model-gate.bpmn` 9, 5; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 2, 2. A product feature's
    BPMN models what QA runs; a process model such as `flow.bpmn` models our own steps, and its
    cover paths are the scenarios of its spec, not sandbox runs. A BPMN split carries no data, so a
@@ -50,9 +51,10 @@ none of it in the tree.
    equal `plugin.json` dependencies both ways; component relations become
    `.dependency-cruiser.models.cjs`, one `allowed` rule each, which the repository's config
    includes.
-10. **The lens** shows each plugin's `models/` pictures, each change on main with its proposal's
-    first screen and pictures, and a BPMN in bpmn-js's navigated viewer (18.31.1, 190 KB) that
-    qsm-builder pins and serves itself, since the lens requests nothing outside 127.0.0.1.
+10. **The lens** shows each plugin's `models/` pictures, each unarchived change on main or on a
+    local `feature/*` branch with its proposal's first screen and pictures, and a BPMN in bpmn-js's
+    navigated viewer (18.31.1, 190 KB) that qsm-builder pins and serves itself, since the lens
+    requests nothing outside 127.0.0.1.
 11. **The model is fixed, never the picture.** An agent places shapes badly (draw.io as source,
     measured) and the bpmn-auto-layout guide says the same: fix a diagram by changing order, lanes
     and levels, not coordinates. So the agent edits the source, an engine places every shape, and
@@ -118,7 +120,8 @@ none of it in the tree.
 - A compiled renderer is 100 MB (measured). Accepted over Chrome, which bpmn-to-image needs.
 - The render stubs use bpmn-js internals. The version is pinned; a break fails the render loud.
 - bpmn-auto-layout routes every loop back along one channel, so loops into one merge share a
-  segment (measured: `build-task.svg`, where "Fix the findings" and "6 Merge the PR" share a column,
-  and two returns climb one vertical; `model-gate.svg`, five returns into one merge). Reordering the
-  input did not separate them. Accepted for now: the layout measure "segments two edges share"
-  counts it, and open decision 3 holds the alternative, lanes and routing drawn by us.
+  segment. A return now leaves its step 20 px left of the middle, which separated "5.2 Fix the
+  findings" from the flow into "6.1 Read the PR" (measured on `build-task.svg`); returns into one
+  merge still share the bottom channel (`build-task.svg` two, `model-gate.svg` five). Accepted for
+  now: the layout measure "segments two edges share" counts it, and open decision 3 holds the
+  alternative, lanes and routing drawn by us.

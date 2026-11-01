@@ -6,7 +6,7 @@ Triggered by a request to propose a change, write a spec for a feature, or turn 
 into a plan, spec-propose SHALL write a change on the feature schema: a one-screen proposal, the
 models (BPMN and C4, linted and rendered), delta specs whose scenarios cite the paths, and a design
 of decisions and critiques. It SHALL write no task list, go back to grilling on an open decision,
-edit no code, and open the change as a pull request to main for the owner's yes.
+edit no code, and commit the change only after the owner's yes.
 
 #### Scenario: Settled brainstorm becomes a proposal
 
@@ -14,7 +14,7 @@ edit no code, and open the change as a pull request to main for the owner's yes.
   already resolved
 - **THEN** spec-propose SHALL create the proposal, the models, the delta specs and the design, no
   tasks.md, and SHALL NOT mark the change apply-ready until every required artifact and critique
-  pass is present, and SHALL name the split as the next step once the owner merged the change
+  pass is present, and SHALL name the split as the next step once the owner said yes to the plan
 
 #### Scenario: Code does not start without the person's yes
 

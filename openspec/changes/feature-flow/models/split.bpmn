@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="split_defs" targetNamespace="https://github.com/qsmark-labs/qsm-marketplace">
+  <bpmn:collaboration id="split_collab">
+    <bpmn:participant id="split_pool" name="3 Split the feature into tasks" processRef="split_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="split_process" name="3 Split the feature into tasks" isExecutable="false">
+    <bpmn:laneSet id="laneset">
+      <bpmn:lane id="lane_0" name="Owner">
+        <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>agreed</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="lane_1" name="Agent">
+        <bpmn:flowNodeRef>approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>push</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cutJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cut</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>file</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>filed</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="approved" name="Plan approved">
+      <bpmn:outgoing>f_approved_push</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="push" name="3.1 Push feature/&#60;n&#62;">
+      <bpmn:incoming>f_approved_push</bpmn:incoming>
+      <bpmn:outgoing>f_push_cutJoin</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="cutJoin">
+      <bpmn:incoming>f_push_cutJoin</bpmn:incoming>
+      <bpmn:incoming>f_agreed_cutJoin</bpmn:incoming>
+      <bpmn:outgoing>f_cutJoin_cut</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="cut" name="3.2 Cut the feature into tasks">
+      <bpmn:incoming>f_cutJoin_cut</bpmn:incoming>
+      <bpmn:outgoing>f_cut_read</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="read" name="3.3 Read the task list">
+      <bpmn:incoming>f_cut_read</bpmn:incoming>
+      <bpmn:outgoing>f_read_agreed</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="agreed" name="Split agreed?">
+      <bpmn:incoming>f_read_agreed</bpmn:incoming>
+      <bpmn:outgoing>f_agreed_file</bpmn:outgoing>
+      <bpmn:outgoing>f_agreed_cutJoin</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="file" name="3.4 File the tasks under the feature">
+      <bpmn:incoming>f_agreed_file</bpmn:incoming>
+      <bpmn:outgoing>f_file_filed</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="filed" name="Tasks filed">
+      <bpmn:incoming>f_file_filed</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_approved_push" sourceRef="approved" targetRef="push" />
+    <bpmn:sequenceFlow id="f_push_cutJoin" sourceRef="push" targetRef="cutJoin" />
+    <bpmn:sequenceFlow id="f_cutJoin_cut" sourceRef="cutJoin" targetRef="cut" />
+    <bpmn:sequenceFlow id="f_cut_read" sourceRef="cut" targetRef="read" />
+    <bpmn:sequenceFlow id="f_read_agreed" sourceRef="read" targetRef="agreed" />
+    <bpmn:sequenceFlow id="f_agreed_file" name="yes" sourceRef="agreed" targetRef="file" />
+    <bpmn:sequenceFlow id="f_agreed_cutJoin" name="no" sourceRef="agreed" targetRef="cutJoin" />
+    <bpmn:sequenceFlow id="f_file_filed" sourceRef="file" targetRef="filed" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_split_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_split_collab" bpmnElement="split_collab">
+      <bpmndi:BPMNShape id="BPMNShape_split_pool" bpmnElement="split_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="1382" height="480" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#f3f7fc" color:border-color="#08427b" color:background-color="#f3f7fc" isHorizontal="true">
+        <dc:Bounds x="110" y="80" width="1352" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#6b4fbb" bioc:fill="#f8f6fd" color:border-color="#6b4fbb" color:background-color="#f8f6fd" isHorizontal="true">
+        <dc:Bounds x="110" y="320" width="1352" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_approved" bpmnElement="approved" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="150" y="422" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="138" y="463" width="60" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_push" bpmnElement="push" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="286" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_cutJoin" bpmnElement="cutJoin" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
+        <dc:Bounds x="486" y="415" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_cut" bpmnElement="cut" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="636" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="836" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_agreed" bpmnElement="agreed" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6" isMarkerVisible="true">
+        <dc:Bounds x="1036" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="987" y="145" width="53" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_file" bpmnElement="file" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="1186" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_filed" bpmnElement="filed" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="1386" y="422" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1364" y="463" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_approved_push" bpmnElement="f_approved_push" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="186" y="440" />
+        <di:waypoint x="286" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_push_cutJoin" bpmnElement="f_push_cutJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="386" y="440" />
+        <di:waypoint x="486" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_cutJoin_cut" bpmnElement="f_cutJoin_cut" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="536" y="440" />
+        <di:waypoint x="636" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_cut_read" bpmnElement="f_cut_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="736" y="440" />
+        <di:waypoint x="886" y="440" />
+        <di:waypoint x="886" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_agreed" bpmnElement="f_read_agreed" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="936" y="200" />
+        <di:waypoint x="1036" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_agreed_file" bpmnElement="f_agreed_file" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1086" y="200" />
+        <di:waypoint x="1236" y="200" />
+        <di:waypoint x="1236" y="400" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1149" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_file_filed" bpmnElement="f_file_filed" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1286" y="440" />
+        <di:waypoint x="1386" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_agreed_cutJoin" bpmnElement="f_agreed_cutJoin" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1061" y="225" />
+        <di:waypoint x="1061" y="485" />
+        <di:waypoint x="511" y="485" />
+        <di:waypoint x="511" y="465" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="777" y="463" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

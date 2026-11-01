@@ -1,6 +1,14 @@
 ![The feature flow, BPMN level 1](models/flow.svg)
 
-![Steps 4 to 7, every task built, BPMN level 2](models/build-task.svg)
+![Step 2, planning, BPMN level 2](models/plan.svg)
+
+![Step 3, the split, BPMN level 2](models/split.svg)
+
+![Steps 4 to 6, every open task built, BPMN level 2](models/build-task.svg)
+
+![Step 4, one task becomes a pull request, BPMN level 3](models/consume-task.svg)
+
+![Step 9, the feature lands on main, BPMN level 2](models/land.svg)
 
 ![C4 context](models/marketplace.context.drawio.svg)
 
@@ -26,15 +34,16 @@ one feature pull request whose merge into main is the owner's accept.
   (decisions only). It has no tasks artifact.
 - **Step 1, the request**: two issue forms, feature request and issue, whose fields are the six
   questions of the implementation rule.
-- **Step 2, planning** writes the change models first, opens it as a pull request to main, and
-  updates the feature issue with a one-screen summary and the pictures. It creates no task.
+- **Step 2, planning** writes the change models first; after the owner's yes in the session it
+  commits the change onto the local branch `feature/<n>` and updates the feature issue with a
+  one-screen summary. It opens no pull request and creates no task.
 - **Step 3, the split**: the owner and the agent cut the feature into tasks, each a reviewable
-  pull request, with fakes that let each part run; `feature/<n>` is branched from main.
+  pull request, with fakes that let each part run; `feature/<n>` is pushed first.
 - **Step 4, a task is built in one session**: context first, a whiteboard in the chat, the code,
   `/simplify`, a self-review, then a pull request into `feature/<n>` from the template.
 - **Step 5** is the existing review workflow, reading the task against its feature's change.
-- **Step 9**: the agent archives the change and opens the feature pull request to main with
-  before and after for the whole feature; the owner's merge accepts it.
+- **Step 9**: the agent opens the feature pull request to main with before and after for the
+  whole feature; after the owner accepts it the agent archives the change and the owner merges.
 
 ## Not in this feature
 

@@ -3,24 +3,25 @@
 ### Requirement: Planning turns a feature request into a planned feature
 
 The plan skill SHALL take a feature issue filed through the form, settle what its six answers leave
-open through grilling, have the spec tool write one feature change, models first, and open it as a
-pull request to main. It SHALL bind the issue to the change, replace the issue body with a
-one-screen summary that shows the change's pictures, and create no task. The owner's merge of that
-pull request is the yes to the plan.
+open through grilling, have the spec tool write one feature change, models first, in the session's
+worktree on the local branch `feature/<n>`, and commit it there after the owner's yes in the
+session. It SHALL bind the issue to the change, replace the issue body with a one-screen summary,
+and create no task and no pull request.
 
 #### Scenario: A filed feature is planned
 
 - **WHEN** the owner asks to plan feature 3, filed through the feature request form
-- **THEN** a pull request to main holds the feature change, feature 3 carries its `change:` label,
-  the issue body opens with the change's pictures, and feature 3 has no sub-issue
+- **THEN** after the owner's yes the local branch `feature/3` holds the change in one commit,
+  feature 3 carries its `change:` label and the one-screen summary, no pull request exists, and
+  feature 3 has no sub-issue
 
 ### Requirement: Splitting a feature is a session with the owner
 
-After the owner merged the change, the plan skill SHALL split the feature with the owner into
-tasks, each one concern whose pull request the owner can read in one sitting, created as
-sub-issues in build order, and SHALL push `feature/<n>` branched from main. Every fake a task adds
-SHALL have a later task that replaces it, so no fake reaches main. The split SHALL write no task
-list into the change.
+After the owner's yes to the plan, the plan skill SHALL split the feature with the owner into tasks,
+each one concern whose pull request the owner can read in one sitting, created as sub-issues in
+build order, and SHALL first push `feature/<n>`, which planning cut from main. Every fake a task
+adds SHALL have a later task that replaces it, so no fake reaches main. The split SHALL write no
+task list into the change.
 
 #### Scenario: A feature is split
 
