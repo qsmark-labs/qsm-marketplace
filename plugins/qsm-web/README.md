@@ -93,6 +93,4 @@ qsm-web browserbox stop "$name"
   output carries it. Its port is loopback only: never publish it elsewhere.
 - A login is filled only by the main agent with you present, from Bitwarden (`rbw` or `bw`) through
   `fill-secret`, never from the conversation. The `web-research` agent stops at a login.
-- The captcha solve step (`mouse`) is not in the browser driver yet, so a captcha goes straight to
-  the takeover until it lands.
 - It reads pages. It is not a crawler or an account automation tool.
