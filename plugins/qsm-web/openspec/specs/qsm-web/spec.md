@@ -392,7 +392,7 @@ one tab waits, other tabs and instances SHALL stay usable.
 
 - **WHEN** a script opens the instance's first page, and later when the live
   view's tab is resized
-- **THEN** the browser window SHALL fill the instance's display, which follows
+- **THEN** every browser window SHALL fill the instance's display, which follows
   the size of the live view's tab, so the person sees the whole page and not
   a part of a larger window
 
