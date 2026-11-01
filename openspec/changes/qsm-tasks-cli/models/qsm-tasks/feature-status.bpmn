@@ -159,302 +159,164 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_feature_status_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_feature_status_collab" bpmnElement="feature_status_collab">
       <bpmndi:BPMNShape id="BPMNShape_feature_status_pool" bpmnElement="feature_status_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="1818" height="1344" />
+        <dc:Bounds x="80" y="80" width="2454.3" height="1747.2" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#4b5563" bioc:fill="#f7f8f9" color:border-color="#4b5563" color:background-color="#f7f8f9" isHorizontal="true">
-        <dc:Bounds x="110" y="80" width="1788" height="1344" />
+        <dc:Bounds x="110" y="80" width="2424.3" height="1747.2" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_event" bpmnElement="event" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="150" y="574" width="36" height="36" />
+        <dc:Bounds x="180.8" y="727.6" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="148" y="615" width="80" height="56" />
+          <dc:Bounds x="185.8" y="783.9" width="80" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="286" y="552" width="100" height="80" />
+        <dc:Bounds x="375.6" y="705.6" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_stored" bpmnElement="stored" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="486" y="567" width="50" height="50" />
+        <dc:Bounds x="636.85" y="720.6" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="435" y="537" width="55" height="28" />
+          <dc:Bounds x="568.875" y="678.3000000000001" width="55" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_todoOpen" bpmnElement="todoOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="1472" y="567" width="50" height="50" />
+        <dc:Bounds x="1967.95" y="720.6" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1396" y="537" width="80" height="28" />
+          <dc:Bounds x="1870.6000000000001" y="678.3000000000001" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toInDev" bpmnElement="toInDev" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1622" y="552" width="100" height="80" />
+        <dc:Bounds x="2179.2000000000003" y="705.6" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endSplit" bpmnElement="endSplit" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1822" y="574" width="36" height="36" />
+        <dc:Bounds x="2438" y="727.6" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1778" y="615" width="84" height="28" />
+          <dc:Bounds x="2387" y="779.7" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endTodo" bpmnElement="endTodo" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1654" y="734" width="36" height="36" />
+        <dc:Bounds x="2211.2000000000003" y="935.6" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1642" y="687" width="60" height="42" />
+          <dc:Bounds x="2199.2000000000003" y="875.4" width="60" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="636" y="727" width="50" height="50" />
+        <dc:Bounds x="839.35" y="928.6" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="573" y="683" width="67" height="42" />
+          <dc:Bounds x="757.2750000000001" y="870.2" width="67" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endWorking" bpmnElement="endWorking" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="818" y="734" width="36" height="36" />
+        <dc:Bounds x="1082.6" y="935.6" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="796" y="687" width="80" height="42" />
+          <dc:Bounds x="1060.6" y="875.4" width="80" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_sync" bpmnElement="sync" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="786" y="872" width="100" height="80" />
+        <dc:Bounds x="1050.6" y="1121.6000000000001" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_conflict" bpmnElement="conflict" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="986" y="887" width="50" height="50" />
+        <dc:Bounds x="1311.8500000000001" y="1136.6000000000001" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="921" y="871" width="69" height="14" />
+          <dc:Bounds x="1227.4250000000002" y="1110.4" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toReady" bpmnElement="toReady" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1136" y="712" width="100" height="80" />
+        <dc:Bounds x="1523.1000000000001" y="913.6" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endReady" bpmnElement="endReady" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1336" y="734" width="36" height="36" />
+        <dc:Bounds x="1781.9" y="935.6" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1309" y="775" width="90" height="14" />
+          <dc:Bounds x="1754.9" y="985.6" width="90" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_conflictTask" bpmnElement="conflictTask" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1136" y="872" width="100" height="80" />
+        <dc:Bounds x="1523.1000000000001" y="1121.6000000000001" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endConflict" bpmnElement="endConflict" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="1336" y="894" width="36" height="36" />
+        <dc:Bounds x="1781.9" y="1143.6000000000001" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1313" y="935" width="82" height="28" />
+          <dc:Bounds x="1758.9" y="1195.7" width="82" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endDropped" bpmnElement="endDropped" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="818" y="436" width="36" height="36" />
+        <dc:Bounds x="1082.6" y="548.2" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="800" y="477" width="73" height="42" />
+          <dc:Bounds x="1064.775" y="602.4" width="73" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_readyOpen" bpmnElement="readyOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="636" y="291" width="50" height="50" />
+        <dc:Bounds x="839.35" y="361.8" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="573" y="233" width="67" height="56" />
+          <dc:Bounds x="757.2750000000001" y="287.3" width="67" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_backToDev" bpmnElement="backToDev" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="786" y="276" width="100" height="80" />
+        <dc:Bounds x="1050.6" y="346.8" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endBack" bpmnElement="endBack" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="993" y="298" width="36" height="36" />
+        <dc:Bounds x="1318.8500000000001" y="368.8" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="969" y="339" width="84" height="28" />
+          <dc:Bounds x="1294.8500000000001" y="420.90000000000003" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endReadyStays" bpmnElement="endReadyStays" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="818" y="1032" width="36" height="36" />
+        <dc:Bounds x="1082.6" y="1323" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="795" y="1073" width="83" height="28" />
+          <dc:Bounds x="1059.775" y="1375.1000000000001" width="83" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_testOpen" bpmnElement="testOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
-        <dc:Bounds x="636" y="1163" width="50" height="50" />
+        <dc:Bounds x="839.35" y="1495.4" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="562" y="1119" width="78" height="42" />
+          <dc:Bounds x="744.35" y="1437" width="78" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toBlocked" bpmnElement="toBlocked" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="786" y="1148" width="100" height="80" />
+        <dc:Bounds x="1050.6" y="1480.4" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endBlocked" bpmnElement="endBlocked" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="993" y="1170" width="36" height="36" />
+        <dc:Bounds x="1318.8500000000001" y="1502.4" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="969" y="1251" width="84" height="28" />
+          <dc:Bounds x="1294.8500000000001" y="1606.5" width="84" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endTestStays" bpmnElement="endTestStays" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="818" y="1308" width="36" height="36" />
+        <dc:Bounds x="1082.6" y="1681.8" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="807" y="1349" width="59" height="28" />
+          <dc:Bounds x="1071.775" y="1733.9" width="59" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endOther" bpmnElement="endOther" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="643" y="160" width="36" height="36" />
+        <dc:Bounds x="846.35" y="189.4" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="608" y="201" width="67" height="42" />
+          <dc:Bounds x="804.5250000000001" y="243.60000000000002" width="67" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_event_read" bpmnElement="f_event_read" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="186" y="592" />
-        <di:waypoint x="286" y="592" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_read_stored" bpmnElement="f_read_stored" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="386" y="592" />
-        <di:waypoint x="486" y="592" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_todoOpen" bpmnElement="f_stored_todoOpen" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="536" y="592" />
-        <di:waypoint x="1472" y="592" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="987" y="570" width="34" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_toInDev" bpmnElement="f_todoOpen_toInDev" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1522" y="592" />
-        <di:waypoint x="1622" y="592" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1560" y="570" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_toInDev_endSplit" bpmnElement="f_toInDev_endSplit" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1722" y="592" />
-        <di:waypoint x="1822" y="592" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endWorking" bpmnElement="f_left_endWorking" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="686" y="752" />
-        <di:waypoint x="818" y="752" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="740" y="730" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_conflictTask" bpmnElement="f_conflict_conflictTask" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1036" y="912" />
-        <di:waypoint x="1136" y="912" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1074" y="890" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_endConflict" bpmnElement="f_conflictTask_endConflict" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1236" y="912" />
-        <di:waypoint x="1336" y="912" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_backToDev" bpmnElement="f_readyOpen_backToDev" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="686" y="316" />
-        <di:waypoint x="786" y="316" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="724" y="294" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_backToDev_endBack" bpmnElement="f_backToDev_endBack" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="886" y="316" />
-        <di:waypoint x="993" y="316" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_toBlocked" bpmnElement="f_testOpen_toBlocked" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="686" y="1188" />
-        <di:waypoint x="786" y="1188" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="724" y="1166" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_toBlocked_endBlocked" bpmnElement="f_toBlocked_endBlocked" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="886" y="1188" />
-        <di:waypoint x="993" y="1188" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_left" bpmnElement="f_stored_left" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="511" y="617" />
-        <di:waypoint x="511" y="752" />
-        <di:waypoint x="636" y="752" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="541" y="719" width="65" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_readyOpen" bpmnElement="f_stored_readyOpen" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="511" y="567" />
-        <di:waypoint x="511" y="316" />
-        <di:waypoint x="636" y="316" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="540" y="283" width="68" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_testOpen" bpmnElement="f_stored_testOpen" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="511" y="617" />
-        <di:waypoint x="511" y="1188" />
-        <di:waypoint x="636" y="1188" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="516" y="963" width="54" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_endOther" bpmnElement="f_stored_endOther" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="511" y="567" />
-        <di:waypoint x="511" y="178" />
-        <di:waypoint x="643" y="178" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="516" y="240" width="34" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_endTodo" bpmnElement="f_todoOpen_endTodo" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1497" y="617" />
-        <di:waypoint x="1497" y="752" />
-        <di:waypoint x="1654" y="752" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1503" y="678" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_left_sync" bpmnElement="f_left_sync" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="661" y="777" />
-        <di:waypoint x="661" y="912" />
-        <di:waypoint x="786" y="912" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="666" y="841" width="70" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endDropped" bpmnElement="f_left_endDropped" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="661" y="777" />
-        <di:waypoint x="661" y="797" />
-        <di:waypoint x="1878" y="797" />
-        <di:waypoint x="1878" y="454" />
-        <di:waypoint x="854" y="454" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1235" y="802" width="70" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_toReady" bpmnElement="f_conflict_toReady" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1011" y="887" />
-        <di:waypoint x="1011" y="752" />
-        <di:waypoint x="1136" y="752" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1017" y="813" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_endReadyStays" bpmnElement="f_readyOpen_endReadyStays" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="661" y="291" />
-        <di:waypoint x="661" y="278" />
-        <di:waypoint x="699" y="278" />
-        <di:waypoint x="699" y="140" />
-        <di:waypoint x="130" y="140" />
-        <di:waypoint x="130" y="1233" />
-        <di:waypoint x="1049" y="1233" />
-        <di:waypoint x="1049" y="1050" />
-        <di:waypoint x="854" y="1050" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="406" y="118" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_endTestStays" bpmnElement="f_testOpen_endTestStays" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="661" y="1213" />
-        <di:waypoint x="661" y="1326" />
-        <di:waypoint x="818" y="1326" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="667" y="1263" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_sync_conflict" bpmnElement="f_sync_conflict" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="886" y="912" />
-        <di:waypoint x="986" y="912" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_toReady_endReady" bpmnElement="f_toReady_endReady" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1236" y="752" />
-        <di:waypoint x="1336" y="752" />
-      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_event_read" bpmnElement="f_event_read" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="216.8" y="745.6" /><di:waypoint x="375.6" y="745.6" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_stored" bpmnElement="f_read_stored" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="475.6" y="745.6" /><di:waypoint x="636.85" y="745.6" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_todoOpen" bpmnElement="f_stored_todoOpen" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="686.85" y="745.6" /><di:waypoint x="1967.95" y="745.6" /><bpmndi:BPMNLabel><dc:Bounds x="1310.4" y="719.1" width="34" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_toInDev" bpmnElement="f_todoOpen_toInDev" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="2017.95" y="745.6" /><di:waypoint x="2179.2000000000003" y="745.6" /><bpmndi:BPMNLabel><dc:Bounds x="2082.375" y="719.1" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_toInDev_endSplit" bpmnElement="f_toInDev_endSplit" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="2279.2000000000003" y="745.6" /><di:waypoint x="2438" y="745.6" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endWorking" bpmnElement="f_left_endWorking" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="889.35" y="953.6" /><di:waypoint x="1082.6" y="953.6" /><bpmndi:BPMNLabel><dc:Bounds x="975.3750000000001" y="927.1" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_conflictTask" bpmnElement="f_conflict_conflictTask" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1361.8500000000001" y="1161.6000000000001" /><di:waypoint x="1523.1000000000001" y="1161.6000000000001" /><bpmndi:BPMNLabel><dc:Bounds x="1426.275" y="1135.1000000000001" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_endConflict" bpmnElement="f_conflictTask_endConflict" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1623.1000000000001" y="1161.6000000000001" /><di:waypoint x="1781.9" y="1161.6000000000001" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_backToDev" bpmnElement="f_readyOpen_backToDev" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="889.35" y="386.8" /><di:waypoint x="1050.6" y="386.8" /><bpmndi:BPMNLabel><dc:Bounds x="953.7750000000001" y="360.3" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_backToDev_endBack" bpmnElement="f_backToDev_endBack" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1150.6" y="386.8" /><di:waypoint x="1318.8500000000001" y="386.8" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_toBlocked" bpmnElement="f_testOpen_toBlocked" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="889.35" y="1520.4" /><di:waypoint x="1050.6" y="1520.4" /><bpmndi:BPMNLabel><dc:Bounds x="953.7750000000001" y="1493.9" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_toBlocked_endBlocked" bpmnElement="f_toBlocked_endBlocked" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1150.6" y="1520.4" /><di:waypoint x="1318.8500000000001" y="1520.4" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_left" bpmnElement="f_stored_left" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="661.85" y="770.6" /><di:waypoint x="661.85" y="953.6" /><di:waypoint x="839.35" y="953.6" /><bpmndi:BPMNLabel><dc:Bounds x="713.725" y="914.9" width="65" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_readyOpen" bpmnElement="f_stored_readyOpen" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="661.85" y="720.6" /><di:waypoint x="661.85" y="386.8" /><di:waypoint x="839.35" y="386.8" /><bpmndi:BPMNLabel><dc:Bounds x="712.9000000000001" y="348.1" width="68" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_testOpen" bpmnElement="f_stored_testOpen" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="661.85" y="770.6" /><di:waypoint x="661.85" y="1520.4" /><di:waypoint x="839.35" y="1520.4" /><bpmndi:BPMNLabel><dc:Bounds x="678.0500000000001" y="1230" width="54" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_stored_endOther" bpmnElement="f_stored_endOther" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="661.85" y="720.6" /><di:waypoint x="661.85" y="207.4" /><di:waypoint x="846.35" y="207.4" /><bpmndi:BPMNLabel><dc:Bounds x="674.5500000000001" y="290.1" width="34" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_todoOpen_endTodo" bpmnElement="f_todoOpen_endTodo" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1992.95" y="770.6" /><di:waypoint x="1992.95" y="953.6" /><di:waypoint x="2211.2000000000003" y="953.6" /><bpmndi:BPMNLabel><dc:Bounds x="2004.2" y="859.5" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_left_sync" bpmnElement="f_left_sync" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="864.35" y="978.6" /><di:waypoint x="864.35" y="1161.6000000000001" /><di:waypoint x="1050.6" y="1161.6000000000001" /><bpmndi:BPMNLabel><dc:Bounds x="883.35" y="1073.5" width="70" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_left_endDropped" bpmnElement="f_left_endDropped" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="864.35" y="978.6" /><di:waypoint x="864.35" y="1012.1" /><di:waypoint x="2507.3" y="1012.1" /><di:waypoint x="2507.3" y="566.2" /><di:waypoint x="1118.6" y="566.2" /><bpmndi:BPMNLabel><dc:Bounds x="1651.5" y="1022.8000000000002" width="70" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_toReady" bpmnElement="f_conflict_toReady" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1336.8500000000001" y="1136.6000000000001" /><di:waypoint x="1336.8500000000001" y="953.6" /><di:waypoint x="1523.1000000000001" y="953.6" /><bpmndi:BPMNLabel><dc:Bounds x="1348.1000000000001" y="1035" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_readyOpen_endReadyStays" bpmnElement="f_readyOpen_endReadyStays" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="864.35" y="361.8" /><di:waypoint x="864.35" y="337.40000000000003" /><di:waypoint x="915.6500000000001" y="337.40000000000003" /><di:waypoint x="915.6500000000001" y="158" /><di:waypoint x="147.5" y="158" /><di:waypoint x="147.5" y="1578.9" /><di:waypoint x="1388.15" y="1578.9" /><di:waypoint x="1388.15" y="1341" /><di:waypoint x="1118.6" y="1341" /><bpmndi:BPMNLabel><dc:Bounds x="523.25" y="131.5" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_testOpen_endTestStays" bpmnElement="f_testOpen_endTestStays" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="864.35" y="1545.4" /><di:waypoint x="864.35" y="1699.8" /><di:waypoint x="1082.6" y="1699.8" /><bpmndi:BPMNLabel><dc:Bounds x="875.6" y="1620" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_sync_conflict" bpmnElement="f_sync_conflict" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1150.6" y="1161.6000000000001" /><di:waypoint x="1311.8500000000001" y="1161.6000000000001" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_toReady_endReady" bpmnElement="f_toReady_endReady" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="1623.1000000000001" y="953.6" /><di:waypoint x="1781.9" y="953.6" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

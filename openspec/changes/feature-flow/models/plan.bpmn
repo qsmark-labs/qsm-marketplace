@@ -104,147 +104,86 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_plan_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_plan_collab" bpmnElement="plan_collab">
       <bpmndi:BPMNShape id="BPMNShape_plan_pool" bpmnElement="plan_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="2382" height="640" />
+        <dc:Bounds x="80" y="80" width="3215.7000000000003" height="832" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#f3f7fc" color:border-color="#08427b" color:background-color="#f3f7fc" isHorizontal="true">
-        <dc:Bounds x="110" y="80" width="2352" height="240" />
+        <dc:Bounds x="110" y="80" width="3185.7000000000003" height="312" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#6b4fbb" bioc:fill="#f8f6fd" color:border-color="#6b4fbb" color:background-color="#f8f6fd" isHorizontal="true">
-        <dc:Bounds x="110" y="320" width="2352" height="400" />
+        <dc:Bounds x="110" y="392" width="3185.7000000000003" height="520" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_filed" bpmnElement="filed" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="150" y="422" width="36" height="36" />
+        <dc:Bounds x="180.8" y="530" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="141" y="463" width="55" height="42" />
+          <dc:Bounds x="171.97500000000002" y="584.2" width="55" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_context" bpmnElement="context" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="286" y="400" width="100" height="80" />
+        <dc:Bounds x="375.6" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_intent" bpmnElement="intent" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="486" y="400" width="100" height="80" />
+        <dc:Bounds x="645.6" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_askJoin" bpmnElement="askJoin" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
-        <dc:Bounds x="686" y="415" width="50" height="50" />
+        <dc:Bounds x="906.85" y="523" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_ask" bpmnElement="ask" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="836" y="400" width="100" height="80" />
+        <dc:Bounds x="1118.1000000000001" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_answer" bpmnElement="answer" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
-        <dc:Bounds x="1036" y="160" width="100" height="80" />
+        <dc:Bounds x="1388.1000000000001" y="196" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_models" bpmnElement="models" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="1236" y="400" width="100" height="80" />
+        <dc:Bounds x="1658.1000000000001" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_specs" bpmnElement="specs" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="1436" y="400" width="100" height="80" />
+        <dc:Bounds x="1928.1000000000001" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
-        <dc:Bounds x="1636" y="160" width="100" height="80" />
+        <dc:Bounds x="2198.1000000000004" y="196" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_verdict" bpmnElement="verdict" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6" isMarkerVisible="true">
-        <dc:Bounds x="1836" y="175" width="50" height="50" />
+        <dc:Bounds x="2459.3500000000004" y="211" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1773" y="145" width="67" height="28" />
+          <dc:Bounds x="2377.275" y="168.7" width="67" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_commit" bpmnElement="commit" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="1986" y="400" width="100" height="80" />
+        <dc:Bounds x="2670.6000000000004" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_update" bpmnElement="update" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="2186" y="400" width="100" height="80" />
+        <dc:Bounds x="2940.6000000000004" y="508" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_approved" bpmnElement="approved" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="2386" y="422" width="36" height="36" />
+        <dc:Bounds x="3199.4" y="530" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2374" y="463" width="60" height="28" />
+          <dc:Bounds x="3187.4" y="582.1" width="60" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_close" bpmnElement="close" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="1986" y="560" width="100" height="80" />
+        <dc:Bounds x="2670.6000000000004" y="716" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_dropped" bpmnElement="dropped" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
-        <dc:Bounds x="2218" y="582" width="36" height="36" />
+        <dc:Bounds x="2972.6000000000004" y="738" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2196" y="623" width="80" height="28" />
+          <dc:Bounds x="2950.6000000000004" y="790.1" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_filed_context" bpmnElement="f_filed_context" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="186" y="440" />
-        <di:waypoint x="286" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_context_intent" bpmnElement="f_context_intent" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="386" y="440" />
-        <di:waypoint x="486" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_intent_askJoin" bpmnElement="f_intent_askJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="586" y="440" />
-        <di:waypoint x="686" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_askJoin_ask" bpmnElement="f_askJoin_ask" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="736" y="440" />
-        <di:waypoint x="836" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_answer" bpmnElement="f_ask_answer" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="936" y="440" />
-        <di:waypoint x="1086" y="440" />
-        <di:waypoint x="1086" y="240" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_answer_models" bpmnElement="f_answer_models" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1136" y="200" />
-        <di:waypoint x="1286" y="200" />
-        <di:waypoint x="1286" y="400" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_models_specs" bpmnElement="f_models_specs" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1336" y="440" />
-        <di:waypoint x="1436" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_specs_read" bpmnElement="f_specs_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1536" y="440" />
-        <di:waypoint x="1686" y="440" />
-        <di:waypoint x="1686" y="240" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_read_verdict" bpmnElement="f_read_verdict" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1736" y="200" />
-        <di:waypoint x="1836" y="200" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_commit" bpmnElement="f_verdict_commit" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1886" y="200" />
-        <di:waypoint x="2036" y="200" />
-        <di:waypoint x="2036" y="400" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1949" y="178" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_update" bpmnElement="f_commit_update" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2086" y="440" />
-        <di:waypoint x="2186" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_update_approved" bpmnElement="f_update_approved" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2286" y="440" />
-        <di:waypoint x="2386" y="440" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_close" bpmnElement="f_verdict_close" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1861" y="225" />
-        <di:waypoint x="1861" y="600" />
-        <di:waypoint x="1986" y="600" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1866" y="536" width="53" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_close_dropped" bpmnElement="f_close_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2086" y="600" />
-        <di:waypoint x="2218" y="600" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_askJoin" bpmnElement="f_verdict_askJoin" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1861" y="225" />
-        <di:waypoint x="1861" y="485" />
-        <di:waypoint x="711" y="485" />
-        <di:waypoint x="711" y="465" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1260" y="493" width="53" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_filed_context" bpmnElement="f_filed_context" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="216.8" y="548" /><di:waypoint x="375.6" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_context_intent" bpmnElement="f_context_intent" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="475.6" y="548" /><di:waypoint x="645.6" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_intent_askJoin" bpmnElement="f_intent_askJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="745.6" y="548" /><di:waypoint x="906.85" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_askJoin_ask" bpmnElement="f_askJoin_ask" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="956.85" y="548" /><di:waypoint x="1118.1000000000001" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_answer" bpmnElement="f_ask_answer" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1218.1000000000001" y="548" /><di:waypoint x="1438.1000000000001" y="548" /><di:waypoint x="1438.1000000000001" y="276" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_answer_models" bpmnElement="f_answer_models" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="1488.1000000000001" y="236" /><di:waypoint x="1708.1000000000001" y="236" /><di:waypoint x="1708.1000000000001" y="508" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_models_specs" bpmnElement="f_models_specs" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1758.1000000000001" y="548" /><di:waypoint x="1928.1000000000001" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_specs_read" bpmnElement="f_specs_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2028.1000000000001" y="548" /><di:waypoint x="2248.1000000000004" y="548" /><di:waypoint x="2248.1000000000004" y="276" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_verdict" bpmnElement="f_read_verdict" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2298.1000000000004" y="236" /><di:waypoint x="2459.3500000000004" y="236" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_commit" bpmnElement="f_verdict_commit" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2509.3500000000004" y="236" /><di:waypoint x="2720.6000000000004" y="236" /><di:waypoint x="2720.6000000000004" y="508" /><bpmndi:BPMNLabel><dc:Bounds x="2607.525" y="209.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_update" bpmnElement="f_commit_update" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2770.6000000000004" y="548" /><di:waypoint x="2940.6000000000004" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_update_approved" bpmnElement="f_update_approved" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="3040.6000000000004" y="548" /><di:waypoint x="3199.4" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_close" bpmnElement="f_verdict_close" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2484.3500000000004" y="261" /><di:waypoint x="2484.3500000000004" y="756" /><di:waypoint x="2670.6000000000004" y="756" /><bpmndi:BPMNLabel><dc:Bounds x="2500.375" y="674.9" width="53" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_close_dropped" bpmnElement="f_close_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2770.6000000000004" y="756" /><di:waypoint x="2972.6000000000004" y="756" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_askJoin" bpmnElement="f_verdict_askJoin" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2484.3500000000004" y="261" /><di:waypoint x="2484.3500000000004" y="606.5" /><di:waypoint x="931.85" y="606.5" /><di:waypoint x="931.85" y="573" /><bpmndi:BPMNLabel><dc:Bounds x="1682.275" y="619" width="53" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
