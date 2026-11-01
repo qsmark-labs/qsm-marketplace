@@ -1,0 +1,38 @@
+// C4 levels 1 and 2 after the move: only qsm-tasks talks to the task store, and the store is GitHub.
+model {
+  owner = person 'Owner' 'Reads the board, merges PRs'
+  agent = system 'Agent' 'A Claude Code session that works on tasks' {
+    #agent
+  }
+  github = system 'GitHub' 'Issues, sub-issues, the board and its Action' {
+    #external
+  }
+  mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
+    tasks = container 'qsm-tasks' 'The one door to the board, and the task-tool skill' {
+      technology 'Bun binary and skill'
+      metadata { path 'plugins/qsm-tasks' }
+    }
+    lens = container 'qsm-builder lens' 'Saves a pen edit as one loose task, reads no task' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-builder' }
+    }
+    memory = container 'qsm-memory' 'The session briefing, with no task lines' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-memory' }
+    }
+    cockpit = container 'qsm-cockpit' 'The loop view, with no Tasks card' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-cockpit' }
+    }
+    worktrunk = container 'qsm-worktrunk' 'Worktrees, with no store redirect' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-worktrunk' }
+    }
+  }
+  owner -> github 'reads the board, merges PRs'
+  agent -> mp.tasks 'reads, creates and moves tasks with'
+  agent -> mp.memory 'starts a session with'
+  agent -> mp.worktrunk 'makes a worktree with'
+  mp.lens -> mp.tasks 'saves a pen edit with'
+  mp.tasks -> github 'reads and writes issues and the board'
+}

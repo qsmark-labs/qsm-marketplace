@@ -1,34 +1,30 @@
 ## ADDED Requirements
 
-### Requirement: Features hold the intent of a piece of work, tasks hold one spec change
+### Requirement: A feature holds the intent and the change, its tasks are its pull requests
 
-The `task-tool` skill SHALL state the task model in the terms of the main task tool, GitHub Issues.
-A feature SHALL be an issue of GitHub's default issue type `Feature` that holds the intent of one
-piece of work and its acceptance criteria. Each spec change SHALL have exactly one task, an issue of
-type `Task` and a sub-issue of the feature, created together with the spec and never before,
-labelled `change:<change-id>`. Subtasks SHALL NOT be created as issues: the change's `tasks.md`
-holds that breakdown. A feature SHALL NOT have a test-it sub-issue: its final proof is the QA test.
-A follow-up, a side finding, a decision to make and tool feedback SHALL each be an issue, never
-prose. A fix, a change that needs no spec, SHALL get no feature and no task.
+The `task-tool` skill SHALL state the model in GitHub's terms. A feature SHALL be an issue of type
+`Feature` holding the intent, bound to its change by the label `change:<change-id>`. A task SHALL be
+an issue of type `Task`, a sub-issue of the feature, created when the feature is split and closed by
+its pull request. No task SHALL be created at planning, no task list SHALL be written into a change,
+and no test-it task SHALL exist. A follow-up, a side finding and feedback SHALL each be an issue.
 
-#### Scenario: A spec change is planned
+#### Scenario: A feature is planned
 
-- **WHEN** a spec change is created under a feature
-- **THEN** one sub-issue of type Task is created under that feature with it, labelled
-  `change:<change-id>`, and no issue for the change's steps is created
+- **WHEN** the planning session writes the change of feature 3
+- **THEN** feature 3 carries `change:<change-id>` and has no sub-issue yet
 
 #### Scenario: A feature is split into tasks
 
-- **WHEN** a feature is split into its tasks
-- **THEN** no test-it issue is among them, and the feature's Status is Todo until its first task is
-  claimed
+- **WHEN** the owner and the agent split feature 3
+- **THEN** its tasks are sub-issues of type Task with no `change:` label, none is a test-it task,
+  and the feature's Status is Todo until its first task is claimed
 
 #### Scenario: A change is looked up before it is bound
 
-- **WHEN** spec-propose runs `qsm-tasks list --spec add-x` and an issue labelled `change:add-x-more`
-  exists
-- **THEN** only an issue labelled `change:add-x` is the change's task, and the task is created with
-  `add --spec` only when `list --spec` printed none
+- **WHEN** spec-propose runs `qsm-tasks list --spec add-x` and a feature labelled
+  `change:add-x-more` exists
+- **THEN** only a feature labelled `change:add-x` is the change's feature, and the binding is
+  written only when `list --spec` printed none
 
 #### Scenario: A fix
 
@@ -112,20 +108,19 @@ acted on SHALL be closed with `--not-planned`. A subagent SHALL create only this
 - **THEN** it holds what happened as abstract steps and the expected behaviour, and holds no
   suggested fix, no path of the machine and no name of a person
 
-### Requirement: A task closes by merge and a feature closes by the owner's acceptance of QA
+### Requirement: Tasks close on merge into their feature branch, a feature on its merge into main
 
-The skill SHALL state the close rules. A task SHALL be closed by the merge of a pull request whose
-body says `Closes #<n>`, which the board shows as Done; a task with no pull request SHALL be closed
-with `qsm-tasks close --reason` and a reason a reader in a month understands. A feature SHALL be
-closed only by `qsm-tasks accept`, when every task is done, the QA agent has shown every acceptance
-criterion on the real path with no open finding, and the owner has accepted that result. The agent
-SHALL NOT close a feature on its own judgement. Finished work with its task left open SHALL be a
-failure.
+The skill SHALL state the close rules. A task SHALL be closed by the merge of its pull request into
+`feature/<n>` with `Closes #<n>`, which the Action closes; a task with no pull request SHALL be
+closed with `qsm-tasks close --reason`. A feature SHALL be closed only by the owner's merge of the
+feature pull request into main, which GitHub closes. The agent SHALL NOT close a feature, and
+finished work with its task left open SHALL be a failure.
 
 #### Scenario: A task merges
 
-- **WHEN** a pull request with `Closes #N` is merged
-- **THEN** task N is closed and the board shows it as Done, and the agent does not close it again
+- **WHEN** a pull request with `Closes #N` is merged into `feature/3`
+- **THEN** task N is closed by the Action and the board shows it as Done, and the agent does not
+  close it again
 
 #### Scenario: The last task closes
 
@@ -138,9 +133,9 @@ failure.
 - **WHEN** a task is a decision settled in conversation and no code changes
 - **THEN** it is closed with `qsm-tasks close --reason`, and no pull request is opened for it
 
-#### Scenario: The owner has not accepted
+#### Scenario: QA found nothing
 
-- **WHEN** QA found nothing but the owner has not said the result is accepted
+- **WHEN** QA has shown every path and the owner has not merged the feature pull request
 - **THEN** the feature stays open and its Status stays In Test
 
 ### Requirement: Tasks and features move by one Status, and the skill says who moves what
@@ -153,15 +148,13 @@ is linked (by `review` when the built-in workflow lags or after a finding), Huma
 when CI is green and every finding is fixed, Done when merged, and needs no QA. A feature SHALL be
 Todo while planned, In Dev from its first claimed or completed task, Ready For Test when its last
 sub-issue closes, In Test by `qa` when the QA agent takes it, Blocked while a fix task is open under
-it, and Done by `accept` on the owner's acceptance, the Action making every move but `qa` and
-`accept`, and it needs no review. The QA agent SHALL be the only one to run `qa`, SHALL find the
-features that wait with `qsm-tasks ready --qa`, SHALL test the whole feature against the business
-request and the acceptance criteria on the real path, and SHALL file a defect with `qsm-tasks add
---feature <n>`. The owner SHALL approve every pull request and accept every feature; the agent SHALL
-run `accept`, or a task's approval, only on the owner's explicit word in the conversation, and a
-rejection by the owner is an `add --feature` under the feature. Pull requests are opened by a bot of
-the organization, and everything the skill posts SHALL be written in the owner's name with no
-mention of an AI or an agent.
+it, and Done when the owner merges the feature pull request into main, the Action making every move
+but `claim` and `qa`, and it needs no review. The QA agent SHALL be the only one to run `qa`, SHALL
+find the features that wait with `qsm-tasks ready --qa`, SHALL test every path of the feature's
+models, and SHALL file a finding with `qsm-tasks add --feature <n>`. The owner SHALL merge every
+pull request; a rejection by the owner is an `add --feature` under the feature, run only on the
+owner's word. Everything the skill posts SHALL be written in the owner's name with no mention of an
+AI or an agent.
 
 #### Scenario: A pull request is opened
 
@@ -176,15 +169,15 @@ mention of an AI or an agent.
 
 #### Scenario: QA finds a defect
 
-- **WHEN** the QA agent finds that an acceptance criterion does not hold
+- **WHEN** the QA agent finds that a path of the feature's models does not hold
 - **THEN** it runs `add --feature <n>` with the defect as title, the Action makes the feature
   Blocked, and when the fix task closes it is Ready For Test and QA runs again
 
 #### Scenario: QA finds nothing
 
-- **WHEN** the QA agent has shown every criterion on the real path with no open finding
-- **THEN** it reports that to the owner, and the feature stays In Test until the owner says to
-  accept
+- **WHEN** the QA agent has shown every path with no open finding
+- **THEN** it reports that to the owner, and the feature stays In Test until the owner merges the
+  feature pull request
 
 #### Scenario: The owner rejects
 
@@ -207,13 +200,13 @@ mention of an AI or an agent.
 
 **Reason**: One name for one concept: the parent of tasks is GitHub's default issue type Feature.
 
-**Migration**: "Features hold the intent of a piece of work, tasks hold one spec change".
+**Migration**: "A feature holds the intent and the change, its tasks are its pull requests".
 
 ### Requirement: An epic closes only when the work is proven and pushed
 
 **Reason**: The close rule changed: there is no test-it sub-issue and the agent no longer closes a
-feature. It is replaced by "A task closes by merge and a feature closes by the owner's acceptance of
-QA".
+feature. It is replaced by "Tasks close on merge into their feature branch, a feature on its merge
+into main".
 
 **Migration**: The skill and spec-archive state the new rule; a feature at Ready For Test waits for
 the QA agent.

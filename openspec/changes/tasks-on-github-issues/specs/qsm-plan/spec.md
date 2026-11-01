@@ -6,7 +6,8 @@ The plan skill SHALL ensure a feature carries acceptance criteria written by gri
 thing a run can show, and SHALL NOT add a test-it task to the feature. When the feature is written
 it SHALL be an issue of type `Feature` with Status Todo. After its tasks are done, the QA agent
 tests the whole feature against the business request and those criteria on the real path, and the
-owner's acceptance closes the feature; the task tool's skill holds that flow.
+owner's merge of the feature pull request into main closes it; the task tool's skill holds
+that flow.
 
 #### Scenario: A feature is split
 

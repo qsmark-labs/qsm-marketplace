@@ -8,7 +8,7 @@ hook calls `$.tasks.<verb>()` where a person runs `qsm-tasks <verb>`. The binary
 step of the task flow, so that no step needs a raw `gh`, `jq` or GraphQL call, and SHALL NOT touch
 pull requests, review threads or git state. Its verbs SHALL be: `ready`, `list`, `show`, `feature`,
 `add`, `feedback`, `edit`, `note`, `claim`, `unclaim`, `review`, `human`, `close`, `reopen`, `plan`,
-`qa`, `accept`, `doctor`, `flow` and `setup`.
+`qa`, `doctor`, `flow` and `setup`.
 
 #### Scenario: A step of the flow needs a task operation
 
@@ -78,7 +78,7 @@ and that do not carry the label `deferred`, never a Feature and never Feedback, 
 number. `ready --qa` SHALL list the open features that the guard of `qa` accepts. `list` SHALL list
 issues filtered by `--feature <n>` (the feature first, then its sub-issues), `--kind` (`feature`,
 `task`, `bug` or `feedback`), `--status`, `--priority`, `--mine` (assigned to the caller),
-`--blocked`, `--label`, `--search "<words>"` (title and body), `--spec <change-id>` (the issue
+`--blocked`, `--label`, `--search "<words>"` (title and body), `--spec <change-id>` (the feature
 labelled `change:<change-id>` in any state, or `none`) and `--state` (open by default, `all` with
 `--spec`), up to `--limit`. `show <n>` SHALL print an item's facts, blockers, sub-issue counts and
 body, and with `--comments` its comments oldest first as `<date> <login>: <text>`. A list that
@@ -101,26 +101,27 @@ reaches its limit SHALL say it is cut, as a warning, and still exit `ok`.
   8 is In Dev with an open sub-issue
 - **THEN** `ready --qa` lists 3 and 5, and not 8
 
-#### Scenario: A change's task
+#### Scenario: A change's feature
 
-- **WHEN** `list --spec add-x` runs and an issue `add-x-more` is labelled `change:add-x-more`
-- **THEN** only the issue labelled `change:add-x` is printed, or `none` with `data.items` empty
+- **WHEN** `list --spec add-x` runs and a feature is labelled `change:add-x-more`
+- **THEN** only the feature labelled `change:add-x` is printed, or `none` with `data.items` empty
 
-#### Scenario: A closed change's task is still found
+#### Scenario: A closed change's feature is still found
 
-- **WHEN** the task labelled `change:add-x` is closed and `list --spec add-x` runs
+- **WHEN** the feature labelled `change:add-x` is closed and `list --spec add-x` runs
 - **THEN** it is printed, because `--spec` implies `--state all`
 
 ### Requirement: Create and edit verbs
 
 `feature "<goal>" --intent <file or ->` SHALL create an issue of kind Feature whose body is the
-intent, with Status Todo. `add "<title>"` SHALL create a Task, optionally a sub-issue of
-`--feature`, blocked by `--after`, labelled `change:<id>` by `--spec` (the label is created first
-when missing, and an id that makes it longer than 50 characters exits `usage` before any call), with
-`--priority`, `--body` or `--body-file` and `--label`. `edit <n>` SHALL change `--title`,
+intent, with Status Todo, labelled `change:<id>` by `--spec` (the label is created first when
+missing, and an id that makes it longer than 50 characters exits `usage` before any call).
+`add "<title>"` SHALL create a Task, optionally a sub-issue of `--feature`, blocked by `--after`,
+with `--priority`, `--body` or `--body-file` and `--label`. `edit <n>` SHALL change `--title`,
 `--priority`, `--body` or `--body-file`, `--assignee <login>` (without changing Status), `--feature
 <m>` (a sub-issue of m, leaving an earlier parent), `--after <b>` (n is blocked by b), `--unblock
-<b>` (lift it) and `--spec <id>` (replace the `change:` label, created first when missing). `note
+<b>` (lift it) and, on a feature only, `--spec <id>` (replace the `change:` label, created first
+when missing; on another kind `wrong-kind`). `note
 <n> "<text>"` SHALL add one comment with the text unchanged. No verb SHALL put an open sub-issue
 under a closed feature (`wrong-status`). A relation GitHub refuses (a cycle, a missing issue, a
 parent in another repository) SHALL exit `failed` carrying its cause and change nothing, and
@@ -135,8 +136,15 @@ and URL.
 
 #### Scenario: A task under a feature, after another
 
-- **WHEN** `add "Write the writer" --feature 3 --after 5 --spec add-writer` runs
-- **THEN** a Task exists as a sub-issue of 3, blocked by 5, labelled `change:add-writer`
+- **WHEN** `add "Write the writer" --feature 3 --after 5` runs
+- **THEN** a Task exists as a sub-issue of 3, blocked by 5, with no `change:` label
+
+#### Scenario: A feature is bound to its change
+
+- **WHEN** `feature "Report export" --intent intent.md --spec report-export` runs, and later
+  `edit 12 --spec report-export` runs on a task
+- **THEN** the feature carries the label `change:report-export`, and the edit of the task exits
+  `blocked` with reason `wrong-kind` and changes nothing
 
 #### Scenario: Order added then lifted
 
@@ -194,14 +202,14 @@ workflow file, which `doctor` checks against it. The definitions SHALL be these:
 
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
-| Todo | Not started | Being planned: intent, acceptance criteria, specs, tasks | Filed, not yet read |
-| In Dev | Claimed and being built | Its tasks are being built | not used |
+| Todo | Not started | Being planned: intent, models, specs, then split into tasks | Filed, not yet read |
+| In Dev | Claimed and being built | Its tasks are being built on `feature/<n>` | not used |
 | Agent Review | PR open: CI, the gates and the review agents run; every finding is fixed | not used | not used |
 | Human Review | CI green and no open finding: the owner tests it and approves | not used | not used |
 | Ready For Test | not used | Every task is closed: waiting for the QA agent | not used |
-| In Test | not used | The QA agent tests the whole against the business request on the real path, then the owner accepts | not used |
+| In Test | not used | The QA agent tests every path of the feature's models in a sandbox; then the owner reads the feature pull request | not used |
 | Blocked | not used | QA found a finding: a fix task is open under the feature | not used |
-| Done | Merged into main with Closes #N, CI green, every finding fixed, approved by the owner | Every task done, every acceptance criterion shown on the real path with no open finding, accepted by the owner | Read and settled: answered, changed or filed as a task |
+| Done | Merged into `feature/<n>` by the owner with Closes #N, CI green, every finding fixed | The owner merged the feature pull request into main: every task done, every path shown by QA | Read and settled: answered, changed or filed as a task |
 
 | Priority | Definition |
 | --- | --- |
@@ -233,7 +241,7 @@ SHALL exit `blocked` with reason `wrong-kind`, because the views filter by kind 
 The verbs below SHALL move an item only from the state they need, and SHALL refuse any other kind
 with `wrong-kind` and any other state with `wrong-status`, naming the current value and changing
 nothing. A Feedback issue SHALL take `close` and `reopen` only, and a feature SHALL take `plan`,
-`qa`, `accept` and `close --not-planned` only.
+`qa` and `close --not-planned` only.
 
 | Verb | Needs | Effect |
 | --- | --- | --- |
@@ -281,88 +289,108 @@ by the holder SHALL change nothing. No verb SHALL write Done, and a close SHALL 
 
 ### Requirement: A feature's Status is derived, and the Action is its only writer
 
-The only verb write to a feature's Status SHALL be `claim` of one of its tasks (Todo to In Dev),
-`plan` (to Todo) and `qa` (to In Test), and `accept` closes it. Every other change SHALL be made by
-one rule, held once in `lib/flow.ts` and repeated by the Action: a feature at Todo stays there until
-`claim` of a child moves it to In Dev, or a child closes as completed, which moves it to In Dev at
-once, while a child closed as not planned leaves it at Todo; then, by the stored Status, an open
-sub-issue SHALL send Ready For Test to In Dev and In Test to Blocked, and the closing of the last
-open sub-issue (at least one closed as completed) SHALL send In Dev or Blocked to Ready For Test;
-any other Status SHALL stay. A workflow file in this repository,
-`.github/workflows/feature-ready.yml`, SHALL apply the rule when an issue is opened, closed or
-reopened and its parent is a Feature. It SHALL use `gh` only, authenticate with the repository
-secret `PROJECT_TOKEN`, change no other field, post nothing and serialise two events under one
-parent. `add --feature` SHALL rely on the `opened` event seeing the parent, which task 0.2 measures;
-a verb that gives an existing issue a parent (`edit --feature`) SHALL NOT recompute the feature, so
-the new parent and the old one MAY keep a Status that lags (an old parent at In Dev or Blocked with
-no open child) until the next event on one of their children, and the guards of `qa` and `accept`
-SHALL read the sub-issues, never the Status alone.
+The only verb writes to a feature's Status SHALL be `claim` of its first task (Todo to In Dev),
+`plan` (to Todo) and `qa` (to In Test). Every other change SHALL be the rule of the model
+`models/feature-status.bpmn`, held once in `lib/flow.ts` and applied by the workflow
+`.github/workflows/qsm-tasks.yml` when a sub-issue of a Feature opens, closes or reopens. The
+workflow SHALL use `gh` and the secret `PROJECT_TOKEN`, change no other field, post nothing, and
+serialise two events under one parent.
 
-#### Scenario: The last task closes
+#### Scenario: A decision task closes the only task of a planned feature (path p-1209f1)
 
-- **WHEN** the last open sub-issue of a feature at In Dev closes
-- **THEN** the feature's Status becomes Ready For Test within a minute, and while another is open it
-  is unchanged
-
-#### Scenario: A feature of decision tasks
-
-- **WHEN** a task of a feature at Todo is closed by `close` without ever being claimed
+- **WHEN** the only task of a feature at Todo is closed as completed without ever being claimed
 - **THEN** the feature goes to In Dev and, with no sub-issue open, to Ready For Test
 
-#### Scenario: A finding under test
+#### Scenario: A task closes while others are open, at Todo (path p-a81141)
 
-- **WHEN** QA runs `add --feature 3 "export drops the last row"` on a feature In Test
-- **THEN** a Task exists under feature 3 and the Action sets Blocked, and when that task closes the
-  Action sets Ready For Test
+- **WHEN** a task of a feature at Todo closes as completed and another task is open
+- **THEN** the feature is In Dev
 
-#### Scenario: A task added or reopened under a feature that waits
+#### Scenario: A task closed as not planned leaves the plan alone (path p-27826f)
+
+- **WHEN** a task of a feature at Todo is closed as not planned
+- **THEN** the feature stays Todo
+
+#### Scenario: A task merges and others are open (path p-083513)
+
+- **WHEN** a sub-issue of a feature at In Dev closes and another is open
+- **THEN** the feature's Status is unchanged
+
+#### Scenario: The last task closes (path p-12d754)
+
+- **WHEN** the last open sub-issue of a feature at In Dev or Blocked closes, one of them completed
+- **THEN** the feature's Status becomes Ready For Test within a minute
+
+#### Scenario: Every task was dropped (path p-3ef4ce)
+
+- **WHEN** the last open sub-issue of a feature at In Dev closes and none closed as completed
+- **THEN** the Status is unchanged, and the feature is closed with `close --not-planned`
+
+#### Scenario: A task is added to a feature that waits for QA (path p-fd1c94)
 
 - **WHEN** an open sub-issue appears under a feature at Ready For Test
-- **THEN** the Action sets In Dev, and under a feature at Blocked or In Dev it changes nothing
+- **THEN** the Action sets In Dev
 
-### Requirement: Feature verbs plan, test and accept
+#### Scenario: A closed sub-issue changes nothing while QA waits (path p-3daef6)
+
+- **WHEN** a sub-issue event happens under a feature at Ready For Test with no sub-issue open
+- **THEN** the Status stays Ready For Test
+
+#### Scenario: QA files a finding (path p-17fcd1)
+
+- **WHEN** QA runs `add --feature 3 "export drops the last row"` on a feature In Test
+- **THEN** a Task exists under feature 3 and the Action sets Blocked
+
+#### Scenario: A sub-issue event under test with nothing open (path p-98bc6e)
+
+- **WHEN** a sub-issue of a feature In Test is closed and none is open
+- **THEN** the Status stays In Test until the owner merges the feature pull request
+
+#### Scenario: A late event on a done feature (path p-2ecc9b)
+
+- **WHEN** a sub-issue of a closed feature is edited, closed or reopened
+- **THEN** the feature's Status is unchanged
+
+### Requirement: Feature verbs plan and test
 
 `plan <feature>` SHALL need In Dev, Ready For Test or Blocked and set Todo. `qa <feature>` SHALL
-need a feature stored at In Dev, Ready For Test or Blocked with no open sub-issue and at least one
-closed as completed, so QA never waits for the Action, and set In Test; it SHALL exit `blocked` with
-reason `wrong-status` naming the open sub-issues or the current Status otherwise; a feature whose
-tasks were all closed as not planned stays where it is and is closed with `close --not-planned`.
-`accept <feature>` SHALL need In Test and no open sub-issue and close the feature as completed,
-writing no Status, because the board's "Item closed" workflow sets Done. QA SHALL file a defect, and
-the owner a rejection, as `add --feature <n> "<reason>"` under the feature In Test; no verb for it
-exists.
+need a feature at In Dev, Ready For Test or Blocked with no open sub-issue and at least one closed
+as completed, and set In Test; otherwise it SHALL exit `blocked` with reason `wrong-status` naming
+the open sub-issues or the Status. QA SHALL file a finding, and the owner a rejection, as
+`add --feature <n> "<reason>"`. No verb accepts a feature.
 
 #### Scenario: QA takes a feature, before or after the Action ran
 
 - **WHEN** `qa` runs on a feature at Ready For Test, or at In Dev with every sub-issue closed
 - **THEN** its Status is In Test
 
-#### Scenario: QA before the work is done, and accept before QA
+#### Scenario: QA before the work is done
 
-- **WHEN** `qa` runs on a feature at Todo or In Dev with an open sub-issue, and `accept` on one at
-  Ready For Test
-- **THEN** each exits `blocked` with reason `wrong-status` naming why, and the feature is unchanged
+- **WHEN** `qa` runs on a feature at Todo, or at In Dev with an open sub-issue
+- **THEN** it exits `blocked` with reason `wrong-status` naming why, and the feature is unchanged
 
-#### Scenario: The owner accepts
+### Requirement: Done is GitHub's, and the Action closes what a feature-branch merge names
 
-- **WHEN** `accept 3` runs on a feature In Test with no open sub-issue
-- **THEN** the issue is closed as completed, the verb writes no Status, and the board shows Done
+The board's built-in workflow "Item closed" SHALL set Done for every closed issue, never a verb.
+GitHub SHALL close a feature when the feature pull request with `Closes #<feature>` merges into
+main, the default branch. When a pull request merges into a branch `feature/*`, the workflow
+`.github/workflows/qsm-tasks.yml` SHALL close as completed each issue its body names with
+`Closes #N`, because GitHub does that only for the default branch.
 
-### Requirement: Done is GitHub's
+#### Scenario: A task pull request merges into the feature branch
 
-A merged pull request whose body says `Closes #N` SHALL close task N, and the board's built-in
-workflow "Item closed" SHALL set Done for it and for a feature closed by `accept`, not a verb. The
-board SHALL have these built-in workflows switched on: "Auto-add to project", "Auto-add sub-issues
-to project", "Item added to project" (sets Todo), "Item closed" (sets Done), "Pull request merged"
-(sets Done) and "Pull request linked to issue" (sets Agent Review). The last moves a task to Agent
-Review when its pull request is linked, and `review` stays the verb for the way back from Human
-Review and for the same move when the workflow lags.
+- **WHEN** a pull request with `Closes #12` merges into `feature/3`
+- **THEN** task 12 is closed as completed within a minute and `show 12` prints Status Done
 
-#### Scenario: A pull request is merged into a protected main
+#### Scenario: The owner merges the feature pull request
 
-- **WHEN** a pull request with `Closes #N` merges into the default branch and N is a task on the
-  board
-- **THEN** N is closed and `show N` prints Status Done
+- **WHEN** the feature pull request with `Closes #3` merges into main
+- **THEN** feature 3 is closed by GitHub, `show 3` prints Status Done, and no verb ran
+
+#### Scenario: A pull request into feature branch is closed without merge
+
+- **WHEN** a pull request into `feature/3` that names `Closes #12` is closed unmerged
+- **THEN** task 12 stays open
 
 ### Requirement: Only lib/github talks to GitHub
 
@@ -385,8 +413,10 @@ repository and the one linked board; the issue types Feature, Task, Bug and Feed
 Status and Priority with exactly the option names of the flow table (names only; an extra or wrongly
 named option, such as a leftover In Progress, or a leftover field `Epic stage`, is `failed` with the
 web-UI page as its fix, never `setup`); the labels `deferred`, `kind:*` and `from:*`; the built-in
-workflows that must be on (the list of "Done is GitHub's"); the views Tasks and Features; the file
-`.github/workflows/feature-ready.yml` with names that are options of the board; and the secret
+workflows that must be on ("Auto-add to project", "Auto-add sub-issues to project", "Item
+added to project" setting Todo, "Item closed" setting Done, "Pull request linked to issue"
+setting Agent Review); the views Tasks and Features; the file
+`.github/workflows/qsm-tasks.yml` with names that are options of the board; and the secret
 `PROJECT_TOKEN`. Each failing line SHALL name its fix. A check GitHub cannot be asked for SHALL be
 `manual` and SHALL NOT be reported `ok`.
 
