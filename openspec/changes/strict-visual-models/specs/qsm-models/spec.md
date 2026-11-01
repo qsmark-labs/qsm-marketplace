@@ -28,9 +28,10 @@ warnings as errors. Each finding SHALL name the file, the element id and the rul
 
 #### Scenario: An unlabelled answer (path p-085ebe)
 
-- **WHEN** a split gateway "Findings?" has two outgoing flows and one has no label
-- **THEN** `lint` exits `worse` naming the flow's id and the rule `split-flows-labelled`, and
-  the agent fixes the model before it renders
+- **WHEN** a split gateway "Findings?" has two outgoing flows and one has no label, and once the
+  model is clean its cover path has no scenario yet
+- **THEN** `lint` exits `worse` naming the flow's id and the rule `split-flows-labelled`, the agent
+  fixes the model before it renders, and writes the missing scenario before it commits
 
 #### Scenario: A lane nobody is
 
@@ -44,11 +45,11 @@ warnings as errors. Each finding SHALL name the file, the element id and the rul
 
 ### Requirement: lint holds C4 to its levels
 
-`lint` SHALL accept only the kinds person, system, container and component, the tags
-`external`, `agent` and `shared`, and the properties `colour` and `group`; and SHALL refuse a
-person or a system that has a parent, a container outside a system, a component outside a
-container, a relation without a title, two elements with one title, an internal container without a
-code path, and a source that declares its own kinds or views.
+`lint` SHALL accept only the kinds person, system, container and component, the tags `external`,
+`agent` and `shared`, and the properties `colour`, `group` and `path`; and SHALL refuse a person or
+a system that has a parent, a container outside a system, a component outside a container, a
+relation without a title, two elements with one title, an internal container without a code path,
+and a source that declares its own kinds or views.
 
 #### Scenario: A container inside a container
 
@@ -59,10 +60,26 @@ code path, and a source that declares its own kinds or views.
 
 `lint` SHALL refuse a process level with more than 10 activities, an activity with more than one
 outgoing flow or more than one incoming flow (a loop goes back through a merge gateway, never into
-the side of an activity), a level with several end events of which one has no name, and a split
-right after a call activity whose answers are not the names of the called process's end events.
-An activity is one action: a second decision or step inside it is a gateway or an activity of its
-own.
+the side of an activity), a merge gateway with a name, a level with several end events of which one
+has no name, and a split right after a call activity whose answers are not the names of the called
+process's end events.
+
+#### Scenario: A named merge
+
+- **WHEN** the merge before "Write the model source" is named "Model to write"
+- **THEN** `lint` exits `worse` naming it and the rule `merge-unnamed`
+
+### Requirement: An activity names one action
+
+An activity's name SHALL be one verb and its object; a second decision is a gateway and a second
+step an activity of its own. Lint checks the flows of this rule; whether a name holds one action is
+the reviewer's judgment, because no structure shows it.
+
+#### Scenario: A name that hides a second step
+
+- **WHEN** an activity is named "Open the feature PR, change archived"
+- **THEN** the reviewer returns it as two actions, and the model gets "Archive the change" and
+  "Open the feature PR"
 
 #### Scenario: Two actions merged into one activity
 
@@ -79,10 +96,10 @@ own.
 ### Requirement: The colour of an actor is one colour everywhere
 
 Every top-level person and every system tagged `agent` SHALL carry one colour from the tool's
-palette (blue, purple, orange, green, teal, red), no two the same; an external system SHALL be grey
-and a container blue. A BPMN lane SHALL take the colour of the C4 actor it names, so one actor has
-one colour in every picture. Every picture SHALL carry a legend of the colours and shapes it uses.
-`lint` SHALL refuse an actor without a colour and two actors with one.
+palette (navy, purple, orange, green, teal, red), no two the same. An external system SHALL be grey,
+a container light blue, and a relation that starts inside the system grey and dashed. A BPMN lane
+SHALL take the colour of the C4 actor it names. Every picture SHALL carry a legend of the colours
+and shapes it uses. `lint` SHALL refuse an actor without a colour and two actors with one.
 
 #### Scenario: The QA agent in two pictures
 
@@ -113,12 +130,14 @@ relations and carry a note naming who uses it.
 
 - **WHEN** the marketplace model has 28 relations among 4 actors and 10 containers
 - **THEN** `render` writes `containers-uses` with the 15 actor relations and `containers-depends`
-  with the 13 container relations, each in tiers, groups and actor colours
+  with 12 of the 13 container relations drawn, each in tiers, groups and actor colours; the 13th
+  ends at qsm-essentials, tagged `shared`, which carries the note "used by qsm-openspec"
 
 ### Requirement: lint measures the layout and refuses a worse one
 
-`lint` SHALL measure each picture from its geometry: edge crossings, total and longest edge length,
-bends per edge, lane jumps per flow and area per element, each divided by the element count. In the
+`lint` SHALL measure each picture from its geometry: edge crossings, segments two edges share, total
+and longest edge length, bends per edge, lane jumps per flow, labels that touch a line or a box, and
+area per element, each divided by the element count. In the
 commit gate it SHALL compare the staged picture with the one it replaces and exit `worse` naming
 each measure that grew, unless the commit message names the measure and why.
 
@@ -135,11 +154,17 @@ A path's signature SHALL be its split answers in order and the name of its end e
 the other lacks. Merging two activities in a row keeps every signature; removing a split or an
 answer does not.
 
-#### Scenario: A simplification drops an answer
+#### Scenario: A simplification drops an answer (path p-2fe723)
 
 - **WHEN** the simplify agent merges a split into the activity before it
 - **THEN** `paths --compare` exits `worse` naming the signatures that lost the split's answers, and
-  the rewrite is refused
+  the rewrite is dropped
+
+#### Scenario: Two steps in a row merge (path p-b9aa8b)
+
+- **WHEN** the simplify agent merges two activities of one lane that follow each other
+- **THEN** `paths --compare` finds every signature in both models, `check` and the layout measures
+  pass, and the rewrite is kept
 
 ### Requirement: The model skill takes any piece of work to checked models
 
@@ -169,23 +194,24 @@ ones `paths --compare`, `check` and the layout measures accept.
 - **THEN** the finding goes back to the agent, the model is written, linted and rendered again,
   and the reviewer reads it once more before the owner does
 
-#### Scenario: Simplify on request (path p-4971fe)
+#### Scenario: Simplify on request (path p-298cd0)
 
-- **WHEN** the owner asks to simplify `flow.bpmn`, the first rewrite drops a split's answer and the
-  second merges two steps in a row
+- **WHEN** the owner asks to simplify `flow.bpmn`, the first rewrite drops a split's answer, the
+  second merges two steps in a row, and a third try is refused
 - **THEN** the simplifier drops the first naming `paths --compare`, keeps the second with the
-  measures before and after, and the owner takes the simplified model
+  measures before and after, reports both, and the owner takes the simplified model
 
-#### Scenario: The owner keeps the model as it was (path p-371318)
+#### Scenario: The owner keeps the model as it was (path p-c7c303)
 
-- **WHEN** a rewrite was kept and the owner reads the report and the new picture and declines it
+- **WHEN** the first rewrite is kept, no other is tried, and the owner reads the report and
+  declines it
 - **THEN** the model stays as it was and nothing is committed
 
-#### Scenario: Nothing to simplify (path p-171c51)
+#### Scenario: Nothing to simplify (path p-e8bca2)
 
-- **WHEN** every rewrite the simplifier proposes is refused
-- **THEN** it reports that there is nothing to simplify, with the rule that refused each rewrite,
-  and the owner is not asked to read a new picture
+- **WHEN** the first rewrite is refused and the simplifier has no other to try
+- **THEN** it ends with nothing to simplify, names the rule that refused the rewrite, and the owner
+  is not asked to read a report
 
 ### Requirement: layout never overwrites a drawn diagram
 
@@ -207,9 +233,9 @@ shapes carrying draw.io's C4 attributes, in the root element's `content` attribu
 
 #### Scenario: A model changed and its SVG did not (path p-356c6b)
 
-- **WHEN** a BPMN file is edited and committed without running `render`
-- **THEN** `render --check` in the commit gate exits `worse` naming the stale SVG, and the commit is
-  refused until it is rendered
+- **WHEN** the agent edits a BPMN file after it rendered the picture and commits both
+- **THEN** `render --check` in the commit gate exits `worse` naming the stale SVG, the commit is
+  refused, and the model goes back to be written, linted and rendered again
 
 #### Scenario: The picture is unreadable (path p-2c87cd)
 

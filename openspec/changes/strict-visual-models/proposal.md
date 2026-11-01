@@ -2,6 +2,8 @@
 
 ![A model simplified on request, BPMN](models/qsm-models/simplify.svg)
 
+![One try of the simplify pass, BPMN](models/qsm-models/try-rewrite.svg)
+
 ![qsm-models, C4 components](models/qsm-models.components.drawio.svg)
 
 ![qsm-models, C4 context](models/qsm-models.context.drawio.svg)

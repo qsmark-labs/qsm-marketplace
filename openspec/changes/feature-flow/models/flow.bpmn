@@ -10,22 +10,20 @@
         <bpmn:flowNodeRef>request</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>planMerge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>accept</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>done</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="lane_1" name="Agent">
         <bpmn:flowNodeRef>plan</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>split</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>buildJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>build</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>archive</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>featurePr</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="lane_2" name="QA agent">
         <bpmn:flowNodeRef>qa</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>qaOk</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>fileFix</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="lane_3" name="GitHub">
-        <bpmn:flowNodeRef>close</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>done</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:startEvent id="need" name="Business need">
@@ -62,27 +60,27 @@
     </bpmn:task>
     <bpmn:exclusiveGateway id="qaOk" name="QA passed?">
       <bpmn:incoming>f_qa_qaOk</bpmn:incoming>
-      <bpmn:outgoing>f_qaOk_featurePr</bpmn:outgoing>
+      <bpmn:outgoing>f_qaOk_archive</bpmn:outgoing>
       <bpmn:outgoing>f_qaOk_fileFix</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:task id="fileFix" name="File a fix task per finding">
       <bpmn:incoming>f_qaOk_fileFix</bpmn:incoming>
       <bpmn:outgoing>f_fileFix_buildJoin</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="featurePr" name="9 Open the feature PR, change archived">
-      <bpmn:incoming>f_qaOk_featurePr</bpmn:incoming>
+    <bpmn:task id="archive" name="9 Archive the change">
+      <bpmn:incoming>f_qaOk_archive</bpmn:incoming>
+      <bpmn:outgoing>f_archive_featurePr</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="featurePr" name="Open the feature PR">
+      <bpmn:incoming>f_archive_featurePr</bpmn:incoming>
       <bpmn:outgoing>f_featurePr_accept</bpmn:outgoing>
     </bpmn:task>
     <bpmn:userTask id="accept" name="Merge the feature PR into main">
       <bpmn:incoming>f_featurePr_accept</bpmn:incoming>
-      <bpmn:outgoing>f_accept_close</bpmn:outgoing>
+      <bpmn:outgoing>f_accept_done</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:serviceTask id="close" name="Close the feature">
-      <bpmn:incoming>f_accept_close</bpmn:incoming>
-      <bpmn:outgoing>f_close_done</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:endEvent id="done" name="Feature on main">
-      <bpmn:incoming>f_close_done</bpmn:incoming>
+    <bpmn:endEvent id="done" name="Feature closed on main">
+      <bpmn:incoming>f_accept_done</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="f_need_request" sourceRef="need" targetRef="request" />
     <bpmn:sequenceFlow id="f_request_plan" sourceRef="request" targetRef="plan" />
@@ -92,17 +90,17 @@
     <bpmn:sequenceFlow id="f_buildJoin_build" sourceRef="buildJoin" targetRef="build" />
     <bpmn:sequenceFlow id="f_build_qa" sourceRef="build" targetRef="qa" />
     <bpmn:sequenceFlow id="f_qa_qaOk" sourceRef="qa" targetRef="qaOk" />
-    <bpmn:sequenceFlow id="f_qaOk_featurePr" name="yes" sourceRef="qaOk" targetRef="featurePr" />
+    <bpmn:sequenceFlow id="f_qaOk_archive" name="yes" sourceRef="qaOk" targetRef="archive" />
     <bpmn:sequenceFlow id="f_qaOk_fileFix" name="no" sourceRef="qaOk" targetRef="fileFix" />
     <bpmn:sequenceFlow id="f_fileFix_buildJoin" sourceRef="fileFix" targetRef="buildJoin" />
+    <bpmn:sequenceFlow id="f_archive_featurePr" sourceRef="archive" targetRef="featurePr" />
     <bpmn:sequenceFlow id="f_featurePr_accept" sourceRef="featurePr" targetRef="accept" />
-    <bpmn:sequenceFlow id="f_accept_close" sourceRef="accept" targetRef="close" />
-    <bpmn:sequenceFlow id="f_close_done" sourceRef="close" targetRef="done" />
+    <bpmn:sequenceFlow id="f_accept_done" sourceRef="accept" targetRef="done" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_feature_flow_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_feature_flow_collab" bpmnElement="feature_flow_collab">
       <bpmndi:BPMNShape id="BPMNShape_feature_flow_pool" bpmnElement="feature_flow_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="2382" height="1120" />
+        <dc:Bounds x="80" y="80" width="2382" height="880" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#f3f7fc" color:border-color="#08427b" color:background-color="#f3f7fc" isHorizontal="true">
         <dc:Bounds x="110" y="80" width="2352" height="240" />
@@ -112,9 +110,6 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_2" bpmnElement="lane_2" bioc:stroke="#15803d" bioc:fill="#f4fbf6" color:border-color="#15803d" color:background-color="#f4fbf6" isHorizontal="true">
         <dc:Bounds x="110" y="560" width="2352" height="400" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_lane_3" bpmnElement="lane_3" bioc:stroke="#4b5563" bioc:fill="#f7f8f9" color:border-color="#4b5563" color:background-color="#f7f8f9" isHorizontal="true">
-        <dc:Bounds x="110" y="960" width="2352" height="240" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_need" bpmnElement="need" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
         <dc:Bounds x="150" y="182" width="36" height="36" />
@@ -146,25 +141,25 @@
       <bpmndi:BPMNShape id="BPMNShape_qaOk" bpmnElement="qaOk" bioc:stroke="#15803d" bioc:fill="#dff3e6" color:border-color="#15803d" color:background-color="#dff3e6" isMarkerVisible="true">
         <dc:Bounds x="1636" y="655" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1624" y="636" width="75" height="14" />
+          <dc:Bounds x="1565" y="639" width="75" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_fileFix" bpmnElement="fileFix" bioc:stroke="#15803d" bioc:fill="#dff3e6" color:border-color="#15803d" color:background-color="#dff3e6">
         <dc:Bounds x="1786" y="800" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_featurePr" bpmnElement="featurePr" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+      <bpmndi:BPMNShape id="BPMNShape_archive" bpmnElement="archive" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
         <dc:Bounds x="1786" y="400" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_featurePr" bpmnElement="featurePr" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
+        <dc:Bounds x="1986" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_accept" bpmnElement="accept" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
-        <dc:Bounds x="1986" y="160" width="100" height="80" />
+        <dc:Bounds x="2186" y="160" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_close" bpmnElement="close" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="2186" y="1040" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_done" bpmnElement="done" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
-        <dc:Bounds x="2386" y="1062" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_done" bpmnElement="done" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="2386" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2368" y="1103" width="73" height="28" />
+          <dc:Bounds x="2372" y="223" width="64" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_f_need_request" bpmnElement="f_need_request" bioc:stroke="#08427b" color:border-color="#08427b">
@@ -203,7 +198,7 @@
         <di:waypoint x="1536" y="680" />
         <di:waypoint x="1636" y="680" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_qaOk_featurePr" bpmnElement="f_qaOk_featurePr" bioc:stroke="#15803d" color:border-color="#15803d">
+      <bpmndi:BPMNEdge id="BPMNEdge_f_qaOk_archive" bpmnElement="f_qaOk_archive" bioc:stroke="#15803d" color:border-color="#15803d">
         <di:waypoint x="1686" y="680" />
         <di:waypoint x="1836" y="680" />
         <di:waypoint x="1836" y="480" />
@@ -211,19 +206,18 @@
           <dc:Bounds x="1749" y="658" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_featurePr_accept" bpmnElement="f_featurePr_accept" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+      <bpmndi:BPMNEdge id="BPMNEdge_f_archive_featurePr" bpmnElement="f_archive_featurePr" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="1886" y="440" />
-        <di:waypoint x="2036" y="440" />
-        <di:waypoint x="2036" y="240" />
+        <di:waypoint x="1986" y="440" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_accept_close" bpmnElement="f_accept_close" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2086" y="200" />
-        <di:waypoint x="2236" y="200" />
-        <di:waypoint x="2236" y="1040" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_featurePr_accept" bpmnElement="f_featurePr_accept" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2086" y="440" />
+        <di:waypoint x="2236" y="440" />
+        <di:waypoint x="2236" y="240" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_close_done" bpmnElement="f_close_done" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="2286" y="1080" />
-        <di:waypoint x="2386" y="1080" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_accept_done" bpmnElement="f_accept_done" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2286" y="200" />
+        <di:waypoint x="2386" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_qaOk_fileFix" bpmnElement="f_qaOk_fileFix" bioc:stroke="#15803d" color:border-color="#15803d">
         <di:waypoint x="1661" y="705" />

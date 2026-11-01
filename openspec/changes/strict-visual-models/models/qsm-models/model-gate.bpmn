@@ -43,11 +43,11 @@
       <bpmn:incoming>f_clear_writeJoin</bpmn:incoming>
       <bpmn:outgoing>f_writeJoin_write</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="write" name="Write or edit the model source">
+    <bpmn:task id="write" name="Write the model source">
       <bpmn:incoming>f_writeJoin_write</bpmn:incoming>
       <bpmn:outgoing>f_write_lint</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="lint" name="qsm-models lint">
+    <bpmn:serviceTask id="lint" name="Lint the model">
       <bpmn:incoming>f_write_lint</bpmn:incoming>
       <bpmn:outgoing>f_lint_lintOk</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -56,11 +56,11 @@
       <bpmn:outgoing>f_lintOk_writeJoin</bpmn:outgoing>
       <bpmn:outgoing>f_lintOk_render</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="render" name="qsm-models render: SVG beside the source">
+    <bpmn:serviceTask id="render" name="Render the picture">
       <bpmn:incoming>f_lintOk_render</bpmn:incoming>
       <bpmn:outgoing>f_render_look</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:task id="look" name="Look at the SVG">
+    <bpmn:task id="look" name="Look at the picture">
       <bpmn:incoming>f_render_look</bpmn:incoming>
       <bpmn:outgoing>f_look_readable</bpmn:outgoing>
     </bpmn:task>
@@ -74,7 +74,7 @@
       <bpmn:incoming>f_scenario_specJoin</bpmn:incoming>
       <bpmn:outgoing>f_specJoin_paths</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="paths" name="qsm-models paths --specs">
+    <bpmn:serviceTask id="paths" name="List the cover paths">
       <bpmn:incoming>f_specJoin_paths</bpmn:incoming>
       <bpmn:outgoing>f_paths_covered</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -87,7 +87,7 @@
       <bpmn:incoming>f_covered_scenario</bpmn:incoming>
       <bpmn:outgoing>f_scenario_specJoin</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="commit" name="Commit: the gate runs lint and render --check">
+    <bpmn:serviceTask id="commit" name="Commit the model">
       <bpmn:incoming>f_covered_commit</bpmn:incoming>
       <bpmn:outgoing>f_commit_gateOk</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -105,7 +105,7 @@
       <bpmn:outgoing>f_findings_writeJoin</bpmn:outgoing>
       <bpmn:outgoing>f_findings_read</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:userTask id="read" name="Read the SVG in the PR or the lens">
+    <bpmn:userTask id="read" name="Read the picture">
       <bpmn:incoming>f_findings_read</bpmn:incoming>
       <bpmn:outgoing>f_read_clear</bpmn:outgoing>
     </bpmn:userTask>
@@ -174,7 +174,7 @@
       <bpmndi:BPMNShape id="BPMNShape_lintOk" bpmnElement="lintOk" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
         <dc:Bounds x="836" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="821" y="156" width="80" height="14" />
+          <dc:Bounds x="760" y="159" width="80" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_render" bpmnElement="render" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
@@ -186,7 +186,7 @@
       <bpmndi:BPMNShape id="BPMNShape_readable" bpmnElement="readable" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
         <dc:Bounds x="1386" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1377" y="156" width="69" height="14" />
+          <dc:Bounds x="1321" y="159" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_specJoin" bpmnElement="specJoin" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
@@ -198,7 +198,7 @@
       <bpmndi:BPMNShape id="BPMNShape_covered" bpmnElement="covered" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
         <dc:Bounds x="1886" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1871" y="142" width="80" height="28" />
+          <dc:Bounds x="1810" y="145" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_scenario" bpmnElement="scenario" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
@@ -210,7 +210,7 @@
       <bpmndi:BPMNShape id="BPMNShape_gateOk" bpmnElement="gateOk" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa" isMarkerVisible="true">
         <dc:Bounds x="2236" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2218" y="156" width="87" height="14" />
+          <dc:Bounds x="2153" y="159" width="87" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_review" bpmnElement="review" bioc:stroke="#c2410c" bioc:fill="#fbe6da" color:border-color="#c2410c" color:background-color="#fbe6da">
@@ -219,7 +219,7 @@
       <bpmndi:BPMNShape id="BPMNShape_findings" bpmnElement="findings" bioc:stroke="#c2410c" bioc:fill="#fbe6da" color:border-color="#c2410c" color:background-color="#fbe6da" isMarkerVisible="true">
         <dc:Bounds x="2586" y="575" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2577" y="556" width="69" height="14" />
+          <dc:Bounds x="2521" y="559" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
@@ -228,7 +228,7 @@
       <bpmndi:BPMNShape id="BPMNShape_clear" bpmnElement="clear" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6" isMarkerVisible="true">
         <dc:Bounds x="2936" y="815" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2923" y="782" width="76" height="28" />
+          <dc:Bounds x="2864" y="785" width="76" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end" bpmnElement="end" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">

@@ -1,6 +1,7 @@
 ## Context
 
-The structure is `models/qsm-models.c4`, the behaviour `models/qsm-models/model-gate.bpmn`. Every
+The structure is `models/qsm-models.c4`, the behaviour `models/qsm-models/model-gate.bpmn`,
+`simplify.bpmn` and the process it calls, `try-rewrite.bpmn`. Every
 number below was measured on 2026-11-01 (node 26.11, bun 1.4.3) with a prototype of each piece,
 none of it in the tree.
 
@@ -17,12 +18,14 @@ none of it in the tree.
 3. **Strict BPMN**: bpmnlint `recommended` with warnings raised to errors, plus `analytic-only`
    (BPMN 2.0.2 clause 2.2, tables 2.1 and 2.2), `split-flows-labelled`, `lanes-hold-every-node`,
    then lanes against C4 actor titles and no dead end. Analytic, not Descriptive, because QA tests
-   failure, and only Analytic has error, timer and message events. Measured: the three models of
-   this round lint clean.
+   failure, and only Analytic has error, timer and message events. Measured: the six models of
+   this change and its neighbours pass the Method and Style rules of decision 14 with a prototype
+   lint; the bpmnlint part is proved by Verify 2.
 4. **Strict C4**: the tool owns the kinds (person, system, container, component) and the tags
-   (`external`, `agent`, `shared`); level nesting, titled relations, unique titles, a code path on
-   every internal container; the source declares no views, the tool generates one per level.
-   Measured: the check finds a container in a container that `likec4 validate` accepts.
+   (`external`, `agent`, `shared`) and the properties (`colour`, `group`, `path`); level nesting,
+   titled relations, unique titles, a code path on every internal container; the source declares no
+   views, the tool generates one per level. Measured: the check finds a container in a container
+   that `likec4 validate` accepts.
 5. **The C4 source format is open** (open decision 1). Everything reads one normalised model, so
    only one adapter differs; the options are in the table below.
 
@@ -38,11 +41,11 @@ none of it in the tree.
    components into the model of the plugin their container's path names.
 8. **Paths become scenarios through the cover.** The cover's definition is in the spec, once.
    Measured (paths, cover): `flow.bpmn` 2, 1; `build-task.bpmn` 4, 3; `feature-status.bpmn` 11,
-   11; `model-gate.bpmn` 9, 5; `simplify.bpmn` 18, 3. A product feature's BPMN models what QA
-   runs; a process model such as `flow.bpmn` models our own steps, and its cover paths are the
-   scenarios of its spec, not sandbox runs. A BPMN split has no data, so a cover path can be one
-   no run takes (in `simplify.bpmn`, a rewrite kept and then "Any rewrite kept? no"); its scenario
-   is written for its signature, the answers and the end, which a run does reach.
+   11; `model-gate.bpmn` 9, 5; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 2, 2. A product feature's
+   BPMN models what QA runs; a process model such as `flow.bpmn` models our own steps, and its
+   cover paths are the scenarios of its spec, not sandbox runs. A BPMN split carries no data, so a
+   memory such as "was any rewrite kept" is drawn as structure (a first try, then further tries),
+   never as a split that asks about the past, which would put a path in the cover that no run takes.
 9. **C4 against the code.** CLI calls are invisible to an import graph, so: container relations
    equal `plugin.json` dependencies both ways; component relations become
    `.dependency-cruiser.models.cjs`, one `allowed` rule each, which the repository's config
@@ -69,7 +72,9 @@ none of it in the tree.
     levels, matching split and join types); C4, Brown's notation and checklist (title, legend, type
     and technology on every element, one-way relations with a verb), the three tiers of practice,
     no actor drawn to everything, cross-cutting containers as a note. Brown gives no relation limit;
-    15 a view is ours, from the 28-relation marketplace view that could not be read.
+    the limit of 15 relations a view is ours, set from the 28-relation marketplace view that could
+    not be read. Silver's "one action per activity" has no structural test beyond one flow in and
+    one out, so the reviewer judges the names.
 15. **Behaviour survives a rewrite by signature.** A cover path changes id when an activity is
     renamed or merged, so `paths --compare` compares signatures: the split answers in order and the
     end name. This is what QA observes, so a rewrite that keeps every signature keeps every
@@ -112,3 +117,8 @@ none of it in the tree.
 
 - A compiled renderer is 100 MB (measured). Accepted over Chrome, which bpmn-to-image needs.
 - The render stubs use bpmn-js internals. The version is pinned; a break fails the render loud.
+- bpmn-auto-layout routes every loop back along one channel, so loops into one merge share a
+  segment (measured: `build-task.svg`, where "Fix the findings" and "6 Merge the PR" share a column,
+  and two returns climb one vertical; `model-gate.svg`, five returns into one merge). Reordering the
+  input did not separate them. Accepted for now: the layout measure "segments two edges share"
+  counts it, and open decision 3 holds the alternative, lanes and routing drawn by us.

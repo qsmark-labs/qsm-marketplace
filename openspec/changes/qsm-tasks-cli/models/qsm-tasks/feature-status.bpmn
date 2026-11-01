@@ -176,13 +176,13 @@
       <bpmndi:BPMNShape id="BPMNShape_stored" bpmnElement="stored" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="486" y="567" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="444" y="622" width="55" height="28" />
+          <dc:Bounds x="435" y="537" width="55" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_todoOpen" bpmnElement="todoOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="1472" y="567" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1457" y="534" width="80" height="28" />
+          <dc:Bounds x="1396" y="537" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toInDev" bpmnElement="toInDev" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
@@ -203,7 +203,7 @@
       <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="636" y="727" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="628" y="680" width="67" height="42" />
+          <dc:Bounds x="573" y="683" width="67" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_endWorking" bpmnElement="endWorking" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
@@ -218,7 +218,7 @@
       <bpmndi:BPMNShape id="BPMNShape_conflict" bpmnElement="conflict" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="986" y="887" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="977" y="942" width="69" height="14" />
+          <dc:Bounds x="921" y="871" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toReady" bpmnElement="toReady" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
@@ -248,7 +248,7 @@
       <bpmndi:BPMNShape id="BPMNShape_readyOpen" bpmnElement="readyOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="636" y="291" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="628" y="346" width="67" height="56" />
+          <dc:Bounds x="573" y="233" width="67" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_backToDev" bpmnElement="backToDev" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
@@ -269,7 +269,7 @@
       <bpmndi:BPMNShape id="BPMNShape_testOpen" bpmnElement="testOpen" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="636" y="1163" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="622" y="1116" width="78" height="42" />
+          <dc:Bounds x="562" y="1119" width="78" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_toBlocked" bpmnElement="toBlocked" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">

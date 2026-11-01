@@ -149,7 +149,7 @@
       <bpmndi:BPMNShape id="BPMNShape_findings" bpmnElement="findings" bioc:stroke="#c2410c" bioc:fill="#fbe6da" color:border-color="#c2410c" color:background-color="#fbe6da" isMarkerVisible="true">
         <dc:Bounds x="986" y="575" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="977" y="650" width="69" height="14" />
+          <dc:Bounds x="921" y="559" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_fix" bpmnElement="fix" bioc:stroke="#6b4fbb" bioc:fill="#ebe5fa" color:border-color="#6b4fbb" color:background-color="#ebe5fa">
@@ -164,7 +164,7 @@
       <bpmndi:BPMNShape id="BPMNShape_more" bpmnElement="more" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="1536" y="1055" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1521" y="1022" width="80" height="28" />
+          <dc:Bounds x="1460" y="1025" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_sync" bpmnElement="sync" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">
@@ -173,7 +173,7 @@
       <bpmndi:BPMNShape id="BPMNShape_conflict" bpmnElement="conflict" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec" isMarkerVisible="true">
         <dc:Bounds x="1886" y="1055" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1877" y="1036" width="69" height="14" />
+          <dc:Bounds x="1821" y="1039" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_conflictTask" bpmnElement="conflictTask" bioc:stroke="#4b5563" bioc:fill="#e7e9ec" color:border-color="#4b5563" color:background-color="#e7e9ec">

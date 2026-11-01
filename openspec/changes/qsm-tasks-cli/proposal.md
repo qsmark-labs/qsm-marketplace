@@ -1,6 +1,6 @@
 ![How the Action derives a feature's Status, BPMN](models/qsm-tasks/feature-status.svg)
 
-Where this sits in the whole flow: `../feature-flow/models/flow.svg` (the GitHub lane).
+Where this sits in the whole flow: `../feature-flow/models/build-task.svg` (the GitHub lane).
 
 ## Why
 

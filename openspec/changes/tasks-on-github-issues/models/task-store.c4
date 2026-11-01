@@ -1,7 +1,7 @@
 // C4 levels 1 and 2 after the move: only qsm-tasks talks to the task store, and the store is GitHub.
 model {
   owner = person 'Owner' 'Reads the board, merges PRs' {
-    metadata { colour 'blue' }
+    metadata { colour 'navy' }
   }
   agent = system 'Agent' 'A Claude Code session that works on tasks' {
     #agent

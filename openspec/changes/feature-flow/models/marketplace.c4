@@ -3,7 +3,7 @@
 // containers are the plugin dependencies after this feature and the ones it waits on.
 model {
   owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features' {
-    metadata { colour 'blue' }
+    metadata { colour 'navy' }
   }
 
   agent = system 'Agent' 'A Claude Code session that plans, splits and builds' {
@@ -104,15 +104,4 @@ model {
   mp.tasks -> github 'reads and writes issues and the board'
   mp.forge -> github 'opens PRs, reads threads'
   mp.spec -> openspec 'validates changes with'
-}
-
-views {
-  view index {
-    title 'Context: the feature flow'
-    include *
-  }
-  view containers of mp {
-    title 'Containers: the marketplace in the feature flow'
-    include *
-  }
 }

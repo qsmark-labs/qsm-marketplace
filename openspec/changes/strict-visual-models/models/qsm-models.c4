@@ -1,7 +1,7 @@
 // C4 levels 1 to 3 of the model toolchain: one normalised model behind every source format.
 model {
   owner = person 'Owner' 'Reads the SVGs, edits a model when he wants to' {
-    metadata { colour 'blue' }
+    metadata { colour 'navy' }
   }
   agent = system 'Agent' 'A Claude Code session that writes and checks models' {
     #agent
