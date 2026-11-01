@@ -149,10 +149,11 @@ function requireMouseTarget(step: Step, index: number): void {
   if (step.action !== "mouse") {
     return;
   }
-  const point = step.x !== undefined && step.y !== undefined;
-  const offset = step.dx !== undefined && step.dy !== undefined;
-  const given = [step.x, step.y, step.dx, step.dy].filter((v) => v !== undefined).length;
-  if (given !== 2 || (!point && !offset)) {
+  const hasPoint = step.x !== undefined || step.y !== undefined;
+  const hasOffset = step.dx !== undefined || step.dy !== undefined;
+  const point = step.x !== undefined && step.y !== undefined && !hasOffset;
+  const offset = step.dx !== undefined && step.dy !== undefined && !hasPoint;
+  if (!point && !offset) {
     throw new ScriptError("mouse needs x and y, or dx and dy", index);
   }
 }

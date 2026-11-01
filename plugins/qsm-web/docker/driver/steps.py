@@ -110,10 +110,10 @@ def _click(page: Page, step: Step) -> Outcome:
     # A click position counts from inside the element's border, the box
     # from outside it, so the border's width is taken off.
     left, top = target.evaluate("e => [e.clientLeft, e.clientTop]")
-    x = box["x"] + _near_centre(box["width"])
-    y = box["y"] + _near_centre(box["height"])
-    point: Position = {"x": x - box["x"] - left, "y": y - box["y"] - top}
+    dx, dy = _near_centre(box["width"]), _near_centre(box["height"])
+    point: Position = {"x": dx - left, "y": dy - top}
     target.click(position=point, timeout=_timeout(step))
+    x, y = box["x"] + dx, box["y"] + dy
     _cursor[page] = (x, y)
     return {"selector": selector, "x": x, "y": y, "url": page.url}
 
