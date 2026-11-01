@@ -1,0 +1,79 @@
+## ADDED Requirements
+
+### Requirement: A shot names the surface it shows
+
+A scenario's `shot NAME @Type` and `shot-now NAME @Type` SHALL record `Type` as the shot's surface,
+keep `journey--NAME` as the shot's name, and stop the run naming the shot when the shot's item tree
+holds no node of that type.
+
+#### Scenario: A popout shot is cropped to its popout
+
+- **WHEN** a journey hovers the rail's network cell and runs `shot network @NetworkPopoutContent`
+- **THEN** the run's board shows a frame `network` in the section `NetworkPopoutContent`, cropped to
+  that node's rectangle from the shot's tree, padded by 32 logical px
+
+#### Scenario: A type the tree does not hold stops the run
+
+- **WHEN** a shot names `@NetworkPopup` and the tree holds no `NetworkPopup`
+- **THEN** `drive atlas run` exits non-zero naming the shot and the type
+
+### Requirement: The inventory shows its holes
+
+A scenario's `todo @Type STATE` SHALL put an empty frame titled STATE in the Type's section of the
+board, and the steps of a journey SHALL ignore the line.
+
+#### Scenario: A state no journey shoots yet
+
+- **WHEN** the scenario holds `todo @NetworkPopoutContent portal`
+- **THEN** the board's `NetworkPopoutContent` section holds an empty frame titled `portal`, and the
+  run passes
+
+### Requirement: Every run writes its board
+
+`drive atlas run` SHALL write `board.html` in the run directory and print its path, and SHALL fail
+when the board cannot be built. The page SHALL open from disk with no server and no network.
+
+#### Scenario: The board opens from the run directory
+
+- **WHEN** a run finishes and the owner opens `RUN/board.html` in a browser from disk
+- **THEN** every shot of the run is a frame on a canvas that pans by drag, zooms by wheel about the
+  pointer, and fits all frames on `F`
+
+### Requirement: A frame carries what the run measured
+
+A frame SHALL show a badge when the shot changed against the previous run, when its check failed,
+and when its screen never stilled. Focus on a frame SHALL show the crop and the full screen, the
+check's failing lines with each failing item's rectangle drawn, the changed areas, a before, after
+and overlay switch for a changed shot, the changed tree measures, and the neighbour frames by arrow.
+
+#### Scenario: A failed contrast check is visible on its frame
+
+- **WHEN** a shot's check printed `contrast Prose[24,48 32x16] ... = 1.00:1 >= 4.5: FAIL`
+- **THEN** the frame carries a FAIL badge, and its focus draws the rectangle 24,48 32x16 on the
+  screen and lists the line
+
+#### Scenario: A changed shot shows before and after
+
+- **WHEN** the run's `diff-<prev>/diff.json` lists changed areas for a shot
+- **THEN** the frame carries a changed badge, and its focus switches between the previous run's
+  image, this run's image and an overlay with the areas boxed
+
+### Requirement: Comments land where the agent reads them
+
+`drive atlas review [SCENARIO]` SHALL serve the latest run's board on 127.0.0.1 and print its
+address; a comment pinned to a point of a frame SHALL be saved to the scenario's `comments.json` and
+shown on that shot in every later board until it is resolved. `drive atlas comments [SCENARIO]`
+SHALL print the open comments one per line as `shot<TAB>x,y<TAB>text`; without SCENARIO both verbs
+take the scenario run last.
+
+#### Scenario: The owner comments and the agent reads it
+
+- **WHEN** the owner clicks a point in the focused frame `rail--network` under `drive atlas review`
+  and saves "the glyph should warn"
+- **THEN** `drive atlas comments desktop.atlas` prints `rail--network`, the point and the text, and
+  the next run's board shows the comment on the same frame
+
+#### Scenario: A board opened from disk says how to comment
+
+- **WHEN** the board is opened from disk and the owner tries to add a comment
+- **THEN** the page says that commenting needs `drive atlas review` and saves nothing

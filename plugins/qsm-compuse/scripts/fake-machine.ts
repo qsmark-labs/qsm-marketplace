@@ -195,10 +195,11 @@ function valid(s: State): void {
     nm !== undefined &&
     (!isRecord(nm) ||
       !["device", "wifi", "connection", "radio"].every((k) => rows(nm[k])) ||
-      typeof nm.connectivity !== "string")
+      typeof nm.connectivity !== "string" ||
+      ("running" in nm && typeof nm.running !== "boolean"))
   )
     throw new Error(
-      "nm holds device, wifi, connection and radio as rows of string fields, and connectivity as a string",
+      "nm holds device, wifi, connection and radio as rows of string fields, connectivity as a string, and running, if given, as a boolean",
     );
   if (
     updates !== undefined &&

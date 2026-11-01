@@ -17,9 +17,13 @@
 # config call such as a window rule), wait-clients N,
 # ipc FN ARGS (the shell's own IPC, such as opening a surface), mock PATH JSON (one reading of the
 # fake machine changed while the desktop runs, see slot_mock),
-# shot NAME (taken once the screen is still), shot-now NAME (taken at once, for a state that times out).
+# shot NAME (taken once the screen is still), shot-now NAME (taken at once, for a state that times out);
+# either may end in @Type, the item type of the surface it shows, which the board crops to; @A/B
+# is the first B inside the first A, for a surface whose own type is generic.
+# todo @Type STATE, anywhere: a state of that surface no journey shoots yet, an empty frame on the board.
 #
-# A run is <scenario>/<date>-<time>-<rng>/: index.html (everything on one page), shots/ (the
+# A run is <scenario>/<date>-<time>-<rng>/: index.html (everything on one page), board.html (the
+# review board, see scripts/atlas-board.ts), shots/ (the
 # captures as taken), trees/ (the item tree of each shot), logs/ (the shell's log per journey),
 # checks/ (what the scenario's check printed per shot),
 # diff-<run>/ (a comparison with that run, see atlas_compare).
@@ -43,6 +47,7 @@ atlas_steps() {
   awk -v j="$2" '
     /^[ \t]*(#|$)/ { next }
     $1 == "journey" { on = ($2 == j); next }
+    $1 == "todo" { next }
     on { sub(/^[ \t]+/, ""); print }' "$1"
 }
 
@@ -135,9 +140,10 @@ atlas_check() {
   if ((rc > 1)); then echo error; else grep -c ': FAIL$' "$run/checks/$name.txt"; fi
 }
 
-# One journey in a fresh desktop slot; prints "journey<TAB>shot<TAB>step<TAB>still<TAB>fails" per shot.
+# One journey in a fresh desktop slot; prints "journey<TAB>shot<TAB>step<TAB>still<TAB>fails<TAB>surface"
+# per shot.
 atlas_journey() {
-  local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line name still fails
+  local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line shot surface name still fails
   local -a steps
   shift 7
   slot_start "$slot" "$@" >/dev/null
@@ -149,7 +155,11 @@ atlas_journey() {
   for ((n = 0; n < ${#steps[@]}; n++)); do
     line="${steps[n]}"
     if [[ "$line" == shot\ * || "$line" == shot-now\ * ]]; then
-      name="$journey--${line#* }"
+      shot="${line#* }" surface=""
+      if [[ "$shot" == *" @"* ]]; then surface="${shot##* @}" shot="${shot% @*}"; fi
+      [[ -z "$surface" && "${line#* }" != *" @"* || "$surface" =~ ^[A-Za-z0-9_]+(/[A-Za-z0-9_]+)*$ ]] ||
+        die "shot $journey--$shot: @'$surface' is no item type (letters, digits, underscore; A/B for a path)"
+      name="$journey--$shot"
       [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "shot names are letters, digits, dot, dash and underscore: '$name'"
       # shot-now catches a state that times out (an armed button), so it waits for nothing.
       if [[ "$line" == shot-now\ * ]]; then
@@ -159,9 +169,12 @@ atlas_journey() {
         still="$(atlas_still "$run/shots/$name.png")" || exit 1
       fi
       slot_tree "$slot" >"$run/trees/$name.json"
+      # The board crops the shot to this item; a renamed component must stop the run, not uncrop it.
+      [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$run/trees/$name.json" "$surface" >/dev/null ||
+        die "shot $name names @$surface, and its item tree holds no $surface with a size"
       fails=""
       [[ -z "$check" ]] || fails="$(atlas_check "$check" "$run" "$journey" "$name" "$slot")"
-      printf '%s\t%s\t%s\t%s\t%s\n' "$journey" "${line#* }" "$((n + 1))" "$still" "$fails"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$journey" "$shot" "$((n + 1))" "$still" "$fails" "$surface"
     else
       atlas_step "$slot" "$line"
       # A step right before shot-now gets no settle, or the state it caught is already gone.
@@ -186,6 +199,8 @@ atlas_run() {
   check="$(atlas_path "$check")"
   [[ -n "$desktop" ]] || die "the scenario names no desktop"
   [[ -n "$(atlas_journeys "$scenario")" ]] || die "the scenario has no journey"
+  opt="$(awk '$1 == "todo" && !($2 ~ /^@[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)*$/ && NF >= 3) { print NR ": " $0; exit }' "$scenario")"
+  [[ -z "$opt" ]] || die "a todo line is 'todo @Type STATE': line $opt"
   # A pause that sleep refuses would be no pause at all, and the race it covers would pass.
   for opt in settle ready; do
     [[ "${!opt}" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "$opt needs SECONDS, a number: '${!opt}'"
@@ -212,6 +227,8 @@ atlas_run() {
   if [[ -n "$prev" ]]; then atlas_compare "$dir/$prev" "$run"; fi
   atlas_report "$run" "$prev"
   printf '%s/index.html\n' "$run"
+  atlas_board "$run" "$prev"
+  printf '%s/board.html\n' "$run"
   # The run is kept either way; the exit code tells an agent a law failed.
   failed="$(awk -F'\t' '$5 != "" && $5 != "0"' "$run/shots.tsv" | wc -l)"
   ((failed == 0)) || die "$failed shots failed their check (see checks/ in the run)"
@@ -295,9 +312,31 @@ atlas_diff() {
     against="$(dirname "$run")/$prev"
   fi
   [[ -f "$against/shots.tsv" ]] || die "AGAINST '$against' is not a run dir"
+  # The board links the earlier run's shots beside this one, so both live in one scenario dir.
+  [[ "$(readlink -f "$(dirname "$against")")" == "$(readlink -f "$(dirname "$run")")" ]] ||
+    die "AGAINST '$against' is a run of another scenario than RUN"
   atlas_compare "$against" "$run"
   atlas_report "$run" "$(basename "$against")"
   printf '%s/index.html\n' "$run"
+  atlas_board "$run" "$(basename "$against")"
+  printf '%s/board.html\n' "$run"
+}
+
+# The review board of a run (scripts/atlas-board.ts): a run whose board did not build fails.
+atlas_board() {
+  bun "$MOTION_DIR/atlas-board.ts" build "$1" "$2" || die "the board of $1 did not build"
+}
+
+# The scenario dir a review or a comment list is about: a SCENARIO file or name, else the one
+# whose last run is the newest.
+atlas_dir() {
+  local name="${1:-}"
+  [[ -n "$name" ]] || name="$(find "$ATLAS_ROOT" -mindepth 2 -maxdepth 2 -type d -name '[0-9]*' -printf '%f %h\n' 2>/dev/null |
+    sort | tail -1 | cut -d' ' -f2-)"
+  name="$(basename "$name")"
+  name="${name%.*}"
+  [[ -n "$name" && -d "$ATLAS_ROOT/$name" ]] || die "no atlas runs for '${1:-any scenario}' under $ATLAS_ROOT"
+  printf '%s/%s\n' "$ATLAS_ROOT" "$name"
 }
 
 cmd_atlas() {
@@ -307,7 +346,9 @@ cmd_atlas() {
     run) atlas_run "$@" ;;
     diff) atlas_diff "$@" ;;
     ls) for d in "$ATLAS_ROOT"/*/; do [[ -d "$d" ]] && printf '%s %s\n' "$(basename "$d")" "$(atlas_runs "$d" | tr '\n' ' ')"; done ;;
-    *) die "atlas needs run SCENARIO | diff RUN [AGAINST] | ls" ;;
+    review) d="$(atlas_dir "${1:-}")" && exec bun "$MOTION_DIR/atlas-board.ts" serve "$d" ;;
+    comments) d="$(atlas_dir "${1:-}")" && bun "$MOTION_DIR/atlas-board.ts" comments "$d" ;;
+    *) die "atlas needs run SCENARIO | diff RUN [AGAINST] | review [SCENARIO] | comments [SCENARIO] | ls" ;;
   esac
 }
 
@@ -333,7 +374,8 @@ details{padding:0 12px 10px;color:var(--muted);font-size:13px}pre{white-space:pr
 <h1>Atlas $(basename "$(dirname "$run")") · $(basename "$run")</h1>
 <p>desktop $(atlas_html <"$run/desktop-version") · $(if [[ -n "$against" ]]; then printf 'compared with %s' "$against"; else printf 'first run, nothing to compare'; fi)</p>
 HTML
-    while IFS=$'\t' read -r journey shot step still fails; do
+    # Tab is IFS whitespace, so read would merge an empty fails column with the surface after it.
+    while IFS= read -r row && IFS=$'\x1f' read -r journey shot step still fails _ <<<"${row//$'\t'/$'\x1f'}"; do
       [[ "$journey" == "$last" ]] || { [[ -z "$last" ]] || echo '</div>'; printf '<h2>%s</h2><div class="grid">\n' "$journey"; last="$journey"; }
       name="$journey--$shot"
       areas="" moved=""

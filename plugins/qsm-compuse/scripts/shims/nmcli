@@ -4,9 +4,14 @@
 # rows of fields (`nm.device`, `nm.wifi`, `nm.connection`, `nm.radio`), chosen and
 # ordered by -f; `networking connectivity` is `nm.connectivity`. `device wifi rescan` succeeds and
 # changes nothing. Anything else, a write included, fails loud, because the fake machine does not
-# model it. A state without the record means the slot shows the real nmcli.
+# model it. `nm.running: false` is a stopped NetworkManager: every command exits 8, the code the
+# nmcli man page gives it. A state without the record means the slot shows the real nmcli.
 state="${DRIVE_STATE:?the nmcli shim runs only inside a desktop slot}"
 jq -e 'has("nm")' "$state" >/dev/null || exec /usr/bin/nmcli "$@"
+if jq -e '.nm.running == false' "$state" >/dev/null; then
+  printf 'Error: NetworkManager is not running.\n' >&2
+  exit 8
+fi
 terse="" fields="" words=()
 while (($#)); do
   case "$1" in

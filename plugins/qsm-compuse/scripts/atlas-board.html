@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas board</title>
+<link rel="icon" href="data:,">
+<style>
+/* One canvas of frames, a bar above it, a focus sheet over it. A dark, quiet ground so the shots,
+   themselves dark, keep their own contrast; one accent for selection, three state colours. */
+:root {
+  color-scheme: dark;
+  --ground: #17161b;
+  --dot: #2a2830;
+  --sheet: #1f1d24;
+  --raise: #2a2731;
+  --line: #3a3642;
+  --text: #ece8f2;
+  --muted: #a39dad;
+  --accent: #c9a7f5;
+  --changed: #ff6bd8;
+  --fail: #ff7a6b;
+  --moving: #f5c96b;
+  --ui: ui-sans-serif, system-ui, "Inter", sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ground); color: var(--text); font: 13px/1.4 var(--ui); overflow: hidden; }
+button { font: inherit; color: inherit; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, .frame:focus-visible, .title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
+#bar { position: fixed; inset: 0 0 auto; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding: 10px 16px; background: color-mix(in srgb, var(--ground) 88%, transparent); border-bottom: 1px solid var(--line); }
+#bar h1 { font-size: 14px; margin: 0; font-weight: 600; }
+#bar .meta { color: var(--muted); }
+#bar .count b { font-variant-numeric: tabular-nums; }
+#bar .keys { margin-left: auto; color: var(--muted); }
+#bar .orphans { display: inline; } #bar .orphans ul { position: absolute; margin: 6px 0 0; padding: 8px 12px; list-style: none; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 6px; max-width: 480px; }
+kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+
+#stage { position: fixed; inset: 0; cursor: grab; background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 24px 24px; }
+#stage.panning { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+
+/* A section title sits on its first row and grows upward, keeping a readable size at any zoom. */
+.title { position: absolute; transform: translateY(-100%); text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: max(40px, calc(14px / var(--k, 1))); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; cursor: zoom-in; color: var(--text); background: none; border: 0; padding: 0; }
+.title small { display: block; font-size: 0.4em; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.frame { position: absolute; cursor: pointer; }
+/* The name strip keeps its screen size at every zoom, as a design canvas does: --k is the zoom. */
+.frame .strip { position: absolute; left: 0; bottom: 100%; display: flex; gap: 0.45em; align-items: center; padding-bottom: 0.4em; font-size: calc(13px / var(--k, 1)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; white-space: nowrap; color: var(--muted); }
+.frame .strip b { color: var(--text); font-weight: 600; }
+#world.far .strip b, #world.far .strip .journey, #world.far .title small { display: none; }
+.frame .crop { position: relative; overflow: hidden; width: 100%; height: 100%; border-radius: 2px; background: #000; box-shadow: 0 0 0 1px var(--line); }
+.frame:hover .crop { box-shadow: 0 0 0 2px var(--accent); }
+.frame .crop img { position: absolute; max-width: none; user-select: none; -webkit-user-drag: none; }
+.frame.todo .crop { background: repeating-linear-gradient(135deg, var(--sheet) 0 12px, var(--ground) 12px 24px); box-shadow: 0 0 0 2px var(--line) inset; display: grid; place-items: center; color: var(--muted); font-size: 18px; }
+.frame.is-changed .crop { box-shadow: 0 0 0 3px var(--changed); }
+.frame.is-failing .crop { box-shadow: 0 0 0 3px var(--fail); }
+.badge { font: 600 0.85em var(--ui); border-radius: 999px; padding: 0.1em 0.55em; color: #17161b; }
+.badge.changed { background: var(--changed); }
+.badge.fail { background: var(--fail); }
+.badge.moving { background: var(--moving); }
+.badge.todo { background: var(--muted); }
+.badge.note { background: var(--accent); }
+
+#focus { position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: auto 1fr; background: var(--ground); }
+#focus[hidden] { display: none; }
+#focus header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+#focus header h2 { margin: 0; font-size: 15px; }
+#focus header .grow { flex: 1; }
+#focus .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(260px, 0.9fr); gap: 16px; padding: 16px; min-height: 0; }
+#focus .pane { min-width: 0; min-height: 0; overflow: auto; }
+#focus .pane h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.shot { position: relative; display: inline-block; max-width: 100%; }
+.shot img { display: block; max-width: 100%; height: auto; }
+.shot svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.shot.pinnable { cursor: crosshair; }
+.side ul { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+.side li { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; overflow-wrap: anywhere; }
+.side li code, .side pre { font: 12px var(--mono); }
+.side .fail li { border-color: color-mix(in srgb, var(--fail) 60%, var(--line)); }
+.side table { width: 100%; border-collapse: collapse; font: 11px var(--mono); margin-bottom: 16px; }
+.side td { border-top: 1px solid var(--line); padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
+.side .hint { color: var(--muted); margin: 0 0 16px; }
+.pinform { position: absolute; z-index: 2; width: 240px; padding: 8px; display: grid; gap: 6px; background: var(--sheet); border: 1px solid var(--accent); border-radius: 8px; pointer-events: auto; }
+.pinform textarea { font: inherit; color: inherit; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; min-height: 64px; resize: vertical; }
+.pinform div { display: flex; gap: 6px; justify-content: end; }
+@media (prefers-reduced-motion: no-preference) { #world.glide { transition: transform 180ms cubic-bezier(.2, .7, .2, 1); } }
+@media (max-width: 900px) { #focus .body { grid-template-columns: 1fr; overflow: auto; } }
+</style>
+</head>
+<body>
+<div id="bar">
+  <h1 id="name"></h1>
+  <span class="meta" id="meta"></span>
+  <span class="count" id="counts"></span>
+  <span class="keys"><kbd>drag</kbd> pan · <kbd>wheel</kbd> zoom · <kbd>F</kbd> fit · <kbd>0</kbd> 100% · click a title to fit it</span>
+</div>
+<div id="stage"><div id="world"></div></div>
+<section id="focus" hidden aria-modal="true" role="dialog" aria-labelledby="focus-name">
+  <header>
+    <h2 id="focus-name"></h2>
+    <span id="focus-badges"></span>
+    <span class="grow"></span>
+    <span id="modes"></span>
+    <button id="prev" type="button" aria-label="Previous state">←</button>
+    <button id="next" type="button" aria-label="Next state">→</button>
+    <button id="close" type="button">Close <kbd>Esc</kbd></button>
+  </header>
+  <div class="body">
+    <div class="pane"><h3>Surface</h3><div id="focus-crop"></div></div>
+    <div class="pane"><h3 id="screen-title">Screen</h3><div id="focus-screen"></div></div>
+    <div class="pane side" id="focus-side"></div>
+  </div>
+</section>
+<script type="application/json" id="board">{{BOARD}}</script>
+<script>
+"use strict";
+const board = JSON.parse(document.getElementById("board").textContent);
+const served = location.protocol === "http:";
+const SVG = "http://www.w3.org/2000/svg";
+const frames = board.sections.flatMap((s) => s.frames);
+let comments = board.comments;
+
+// A tiny element builder: h("div", {class: "x"}, child, "text").
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "style") Object.assign(el.style, v);
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+  return el;
+}
+function s(tag, attrs) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+const image = (f) => `shots/${f.name}.png`;
+const notesOf = (f) => comments.filter((c) => c.shot === f.name);
+
+function badges(f) {
+  return [
+    f.todo && h("span", { class: "badge todo" }, "todo"),
+    f.changed && h("span", { class: "badge changed" }, f.changed.areas.length ? `changed · ${f.changed.areas.length}` : "tree changed"),
+    f.checks.length > 0 && h("span", { class: "badge fail" }, `FAIL · ${f.checks.length}`),
+    f.checkError && h("span", { class: "badge fail" }, "check did not run"),
+    f.still === "moving" && h("span", { class: "badge moving" }, "never still"),
+    notesOf(f).length > 0 && h("span", { class: "badge note" }, `${notesOf(f).length} note${notesOf(f).length > 1 ? "s" : ""}`),
+  ];
+}
+
+// The bar: what this board is and how much of it needs a look.
+document.getElementById("name").textContent = `${board.scenario} · ${board.run}`;
+document.title = `Atlas ${board.scenario}`;
+document.getElementById("meta").textContent =
+  `desktop ${board.desktop} · ${board.prev ? `against ${board.prev}` : "first run, nothing to compare"}`;
+function counts() {
+  const shot = frames.filter((f) => !f.todo);
+  const n = (p) => shot.filter(p).length;
+  document.getElementById("counts").replaceChildren(
+    h("span", {}, h("b", {}, String(shot.length)), " frames · "),
+    h("span", {}, h("b", {}, String(n((f) => f.changed))), " changed · "),
+    h("span", {}, h("b", {}, String(n((f) => f.checks.length > 0))), " failing · "),
+    h("span", {}, h("b", {}, String(frames.length - shot.length)), " todo · "),
+    h("span", {}, h("b", {}, String(comments.length)), " notes"),
+    ...[orphans()].filter(Boolean),
+  );
+}
+
+// A note on a shot the run no longer has (renamed, removed) shows on no frame; it is listed here,
+// so it can still be resolved.
+function orphans() {
+  const names = new Set(frames.map((f) => f.name));
+  const lost = comments.filter((c) => !names.has(c.shot));
+  if (lost.length === 0) return null;
+  return h("details", { class: "orphans" }, h("summary", {}, ` · ${lost.length} on no frame`),
+    h("ul", {}, lost.map((c) => h("li", {}, h("b", {}, c.shot), `: ${c.text} `,
+      served && h("button", { type: "button", onclick: (e) => resolveNote(c, e.target.parentElement) }, "Resolve")))));
+}
+
+// The canvas: the builder placed every frame; the page only draws them.
+const world = document.getElementById("world");
+function draw() {
+  world.replaceChildren();
+  for (const section of board.sections) {
+    world.append(h("button", {
+      class: "title", type: "button", style: { left: `${section.at.x}px`, top: `calc(${frameTop(section)}px - 26px / var(--k, 1))`, maxWidth: `${section.w}px` },
+      onclick: () => fit(section.at.x, section.at.y, section.w, sectionHeight(section)),
+    }, section.title, h("small", {}, `${section.frames.length} ${section.frames.length === 1 ? "state" : "states"}`)));
+    for (const f of section.frames) world.append(frameEl(f));
+  }
+  counts();
+}
+function frameEl(f) {
+  const cls = ["frame", f.todo && "todo", f.changed && "is-changed", (f.checks.length || f.checkError) && "is-failing"].filter(Boolean).join(" ");
+  const crop = f.todo
+    ? h("div", { class: "crop" }, "not shot yet")
+    : h("div", { class: "crop" }, h("img", {
+        src: image(f), loading: "lazy", alt: f.name, draggable: "false",
+        style: { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` },
+      }));
+  const control = f.todo ? {} : { tabindex: "0", role: "button", "aria-label": `${f.name}, open` };
+  return h("div", {
+    class: cls, ...control,
+    style: { left: `${f.at.x}px`, top: `${f.at.y}px`, width: `${f.crop.w}px`, height: `${f.crop.h}px` },
+    onclick: () => openFocus(f), onkeydown: (e) => { if (e.key === "Enter") openFocus(f); },
+  }, h("div", { class: "strip" }, h("b", {}, f.state), f.journey && f.surface ? h("span", { class: "journey" }, `· ${f.journey}`) : "", badges(f)), crop);
+}
+// The title stands on the name strips of the section's first row, which keep their screen size.
+const frameTop = (section) => Math.min(...section.frames.map((f) => f.at.y));
+const sectionHeight = (section) => Math.max(...section.frames.map((f) => f.at.y + f.crop.h)) - section.at.y;
+
+// Pan and zoom: one transform on the world.
+const stage = document.getElementById("stage");
+const view = { x: 40, y: 80, k: 0.25 };
+function apply(glide) {
+  world.classList.toggle("glide", Boolean(glide));
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
+  world.style.setProperty("--k", String(view.k));
+  // Zoomed far out, a frame keeps only its badges: names would cover the frames above them.
+  world.classList.toggle("far", view.k < 0.2);
+}
+function fit(x, y, w, hgt, glide = true) {
+  const top = 70, pad = 40;
+  const k = Math.min((innerWidth - 2 * pad) / w, (innerHeight - top - 2 * pad) / hgt, 2);
+  view.k = k;
+  view.x = pad + ((innerWidth - 2 * pad) - w * k) / 2 - x * k;
+  view.y = top + pad - (y - 60) * k;
+  apply(glide);
+}
+function fitAll(glide = true) {
+  if (board.sections.length === 0) return;
+  const w = Math.max(...board.sections.map((sec) => sec.at.x + sec.w), 1);
+  const hgt = Math.max(...board.sections.map((sec) => sec.at.y + sectionHeight(sec)), 1);
+  fit(0, 0, w, hgt, glide);
+}
+let drag = null;
+stage.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest(".frame, .title")) return;
+  drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
+  stage.classList.add("panning");
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  view.x = drag.vx + e.clientX - drag.x;
+  view.y = drag.vy + e.clientY - drag.y;
+  apply(false);
+});
+stage.addEventListener("pointerup", () => { drag = null; stage.classList.remove("panning"); });
+stage.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const k = Math.min(4, Math.max(0.03, view.k * Math.exp(-e.deltaY * 0.0015)));
+  view.x = e.clientX - ((e.clientX - view.x) * k) / view.k;
+  view.y = e.clientY - ((e.clientY - view.y) * k) / view.k;
+  view.k = k;
+  apply(false);
+}, { passive: false });
+
+// Focus: one frame with its screen and its record.
+const focus = document.getElementById("focus");
+let current = null, mode = "after";
+function neighbours(f) {
+  const section = board.sections.find((sec) => sec.frames.includes(f));
+  const list = section.frames.filter((x) => !x.todo);
+  const i = list.indexOf(f);
+  return { prev: list[i - 1], next: list[i + 1] };
+}
+function openFocus(f) {
+  if (f.todo) return;
+  current = f;
+  if (!f.changed || (mode === "before" && !board.prev)) mode = "after";
+  focus.hidden = false;
+  renderFocus();
+  document.getElementById("close").focus();
+}
+function closeFocus() { focus.hidden = true; current = null; }
+
+function overlay(f, img, withPins) {
+  const box = h("div", { class: "shot" + (withPins && served ? " pinnable" : "") }, img);
+  const svg = s("svg", { viewBox: `0 0 ${f.screen.w} ${f.screen.h}`, preserveAspectRatio: "none" });
+  for (const r of f.failing)
+    svg.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
+  for (const a of f.changed ? f.changed.areas : [])
+    svg.append(s("rect", { x: a.x / f.scale - 3, y: a.y / f.scale - 3, width: a.w / f.scale + 6, height: a.h / f.scale + 6, fill: "none", stroke: "#ff6bd8", "stroke-width": 2 }));
+  if (withPins)
+    notesOf(f).forEach((c, i) => {
+      svg.append(s("circle", { cx: c.x, cy: c.y, r: 11, fill: "#c9a7f5" }));
+      const t = s("text", { x: c.x, y: c.y + 4, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#17161b" });
+      t.textContent = String(i + 1);
+      svg.append(t);
+    });
+  box.append(svg);
+  if (withPins) box.addEventListener("click", (e) => pin(f, box, e));
+  return box;
+}
+
+function renderFocus() {
+  const f = current;
+  document.getElementById("focus-name").textContent = f.name;
+  document.getElementById("focus-badges").replaceChildren(...badges(f).filter(Boolean));
+  const modes = document.getElementById("modes");
+  modes.replaceChildren();
+  if (f.changed && board.prev) {
+    const views = [["before", "Before"], ["after", "After"]];
+    // atlas_compare draws diff-<prev>/NAME.png only for a shot whose pixels changed.
+    if (f.changed.areas.length) views.push(["diff", "Diff"]);
+    for (const [m, label] of views)
+      modes.append(h("button", { type: "button", "aria-pressed": String(mode === m), onclick: () => { mode = m; renderFocus(); } }, label));
+  }
+  const { prev, next } = neighbours(f);
+  document.getElementById("prev").disabled = !prev;
+  document.getElementById("next").disabled = !next;
+
+  const marks = s("svg", { viewBox: `${f.crop.x} ${f.crop.y} ${f.crop.w} ${f.crop.h}`, style: "position:absolute;inset:0;width:100%;height:100%" });
+  for (const r of f.failing)
+    marks.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
+  const crop = h("div", { class: "frame", style: { position: "relative", width: `${f.crop.w}px`, height: `${f.crop.h}px`, maxWidth: "100%" } },
+    h("div", { class: "crop" }, h("img", { src: image(f), alt: "", style: { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` } }), marks));
+  document.getElementById("focus-crop").replaceChildren(f.surface ? crop : h("p", { class: "hint" }, "This shot names no surface: the screen is the frame."));
+
+  const screen = document.getElementById("focus-screen");
+  const title = document.getElementById("screen-title");
+  if (mode === "diff") {
+    title.textContent = `Diff · ${board.prev} beside ${board.run}`;
+    screen.replaceChildren(h("img", { src: `diff-${board.prev}/${f.name}.png`, alt: "previous run beside this run, changes boxed", style: { maxWidth: "100%" } }));
+  } else if (mode === "before") {
+    title.textContent = `Before · ${board.prev}`;
+    screen.replaceChildren(h("img", { src: `../${board.prev}/shots/${f.name}.png`, alt: "previous run", style: { maxWidth: "100%" } }));
+  } else {
+    title.textContent = served ? "Screen · click to pin a note" : "Screen";
+    screen.replaceChildren(overlay(f, h("img", { src: image(f), alt: f.name }), true));
+  }
+  renderSide(f);
+}
+
+function renderSide(f) {
+  const side = document.getElementById("focus-side");
+  side.replaceChildren();
+  side.append(h("h3", {}, "Notes"));
+  const notes = notesOf(f);
+  if (notes.length === 0)
+    side.append(h("p", { class: "hint" }, served ? "Click the screen to pin a note." : "No notes. Pinning one needs drive atlas review."));
+  else
+    side.append(h("ul", {}, notes.map((c, i) => h("li", {},
+      h("b", {}, `${i + 1}. `), c.text, h("br"),
+      h("small", { class: "hint" }, `at ${c.x},${c.y} · run ${c.run} `),
+      served && h("button", { type: "button", onclick: (e) => resolveNote(c, e.target.parentElement) }, "Resolve")))));
+  if (f.checks.length) {
+    side.append(h("h3", {}, "Failed checks"));
+    side.append(h("ul", { class: "fail" }, f.checks.map((l) => h("li", {}, h("code", {}, l)))));
+  }
+  if (f.changed) {
+    side.append(h("h3", {}, `Changed against ${board.prev}`));
+    side.append(h("p", { class: "hint" }, `${f.changed.areas.length} pixel areas · ${f.changed.changes.length} tree measures`));
+    if (f.changed.changes.length)
+      side.append(h("table", {}, h("tbody", {}, f.changed.changes.slice(0, 200).map((c) =>
+        h("tr", {}, h("td", {}, c.key.split("/").slice(-2).join("/")), h("td", {}, c.before), h("td", {}, c.after))))));
+  }
+  side.append(h("h3", {}, "Shot"));
+  side.append(h("p", { class: "hint" }, `journey ${f.journey} · ${f.surface ? `surface ${f.surface}` : "full screen"} · screen ${f.still}`));
+}
+
+// Notes: only the review server writes them, into the scenario's comments.json.
+function pin(f, box, e) {
+  if (e.target.closest(".pinform")) return;
+  box.querySelector(".pinform")?.remove();
+  if (!served) {
+    box.append(h("div", { class: "pinform", style: { left: "8px", top: "8px" } },
+      "Pinning a note needs the review server: run drive atlas review and open the address it prints."));
+    return;
+  }
+  const r = box.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * f.screen.w;
+  const y = ((e.clientY - r.top) / r.height) * f.screen.h;
+  const text = h("textarea", { "aria-label": "Note" });
+  const form = h("div", { class: "pinform", style: { left: `${Math.min(e.clientX - r.left, r.width - 250)}px`, top: `${e.clientY - r.top + 12}px` } },
+    text, h("div", {},
+      h("button", { type: "button", onclick: () => form.remove() }, "Cancel"),
+      h("button", { type: "button", onclick: () => save(f, x, y, text.value, form) }, "Save")));
+  box.append(form);
+  text.focus();
+}
+// A stopped review server answers nothing: say so rather than fail without a word.
+async function call(url, init) {
+  try {
+    const res = await fetch(url, init);
+    return res.ok ? { ok: true, res } : { ok: false, why: await res.text() };
+  } catch {
+    return { ok: false, why: "the review server is not running (start drive atlas review)" };
+  }
+}
+async function save(f, x, y, text, form) {
+  if (!text.trim()) return;
+  const r = await call("/comments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shot: f.name, x, y, text, run: board.run }) });
+  if (!r.ok) { form.append(h("p", { class: "hint" }, `Not saved: ${r.why}`)); return; }
+  await reload();
+}
+async function resolveNote(c, where) {
+  const r = await call(`/comments/${c.id}/resolve`, { method: "POST" });
+  if (r.ok) await reload();
+  else where.append(h("p", { class: "hint" }, `Not resolved: ${r.why}`));
+}
+async function reload() {
+  const r = await call("/comments");
+  if (r.ok) comments = await r.res.json();
+  draw();
+  if (current) renderFocus();
+}
+
+document.getElementById("close").addEventListener("click", closeFocus);
+document.getElementById("prev").addEventListener("click", () => { const p = neighbours(current).prev; if (p) openFocus(p); });
+document.getElementById("next").addEventListener("click", () => { const n = neighbours(current).next; if (n) openFocus(n); });
+addEventListener("keydown", (e) => {
+  if (e.target.closest("textarea")) return;
+  if (current) {
+    if (e.key === "Escape") closeFocus();
+    else if (e.key === "ArrowLeft") document.getElementById("prev").click();
+    else if (e.key === "ArrowRight") document.getElementById("next").click();
+    return;
+  }
+  if (e.key === "f" || e.key === "F") fitAll();
+  else if (e.key === "0") { view.k = 1; apply(true); }
+});
+addEventListener("resize", () => { if (!current) fitAll(false); });
+
+draw();
+fitAll(false);
+if (served) reload();
+</script>
+</body>
+</html>
