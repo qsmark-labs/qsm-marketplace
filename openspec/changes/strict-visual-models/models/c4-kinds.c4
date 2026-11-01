@@ -1,0 +1,10 @@
+// The one C4 vocabulary. qsm-models supplies this file; a model file declares no specification.
+specification {
+  element person
+  element system
+  element container
+  element component
+  relationship uses
+  tag external
+  tag agent
+}

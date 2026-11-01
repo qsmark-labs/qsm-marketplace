@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="model_gate_defs" targetNamespace="https://github.com/qsmark-labs/qsm-marketplace">
+  <bpmn:collaboration id="model_gate_collab">
+    <bpmn:participant id="model_gate_pool" name="A model enters a change" processRef="model_gate_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="model_gate_process" name="A model enters a change" isExecutable="false">
+    <bpmn:laneSet id="laneset">
+      <bpmn:lane id="lane_0" name="Agent">
+        <bpmn:flowNodeRef>start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>writeJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>write</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>lint</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>lintOk</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>render</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>look</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>readable</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>specJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>paths</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>covered</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>scenario</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>commit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gateOk</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="lane_1" name="Owner">
+        <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>clear</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>end</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="start" name="Behaviour or structure to model">
+      <bpmn:outgoing>f_start_writeJoin</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="writeJoin" name="Model to write">
+      <bpmn:incoming>f_start_writeJoin</bpmn:incoming>
+      <bpmn:incoming>f_lintOk_writeJoin</bpmn:incoming>
+      <bpmn:incoming>f_readable_writeJoin</bpmn:incoming>
+      <bpmn:incoming>f_gateOk_writeJoin</bpmn:incoming>
+      <bpmn:incoming>f_clear_writeJoin</bpmn:incoming>
+      <bpmn:outgoing>f_writeJoin_write</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="write" name="Write or edit the model source">
+      <bpmn:incoming>f_writeJoin_write</bpmn:incoming>
+      <bpmn:outgoing>f_write_lint</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="lint" name="qsm-models lint">
+      <bpmn:incoming>f_write_lint</bpmn:incoming>
+      <bpmn:outgoing>f_lint_lintOk</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="lintOk" name="Lint clean?">
+      <bpmn:incoming>f_lint_lintOk</bpmn:incoming>
+      <bpmn:outgoing>f_lintOk_writeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_lintOk_render</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="render" name="qsm-models render: SVG beside the source">
+      <bpmn:incoming>f_lintOk_render</bpmn:incoming>
+      <bpmn:outgoing>f_render_look</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="look" name="Look at the SVG">
+      <bpmn:incoming>f_render_look</bpmn:incoming>
+      <bpmn:outgoing>f_look_readable</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="readable" name="Readable?">
+      <bpmn:incoming>f_look_readable</bpmn:incoming>
+      <bpmn:outgoing>f_readable_writeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_readable_specJoin</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="specJoin" name="Scenarios to check">
+      <bpmn:incoming>f_readable_specJoin</bpmn:incoming>
+      <bpmn:incoming>f_scenario_specJoin</bpmn:incoming>
+      <bpmn:outgoing>f_specJoin_paths</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="paths" name="qsm-models paths --specs">
+      <bpmn:incoming>f_specJoin_paths</bpmn:incoming>
+      <bpmn:outgoing>f_paths_covered</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="covered" name="Every path cited?">
+      <bpmn:incoming>f_paths_covered</bpmn:incoming>
+      <bpmn:outgoing>f_covered_scenario</bpmn:outgoing>
+      <bpmn:outgoing>f_covered_commit</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="scenario" name="Write the scenario for the path">
+      <bpmn:incoming>f_covered_scenario</bpmn:incoming>
+      <bpmn:outgoing>f_scenario_specJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="commit" name="Commit: the gate runs lint and render --check">
+      <bpmn:incoming>f_covered_commit</bpmn:incoming>
+      <bpmn:outgoing>f_commit_gateOk</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="gateOk" name="Gate passes?">
+      <bpmn:incoming>f_commit_gateOk</bpmn:incoming>
+      <bpmn:outgoing>f_gateOk_writeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_gateOk_read</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="read" name="Read the SVG in the PR or the lens">
+      <bpmn:incoming>f_gateOk_read</bpmn:incoming>
+      <bpmn:outgoing>f_read_clear</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="clear" name="Clear what we want?">
+      <bpmn:incoming>f_read_clear</bpmn:incoming>
+      <bpmn:outgoing>f_clear_writeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_clear_end</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="end" name="Model agreed">
+      <bpmn:incoming>f_clear_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_start_writeJoin" sourceRef="start" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_writeJoin_write" sourceRef="writeJoin" targetRef="write" />
+    <bpmn:sequenceFlow id="f_write_lint" sourceRef="write" targetRef="lint" />
+    <bpmn:sequenceFlow id="f_lint_lintOk" sourceRef="lint" targetRef="lintOk" />
+    <bpmn:sequenceFlow id="f_lintOk_writeJoin" name="no" sourceRef="lintOk" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_lintOk_render" name="yes" sourceRef="lintOk" targetRef="render" />
+    <bpmn:sequenceFlow id="f_render_look" sourceRef="render" targetRef="look" />
+    <bpmn:sequenceFlow id="f_look_readable" sourceRef="look" targetRef="readable" />
+    <bpmn:sequenceFlow id="f_readable_writeJoin" name="no" sourceRef="readable" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_readable_specJoin" name="yes" sourceRef="readable" targetRef="specJoin" />
+    <bpmn:sequenceFlow id="f_specJoin_paths" sourceRef="specJoin" targetRef="paths" />
+    <bpmn:sequenceFlow id="f_paths_covered" sourceRef="paths" targetRef="covered" />
+    <bpmn:sequenceFlow id="f_covered_scenario" name="no" sourceRef="covered" targetRef="scenario" />
+    <bpmn:sequenceFlow id="f_covered_commit" name="yes" sourceRef="covered" targetRef="commit" />
+    <bpmn:sequenceFlow id="f_scenario_specJoin" sourceRef="scenario" targetRef="specJoin" />
+    <bpmn:sequenceFlow id="f_commit_gateOk" sourceRef="commit" targetRef="gateOk" />
+    <bpmn:sequenceFlow id="f_gateOk_writeJoin" name="no" sourceRef="gateOk" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_gateOk_read" name="yes" sourceRef="gateOk" targetRef="read" />
+    <bpmn:sequenceFlow id="f_read_clear" sourceRef="read" targetRef="clear" />
+    <bpmn:sequenceFlow id="f_clear_writeJoin" name="no" sourceRef="clear" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_clear_end" name="yes" sourceRef="clear" targetRef="end" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_model_gate_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_model_gate_collab" bpmnElement="model_gate_collab">
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_pool" bpmnElement="model_gate_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="2732" height="640" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" isHorizontal="true">
+        <dc:Bounds x="110" y="80" width="2702" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" isHorizontal="true">
+        <dc:Bounds x="110" y="480" width="2702" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_start" bpmnElement="start">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="125" y="223" width="87" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_writeJoin" bpmnElement="writeJoin" isMarkerVisible="true">
+        <dc:Bounds x="286" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="281" y="142" width="61" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_write" bpmnElement="write">
+        <dc:Bounds x="436" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lint" bpmnElement="lint">
+        <dc:Bounds x="636" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lintOk" bpmnElement="lintOk" isMarkerVisible="true">
+        <dc:Bounds x="836" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="821" y="156" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_render" bpmnElement="render">
+        <dc:Bounds x="986" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_look" bpmnElement="look">
+        <dc:Bounds x="1186" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_readable" bpmnElement="readable" isMarkerVisible="true">
+        <dc:Bounds x="1386" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1377" y="156" width="69" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_specJoin" bpmnElement="specJoin" isMarkerVisible="true">
+        <dc:Bounds x="1536" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1518" y="142" width="87" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_paths" bpmnElement="paths">
+        <dc:Bounds x="1686" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_covered" bpmnElement="covered" isMarkerVisible="true">
+        <dc:Bounds x="1886" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1875" y="142" width="73" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_scenario" bpmnElement="scenario">
+        <dc:Bounds x="2036" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_commit" bpmnElement="commit">
+        <dc:Bounds x="2036" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateOk" bpmnElement="gateOk" isMarkerVisible="true">
+        <dc:Bounds x="2236" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2218" y="156" width="87" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read">
+        <dc:Bounds x="2386" y="560" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_clear" bpmnElement="clear" isMarkerVisible="true">
+        <dc:Bounds x="2586" y="575" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2573" y="542" width="76" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end" bpmnElement="end">
+        <dc:Bounds x="2736" y="582" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2710" y="623" width="89" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_start_writeJoin" bpmnElement="f_start_writeJoin">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_writeJoin_write" bpmnElement="f_writeJoin_write">
+        <di:waypoint x="336" y="200" />
+        <di:waypoint x="436" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_write_lint" bpmnElement="f_write_lint">
+        <di:waypoint x="536" y="200" />
+        <di:waypoint x="636" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_lint_lintOk" bpmnElement="f_lint_lintOk">
+        <di:waypoint x="736" y="200" />
+        <di:waypoint x="836" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_lintOk_render" bpmnElement="f_lintOk_render">
+        <di:waypoint x="886" y="200" />
+        <di:waypoint x="986" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="924" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_render_look" bpmnElement="f_render_look">
+        <di:waypoint x="1086" y="200" />
+        <di:waypoint x="1186" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_look_readable" bpmnElement="f_look_readable">
+        <di:waypoint x="1286" y="200" />
+        <di:waypoint x="1386" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_readable_specJoin" bpmnElement="f_readable_specJoin">
+        <di:waypoint x="1436" y="200" />
+        <di:waypoint x="1536" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1474" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_specJoin_paths" bpmnElement="f_specJoin_paths">
+        <di:waypoint x="1586" y="200" />
+        <di:waypoint x="1686" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_paths_covered" bpmnElement="f_paths_covered">
+        <di:waypoint x="1786" y="200" />
+        <di:waypoint x="1886" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_covered_commit" bpmnElement="f_covered_commit">
+        <di:waypoint x="1936" y="200" />
+        <di:waypoint x="2036" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1974" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_gateOk" bpmnElement="f_commit_gateOk">
+        <di:waypoint x="2136" y="200" />
+        <di:waypoint x="2236" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_gateOk_read" bpmnElement="f_gateOk_read">
+        <di:waypoint x="2286" y="200" />
+        <di:waypoint x="2436" y="200" />
+        <di:waypoint x="2436" y="560" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2349" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_clear" bpmnElement="f_read_clear">
+        <di:waypoint x="2486" y="600" />
+        <di:waypoint x="2586" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_clear_end" bpmnElement="f_clear_end">
+        <di:waypoint x="2636" y="600" />
+        <di:waypoint x="2736" y="600" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2674" y="578" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_covered_scenario" bpmnElement="f_covered_scenario">
+        <di:waypoint x="1911" y="225" />
+        <di:waypoint x="1911" y="360" />
+        <di:waypoint x="2036" y="360" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1917" y="286" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_lintOk_writeJoin" bpmnElement="f_lintOk_writeJoin">
+        <di:waypoint x="861" y="225" />
+        <di:waypoint x="861" y="260" />
+        <di:waypoint x="311" y="260" />
+        <di:waypoint x="311" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="867" y="236" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_readable_writeJoin" bpmnElement="f_readable_writeJoin">
+        <di:waypoint x="1411" y="225" />
+        <di:waypoint x="1411" y="260" />
+        <di:waypoint x="311" y="260" />
+        <di:waypoint x="311" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1127" y="238" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_scenario_specJoin" bpmnElement="f_scenario_specJoin">
+        <di:waypoint x="2086" y="400" />
+        <di:waypoint x="2086" y="420" />
+        <di:waypoint x="1561" y="420" />
+        <di:waypoint x="1561" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_gateOk_writeJoin" bpmnElement="f_gateOk_writeJoin">
+        <di:waypoint x="2261" y="225" />
+        <di:waypoint x="2261" y="440" />
+        <di:waypoint x="311" y="440" />
+        <di:waypoint x="311" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1277" y="418" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_clear_writeJoin" bpmnElement="f_clear_writeJoin">
+        <di:waypoint x="2611" y="625" />
+        <di:waypoint x="2611" y="660" />
+        <di:waypoint x="311" y="660" />
+        <di:waypoint x="311" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1452" y="638" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

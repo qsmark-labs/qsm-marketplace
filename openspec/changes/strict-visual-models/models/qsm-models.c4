@@ -1,0 +1,62 @@
+// C4 levels 1 to 3 of the model toolchain: one normalised model behind every source format.
+model {
+  owner = person 'Owner' 'Reads the SVGs, edits a model when he wants to'
+  agent = system 'Agent' 'A Claude Code session that writes and checks models' {
+    #agent
+  }
+  qa = system 'QA agent' 'Tests every path of a feature' {
+    #agent
+  }
+  graphviz = system 'Graphviz' 'dot: lays out and draws C4 views' {
+    #external
+  }
+  bpmnio = system 'bpmn.io libraries' 'bpmn-moddle, bpmn-auto-layout, bpmnlint, bpmn-js' {
+    #external
+  }
+
+  mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
+    models = container 'qsm-models' 'Lints, lays out, renders and walks BPMN and C4 models' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-models' }
+      cli = component 'Verbs' 'lint, layout, render, paths, check' {
+        metadata { path 'plugins/qsm-models/scripts/cli.ts' }
+      }
+      bpmn = component 'BPMN' 'Analytic allowlist, labelled splits, one lane per step, layout of a file with no DI' {
+        metadata { path 'plugins/qsm-models/lib/bpmn' }
+      }
+      walk = component 'Path walker' 'Every start-to-end path, one round per loop, the cover of every flow' {
+        metadata { path 'plugins/qsm-models/lib/paths.ts' }
+      }
+      source = component 'C4 source adapter' 'Reads the chosen C4 source format into the normalised model' {
+        metadata { path 'plugins/qsm-models/lib/c4/source.ts' }
+      }
+      c4 = component 'C4 core' 'Level rules, generated views per level, lanes against actors' {
+        metadata { path 'plugins/qsm-models/lib/c4' }
+      }
+      drawio = component 'draw.io writer' 'One page per view with draw.io C4 shapes' {
+        metadata { path 'plugins/qsm-models/lib/c4/drawio.ts' }
+      }
+      conform = component 'Code check' 'Container paths, plugin dependencies, generated import rules' {
+        metadata { path 'plugins/qsm-models/lib/conform.ts' }
+      }
+    }
+    lens = container 'qsm-builder lens' 'Shows each plugin and change with its SVGs and a BPMN viewer' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-builder' }
+    }
+  }
+
+  agent -> mp.models.cli 'runs'
+  qa -> mp.models.cli 'asks for the paths to test'
+  owner -> mp.lens 'reads the models in'
+  mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with'
+  mp.models.cli -> mp.models.walk 'lists paths with'
+  mp.models.cli -> mp.models.c4 'lints and renders C4 with'
+  mp.models.cli -> mp.models.conform 'checks the code with'
+  mp.models.walk -> mp.models.bpmn 'reads the process from'
+  mp.models.c4 -> mp.models.source 'reads the model through'
+  mp.models.c4 -> mp.models.drawio 'exports each view with'
+  mp.models.conform -> mp.models.c4 'reads containers and components from'
+  mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with'
+  mp.models.c4 -> graphviz 'lays out views with'
+}
