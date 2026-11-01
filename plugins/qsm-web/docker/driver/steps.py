@@ -6,12 +6,16 @@ names the step's index and the reason, and the steps after it do not run.
 
 A fill carrying `redact` reports its value as redacted. That is how a
 password reaches a page without reaching a transcript.
+
+The browser is launched with humanize on, so every mouse move, a click's
+included, follows a recorded human path inside the browser.
 """
 
 from __future__ import annotations
 
 import logging
 import time
+import weakref
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -62,10 +66,56 @@ def _fill(page: Page, step: Step) -> Outcome:
     return {"selector": selector, "value": shown}
 
 
+def _number(step: Step, key: str) -> float | None:
+    value = step.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+# Where the cursor is in each tab. Playwright cannot read it back, so the
+# driver keeps the last point it sent: a relative move starts there.
+_cursor: weakref.WeakKeyDictionary[Page, tuple[float, float]] = (
+    weakref.WeakKeyDictionary()
+)
+
+
 def _click(page: Page, step: Step) -> Outcome:
     selector = _text(step, "selector")
-    page.click(selector, timeout=_timeout(step))
+    target = page.locator(selector)
+    target.scroll_into_view_if_needed(timeout=_timeout(step))
+    box = target.bounding_box(timeout=_timeout(step))
+    target.click(timeout=_timeout(step))
+    if box is not None:
+        # Playwright clicks the centre of the element's box.
+        _cursor[page] = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     return {"selector": selector, "url": page.url}
+
+
+def _mouse(page: Page, step: Step) -> Outcome:
+    """Move to a point, or by an offset from the cursor, and click there on request.
+
+    The point is held inside the page's window, because the cursor of a tab
+    cannot leave it.
+    """
+    dx, dy = _number(step, "dx"), _number(step, "dy")
+    if dx is not None and dy is not None:
+        x, y = _cursor.get(page, (0.0, 0.0))
+        x, y = x + dx, y + dy
+    else:
+        x, y = _number(step, "x"), _number(step, "y")
+        if x is None or y is None:
+            message = "mouse needs x and y, or dx and dy"
+            raise ValueError(message)
+    width, height = page.evaluate("() => [window.innerWidth, window.innerHeight]")
+    x = min(max(x, 0.0), float(width) - 1)
+    y = min(max(y, 0.0), float(height) - 1)
+    page.mouse.move(x, y)
+    _cursor[page] = (x, y)
+    clicked = step.get("click") is True
+    if clicked:
+        page.mouse.click(x, y)
+    return {"x": x, "y": y, "clicked": clicked, "url": page.url}
 
 
 def _wait(page: Page, step: Step) -> Outcome:
@@ -101,6 +151,7 @@ _ACTIONS: dict[str, Callable[[Page, Step], Outcome]] = {
     "navigate": _navigate,
     "fill": _fill,
     "click": _click,
+    "mouse": _mouse,
     "wait": _wait,
     "extract": _extract,
     "screenshot": _screenshot,

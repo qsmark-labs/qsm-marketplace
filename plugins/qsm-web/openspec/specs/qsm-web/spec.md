@@ -334,10 +334,23 @@ artifacts. An erroring fetch SHALL report the error kind and message as
 ### Requirement: qsm-web browserbox runs a script against a page
 
 qsm-web browserbox SHALL run one ordered script of page actions (at minimum:
-navigate, fill, click, wait, extract, screenshot) against one tab,
+navigate, fill, click, mouse, wait, extract, screenshot) against one tab,
 returning per-step outcomes and a final result. On a step's failure it
 SHALL stop there and report which step failed and why, rather than
 continue on a page in an unknown state.
+
+Every mouse movement, a click's included, SHALL follow a recorded human path
+inside the browser (Camoufox `humanize`), never move the desktop's cursor,
+and never jump. A mouse step SHALL name one target: a point in the window
+(`x`, `y`), or an offset from where the tab's cursor is (`dx`, `dy`), with an
+optional `click` there; a target outside the window SHALL be held at its edge.
+
+#### Scenario: A relative mouse move starts where the cursor is
+
+- **WHEN** a script clicks an element, then runs a mouse step with `dx` and `dy`
+- **THEN** the cursor SHALL travel from the element's centre to that centre
+  plus the offset, along a path of many points, and the step SHALL report
+  where it ended
 
 #### Scenario: Script completes
 

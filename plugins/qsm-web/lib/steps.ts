@@ -6,6 +6,7 @@ const STEP_ACTIONS = [
   "fill",
   "fill-secret",
   "click",
+  "mouse",
   "wait",
   "extract",
   "screenshot",
@@ -28,6 +29,12 @@ export interface Step {
   /** fill-secret: the entry in the password store, and which of its fields */
   readonly item?: string;
   readonly field?: string;
+  /** mouse: a point in the window, or an offset from the cursor, and a click there */
+  readonly x?: number;
+  readonly y?: number;
+  readonly dx?: number;
+  readonly dy?: number;
+  readonly click?: boolean;
   /** wait */
   readonly text?: string;
   readonly timeoutMs?: number;
@@ -81,7 +88,7 @@ export function readScript(input: unknown): Script {
 }
 
 type TextKey = "url" | "selector" | "value" | "item" | "field" | "text" | "path";
-type NumberKey = "timeoutMs" | "limit";
+type NumberKey = "timeoutMs" | "limit" | "x" | "y" | "dx" | "dy";
 
 /** One optional text field of a step, or nothing when absent; another type is refused. */
 function textField(
@@ -125,6 +132,19 @@ function requireWaitCondition(step: Step, index: number): void {
   }
 }
 
+/** A mouse step names one target: a point (x and y) or an offset (dx and dy), never half or both. */
+function requireMouseTarget(step: Step, index: number): void {
+  if (step.action !== "mouse") {
+    return;
+  }
+  const point = step.x !== undefined && step.y !== undefined;
+  const offset = step.dx !== undefined && step.dy !== undefined;
+  const given = [step.x, step.y, step.dx, step.dy].filter((v) => v !== undefined).length;
+  if (given !== 2 || (!point && !offset)) {
+    throw new ScriptError("mouse needs x and y, or dx and dy", index);
+  }
+}
+
 function readStep(s: unknown, index: number): Step {
   if (!isRecord(s)) {
     throw new ScriptError("a step is one JSON object", index);
@@ -143,6 +163,11 @@ function readStep(s: unknown, index: number): Step {
     ...textField(s, "text", index),
     ...numberField(s, "timeoutMs", index),
     ...numberField(s, "limit", index),
+    ...numberField(s, "x", index),
+    ...numberField(s, "y", index),
+    ...numberField(s, "dx", index),
+    ...numberField(s, "dy", index),
+    ...(s.click === true ? { click: true } : {}),
     ...textField(s, "path", index),
     ...(s.redact === true ? { redact: true } : {}),
   };
@@ -153,6 +178,7 @@ function readStep(s: unknown, index: number): Step {
     }
   }
   requireWaitCondition(step, index);
+  requireMouseTarget(step, index);
   return step;
 }
 

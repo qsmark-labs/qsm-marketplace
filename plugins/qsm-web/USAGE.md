@@ -26,7 +26,10 @@ qsm-web browserbox view <name>
 - `browserbox fetch` without `--in` starts and stops its own instance; `--keep` leaves it running,
   stop it by name.
 - `script` steps: `navigate`, `fill`, `fill-secret` (Bitwarden item, shown as `[redacted]`),
-  `click`, `wait`, `extract`, `screenshot`. A failed step ends the run.
+  `click`, `mouse`, `wait`, `extract`, `screenshot`. A failed step ends the run. `mouse` takes a
+  point (`{"action": "mouse", "x": 412, "y": 288}`) or an offset from the cursor (`"dx": 120,
+  "dy": -40`), and `"click": true` clicks there. Every mouse move, a click's too, follows a
+  recorded human path inside the browser, overshoots included.
 - `takeover` opens the live view in your desktop browser and waits for a person to clear a
   challenge there; default timeout five minutes. `view <name>` opens the live view any time.
   The live view asks for a per-instance password, which only these two verbs put in the address

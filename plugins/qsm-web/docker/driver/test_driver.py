@@ -30,6 +30,21 @@ class _FakeElement:
         return ""
 
 
+class _FakeLocator:
+    def __init__(self, page: _FakePage) -> None:
+        super().__init__()
+        self.page = page
+
+    def scroll_into_view_if_needed(self, **_: object) -> None:
+        self.page.maybe_fail("click")
+
+    def bounding_box(self, **_: object) -> None:
+        return None
+
+    def click(self, **_: object) -> None:
+        pass
+
+
 class _FakePage:
     """A page that answers the few calls a step makes, and fails on demand."""
 
@@ -39,35 +54,35 @@ class _FakePage:
         self.calls: list[str] = []
         self.fail_on = fail_on
 
-    def _maybe_fail(self, what: str) -> None:
+    def maybe_fail(self, what: str) -> None:
         self.calls.append(what)
         if self.fail_on == what:
             message = f"no element for {what}"
             raise TimeoutError(message)
 
     def goto(self, url: str, **_: object) -> _FakeResponse:
-        self._maybe_fail("navigate")
+        self.maybe_fail("navigate")
         self.url = url
         return _FakeResponse()
 
     def fill(self, *_: object, **__: object) -> None:
-        self._maybe_fail("fill")
+        self.maybe_fail("fill")
 
-    def click(self, *_: object, **__: object) -> None:
-        self._maybe_fail("click")
+    def locator(self, *_: object) -> _FakeLocator:
+        return _FakeLocator(self)
 
     def wait_for_selector(self, *_: object, **__: object) -> None:
-        self._maybe_fail("wait")
+        self.maybe_fail("wait")
 
     def wait_for_timeout(self, *_: object) -> None:
-        self._maybe_fail("wait")
+        self.maybe_fail("wait")
 
     def query_selector_all(self, *_: object) -> list[_FakeElement]:
-        self._maybe_fail("extract")
+        self.maybe_fail("extract")
         return []
 
     def screenshot(self, **_: object) -> None:
-        self._maybe_fail("screenshot")
+        self.maybe_fail("screenshot")
 
     def title(self) -> str:
         return "a title"
