@@ -103,12 +103,13 @@ def _click(page: Page, step: Step) -> Outcome:
     target = page.locator(selector).first
     target.wait_for(state="visible", timeout=_timeout(step))
     target.scroll_into_view_if_needed(timeout=_timeout(step))
-    # The point is drawn in the element's first box, where a link wrapped
+    # The point is drawn in the element's first box with an area, where a link wrapped
     # over two lines really is, not in the rectangle around both lines.
     # Playwright counts a click position from inside the border of that
     # whole rectangle, so the position is taken from there.
     geometry: list[float] | None = target.evaluate(
-        "e => { const r = e.getClientRects()[0]; if (!r) return null;"
+        "e => { const r = Array.from(e.getClientRects())"
+        ".find(b => b.width > 0 && b.height > 0); if (!r) return null;"
         " const b = e.getBoundingClientRect(), s = getComputedStyle(e);"
         " return [b.x + parseFloat(s.borderLeftWidth),"
         " b.y + parseFloat(s.borderTopWidth), r.x, r.y, r.width, r.height]; }"
