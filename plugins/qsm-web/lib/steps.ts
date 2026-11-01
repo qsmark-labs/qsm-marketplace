@@ -29,11 +29,9 @@ export interface Step {
   /** fill-secret: the entry in the password store, and which of its fields */
   readonly item?: string;
   readonly field?: string;
-  /** mouse: a point in the window, or an offset from the cursor, and a click there */
+  /** mouse: a point in the window, and a click there */
   readonly x?: number;
   readonly y?: number;
-  readonly dx?: number;
-  readonly dy?: number;
   readonly click?: boolean;
   /** wait */
   readonly text?: string;
@@ -88,7 +86,7 @@ export function readScript(input: unknown): Script {
 }
 
 type TextKey = "url" | "selector" | "value" | "item" | "field" | "text" | "path";
-type NumberKey = "timeoutMs" | "limit" | "x" | "y" | "dx" | "dy";
+type NumberKey = "timeoutMs" | "limit" | "x" | "y";
 
 /** One optional text field of a step, or nothing when absent; another type is refused. */
 function textField(
@@ -144,17 +142,10 @@ function clickField(s: Record<string, unknown>, index: number): Partial<Pick<Ste
   return { click: true };
 }
 
-/** A mouse step names one target: a point (x and y) or an offset (dx and dy), never half or both. */
+/** A mouse step names its point whole: x and y. */
 function requireMouseTarget(step: Step, index: number): void {
-  if (step.action !== "mouse") {
-    return;
-  }
-  const hasPoint = step.x !== undefined || step.y !== undefined;
-  const hasOffset = step.dx !== undefined || step.dy !== undefined;
-  const point = step.x !== undefined && step.y !== undefined && !hasOffset;
-  const offset = step.dx !== undefined && step.dy !== undefined && !hasPoint;
-  if (!point && !offset) {
-    throw new ScriptError("mouse needs x and y, or dx and dy", index);
+  if (step.action === "mouse" && (step.x === undefined || step.y === undefined)) {
+    throw new ScriptError("mouse needs x and y", index);
   }
 }
 
@@ -178,8 +169,6 @@ function readStep(s: unknown, index: number): Step {
     ...numberField(s, "limit", index),
     ...numberField(s, "x", index),
     ...numberField(s, "y", index),
-    ...numberField(s, "dx", index),
-    ...numberField(s, "dy", index),
     ...clickField(s, index),
     ...textField(s, "path", index),
     ...(s.redact === true ? { redact: true } : {}),

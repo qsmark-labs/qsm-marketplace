@@ -341,27 +341,24 @@ continue on a page in an unknown state.
 
 Every mouse movement, a click's included, SHALL follow a recorded human path
 inside the browser (Camoufox `humanize`), never move the desktop's cursor,
-and never jump. A mouse step SHALL name one target: a point in the window
-(`x`, `y`), or an offset (`dx`, `dy`) from the last point the driver sent the
-tab's cursor to (the top-left corner before any; a person's moves in the live
-view are not seen), with an optional `click` there. A target outside the page's
+and never jump. A mouse step SHALL name a point in the window (`x`, `y`), with
+an optional `click` there; the browser draws the path from wherever its
+cursor is. A target outside the page's
 visible area, scrollbars excluded, SHALL be held at its edge. A click step SHALL
 click the first element its selector matches at a random point of its first
 box (the first line of a wrapped link),
-most often near the middle and never on its outer tenth, report that point,
-and leave the cursor there.
+most often near the middle and never on its outer tenth, and report that point.
 
-#### Scenario: A relative mouse move starts where the cursor is
+#### Scenario: A mouse move travels a human path to its point
 
-- **WHEN** a script clicks an element, then runs a mouse step with `dx` and `dy`
+- **WHEN** a script clicks an element, then runs a mouse step with `x` and `y`
 - **THEN** the cursor SHALL travel from the point the click landed on to that
-  point plus the offset, along a path of many points, and the step SHALL report
-  where it ended
+  point, along a path of many points, and the step SHALL report where it ended
 
-#### Scenario: A mouse step without one whole target is refused
+#### Scenario: A mouse step without its whole point is refused
 
-- **WHEN** a mouse step has only one of `x` and `y`, mixes a point with an
-  offset, has no target, or has a `click` that is not true or false
+- **WHEN** a mouse step lacks `x` or `y`, or has a `click` that is not true or
+  false
 - **THEN** qsm-web browserbox SHALL refuse the script before any step runs,
   naming the step's index
 
