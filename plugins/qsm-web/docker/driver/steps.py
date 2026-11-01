@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.sync_api import Page, Position
 
 logger = logging.getLogger(__name__)
 
@@ -74,29 +74,40 @@ def _number(step: Step, key: str) -> float | None:
 
 
 # Where the cursor is in each tab. Playwright cannot read it back, so the
-# driver keeps the last point it sent: a relative move starts there.
+# driver keeps the last point it sent: a relative move starts there, and at
+# the top-left corner before any. A person's moves in the live view are not
+# seen, because they never pass through the driver.
 _cursor: weakref.WeakKeyDictionary[Page, tuple[float, float]] = (
     weakref.WeakKeyDictionary()
 )
 
 
 def _click(page: Page, step: Step) -> Outcome:
+    """Click the first match at the centre of its box, the point the cursor is left at."""
     selector = _text(step, "selector")
-    target = page.locator(selector)
+    target = page.locator(selector).first
     target.scroll_into_view_if_needed(timeout=_timeout(step))
     box = target.bounding_box(timeout=_timeout(step))
-    target.click(timeout=_timeout(step))
-    if box is not None:
-        # Playwright clicks the centre of the element's box.
-        _cursor[page] = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    if box is None:
+        message = f"{selector} is not visible"
+        raise ValueError(message)
+    # A click position counts from inside the element's border, the box
+    # from outside it, so the border's width is taken off.
+    left, top = target.evaluate("e => [e.clientLeft, e.clientTop]")
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    centre: Position = {"x": x - box["x"] - left, "y": y - box["y"] - top}
+    # Recorded before the click, because the click moves the cursor there
+    # first, even when it then fails.
+    _cursor[page] = (x, y)
+    target.click(position=centre, timeout=_timeout(step))
     return {"selector": selector, "url": page.url}
 
 
 def _mouse(page: Page, step: Step) -> Outcome:
     """Move to a point, or by an offset from the cursor, and click there on request.
 
-    The point is held inside the page's window, because the cursor of a tab
-    cannot leave it.
+    The point is held inside the page's visible area, scrollbars excluded,
+    because the cursor of a tab cannot leave it.
     """
     dx, dy = _number(step, "dx"), _number(step, "dy")
     if dx is not None and dy is not None:
@@ -107,14 +118,20 @@ def _mouse(page: Page, step: Step) -> Outcome:
         if x is None or y is None:
             message = "mouse needs x and y, or dx and dy"
             raise ValueError(message)
-    width, height = page.evaluate("() => [window.innerWidth, window.innerHeight]")
+    # The visual viewport leaves the scrollbars out, in quirks mode too,
+    # where the root element's client size is the page's, not the window's.
+    width, height = page.evaluate(
+        "() => [window.visualViewport.width, window.visualViewport.height]"
+    )
     x = min(max(x, 0.0), float(width) - 1)
     y = min(max(y, 0.0), float(height) - 1)
     page.mouse.move(x, y)
     _cursor[page] = (x, y)
     clicked = step.get("click") is True
     if clicked:
-        page.mouse.click(x, y)
+        # Down and up only: the cursor is already there.
+        page.mouse.down()
+        page.mouse.up()
     return {"x": x, "y": y, "clicked": clicked, "url": page.url}
 
 

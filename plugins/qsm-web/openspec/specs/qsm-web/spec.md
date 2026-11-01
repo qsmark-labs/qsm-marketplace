@@ -342,8 +342,12 @@ continue on a page in an unknown state.
 Every mouse movement, a click's included, SHALL follow a recorded human path
 inside the browser (Camoufox `humanize`), never move the desktop's cursor,
 and never jump. A mouse step SHALL name one target: a point in the window
-(`x`, `y`), or an offset from where the tab's cursor is (`dx`, `dy`), with an
-optional `click` there; a target outside the window SHALL be held at its edge.
+(`x`, `y`), or an offset (`dx`, `dy`) from the last point the driver sent the
+tab's cursor to (the top-left corner before any; a person's moves in the live
+view are not seen), with an optional `click` there. A target outside the page's
+visible area, scrollbars excluded, SHALL be held at its edge. A click step SHALL
+click the first element its selector matches, at the centre of its box, and
+leave the cursor there.
 
 #### Scenario: A relative mouse move starts where the cursor is
 
@@ -351,6 +355,13 @@ optional `click` there; a target outside the window SHALL be held at its edge.
 - **THEN** the cursor SHALL travel from the element's centre to that centre
   plus the offset, along a path of many points, and the step SHALL report
   where it ended
+
+#### Scenario: A mouse step without one whole target is refused
+
+- **WHEN** a mouse step has only one of `x` and `y`, mixes a point with an
+  offset, has no target, or has a `click` that is not true or false
+- **THEN** qsm-web browserbox SHALL refuse the script before any step runs,
+  naming the step's index
 
 #### Scenario: Script completes
 

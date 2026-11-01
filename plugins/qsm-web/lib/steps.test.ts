@@ -58,7 +58,13 @@ describe("readScript", () => {
     });
     expect(ok.steps[0]).toEqual({ action: "mouse", x: 412, y: 288, click: true });
     expect(ok.steps[1]).toEqual({ action: "mouse", dx: 120, dy: -40 });
-    for (const bad of [{ x: 1 }, { x: 1, dy: 2 }, { x: 1, y: 2, dx: 3, dy: 4 }, {}]) {
+    for (const bad of [
+      { x: 1 },
+      { x: 1, dy: 2 },
+      { x: 1, y: 2, dx: 3, dy: 4 },
+      {},
+      { x: 1, y: 2, click: "true" },
+    ]) {
       expect(scriptErrorOf(() => readScript({ steps: [{ action: "mouse", ...bad }] })).index).toBe(
         0,
       );

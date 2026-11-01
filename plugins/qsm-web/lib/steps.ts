@@ -132,6 +132,18 @@ function requireWaitCondition(step: Step, index: number): void {
   }
 }
 
+/** A mouse step's click: true, false or absent; anything else is refused, never read as no click. */
+function clickField(s: Record<string, unknown>, index: number): Partial<Pick<Step, "click">> {
+  const v = s.click;
+  if (v === undefined || v === false) {
+    return {};
+  }
+  if (v !== true) {
+    throw new ScriptError("click must be true or false", index);
+  }
+  return { click: true };
+}
+
 /** A mouse step names one target: a point (x and y) or an offset (dx and dy), never half or both. */
 function requireMouseTarget(step: Step, index: number): void {
   if (step.action !== "mouse") {
@@ -167,7 +179,7 @@ function readStep(s: unknown, index: number): Step {
     ...numberField(s, "y", index),
     ...numberField(s, "dx", index),
     ...numberField(s, "dy", index),
-    ...(s.click === true ? { click: true } : {}),
+    ...clickField(s, index),
     ...textField(s, "path", index),
     ...(s.redact === true ? { redact: true } : {}),
   };
