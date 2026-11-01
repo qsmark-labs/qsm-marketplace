@@ -109,16 +109,42 @@ and shapes it uses. `lint` SHALL refuse an actor without a colour and two actors
 
 ### Requirement: Generated C4 views are drawn in tiers
 
-A generated view SHALL place the actors in the top tier, the system in scope with its containers in
-the middle, and external systems in the bottom tier; containers SHALL sit in the groups the source
-gives them, each group a tinted band; edges SHALL be orthogonal, take the colour of the actor they
-start from, and carry their label beside their own line, never over a box.
+A generated view SHALL run its tiers left to right: the actors, then the system in scope with its
+containers in the groups the source gives them, each group a tinted band, then external systems,
+each beside the containers that use it and naming in a note those the view does not draw. Edges
+SHALL be orthogonal, take the colour of the actor they start from, and carry their label beside
+their own line, never over a box.
 
 #### Scenario: The QA agent's relations
 
 - **WHEN** the QA agent, tagged `agent` and green, files fix tasks with qsm-tasks
-- **THEN** the QA agent sits in the top tier, qsm-tasks in its group inside the system, GitHub in
-  the bottom tier, and the line from the QA agent to qsm-tasks is green with its label beside it
+- **THEN** the QA agent sits in the first tier, qsm-tasks in its group inside the system, GitHub in
+  the last tier beside that group with the note "used by qsm-tasks, qsm-forge", and the line from
+  the QA agent to qsm-tasks is green with its label beside it
+
+### Requirement: A BPMN picture reads at a glance
+
+A BPMN picture SHALL draw lanes across with the flow left to right, each lane tinted and each step
+filled in its actor's colour with white text, flows 3 px wide with a small arrow in the middle of
+every segment longer than 70 px, and enough room that no flow touches a step or a label.
+
+#### Scenario: The middle of a long flow
+
+- **WHEN** the owner looks at the middle of the flow from "8.2 File a fix task per finding" back to
+  the merge before "4-6 Build every open task" in `flow.svg`
+- **THEN** a small arrow on that segment shows which way it runs
+
+### Requirement: One picture holds every level
+
+`render` SHALL also write `<process>.levels.svg` for a process that calls others: the process on
+top, each diagram a step calls in the row below it, and a dashed line in the step's colour from the
+step to the diagram it opens.
+
+#### Scenario: The feature flow on one page
+
+- **WHEN** `render` runs on `flow.bpmn`
+- **THEN** `flow.levels.svg` shows flow, plan, split, build-task, land, model-gate and consume-task,
+  and a dashed line runs from "4 Build the task into a PR" to consume-task
 
 ### Requirement: A crowded container view is split by question
 

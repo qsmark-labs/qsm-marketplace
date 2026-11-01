@@ -3,8 +3,8 @@
 ### Requirement: The lens shows the models
 
 The lens SHALL show, on a plugin's page, every SVG of the plugin's `models/`, or say it has none,
-and on the overview the marketplace's C4 container view and one entry per unarchived change on main
-or on a local `feature/*` branch, with its proposal's first screen and pictures. A BPMN file SHALL
+and on the overview the marketplace's C4 container view and one entry per unarchived change of the
+branch the checkout is on, with its proposal's first screen and pictures. A BPMN file SHALL
 open in a pan-and-zoom viewer served from the lens's own pinned copy, so the page requests nothing
 outside 127.0.0.1.
 

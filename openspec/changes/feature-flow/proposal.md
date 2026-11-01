@@ -1,3 +1,5 @@
+![The feature flow, every level in one picture](models/flow.levels.svg)
+
 ![The feature flow, BPMN level 1](models/flow.svg)
 
 ![Step 2, planning, BPMN level 2](models/plan.svg)

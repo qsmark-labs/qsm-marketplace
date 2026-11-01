@@ -51,8 +51,8 @@ none of it in the tree.
    equal `plugin.json` dependencies both ways; component relations become
    `.dependency-cruiser.models.cjs`, one `allowed` rule each, which the repository's config
    includes.
-10. **The lens** shows each plugin's `models/` pictures, each unarchived change on main or on a
-    local `feature/*` branch with its proposal's first screen and pictures, and a BPMN in bpmn-js's
+10. **The lens** shows each plugin's `models/` pictures, each unarchived change of the branch the
+    checkout is on with its proposal's first screen and pictures, and a BPMN in bpmn-js's
     navigated viewer (18.31.1, 190 KB) that qsm-builder pins and serves itself, since the lens
     requests nothing outside 127.0.0.1.
 11. **The model is fixed, never the picture.** An agent places shapes badly (draw.io as source,

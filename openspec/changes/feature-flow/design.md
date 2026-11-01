@@ -17,7 +17,7 @@ review-threads, `/simplify`, the review skill. Nothing in `.github/` but `ci.yml
    The planning session works in its own worktree (git rule 1) on the local branch `feature/<n>`
    cut from main; the owner's yes is given in the session (`plan.bpmn` 2.7), so no pull request
    carries the plan, and only then is the change committed. Step 3 pushes the branch. The lens
-   reads local `feature/*` branches, so the plan shows before the push. A revision during the
+   shows the branch the checkout is on, so the plan shows before the push. A revision during the
    build is a commit on the branch. At step 9 the change is archived only after the owner accepts
    the feature pull request (`land.bpmn`), so a round of fixes never archives it twice (the archive
    rule is in `tasks-on-github-issues`).
@@ -51,17 +51,18 @@ elsewhere: `task-tool`, `spec-archive` (`tasks-on-github-issues`). New elsewhere
    and `gh issue view --json issueType`. If it does not, the spec is revised; there is no second
    path that sets it.
 
-## Decided by rule
+## The owner's answers
 
-1. **Pull requests merge with a merge commit**, task pull requests into `feature/<n>` and the
-   feature pull request into main (git rule 1: merge, never rebase; the context rule takes a
-   branch by merge commit).
-2. **No issue form for feedback**: an agent files feedback through the task tool (CLAUDE.md), and
-   `qsm-tasks feedback` checks for private data.
-3. **A fake marker and a check** (not built): each fake carries `qsm-fake: #<task>` and a check on
-   pull requests into main fails while one is left, because the gates check what a machine can
-   (AGENTS.md).
-4. **The three ways back are drawn**: the owner's comments on a task pull request
+1. **A pull request may squash.** A squash merge writes one new commit on the target and rewrites
+   nothing, so the git rule's "never rebase" does not touch it.
+2. **Feedback is a plain issue from a template**: what happened, where, how to reproduce it in the
+   abstract, and what it should do. No custom issue type. This changes the Feedback type of
+   `qsm-tasks-cli`, which follows when the flow is approved.
+3. **Fakes and mocks need no marker.** They are allowed on task branches, and the review catches
+   one that is left before the feature pull request reaches main.
+4. **Versions and a release train wait** for a full release flow of an app; the marketplace has
+   none yet.
+5. **The three ways back are drawn**: the owner's comments on a task pull request
    (`build-task.bpmn` 6.2), changes asked on the feature pull request (`land.bpmn` 9.5), a plan
    the owner drops (`plan.bpmn` 2.10). A model that leaves them out would say less than happens.
 

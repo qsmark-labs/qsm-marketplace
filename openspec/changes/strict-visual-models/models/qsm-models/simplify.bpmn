@@ -103,73 +103,73 @@
       <bpmndi:BPMNShape id="BPMNShape_simplify_pool" bpmnElement="simplify_pool" isHorizontal="true">
         <dc:Bounds x="80" y="80" width="2203.2000000000003" height="1151.8" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#f3f7fc" color:border-color="#08427b" color:background-color="#f3f7fc" isHorizontal="true">
+      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#c3d4e7" color:border-color="#08427b" color:background-color="#c3d4e7" isHorizontal="true">
         <dc:Bounds x="110" y="80" width="2173.2000000000003" height="462.79999999999995" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#0f766e" bioc:fill="#f2fbfa" color:border-color="#0f766e" color:background-color="#f2fbfa" isHorizontal="true">
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#0f766e" bioc:fill="#c1e3e0" color:border-color="#0f766e" color:background-color="#c1e3e0" isHorizontal="true">
         <dc:Bounds x="110" y="542.8" width="2173.2000000000003" height="689" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_ask" bpmnElement="ask" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+      <bpmndi:BPMNShape id="BPMNShape_ask" bpmnElement="ask" bioc:stroke="#08427b" bioc:fill="#ffffff" color:border-color="#08427b" color:background-color="#ffffff">
         <dc:Bounds x="180.8" y="218" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="161.8" y="274.3" width="74" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_firstJoin" bpmnElement="firstJoin" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_firstJoin" bpmnElement="firstJoin" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="366.85" y="673.8000000000001" width="50" height="50" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_tryFirst" bpmnElement="tryFirst" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
-        <dc:Bounds x="578.1" y="658.8000000000001" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_tryFirst" bpmnElement="tryFirst" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
+        <dc:Bounds x="578.1" y="658.8000000000001" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_result" bpmnElement="result" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_result" bpmnElement="result" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="839.35" y="673.8000000000001" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="767.85" y="631.5" width="58" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_againFirst" bpmnElement="againFirst" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_againFirst" bpmnElement="againFirst" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="1041.85" y="1070.3000000000002" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="951.5500000000001" y="1011.9000000000001" width="74" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_nothing" bpmnElement="nothing" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+      <bpmndi:BPMNShape id="BPMNShape_nothing" bpmnElement="nothing" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff">
         <dc:Bounds x="1251.3500000000001" y="1077.3000000000002" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1233.525" y="1129.4" width="73" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_moreJoin" bpmnElement="moreJoin" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_moreJoin" bpmnElement="moreJoin" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="1041.85" y="673.8000000000001" width="50" height="50" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_againMore" bpmnElement="againMore" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_againMore" bpmnElement="againMore" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="1244.3500000000001" y="673.8000000000001" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1154.0500000000002" y="615.4" width="74" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_tryMore" bpmnElement="tryMore" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
-        <dc:Bounds x="1455.6000000000001" y="866.8000000000001" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_tryMore" bpmnElement="tryMore" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
+        <dc:Bounds x="1455.6000000000001" y="866.8000000000001" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_report" bpmnElement="report" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
-        <dc:Bounds x="1455.6000000000001" y="658.8000000000001" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_report" bpmnElement="report" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
+        <dc:Bounds x="1455.6000000000001" y="658.8000000000001" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
-        <dc:Bounds x="1725.6000000000001" y="196" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#05284a" bioc:fill="#08427b" color:border-color="#05284a" color:background-color="#08427b">
+        <dc:Bounds x="1725.6000000000001" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_take" bpmnElement="take" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="BPMNShape_take" bpmnElement="take" bioc:stroke="#08427b" bioc:fill="#ffffff" color:border-color="#08427b" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="1986.8500000000001" y="211" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1893.025" y="152.60000000000002" width="77" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_taken" bpmnElement="taken" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+      <bpmndi:BPMNShape id="BPMNShape_taken" bpmnElement="taken" bioc:stroke="#08427b" bioc:fill="#ffffff" color:border-color="#08427b" color:background-color="#ffffff">
         <dc:Bounds x="2186.9" y="218" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="2167.0750000000003" y="270.1" width="77" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+      <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" bioc:stroke="#08427b" bioc:fill="#ffffff" color:border-color="#08427b" color:background-color="#ffffff">
         <dc:Bounds x="2186.9" y="397.40000000000003" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="2172.0750000000003" y="449.5" width="67" height="28" />
