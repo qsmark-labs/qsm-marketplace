@@ -273,7 +273,8 @@ function neighbours(f) {
 function openFocus(f) {
   if (f.todo) return;
   current = f;
-  if (!f.changed || (mode === "before" && !board.prev)) mode = "after";
+  // A view the frame does not have falls back to After: Diff exists only where pixels changed.
+  if (!f.changed || !board.prev || (mode === "diff" && !f.changed.areas.length)) mode = "after";
   focus.hidden = false;
   renderFocus();
   document.getElementById("close").focus();
@@ -316,7 +317,8 @@ function renderFocus() {
   document.getElementById("prev").disabled = !prev;
   document.getElementById("next").disabled = !next;
 
-  const marks = s("svg", { viewBox: `${f.crop.x} ${f.crop.y} ${f.crop.w} ${f.crop.h}`, style: "position:absolute;inset:0;width:100%;height:100%" });
+  // The marks take the image's own box, so a pane narrower than the crop clips both alike.
+  const marks = s("svg", { viewBox: `0 0 ${f.screen.w} ${f.screen.h}`, style: `position:absolute;width:${f.screen.w}px;height:${f.screen.h}px;left:${-f.crop.x}px;top:${-f.crop.y}px` });
   for (const r of f.failing)
     marks.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
   const crop = h("div", { class: "frame", style: { position: "relative", width: `${f.crop.w}px`, height: `${f.crop.h}px`, maxWidth: "100%" } },
