@@ -1,0 +1,94 @@
+// C4 levels 1 and 2 of the marketplace, for the feature flow.
+// Every element name is the lane name a BPMN process uses for the same actor.
+model {
+  owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features'
+
+  agent = system 'Agent' 'A Claude Code session that plans, splits and builds' {
+    #agent
+  }
+  reviewer = system 'Review agent' 'A Claude Code session that reviews a PR and posts findings' {
+    #agent
+  }
+  qa = system 'QA agent' 'A Claude Code session that tests a feature branch in a sandbox' {
+    #agent
+  }
+
+  github = system 'GitHub' 'Issues, the board, pull requests and Actions of the repository' {
+    #external
+  }
+  openspec = system 'OpenSpec CLI' 'Validates changes and their artifacts' {
+    #external
+  }
+
+  mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
+    tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-tasks' }
+    }
+    plan = container 'qsm-plan' 'Sizes an ask, grills a feature, splits it into tasks' {
+      technology 'Skills'
+      metadata { path 'plugins/qsm-plan' }
+    }
+    spec = container 'qsm-openspec' 'The feature schema and the skills that write and consume a change' {
+      technology 'Skills'
+      metadata { path 'plugins/qsm-openspec' }
+    }
+    models = container 'qsm-models' 'Lints, renders and walks BPMN and C4 models' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-models' }
+    }
+    review = container 'qsm-review' 'Reviews a PR and posts the findings' {
+      technology 'Skills and agents'
+      metadata { path 'plugins/qsm-review' }
+    }
+    forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-forge' }
+    }
+    memory = container 'qsm-memory' 'Earlier sessions, searched by full text' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-memory' }
+    }
+    index = container 'qsm-index' 'The code index: search, structure, impact' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-index' }
+    }
+    lens = container 'qsm-builder lens' 'A static page of every plugin, its spec and its models' {
+      technology 'Bun binary'
+      metadata { path 'plugins/qsm-builder' }
+    }
+  }
+
+  owner -> github 'files features, merges PRs'
+  owner -> mp.lens 'reads the models'
+  owner -> agent 'plans and splits with'
+
+  agent -> mp.plan 'plans and splits with'
+  agent -> mp.spec 'writes the change with'
+  agent -> mp.models 'lints and renders models with'
+  agent -> mp.tasks 'creates and claims tasks with'
+  agent -> mp.memory 'gathers context from'
+  agent -> mp.index 'gathers context from'
+  agent -> mp.forge 'opens PRs with'
+
+  reviewer -> mp.review 'reviews with'
+  reviewer -> mp.forge 'posts findings with'
+
+  qa -> mp.models 'reads the paths to test from'
+  qa -> mp.tasks 'files fix tasks with'
+
+  mp.tasks -> github 'reads and writes issues and the board'
+  mp.forge -> github 'opens PRs, reads threads'
+  mp.spec -> openspec 'validates changes with'
+}
+
+views {
+  view index {
+    title 'Context: the feature flow'
+    include *
+  }
+  view containers of mp {
+    title 'Containers: the marketplace in the feature flow'
+    include *
+  }
+}
