@@ -25,8 +25,8 @@ cheaper steps could not read, and it is never a session to act through.
 ## A captcha
 
 1. Solve it once yourself: a `screenshot` step, read where the challenge is, then `mouse` steps that
-   move and click there (`{"action": "mouse", "x": 412, "y": 288, "click": true}`, or `"dx"` and
-   `"dy"` to move by an offset from the cursor; the path is a human one by itself), then a
+   move and click there (`{"action": "mouse", "x": 412, "y": 288, "click": true}`; the path is a
+   human one by itself), then a
    `screenshot` to check. One attempt, because a second against the same wall gets the address
    blocked.
 2. When it is still there, hand it to the person: `qsm-web browserbox takeover <name> <tab>

@@ -49,22 +49,10 @@ describe("readScript", () => {
     expect(() => readScript({ steps: [{ action: "wait" }] })).toThrow(ScriptError);
   });
 
-  test("a mouse step names a point or an offset, never half of one or both", () => {
-    const ok = readScript({
-      steps: [
-        { action: "mouse", x: 412, y: 288, click: true },
-        { action: "mouse", dx: 120, dy: -40 },
-      ],
-    });
+  test("a mouse step names its whole point, and a click is true or false", () => {
+    const ok = readScript({ steps: [{ action: "mouse", x: 412, y: 288, click: true }] });
     expect(ok.steps[0]).toEqual({ action: "mouse", x: 412, y: 288, click: true });
-    expect(ok.steps[1]).toEqual({ action: "mouse", dx: 120, dy: -40 });
-    for (const bad of [
-      { x: 1 },
-      { x: 1, dy: 2 },
-      { x: 1, y: 2, dx: 3, dy: 4 },
-      {},
-      { x: 1, y: 2, click: "true" },
-    ]) {
+    for (const bad of [{ x: 1 }, { y: 2 }, {}, { x: 1, y: 2, click: "true" }]) {
       expect(scriptErrorOf(() => readScript({ steps: [{ action: "mouse", ...bad }] })).index).toBe(
         0,
       );

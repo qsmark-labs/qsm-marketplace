@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import random
 import time
-import weakref
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -74,15 +73,6 @@ def _number(step: Step, key: str) -> float | None:
     return float(value)
 
 
-# Where the cursor is in each tab. Playwright cannot read it back, so the
-# driver keeps the last point it sent: a relative move starts there, and at
-# the top-left corner before any. A person's moves in the live view are not
-# seen, because they never pass through the driver.
-_cursor: weakref.WeakKeyDictionary[Page, tuple[float, float]] = (
-    weakref.WeakKeyDictionary()
-)
-
-
 _rng = random.SystemRandom()
 
 
@@ -121,25 +111,21 @@ def _click(page: Page, step: Step) -> Outcome:
     x, y = box_x + _near_centre(width), box_y + _near_centre(height)
     point: Position = {"x": x - origin_x, "y": y - origin_y}
     target.click(position=point, timeout=_timeout(step))
-    _cursor[page] = (x, y)
     return {"selector": selector, "x": x, "y": y, "url": page.url}
 
 
 def _mouse(page: Page, step: Step) -> Outcome:
-    """Move to a point, or by an offset from the cursor, and click there on request.
+    """Move to a point, and click there on request.
+
+    The browser knows where its cursor is and draws the path from there.
 
     The point is held inside the page's visible area, scrollbars excluded,
     because the cursor of a tab cannot leave it.
     """
-    dx, dy = _number(step, "dx"), _number(step, "dy")
-    if dx is not None and dy is not None:
-        x, y = _cursor.get(page, (0.0, 0.0))
-        x, y = x + dx, y + dy
-    else:
-        x, y = _number(step, "x"), _number(step, "y")
-        if x is None or y is None:
-            message = "mouse needs x and y, or dx and dy"
-            raise ValueError(message)
+    x, y = _number(step, "x"), _number(step, "y")
+    if x is None or y is None:
+        message = "mouse needs x and y"
+        raise ValueError(message)
     # The visual viewport leaves the scrollbars out, in quirks mode too,
     # where the root element's client size is the page's, not the window's.
     width, height = page.evaluate(
@@ -148,7 +134,6 @@ def _mouse(page: Page, step: Step) -> Outcome:
     x = min(max(x, 0.0), float(width) - 1)
     y = min(max(y, 0.0), float(height) - 1)
     page.mouse.move(x, y)
-    _cursor[page] = (x, y)
     clicked = step.get("click") is True
     if clicked:
         # Down and up only: the cursor is already there.
