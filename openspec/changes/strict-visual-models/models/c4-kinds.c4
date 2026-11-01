@@ -7,4 +7,5 @@ specification {
   relationship uses
   tag external
   tag agent
+  tag shared
 }

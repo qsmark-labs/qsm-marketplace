@@ -2,16 +2,21 @@
 // Every element name is the lane name a BPMN process uses for the same actor. Relations between
 // containers are the plugin dependencies after this feature and the ones it waits on.
 model {
-  owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features'
+  owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features' {
+    metadata { colour 'blue' }
+  }
 
   agent = system 'Agent' 'A Claude Code session that plans, splits and builds' {
     #agent
+    metadata { colour 'purple' }
   }
   reviewer = system 'Review agent' 'A Claude Code session that reviews a PR and posts findings' {
     #agent
+    metadata { colour 'orange' }
   }
   qa = system 'QA agent' 'A Claude Code session that tests a feature branch in a sandbox' {
     #agent
+    metadata { colour 'green' }
   }
 
   github = system 'GitHub' 'Issues, the board, pull requests and Actions of the repository' {
@@ -24,43 +29,44 @@ model {
   mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-tasks' }
+      metadata { group 'Board and pull requests' path 'plugins/qsm-tasks' }
     }
     plan = container 'qsm-plan' 'Sizes an ask, grills a feature, splits it into tasks' {
       technology 'Skills'
-      metadata { path 'plugins/qsm-plan' }
+      metadata { group 'Plan and specify' path 'plugins/qsm-plan' }
     }
     spec = container 'qsm-openspec' 'The feature schema and the skills that write and consume a change' {
       technology 'Skills'
-      metadata { path 'plugins/qsm-openspec' }
+      metadata { group 'Plan and specify' path 'plugins/qsm-openspec' }
     }
     models = container 'qsm-models' 'Lints, renders and walks BPMN and C4 models' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-models' }
+      metadata { group 'Plan and specify' path 'plugins/qsm-models' }
     }
     review = container 'qsm-review' 'Reviews a PR and posts the findings' {
       technology 'Skills and agents'
-      metadata { path 'plugins/qsm-review' }
+      metadata { group 'Review and see' path 'plugins/qsm-review' }
     }
     forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-forge' }
+      metadata { group 'Board and pull requests' path 'plugins/qsm-forge' }
     }
     memory = container 'qsm-memory' 'Earlier sessions, searched by full text' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-memory' }
+      metadata { group 'Context' path 'plugins/qsm-memory' }
     }
     index = container 'qsm-index' 'The code index: search, structure, impact' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-index' }
+      metadata { group 'Context' path 'plugins/qsm-index' }
     }
     essentials = container 'qsm-essentials' 'The core: worker agents and the skills every session loads' {
+      #shared
       technology 'Skills and agents'
-      metadata { path 'plugins/qsm-essentials' }
+      metadata { group 'Context' path 'plugins/qsm-essentials' }
     }
     lens = container 'qsm-builder lens' 'A static page of every plugin, its spec and its models' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-builder' }
+      metadata { group 'Review and see' path 'plugins/qsm-builder' }
     }
   }
 

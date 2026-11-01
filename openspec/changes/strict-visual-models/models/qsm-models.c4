@@ -1,13 +1,25 @@
 // C4 levels 1 to 3 of the model toolchain: one normalised model behind every source format.
 model {
-  owner = person 'Owner' 'Reads the SVGs, edits a model when he wants to'
+  owner = person 'Owner' 'Reads the SVGs, edits a model when he wants to' {
+    metadata { colour 'blue' }
+  }
   agent = system 'Agent' 'A Claude Code session that writes and checks models' {
     #agent
+    metadata { colour 'purple' }
   }
   qa = system 'QA agent' 'Runs the cover scenarios of a feature' {
     #agent
+    metadata { colour 'green' }
   }
-  graphviz = system 'Graphviz' 'dot: lays out and draws C4 views' {
+  reviewer = system 'Review agent' 'Reads each model and its picture against the spec and the rules' {
+    #agent
+    metadata { colour 'orange' }
+  }
+  simplifier = system 'Simplify agent' 'Rewrites a model on request and keeps what keeps the behaviour' {
+    #agent
+    metadata { colour 'teal' }
+  }
+  elk = system 'elkjs' 'ELK layered: places the shapes and routes the edges of a C4 view' {
     #external
   }
   bpmnio = system 'bpmn.io libraries' 'bpmn-moddle, bpmn-auto-layout, bpmnlint, bpmn-js' {
@@ -48,6 +60,8 @@ model {
 
   agent -> mp.models.cli 'runs'
   qa -> mp.models.cli 'asks for the paths to test'
+  reviewer -> mp.models.cli 'lints and renders the model with'
+  simplifier -> mp.models.cli 'proves each rewrite with'
   owner -> mp.lens 'reads the models in'
   mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with'
   mp.models.cli -> mp.models.walk 'lists paths with'
@@ -58,5 +72,5 @@ model {
   mp.models.c4 -> mp.models.drawio 'writes each view with'
   mp.models.conform -> mp.models.c4 'reads containers and components from'
   mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with'
-  mp.models.c4 -> graphviz 'lays out views with'
+  mp.models.c4 -> elk 'lays out views with'
 }

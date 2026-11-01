@@ -1,10 +1,14 @@
-![The feature flow, BPMN](models/flow.svg)
+![The feature flow, BPMN level 1](models/flow.svg)
+
+![Steps 4 to 7, every task built, BPMN level 2](models/build-task.svg)
 
 ![C4 context](models/marketplace.context.drawio.svg)
 
-![C4 containers](models/marketplace.containers.drawio.svg)
+![C4 containers, who uses what](models/marketplace.containers-uses.drawio.svg)
 
-`models/flow.bpmn` opens in bpmn.io; each `.drawio.svg` opens editable in draw.io.
+![C4 containers, what depends on what](models/marketplace.containers-depends.drawio.svg)
+
+Each `.bpmn` opens in bpmn.io; each `.drawio.svg` opens editable in draw.io.
 
 ## Why
 

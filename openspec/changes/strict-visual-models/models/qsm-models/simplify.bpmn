@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="simplify_defs" targetNamespace="https://github.com/qsmark-labs/qsm-marketplace">
+  <bpmn:collaboration id="simplify_collab">
+    <bpmn:participant id="simplify_pool" name="A model is simplified on request" processRef="simplify_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="simplify_process" name="A model is simplified on request" isExecutable="false">
+    <bpmn:laneSet id="laneset">
+      <bpmn:lane id="lane_0" name="Owner">
+        <bpmn:flowNodeRef>ask</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>take</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>taken</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>left</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="lane_1" name="Simplify agent">
+        <bpmn:flowNodeRef>proposeJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>propose</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>prove</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>kept</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>keep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>drop</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>afterJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>more</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>any</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>nothing</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>report</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ask" name="The owner asks to simplify a model">
+      <bpmn:outgoing>f_ask_proposeJoin</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="proposeJoin">
+      <bpmn:incoming>f_ask_proposeJoin</bpmn:incoming>
+      <bpmn:incoming>f_more_proposeJoin</bpmn:incoming>
+      <bpmn:outgoing>f_proposeJoin_propose</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="propose" name="Propose one rewrite of the model">
+      <bpmn:incoming>f_proposeJoin_propose</bpmn:incoming>
+      <bpmn:outgoing>f_propose_prove</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="prove" name="Compare paths, check and layout measures">
+      <bpmn:incoming>f_propose_prove</bpmn:incoming>
+      <bpmn:outgoing>f_prove_kept</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="kept" name="Behaviour kept and no measure worse?">
+      <bpmn:incoming>f_prove_kept</bpmn:incoming>
+      <bpmn:outgoing>f_kept_keep</bpmn:outgoing>
+      <bpmn:outgoing>f_kept_drop</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="keep" name="Keep the rewrite">
+      <bpmn:incoming>f_kept_keep</bpmn:incoming>
+      <bpmn:outgoing>f_keep_afterJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="drop" name="Drop the rewrite, name the rule">
+      <bpmn:incoming>f_kept_drop</bpmn:incoming>
+      <bpmn:outgoing>f_drop_afterJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="afterJoin">
+      <bpmn:incoming>f_keep_afterJoin</bpmn:incoming>
+      <bpmn:incoming>f_drop_afterJoin</bpmn:incoming>
+      <bpmn:outgoing>f_afterJoin_more</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="more" name="Another rewrite to try?">
+      <bpmn:incoming>f_afterJoin_more</bpmn:incoming>
+      <bpmn:outgoing>f_more_proposeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_more_any</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="any" name="Any rewrite kept?">
+      <bpmn:incoming>f_more_any</bpmn:incoming>
+      <bpmn:outgoing>f_any_report</bpmn:outgoing>
+      <bpmn:outgoing>f_any_nothing</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="nothing" name="Nothing to simplify">
+      <bpmn:incoming>f_any_nothing</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="report" name="Report kept and dropped rewrites">
+      <bpmn:incoming>f_any_report</bpmn:incoming>
+      <bpmn:outgoing>f_report_read</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="read" name="Read the report and the new picture">
+      <bpmn:incoming>f_report_read</bpmn:incoming>
+      <bpmn:outgoing>f_read_take</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="take" name="Take the simplified model?">
+      <bpmn:incoming>f_read_take</bpmn:incoming>
+      <bpmn:outgoing>f_take_taken</bpmn:outgoing>
+      <bpmn:outgoing>f_take_left</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="taken" name="Model simplified">
+      <bpmn:incoming>f_take_taken</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="left" name="Model unchanged">
+      <bpmn:incoming>f_take_left</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_ask_proposeJoin" sourceRef="ask" targetRef="proposeJoin" />
+    <bpmn:sequenceFlow id="f_proposeJoin_propose" sourceRef="proposeJoin" targetRef="propose" />
+    <bpmn:sequenceFlow id="f_propose_prove" sourceRef="propose" targetRef="prove" />
+    <bpmn:sequenceFlow id="f_prove_kept" sourceRef="prove" targetRef="kept" />
+    <bpmn:sequenceFlow id="f_kept_keep" name="yes" sourceRef="kept" targetRef="keep" />
+    <bpmn:sequenceFlow id="f_kept_drop" name="no" sourceRef="kept" targetRef="drop" />
+    <bpmn:sequenceFlow id="f_keep_afterJoin" sourceRef="keep" targetRef="afterJoin" />
+    <bpmn:sequenceFlow id="f_drop_afterJoin" sourceRef="drop" targetRef="afterJoin" />
+    <bpmn:sequenceFlow id="f_afterJoin_more" sourceRef="afterJoin" targetRef="more" />
+    <bpmn:sequenceFlow id="f_more_proposeJoin" name="yes" sourceRef="more" targetRef="proposeJoin" />
+    <bpmn:sequenceFlow id="f_more_any" name="no" sourceRef="more" targetRef="any" />
+    <bpmn:sequenceFlow id="f_any_report" name="yes" sourceRef="any" targetRef="report" />
+    <bpmn:sequenceFlow id="f_any_nothing" name="no" sourceRef="any" targetRef="nothing" />
+    <bpmn:sequenceFlow id="f_report_read" sourceRef="report" targetRef="read" />
+    <bpmn:sequenceFlow id="f_read_take" sourceRef="read" targetRef="take" />
+    <bpmn:sequenceFlow id="f_take_taken" name="yes" sourceRef="take" targetRef="taken" />
+    <bpmn:sequenceFlow id="f_take_left" name="no" sourceRef="take" targetRef="left" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_simplify_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_simplify_collab" bpmnElement="simplify_collab">
+      <bpmndi:BPMNShape id="BPMNShape_simplify_pool" bpmnElement="simplify_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="2182" height="756" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#f3f7fc" color:border-color="#08427b" color:background-color="#f3f7fc" isHorizontal="true">
+        <dc:Bounds x="110" y="80" width="2152" height="356" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#0f766e" bioc:fill="#f2fbfa" color:border-color="#0f766e" color:background-color="#f2fbfa" isHorizontal="true">
+        <dc:Bounds x="110" y="436" width="2152" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_ask" bpmnElement="ask" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="131" y="223" width="74" height="56" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_proposeJoin" bpmnElement="proposeJoin" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+        <dc:Bounds x="286" y="531" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_propose" bpmnElement="propose" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="436" y="516" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_prove" bpmnElement="prove" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="636" y="516" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_kept" bpmnElement="kept" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+        <dc:Bounds x="836" y="531" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="824" y="470" width="75" height="56" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_keep" bpmnElement="keep" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="986" y="516" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_drop" bpmnElement="drop" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="986" y="676" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_afterJoin" bpmnElement="afterJoin" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+        <dc:Bounds x="1186" y="531" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_more" bpmnElement="more" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+        <dc:Bounds x="1336" y="531" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1324" y="484" width="74" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_any" bpmnElement="any" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef" isMarkerVisible="true">
+        <dc:Bounds x="1486" y="531" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1470" y="498" width="83" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_nothing" bpmnElement="nothing" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="1668" y="698" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1650" y="739" width="73" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_report" bpmnElement="report" bioc:stroke="#0f766e" bioc:fill="#d9f2ef" color:border-color="#0f766e" color:background-color="#d9f2ef">
+        <dc:Bounds x="1636" y="516" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="1836" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_take" bpmnElement="take" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6" isMarkerVisible="true">
+        <dc:Bounds x="2036" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2023" y="128" width="77" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_taken" bpmnElement="taken" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="2186" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2166" y="223" width="77" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_left" bpmnElement="left" bioc:stroke="#08427b" bioc:fill="#dce8f6" color:border-color="#08427b" color:background-color="#dce8f6">
+        <dc:Bounds x="2186" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2171" y="361" width="67" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_proposeJoin" bpmnElement="f_ask_proposeJoin" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="311" y="200" />
+        <di:waypoint x="311" y="531" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_proposeJoin_propose" bpmnElement="f_proposeJoin_propose" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="336" y="556" />
+        <di:waypoint x="436" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_propose_prove" bpmnElement="f_propose_prove" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="536" y="556" />
+        <di:waypoint x="636" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_prove_kept" bpmnElement="f_prove_kept" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="736" y="556" />
+        <di:waypoint x="836" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_kept_keep" bpmnElement="f_kept_keep" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="886" y="556" />
+        <di:waypoint x="986" y="556" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="924" y="534" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_keep_afterJoin" bpmnElement="f_keep_afterJoin" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1086" y="556" />
+        <di:waypoint x="1186" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_afterJoin_more" bpmnElement="f_afterJoin_more" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1236" y="556" />
+        <di:waypoint x="1336" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_more_any" bpmnElement="f_more_any" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1386" y="556" />
+        <di:waypoint x="1486" y="556" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1427" y="534" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_any_report" bpmnElement="f_any_report" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1536" y="556" />
+        <di:waypoint x="1636" y="556" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1574" y="534" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_report_read" bpmnElement="f_report_read" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1736" y="556" />
+        <di:waypoint x="1886" y="556" />
+        <di:waypoint x="1886" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_take" bpmnElement="f_read_take" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1936" y="200" />
+        <di:waypoint x="2036" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_take_taken" bpmnElement="f_take_taken" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2086" y="200" />
+        <di:waypoint x="2186" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2124" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_kept_drop" bpmnElement="f_kept_drop" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="861" y="581" />
+        <di:waypoint x="861" y="716" />
+        <di:waypoint x="986" y="716" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="867" y="642" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_any_nothing" bpmnElement="f_any_nothing" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1511" y="581" />
+        <di:waypoint x="1511" y="716" />
+        <di:waypoint x="1668" y="716" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1517" y="642" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_take_left" bpmnElement="f_take_left" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2061" y="225" />
+        <di:waypoint x="2061" y="338" />
+        <di:waypoint x="2186" y="338" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2067" y="275" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_drop_afterJoin" bpmnElement="f_drop_afterJoin" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1086" y="716" />
+        <di:waypoint x="1211" y="716" />
+        <di:waypoint x="1211" y="581" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_more_proposeJoin" bpmnElement="f_more_proposeJoin" bioc:stroke="#0f766e" color:border-color="#0f766e">
+        <di:waypoint x="1361" y="581" />
+        <di:waypoint x="1361" y="776" />
+        <di:waypoint x="311" y="776" />
+        <di:waypoint x="311" y="581" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="824" y="754" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

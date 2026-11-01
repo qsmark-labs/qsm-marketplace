@@ -3,31 +3,31 @@
 ### Requirement: A feature moves from request to main along one process
 
 A feature SHALL move along the process `models/flow.bpmn`: request, planning and the owner's merge
-of the change, the split onto `feature/<n>`, then per task build, review and the owner's merge into
-`feature/<n>`, then the branch brought up to date with main, QA, the archive and the feature pull
-request, whose merge into main by the owner is the accept. Every cover path of the process SHALL
-have a scenario here.
+of the change, the split onto `feature/<n>`, every task built (the called process
+`models/build-task.bpmn`: build, review and the owner's merge into `feature/<n>`, then the branch
+brought up to date with main), QA, and the feature pull request, whose merge into main by the owner
+is the accept. Every cover path of both processes SHALL have a scenario here.
 
-#### Scenario: One task, one review finding, no conflict, no QA finding (path p-4b9912)
+#### Scenario: One task, one review finding, no conflict, no QA finding (path p-8798e1)
 
 - **WHEN** the review of the only task finds something, the agent fixes it, the owner merges, the
   update from main is clean and QA finds nothing
-- **THEN** the agent archives the change, opens the feature pull request, and the owner's merge
-  closes the feature as Done
+- **THEN** the branch is Ready For Test, and after QA passes the agent opens the feature pull
+  request with the change archived, and the owner's merge closes the feature as Done
 
-#### Scenario: A second task is built after the first merges (path p-f33778)
+#### Scenario: A second task is built after the first merges (path p-bc080f)
 
 - **WHEN** a task merges into `feature/<n>` and another task of the feature is still open
 - **THEN** the merged task is closed, the next task is built, and the branch is brought up to date
   with main only after the last task closes
 
-#### Scenario: Main moved and the update conflicts (path p-3fefc5)
+#### Scenario: Main moved and the update conflicts (path p-873b6c)
 
 - **WHEN** the last task closes and bringing `feature/<n>` up to date with main conflicts
 - **THEN** a conflict task is filed under the feature, an agent resolves it in a pull request that
   the review agent reviews first and the owner merges, and QA starts only after a clean update
 
-#### Scenario: QA finds a contract bug (path p-540b7c)
+#### Scenario: QA finds a contract bug (path p-981dbb)
 
 - **WHEN** QA finds that a cover scenario of the feature does not hold
 - **THEN** a fix task is filed under the feature, built and merged like any task, and QA runs again

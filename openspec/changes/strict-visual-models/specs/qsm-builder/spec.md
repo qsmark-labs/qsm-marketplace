@@ -14,7 +14,7 @@ outside 127.0.0.1. A plugin with no models SHALL show the section saying so.
 - **THEN** the overview lists it with its proposal's first screen and its pictures, and clicking
   `flow.bpmn` opens it in the viewer with no request outside 127.0.0.1
 
-#### Scenario: The owner asks for a change to a model (path p-c46882)
+#### Scenario: The owner asks for a change to a model (path p-14784b)
 
 - **WHEN** the owner reads a model in the lens and it does not say what he wants
 - **THEN** a pen edit on it becomes one task in the task tool, and the model is changed, linted and
