@@ -346,7 +346,8 @@ and never jump. A mouse step SHALL name one target: a point in the window
 tab's cursor to (the top-left corner before any; a person's moves in the live
 view are not seen), with an optional `click` there. A target outside the page's
 visible area, scrollbars excluded, SHALL be held at its edge. A click step SHALL
-click the first element its selector matches at a random point of its box,
+click the first element its selector matches at a random point of its first
+box (the first line of a wrapped link),
 most often near the middle and never on its outer tenth, report that point,
 and leave the cursor there.
 

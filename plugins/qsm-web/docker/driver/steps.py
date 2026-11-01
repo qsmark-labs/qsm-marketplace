@@ -103,17 +103,23 @@ def _click(page: Page, step: Step) -> Outcome:
     target = page.locator(selector).first
     target.wait_for(state="visible", timeout=_timeout(step))
     target.scroll_into_view_if_needed(timeout=_timeout(step))
-    box = target.bounding_box(timeout=_timeout(step))
-    if box is None:
+    # The point is drawn in the element's first box, where a link wrapped
+    # over two lines really is, not in the rectangle around both lines.
+    # Playwright counts a click position from inside the border of that
+    # whole rectangle, so the position is taken from there.
+    geometry: list[float] | None = target.evaluate(
+        "e => { const r = e.getClientRects()[0]; if (!r) return null;"
+        " const b = e.getBoundingClientRect(), s = getComputedStyle(e);"
+        " return [b.x + parseFloat(s.borderLeftWidth),"
+        " b.y + parseFloat(s.borderTopWidth), r.x, r.y, r.width, r.height]; }"
+    )
+    if geometry is None:
         message = f"{selector} is not visible"
         raise ValueError(message)
-    # A click position counts from inside the element's border, the box
-    # from outside it, so the border's width is taken off.
-    left, top = target.evaluate("e => [e.clientLeft, e.clientTop]")
-    dx, dy = _near_centre(box["width"]), _near_centre(box["height"])
-    point: Position = {"x": dx - left, "y": dy - top}
+    origin_x, origin_y, box_x, box_y, width, height = geometry
+    x, y = box_x + _near_centre(width), box_y + _near_centre(height)
+    point: Position = {"x": x - origin_x, "y": y - origin_y}
     target.click(position=point, timeout=_timeout(step))
-    x, y = box["x"] + dx, box["y"] + dy
     _cursor[page] = (x, y)
     return {"selector": selector, "x": x, "y": y, "url": page.url}
 

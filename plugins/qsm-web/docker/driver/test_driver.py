@@ -45,11 +45,8 @@ class _FakeLocator:
     def first(self) -> _FakeLocator:
         return self
 
-    def bounding_box(self, **_: object) -> dict[str, float]:
-        return {"x": 0.0, "y": 0.0, "width": 10.0, "height": 10.0}
-
     def evaluate(self, *_: object) -> list[float]:
-        return [0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 10.0, 10.0]
 
     def click(self, **_: object) -> None:
         pass
