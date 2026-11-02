@@ -146,6 +146,19 @@ process one link back per step that calls it, each link relative to where the pi
 - **THEN** `plan.svg` opens, and its line "Called by "2 Plan the feature" in A feature from request
   to main" leads back to `flow.svg`
 
+### Requirement: C4 views zoom in and out
+
+In a C4 picture, an element that has a view of its own SHALL carry a dashed outline and be a link to
+that view, and every view below level 1 SHALL link back to the view that shows its boundary; the
+two halves of a split view SHALL link to each other.
+
+#### Scenario: From the context down to components and back
+
+- **WHEN** the owner clicks qsm-marketplace in `qsm-models.context`, then qsm-models in the
+  container view
+- **THEN** the component view of qsm-models opens, and its "Zoom out" link leads back to the
+  container view, whose own link leads back to the context
+
 ### Requirement: A crowded container view is split by question
 
 A container view with more than 15 relations SHALL be split into two views, who uses which
