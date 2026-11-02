@@ -1,8 +1,10 @@
 // The one C4 model of the whole marketplace, levels 1 to 3. Level 1 is the marketplace as one box
-// with the people, the agents that use it and the systems it calls. Level 2 is its plugins, in groups
-// by area, and the shared kit in root lib/ they build on. Level 3 opens a plugin. Container relations
-// are the plugin.json dependencies; every relation names its technology. Every actor's name is the
-// lane name a BPMN process uses for it.
+// with the people, the agents that use it and the systems it calls. Level 2 is its plugins: each one
+// installs, deploys and works on its own, and the marketplace is the set its registry lists, of which
+// a machine installs any subset. Level 3 opens a plugin: its tool (the binary and its verbs), its
+// skills and agents, its hooks, and the shared kit of root lib/ it builds on. Relations between
+// plugins are the plugin.json dependencies; every relation names its technology. Every actor's name
+// is the lane name a BPMN process uses for it.
 model {
   owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features' {
     metadata { colour 'navy' }
@@ -45,7 +47,11 @@ model {
     #external
   }
 
-  mp = system 'qsm-marketplace' 'Plugins for Claude Code: instructions, hooks and tools for one developer and his agents' {
+  mp = system 'qsm-marketplace' 'A set of Claude Code plugins; a machine installs the subset it needs' {
+    registry = container 'Registry' 'marketplace.json: the plugins this marketplace offers' {
+      technology 'JSON file'
+      metadata { group 'Core' path '.claude-plugin' }
+    }
     lib = container 'Shared kit' 'Root lib/: CLI base, install base, errors, outcomes, hooks kit, paths' {
       #shared
       technology 'TypeScript modules'
@@ -67,14 +73,61 @@ model {
     plan = container 'qsm-plan' 'Sizes an ask, grills a feature, splits it into tasks' {
       technology 'skills'
       metadata { group 'Features' path 'plugins/qsm-plan' }
+      planskill = component 'plan' 'Sizes an ask; splits an epic or a feature into tasks' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-plan/skills/plan' }
+      }
+      grilling = component 'grilling' 'Settles the open decisions in one batch, each with a recommendation' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-plan/skills/grilling' }
+      }
     }
     spec = container 'qsm-openspec' 'Writes, applies and archives a change' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-openspec' }
+      tool = component 'qsm-openspec' 'The binary: its verbs and its doctor' {
+        technology 'Bun binary'
+        metadata { path 'plugins/qsm-openspec/scripts' }
+      }
+      hooks = component 'Hooks' 'React to harness events through the generated noun' {
+        technology 'TypeScript hooks module'
+        metadata { path 'plugins/qsm-openspec/hooks' }
+      }
+      propose = component 'spec-propose' 'Writes the change: proposal, models, specs, design' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-openspec/skills/spec-propose' }
+      }
+      apply = component 'spec-apply' 'Builds an approved change task by task' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-openspec/skills/spec-apply' }
+      }
+      archive = component 'spec-archive' 'Folds the change into the specs when the feature lands' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-openspec/skills/spec-archive' }
+      }
     }
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-tasks' }
+      tool = component 'qsm-tasks' 'The binary: ready, add, claim, close and the other board verbs' {
+        technology 'Bun binary'
+        metadata { path 'plugins/qsm-tasks/scripts' }
+      }
+      tasktool = component 'task-tool' 'When and how a session reads and changes the board' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-tasks/skills/task-tool' }
+      }
+      writing = component 'task-writing' 'How a task is written: intent, acceptance, proof' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-tasks/skills/task-writing' }
+      }
     }
     models = container 'qsm-models' 'Lints, lays out, renders and walks BPMN and C4 models' {
       technology 'Bun binary, skill'
@@ -112,10 +165,38 @@ model {
     forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
       technology 'Bun binary, skill'
       metadata { group 'Features' path 'plugins/qsm-forge' }
+      tool = component 'qsm-forge' 'The binary: pull requests and review threads on GitHub and GitLab' {
+        technology 'Bun binary'
+        metadata { path 'plugins/qsm-forge/scripts' }
+      }
+      hooks = component 'Hooks' 'Guard git and forge commands through the generated noun' {
+        technology 'TypeScript hooks module'
+        metadata { path 'plugins/qsm-forge/hooks' }
+      }
+      threads = component 'review-threads' 'How to answer and resolve review threads' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-forge/skills/review-threads' }
+      }
     }
     review = container 'qsm-review' 'Reviews a change or a PR with an agent that did not write it' {
       technology 'skills, agents'
       metadata { group 'Features' path 'plugins/qsm-review' }
+      reviewskill = component 'review' 'A one-agent strict review that posts nothing' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-review/skills/review' }
+      }
+      workflow = component 'workflow-review' 'Reviews a pull request end to end and posts the findings' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-review/skills/workflow-review' }
+      }
+      strict = component 'strict-reviewer' 'The agent that reviews one change and returns findings' {
+        #artifact
+        technology 'agent .md'
+        metadata { path 'plugins/qsm-review/agents/strict-reviewer.md' }
+      }
     }
     cockpit = container 'qsm-cockpit' 'The loop view beside the session: stages, agents, tasks' {
       technology 'Bun binary'
@@ -195,6 +276,7 @@ model {
   owner -> github 'files features, merges PRs' { technology 'HTTPS, browser' }
   owner -> mp.builder 'reads the models in the lens' { technology 'HTTP, browser' }
   owner -> mp.cockpit 'watches the loop in' { technology 'terminal pane' }
+  owner -> mp.setup 'installs the chosen plugins with' { technology 'terminal' }
   agent -> mp.plan 'plans and splits with' { technology 'skill load' }
   agent -> mp.spec 'writes and applies the change with' { technology 'skill load, exec' }
   agent -> mp.tasks 'creates and claims tasks with' { technology 'exec, stdio' }
@@ -216,42 +298,48 @@ model {
   mp.knowledge -> mp.essentials 'builds on the method of' { technology 'skill reference' }
   mp.langs -> mp.langdev 'plug their language into' { technology 'gate config' }
   mp.memory -> mp.tasks 'adds the open tasks to the briefing with' { technology 'exec, stdio' }
-  mp.spec -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
-  mp.spec -> mp.tasks 'binds the change to its feature with' { technology 'exec, stdio' }
-  mp.plan -> mp.tasks 'files and splits features with' { technology 'exec, stdio' }
-  mp.plan -> mp.spec 'hands the change to' { technology 'skill reference' }
-  mp.review -> mp.forge 'posts reviews with' { technology 'exec, stdio' }
+  mp.spec.apply -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
+  mp.spec.propose -> mp.tasks.tool 'has the agent bind the change to its feature with' { technology 'instruction' }
+  mp.plan.planskill -> mp.tasks.tool 'has the agent file and split features with' { technology 'instruction' }
+  mp.plan.planskill -> mp.spec.propose 'hands the change to' { technology 'skill reference' }
+  mp.review.workflow -> mp.forge.tool 'has the agent post the review with' { technology 'instruction' }
   mp.setup -> mp.essentials 'installs the method of' { technology 'file copy' }
+  mp.setup -> mp.registry 'reads the plugins it can install from' { technology 'file read' }
 
-  // the plugins whose code imports the shared kit (measured: an import of root lib/)
-  mp.books -> mp.lib 'builds on' { technology 'import' }
-  mp.builder -> mp.lib 'builds on' { technology 'import' }
-  mp.ccr -> mp.lib 'builds on' { technology 'import' }
-  mp.cockpit -> mp.lib 'builds on' { technology 'import' }
-  mp.compuse -> mp.lib 'builds on' { technology 'import' }
-  mp.essentials -> mp.lib 'builds on' { technology 'import' }
-  mp.forge -> mp.lib 'builds on' { technology 'import' }
-  mp.index -> mp.lib 'builds on' { technology 'import' }
-  mp.knowledge -> mp.lib 'builds on' { technology 'import' }
-  mp.langdev -> mp.lib 'builds on' { technology 'import' }
-  mp.memory -> mp.lib 'builds on' { technology 'import' }
-  mp.opencode -> mp.lib 'builds on' { technology 'import' }
-  mp.spec -> mp.lib 'builds on' { technology 'import' }
-  mp.review -> mp.lib 'builds on' { technology 'import' }
-  mp.secrets -> mp.lib 'builds on' { technology 'import' }
-  mp.setup -> mp.lib 'builds on' { technology 'import' }
-  mp.statusline -> mp.lib 'builds on' { technology 'import' }
-  mp.tasks -> mp.lib 'builds on' { technology 'import' }
-  mp.toolbox -> mp.lib 'builds on' { technology 'import' }
-  mp.uix -> mp.lib 'builds on' { technology 'import' }
-  mp.usage -> mp.lib 'builds on' { technology 'import' }
-  mp.web -> mp.lib 'builds on' { technology 'import' }
-  mp.worktrunk -> mp.lib 'builds on' { technology 'import' }
+
+  // what each plugin builds on in the shared kit (measured: production imports, each relative path
+  // resolved to root lib/, tests and fixtures left out)
+  mp.books -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.builder -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.ccr -> mp.lib 'builds on cli-base, detach, install-base, install-contract, outcome, paths, qsm-error, qsm-manifest' { technology 'import' }
+  mp.cockpit -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.compuse -> mp.lib 'builds on install-base, paths' { technology 'import' }
+  mp.index -> mp.lib 'builds on cli-base, detach, fs, install-base, install-contract, mcp-stdio, outcome, paths, qsm-error, qsm-manifest' { technology 'import' }
+  mp.knowledge -> mp.lib 'builds on cli-base, install-base, install-contract, outcome, paths, qsm-manifest' { technology 'import' }
+  mp.langdev -> mp.lib 'builds on cli-base, fs, hooks-kit, install-base, install-contract, outcome, paths, qsm-error, qsm-manifest' { technology 'import' }
+  mp.memory -> mp.lib 'builds on cli-base, detach, fs, install-base, install-contract, mcp-stdio, outcome, paths, qsm-error, qsm-manifest, secret-shapes' { technology 'import' }
+  mp.secrets -> mp.lib 'builds on cli-base, detach, fs, install-base, install-contract, outcome, paths, qsm-error, qsm-manifest, secret-shapes' { technology 'import' }
+  mp.setup -> mp.lib 'builds on cli-base, completions, install-base, install-contract, legacy-farm, outcome, paths, qsm-manifest' { technology 'import' }
+  mp.statusline -> mp.lib 'builds on cli-base, fs, install-base, install-contract, outcome, paths, qsm-manifest' { technology 'import' }
+  mp.toolbox -> mp.lib 'builds on cli-base, install-base, install-contract, outcome, paths, qsm-manifest' { technology 'import' }
+  mp.uix -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.usage -> mp.lib 'builds on cli-base, install-base, outcome, paths, qsm-error, qsm-manifest' { technology 'import' }
+  mp.web -> mp.lib 'builds on cli-base, install-base, install-contract, outcome, paths, qsm-error, qsm-manifest' { technology 'import' }
+  mp.worktrunk -> mp.lib 'builds on cli-base, hooks-kit, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.spec.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-manifest' { technology 'import' }
+  mp.forge.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
+  mp.tasks.tool -> mp.lib 'builds on install-base' { technology 'import' }
+  mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
+  mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
+  mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
+  mp.forge.threads -> mp.forge.tool 'has the agent run' { technology 'instruction' }
+  mp.review.workflow -> mp.review.strict 'dispatches' { technology 'Agent tool' }
+  mp.review.reviewskill -> mp.review.strict 'dispatches' { technology 'Agent tool' }
 
   // the systems the plugins call
-  mp.tasks -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
-  mp.forge -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
-  mp.spec -> openspec 'validates and archives changes with' { technology 'exec, stdio' }
+  mp.tasks.tool -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
+  mp.forge.tool -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
+  mp.spec.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
   mp.builder -> repo 'reads the changes and models of the branch' { technology 'file read' }
 
   // inside qsm-models

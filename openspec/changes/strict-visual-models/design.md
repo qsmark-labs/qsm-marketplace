@@ -26,14 +26,17 @@ none of it in the tree.
    (`external`, `agent`, `shared`) and the properties (`colour`, `group`, `path`); level nesting,
    titled relations, unique titles, a code path on every internal container; the source declares no
    views, the tool generates one per level. Measured: the check finds a container in a container
-   that `likec4 validate` accepts. What is drawn follows the notebook's sources (c4model.com,
-   "Describing Agentic AI Systems with C4", the Claude Code plugin docs): a plugin is a packaging
-   unit, not a C4 element, so its binary is a container and its skills are `artifact` components
-   of one Skills store, grouped by plugin; a group means a plugin, never a workflow step; every
-   relation names its technology (`exec, stdio`, `file read`, `HTTPS, REST`). An agent is a Claude
-   Code session in one role, a software system we do not build, tagged `agent`. The sources also
-   allow agents as components inside the agent runtime; that would hide every agent's colour from
-   the marketplace's own views, which the owner reads them by, so they stay systems.
+   that `likec4 validate` accepts. What is drawn is the owner's rule: a plugin and its tool install,
+   deploy and work on their own (AGENTS.md: the plugin is the install unit), so a plugin is a
+   container, and the marketplace is the set of plugins its registry lists, of which a machine
+   installs any subset. Level 3 opens a plugin: its tool (the binary and its verbs), hooks, skills
+   and agents as `artifact` components, and what it builds on in the shared kit of root lib/, a
+   container drawn without lines that 20 plugins import (measured in production code, each relative
+   path resolved). A group is an area of the system, never a workflow step. Every relation names its
+   technology (`exec, stdio`, `import`, `HTTPS, REST`). An agent is a Claude Code session in one
+   role, a software system we do not build, tagged `agent`, so its colour stays in our views. The
+   notebook's sources would draw a plugin as a packaging unit, not a C4 element, and agents as
+   components of the agent runtime; the owner's rule wins over both.
 5. **The C4 source format is open** (open decision 1). Everything reads one normalised model, so
    only one adapter differs; the options are in the table below.
 

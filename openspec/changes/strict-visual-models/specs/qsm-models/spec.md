@@ -118,9 +118,9 @@ their own line, never over a box.
 #### Scenario: The QA agent's relations
 
 - **WHEN** the QA agent, tagged `agent` and green, files fix tasks with qsm-tasks
-- **THEN** the QA agent sits in the first tier, qsm-tasks in its group inside the system, GitHub in
-  the last tier beside that group with the note "used by qsm-tasks, qsm-forge", and the line from
-  the QA agent to qsm-tasks is green with its label beside it
+- **THEN** in the view of who uses what, the QA agent sits in the first tier, qsm-tasks in its
+  group inside the system, and the line from the QA agent to qsm-tasks is green with its label and
+  its technology beside it
 
 ### Requirement: A BPMN picture reads at a glance
 
@@ -167,10 +167,10 @@ relations and carry a note naming who uses it.
 
 #### Scenario: The marketplace container view
 
-- **WHEN** the marketplace container view would hold 22 relations among 4 actors and 6 containers
-- **THEN** `render` writes `containers-uses` with the 13 relations the actors start and
-  `containers-depends` with the 9 that start inside, each in tiers and actor colours, and each
-  links to the other
+- **WHEN** the marketplace container view would hold 36 relations among 5 actors and 28 containers
+- **THEN** `render` writes `containers-uses` with the 16 relations the actors start and only the
+  containers they reach, and `containers-depends` with every container and the 20 relations that
+  start inside, each in tiers and actor colours, and each links to the other
 
 ### Requirement: lint measures the layout and refuses a worse one
 
