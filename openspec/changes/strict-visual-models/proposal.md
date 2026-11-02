@@ -4,12 +4,11 @@
 
 ![One try of the simplify pass, BPMN](models/qsm-models/try-rewrite.svg)
 
-![qsm-models, C4 components](models/qsm-models.components.drawio.svg)
+![qsm-models, C4 components](../feature-flow/models/marketplace.components-models.drawio.svg)
 
-![qsm-models, C4 context](models/qsm-models.context.drawio.svg)
-
-Each `.drawio.svg` opens editable in draw.io; the containers view is
-`models/qsm-models.containers.drawio.svg`.
+qsm-models is one container of the marketplace's one C4 model; its context and container views are
+`../feature-flow/models/marketplace.context.drawio.svg` and the two `containers` views. Each
+`.drawio.svg` opens editable in draw.io.
 
 ## Why
 

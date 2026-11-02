@@ -1,6 +1,7 @@
 ## Context
 
-The structure is `models/qsm-models.c4`, the behaviour `models/qsm-models/model-gate.bpmn`,
+The structure is the qsm-models container of the marketplace's one C4 model,
+`../feature-flow/models/marketplace.c4`; the behaviour `models/qsm-models/model-gate.bpmn`,
 `simplify.bpmn` and the process it calls, `try-rewrite.bpmn`. Every
 number below was measured on 2026-11-01 (node 26.11, bun 1.4.3) with a prototype of each piece,
 none of it in the tree.
@@ -44,8 +45,9 @@ none of it in the tree.
    picture, draw.io opens the diagram.
 7. **Where models live.** A change's `models/` mirrors its destination: `models/<plugin>/<f>.bpmn`
    becomes `plugins/<plugin>/models/<f>.bpmn`, a top-level `models/<f>.bpmn` the root `models/`.
-   C4 elements merge by id: persons, systems and containers into the root marketplace model,
-   components into the model of the plugin their container's path names.
+   C4 has one model for the whole marketplace, the root `models/marketplace.c4` (the owner's
+   choice: the marketplace on top, its plugins below, each plugin's insides below that); a change
+   edits its copy, and its elements merge into the root model by id at archive.
 8. **Paths become scenarios through the cover.** The cover's definition is in the spec, once.
    Measured (paths, cover): `flow.bpmn` 5, 4; `plan.bpmn` 4, 2; `split.bpmn` 2, 1;
    `build-task.bpmn` 3, 2; `consume-task.bpmn` 1, 1; `land.bpmn` 2, 2; `feature-status.bpmn` 11,

@@ -154,7 +154,7 @@ two halves of a split view SHALL link to each other.
 
 #### Scenario: From the context down to components and back
 
-- **WHEN** the owner clicks qsm-marketplace in `qsm-models.context`, then qsm-models in the
+- **WHEN** the owner clicks qsm-marketplace in `marketplace.context`, then qsm-models in the
   container view
 - **THEN** the component view of qsm-models opens, and its "Zoom out" link leads back to the
   container view, whose own link leads back to the context

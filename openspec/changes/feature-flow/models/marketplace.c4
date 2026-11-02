@@ -1,7 +1,8 @@
-// C4 levels 1 to 3 of the marketplace, for the feature flow.
-// Every actor's name is the lane name a BPMN process uses for it. An agent is a Claude Code session
-// in one role, a software system we do not build. A plugin is a packaging unit, not a C4 element:
-// its binary is a container, its skills are artifacts in the skills store, grouped by plugin.
+// The one C4 model of the whole marketplace, levels 1 to 3. Level 1 is the marketplace as one box
+// with the people, the agents that use it and the systems it calls. Level 2 is its plugins, in groups
+// by area, and the shared kit in root lib/ they build on. Level 3 opens a plugin. Container relations
+// are the plugin.json dependencies; every relation names its technology. Every actor's name is the
+// lane name a BPMN process uses for it.
 model {
   owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features' {
     metadata { colour 'navy' }
@@ -22,6 +23,11 @@ model {
     technology 'Claude Code session'
     metadata { colour 'green' }
   }
+  simplifier = system 'Simplify agent' 'A Claude Code session that rewrites a model and keeps what keeps the behaviour' {
+    #agent
+    technology 'Claude Code session'
+    metadata { colour 'teal' }
+  }
 
   github = system 'GitHub' 'Issues, the board, pull requests and Actions of the repository' {
     #external
@@ -32,116 +38,233 @@ model {
   repo = system 'Git repository' 'The checked-out branch: code, changes and models' {
     #external
   }
+  bpmnio = system 'bpmn.io libraries' 'bpmn-moddle, bpmn-auto-layout, bpmnlint, bpmn-js' {
+    #external
+  }
+  elk = system 'elkjs' 'ELK layered: places the shapes and routes the edges of a C4 view' {
+    #external
+  }
 
-  mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
-    skills = container 'Skills' 'The instructions of every plugin, loaded into a session on demand' {
-      technology 'Markdown files'
-      metadata { path 'plugins' }
-      plan = component 'plan' 'Sizes an ask and splits a feature into tasks' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-plan' }
-      }
-      grilling = component 'grilling' 'Settles the open decisions of a feature in one batch' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-plan' }
-      }
-      propose = component 'spec-propose' 'Writes the change: proposal, models, specs, design' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-openspec' }
-      }
-      apply = component 'spec-apply' 'Builds an approved change task by task' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-openspec' }
-      }
-      archive = component 'spec-archive' 'Folds the change into the specs when the feature lands' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-openspec' }
-      }
-      wreview = component 'workflow-review' 'Reviews a pull request and posts the findings' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-review' }
-      }
-      tasktool = component 'task-tool' 'How to read and change the board' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-tasks' }
-      }
-      model = component 'model' 'How to draw a task or a codebase in BPMN and C4' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-models' }
-      }
-      threads = component 'review-threads' 'How to answer and resolve review threads' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { group 'qsm-forge' }
-      }
+  mp = system 'qsm-marketplace' 'Plugins for Claude Code: instructions, hooks and tools for one developer and his agents' {
+    lib = container 'Shared kit' 'Root lib/: CLI base, install base, errors, outcomes, hooks kit, paths' {
+      #shared
+      technology 'TypeScript modules'
+      metadata { group 'Core' path 'lib' }
+    }
+    essentials = container 'qsm-essentials' 'The shared method: how to debug, design, test, write and delegate' {
+      technology 'skills, agents'
+      metadata { group 'Core' path 'plugins/qsm-essentials' }
+    }
+    setup = container 'qsm-setup' 'Installs the marketplace and writes the instructions every session reads' {
+      technology 'Bun binary, skill'
+      metadata { group 'Core' path 'plugins/qsm-setup' }
+    }
+    builder = container 'qsm-builder' 'The builder skills, the gates, and the lens: a local page of every plugin and change' {
+      technology 'Bun binary, skills, web page'
+      metadata { group 'Core' path 'plugins/qsm-builder' }
+    }
+
+    plan = container 'qsm-plan' 'Sizes an ask, grills a feature, splits it into tasks' {
+      technology 'skills'
+      metadata { group 'Features' path 'plugins/qsm-plan' }
+    }
+    spec = container 'qsm-openspec' 'Writes, applies and archives a change' {
+      technology 'Bun binary, skills'
+      metadata { group 'Features' path 'plugins/qsm-openspec' }
     }
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
-      technology 'Bun binary'
-      metadata { path 'plugins/qsm-tasks' }
+      technology 'Bun binary, skills'
+      metadata { group 'Features' path 'plugins/qsm-tasks' }
     }
-    models = container 'qsm-models' 'Lints, renders and walks BPMN and C4 models' {
-      technology 'Bun binary'
-      metadata { path 'plugins/qsm-models' }
+    models = container 'qsm-models' 'Lints, lays out, renders and walks BPMN and C4 models' {
+      technology 'Bun binary, skill'
+      metadata { group 'Features' path 'plugins/qsm-models' }
+      cli = component 'Verbs' 'lint, layout, render, paths, check' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/scripts/cli.ts' }
+      }
+      bpmn = component 'BPMN' 'Analytic allowlist, labelled splits, one lane per step, layout of a file with no DI' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/bpmn' }
+      }
+      walk = component 'Path walker' 'The cover of a process: start-to-end paths that take every flow' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/paths.ts' }
+      }
+      c4 = component 'C4 core' 'Level rules, generated views per level, lanes against actors' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/c4' }
+      }
+      drawio = component 'draw.io writer' 'One .drawio.svg per view, with draw.io C4 attributes and zoom links' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/c4/drawio.ts' }
+      }
+      conform = component 'Code check' 'Container paths, plugin dependencies, generated import rules' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/conform.ts' }
+      }
+      skill = component 'model' 'How to draw a task or a codebase in BPMN and C4' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { path 'plugins/qsm-models/skills/model' }
+      }
     }
     forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
-      technology 'Bun binary'
-      metadata { path 'plugins/qsm-forge' }
+      technology 'Bun binary, skill'
+      metadata { group 'Features' path 'plugins/qsm-forge' }
     }
-    memory = container 'qsm-memory' 'Earlier sessions, searched by full text' {
+    review = container 'qsm-review' 'Reviews a change or a PR with an agent that did not write it' {
+      technology 'skills, agents'
+      metadata { group 'Features' path 'plugins/qsm-review' }
+    }
+    cockpit = container 'qsm-cockpit' 'The loop view beside the session: stages, agents, tasks' {
       technology 'Bun binary'
-      metadata { path 'plugins/qsm-memory' }
+      metadata { group 'Features' path 'plugins/qsm-cockpit' }
+    }
+    worktrunk = container 'qsm-worktrunk' 'One worktree per branch, ready to work in' {
+      technology 'Bun binary, skill'
+      metadata { group 'Features' path 'plugins/qsm-worktrunk' }
+    }
+
+    memory = container 'qsm-memory' 'Every earlier session on this machine, searched by full text' {
+      technology 'Bun binary, skill'
+      metadata { group 'Context' path 'plugins/qsm-memory' }
     }
     index = container 'qsm-index' 'The code index: search, structure, impact' {
-      technology 'Bun binary'
-      metadata { path 'plugins/qsm-index' }
+      technology 'Bun binary, skill'
+      metadata { group 'Context' path 'plugins/qsm-index' }
     }
-    lens = container 'qsm-builder lens' 'A local page of every plugin, its spec and its models' {
-      technology 'Bun binary, web page'
-      metadata { path 'plugins/qsm-builder' }
+    knowledge = container 'qsm-knowledge' 'Cited research: notebooks, grounded passes, vault notes' {
+      technology 'Bun binary, skills'
+      metadata { group 'Context' path 'plugins/qsm-knowledge' }
+    }
+    web = container 'qsm-web' 'The research loop over search, docs and a real browser' {
+      technology 'Bun binary, skills'
+      metadata { group 'Context' path 'plugins/qsm-web' }
+    }
+    books = container 'qsm-book-to-skill' 'Turns a book into a skill the agent can work by' {
+      technology 'Bun binary, skill'
+      metadata { group 'Context' path 'plugins/qsm-book-to-skill' }
+    }
+    toolbox = container 'qsm-toolbox' 'The command-line tools this machine has, known to every agent' {
+      technology 'Bun binary, skill'
+      metadata { group 'Context' path 'plugins/qsm-toolbox' }
+    }
+
+    langdev = container 'qsm-langdev' 'The quality gate: lint, types and tests on every change' {
+      technology 'Bun binary'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev' }
+    }
+    langs = container 'Language packs' 'qsm-langdev-dotnet, -fish, -py, -shell, -ts, -zsh: one language each' {
+      technology 'skills, gate config'
+      metadata { group 'Code quality' path 'plugins' }
+    }
+    secrets = container 'qsm-secrets' 'Keeps tokens out of the context, the transcript and the log' {
+      technology 'Bun binary, skills'
+      metadata { group 'Code quality' path 'plugins/qsm-secrets' }
+    }
+    uix = container 'qsm-uix' 'UI and UX measured, not judged by taste' {
+      technology 'Bun binary, skills'
+      metadata { group 'Code quality' path 'plugins/qsm-uix' }
+    }
+    compuse = container 'qsm-compuse' 'Checks a shell UI through what the user really sees' {
+      technology 'Bun binary, skill'
+      metadata { group 'Code quality' path 'plugins/qsm-compuse' }
+    }
+
+    usage = container 'qsm-usage' 'Measures the habits and costs of working beside an agent' {
+      technology 'Bun binary, skills'
+      metadata { group 'Harness' path 'plugins/qsm-usage' }
+    }
+    statusline = container 'qsm-statusline' 'Shows what the session is doing in the status line' {
+      technology 'Bun binary, skill'
+      metadata { group 'Harness' path 'plugins/qsm-statusline' }
+    }
+    ccr = container 'qsm-ccr' 'Runs Claude Code against other models' {
+      technology 'Bun binary'
+      metadata { group 'Harness' path 'plugins/qsm-ccr' }
+    }
+    opencode = container 'qsm-opencode' 'Hands a bounded task to an OpenCode session' {
+      technology 'skill'
+      metadata { group 'Harness' path 'plugins/qsm-opencode' }
     }
   }
 
+  // level 1 and the actors of level 2
+  owner -> agent 'plans, splits and reviews with' { technology 'terminal' }
   owner -> github 'files features, merges PRs' { technology 'HTTPS, browser' }
-  owner -> mp.lens 'reads the models' { technology 'HTTP, browser' }
-  owner -> agent 'plans and splits with' { technology 'terminal' }
-
-  agent -> mp.skills 'loads the skill a step needs' { technology 'file read' }
+  owner -> mp.builder 'reads the models in the lens' { technology 'HTTP, browser' }
+  owner -> mp.cockpit 'watches the loop in' { technology 'terminal pane' }
+  agent -> mp.plan 'plans and splits with' { technology 'skill load' }
+  agent -> mp.spec 'writes and applies the change with' { technology 'skill load, exec' }
   agent -> mp.tasks 'creates and claims tasks with' { technology 'exec, stdio' }
   agent -> mp.models 'lints and renders models with' { technology 'exec, stdio' }
   agent -> mp.memory 'gathers context from' { technology 'exec, stdio' }
-  agent -> mp.index 'gathers context from' { technology 'exec, stdio' }
+  agent -> mp.index 'gathers context from' { technology 'MCP' }
   agent -> mp.forge 'opens PRs with' { technology 'exec, stdio' }
-  agent -> openspec 'validates and archives changes with' { technology 'exec, stdio' }
-
-  reviewer -> mp.skills 'loads the review skills' { technology 'file read' }
+  agent -> mp.worktrunk 'makes a worktree with' { technology 'exec, stdio' }
+  reviewer -> mp.review 'reviews with' { technology 'skill load' }
   reviewer -> mp.forge 'posts findings with' { technology 'exec, stdio' }
-  reviewer -> mp.models 'reads the cover paths with' { technology 'exec, stdio' }
-
-  qa -> mp.skills 'loads the test skills' { technology 'file read' }
   qa -> mp.models 'reads the cover paths from' { technology 'exec, stdio' }
   qa -> mp.tasks 'files fix tasks with' { technology 'exec, stdio' }
+  simplifier -> mp.models 'proves each rewrite with' { technology 'exec, stdio' }
 
-  mp.skills.plan -> mp.tasks 'has the agent file and split features with' { technology 'instruction' }
-  mp.skills.propose -> mp.models 'has the agent lint and render models with' { technology 'instruction' }
-  mp.skills.propose -> mp.tasks 'has the agent bind the change to its feature with' { technology 'instruction' }
-  mp.skills.apply -> mp.forge 'has the agent open the task PR with' { technology 'instruction' }
-  mp.skills.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
-  mp.skills.wreview -> mp.forge 'has the agent post the review with' { technology 'instruction' }
-  mp.skills.tasktool -> mp.tasks 'has the agent run' { technology 'instruction' }
-  mp.skills.model -> mp.models 'has the agent run' { technology 'instruction' }
-  mp.skills.threads -> mp.forge 'has the agent run' { technology 'instruction' }
+  // plugin.json dependencies
+  mp.builder -> mp.spec 'reads the changes with' { technology 'exec, stdio' }
+  mp.builder -> mp.tasks 'saves a pen edit with' { technology 'exec, stdio' }
+  mp.cockpit -> mp.tasks 'reads the open tasks with' { technology 'exec, stdio' }
+  mp.knowledge -> mp.essentials 'builds on the method of' { technology 'skill reference' }
+  mp.langs -> mp.langdev 'plug their language into' { technology 'gate config' }
+  mp.memory -> mp.tasks 'adds the open tasks to the briefing with' { technology 'exec, stdio' }
+  mp.spec -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
+  mp.spec -> mp.tasks 'binds the change to its feature with' { technology 'exec, stdio' }
+  mp.plan -> mp.tasks 'files and splits features with' { technology 'exec, stdio' }
+  mp.plan -> mp.spec 'hands the change to' { technology 'skill reference' }
+  mp.review -> mp.forge 'posts reviews with' { technology 'exec, stdio' }
+  mp.setup -> mp.essentials 'installs the method of' { technology 'file copy' }
 
-  mp.lens -> mp.tasks 'saves a pen edit with' { technology 'exec, stdio' }
-  mp.lens -> repo 'reads the changes and models of the branch' { technology 'file read' }
-  mp.models -> repo 'reads and writes the models' { technology 'file I/O' }
+  // the plugins whose code imports the shared kit (measured: an import of root lib/)
+  mp.books -> mp.lib 'builds on' { technology 'import' }
+  mp.builder -> mp.lib 'builds on' { technology 'import' }
+  mp.ccr -> mp.lib 'builds on' { technology 'import' }
+  mp.cockpit -> mp.lib 'builds on' { technology 'import' }
+  mp.compuse -> mp.lib 'builds on' { technology 'import' }
+  mp.essentials -> mp.lib 'builds on' { technology 'import' }
+  mp.forge -> mp.lib 'builds on' { technology 'import' }
+  mp.index -> mp.lib 'builds on' { technology 'import' }
+  mp.knowledge -> mp.lib 'builds on' { technology 'import' }
+  mp.langdev -> mp.lib 'builds on' { technology 'import' }
+  mp.memory -> mp.lib 'builds on' { technology 'import' }
+  mp.opencode -> mp.lib 'builds on' { technology 'import' }
+  mp.spec -> mp.lib 'builds on' { technology 'import' }
+  mp.review -> mp.lib 'builds on' { technology 'import' }
+  mp.secrets -> mp.lib 'builds on' { technology 'import' }
+  mp.setup -> mp.lib 'builds on' { technology 'import' }
+  mp.statusline -> mp.lib 'builds on' { technology 'import' }
+  mp.tasks -> mp.lib 'builds on' { technology 'import' }
+  mp.toolbox -> mp.lib 'builds on' { technology 'import' }
+  mp.uix -> mp.lib 'builds on' { technology 'import' }
+  mp.usage -> mp.lib 'builds on' { technology 'import' }
+  mp.web -> mp.lib 'builds on' { technology 'import' }
+  mp.worktrunk -> mp.lib 'builds on' { technology 'import' }
+
+  // the systems the plugins call
   mp.tasks -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
   mp.forge -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
+  mp.spec -> openspec 'validates and archives changes with' { technology 'exec, stdio' }
+  mp.builder -> repo 'reads the changes and models of the branch' { technology 'file read' }
+
+  // inside qsm-models
+  mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with' { technology 'function call' }
+  mp.models.cli -> mp.models.walk 'lists paths with' { technology 'function call' }
+  mp.models.cli -> mp.models.c4 'lints and renders C4 with' { technology 'function call' }
+  mp.models.cli -> mp.models.conform 'checks the code with' { technology 'function call' }
+  mp.models.cli -> mp.lib 'builds its verbs on' { technology 'import' }
+  mp.models.walk -> mp.models.bpmn 'reads the process from' { technology 'function call' }
+  mp.models.c4 -> mp.models.drawio 'writes each view with' { technology 'function call' }
+  mp.models.conform -> mp.models.c4 'reads containers and components from' { technology 'function call' }
+  mp.models.skill -> mp.models.cli 'has the agent run' { technology 'instruction' }
+  mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with' { technology 'npm import' }
+  mp.models.c4 -> elk 'lays out views with' { technology 'npm import' }
+  mp.models.conform -> repo 'reads the code and plugin.json of' { technology 'file read' }
 }

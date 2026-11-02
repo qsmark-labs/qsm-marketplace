@@ -1,7 +1,5 @@
-![After the move: who talks to the task store, C4
-containers](models/task-store.containers.drawio.svg)
-
-![C4 context](models/task-store.context.drawio.svg)
+![The plugins of the marketplace and what they depend on: only qsm-tasks talks to the task store
+on GitHub](../feature-flow/models/marketplace.containers-depends.drawio.svg)
 
 ## Why
 
