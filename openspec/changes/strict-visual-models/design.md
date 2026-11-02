@@ -94,6 +94,13 @@ none of it in the tree.
 | Under the bun policy | `bun add likec4@1.60.0` breaks (`yargs-parser`), npm works | nothing to install | nothing to install |
 | Adapter | `likec4 export json` | c4Type reader | `Bun.YAML` |
 
+ 1. **The owner's style departs from the standard in one place.** Small arrows in the middle of long
+    flows are not BPMN notation, which has one arrowhead at the target (notebook, Trisotech,
+    Silver); the owner keeps them because the picture reads better, and they change no meaning.
+    Filled steps in the actor's colour with white text are within the standard. Levels are separate
+    diagrams linked through `calledElement`, as Method and Style prefers; one picture of every level
+    with dashed connectors was dropped, because a dashed line in BPMN means a message flow.
+
 ## Verify, each proved before the first task that depends on it
 
 1. **`check` and the dependency-cruiser generator**: no such tool exists and none was built.

@@ -49,7 +49,7 @@
       <bpmn:incoming>f_ask_answer</bpmn:incoming>
       <bpmn:outgoing>f_answer_models</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:callActivity id="models" name="2.5 Draw the models">
+    <bpmn:callActivity id="models" name="2.5 Draw the models" calledElement="model_gate_process">
       <bpmn:incoming>f_answer_models</bpmn:incoming>
       <bpmn:outgoing>f_models_specs</bpmn:outgoing>
     </bpmn:callActivity>

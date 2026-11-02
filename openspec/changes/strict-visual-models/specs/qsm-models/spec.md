@@ -134,17 +134,17 @@ every segment longer than 70 px, and enough room that no flow touches a step or 
   the merge before "4-6 Build every open task" in `flow.svg`
 - **THEN** a small arrow on that segment shows which way it runs
 
-### Requirement: One picture holds every level
+### Requirement: Diagrams link to each other
 
-`render` SHALL also write `<process>.levels.svg` for a process that calls others: the process on
-top, each diagram a step calls in the row below it, and a dashed line in the step's colour from the
-step to the diagram it opens.
+A call activity SHALL name the process it calls in `calledElement`. `render` SHALL make each call
+activity a link to the picture of the process it calls, and SHALL put above the pool of a called
+process one link back per step that calls it, each link relative to where the picture lives.
 
-#### Scenario: The feature flow on one page
+#### Scenario: From the flow into planning and back
 
-- **WHEN** `render` runs on `flow.bpmn`
-- **THEN** `flow.levels.svg` shows flow, plan, split, build-task, land, model-gate and consume-task,
-  and a dashed line runs from "4 Build the task into a PR" to consume-task
+- **WHEN** the owner clicks "2 Plan the feature" in `flow.svg`
+- **THEN** `plan.svg` opens, and its line "Called by "2 Plan the feature" in A feature from request
+  to main" leads back to `flow.svg`
 
 ### Requirement: A crowded container view is split by question
 

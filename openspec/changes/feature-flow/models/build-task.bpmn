@@ -29,7 +29,7 @@
     <bpmn:startEvent id="open" name="Task open">
       <bpmn:outgoing>f_open_build</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:callActivity id="build" name="4 Build the task into a PR">
+    <bpmn:callActivity id="build" name="4 Build the task into a PR" calledElement="consume_task_process">
       <bpmn:incoming>f_open_build</bpmn:incoming>
       <bpmn:outgoing>f_build_reviewJoin</bpmn:outgoing>
     </bpmn:callActivity>

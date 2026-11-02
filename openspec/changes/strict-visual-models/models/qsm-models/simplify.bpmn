@@ -32,7 +32,7 @@
       <bpmn:incoming>f_againFirst_firstJoin</bpmn:incoming>
       <bpmn:outgoing>f_firstJoin_tryFirst</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:callActivity id="tryFirst" name="Try one rewrite">
+    <bpmn:callActivity id="tryFirst" name="Try one rewrite" calledElement="try_rewrite_process">
       <bpmn:incoming>f_firstJoin_tryFirst</bpmn:incoming>
       <bpmn:outgoing>f_tryFirst_result</bpmn:outgoing>
     </bpmn:callActivity>
@@ -59,7 +59,7 @@
       <bpmn:outgoing>f_againMore_tryMore</bpmn:outgoing>
       <bpmn:outgoing>f_againMore_report</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:callActivity id="tryMore" name="Try one more rewrite">
+    <bpmn:callActivity id="tryMore" name="Try one more rewrite" calledElement="try_rewrite_process">
       <bpmn:incoming>f_againMore_tryMore</bpmn:incoming>
       <bpmn:outgoing>f_tryMore_moreJoin</bpmn:outgoing>
     </bpmn:callActivity>

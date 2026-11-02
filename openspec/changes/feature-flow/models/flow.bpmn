@@ -38,7 +38,7 @@
       <bpmn:incoming>f_need_request</bpmn:incoming>
       <bpmn:outgoing>f_request_plan</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:callActivity id="plan" name="2 Plan the feature">
+    <bpmn:callActivity id="plan" name="2 Plan the feature" calledElement="plan_process">
       <bpmn:incoming>f_request_plan</bpmn:incoming>
       <bpmn:outgoing>f_plan_planned</bpmn:outgoing>
     </bpmn:callActivity>
@@ -50,7 +50,7 @@
     <bpmn:endEvent id="dropped" name="Feature not planned">
       <bpmn:incoming>f_planned_dropped</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:callActivity id="split" name="3 Split the feature into tasks">
+    <bpmn:callActivity id="split" name="3 Split the feature into tasks" calledElement="split_process">
       <bpmn:incoming>f_planned_split</bpmn:incoming>
       <bpmn:outgoing>f_split_buildJoin</bpmn:outgoing>
     </bpmn:callActivity>
@@ -61,7 +61,7 @@
       <bpmn:incoming>f_accepted_buildJoin</bpmn:incoming>
       <bpmn:outgoing>f_buildJoin_build</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:callActivity id="build" name="4-6 Build every open task">
+    <bpmn:callActivity id="build" name="4-6 Build every open task" calledElement="build_task_process">
       <bpmn:incoming>f_buildJoin_build</bpmn:incoming>
       <bpmn:outgoing>f_build_sync</bpmn:outgoing>
       <bpmn:multiInstanceLoopCharacteristics />
@@ -92,7 +92,7 @@
       <bpmn:incoming>f_holds_fixTask</bpmn:incoming>
       <bpmn:outgoing>f_fixTask_buildJoin</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:callActivity id="land" name="9 Land the feature on main">
+    <bpmn:callActivity id="land" name="9 Land the feature on main" calledElement="land_process">
       <bpmn:incoming>f_holds_land</bpmn:incoming>
       <bpmn:outgoing>f_land_accepted</bpmn:outgoing>
     </bpmn:callActivity>
