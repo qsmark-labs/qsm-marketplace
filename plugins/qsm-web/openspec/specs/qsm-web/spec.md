@@ -396,6 +396,13 @@ one tab waits, other tabs and instances SHALL stay usable.
   the size of the live view's tab, so the person sees the whole page and not
   a part of a larger window
 
+#### Scenario: A word typed in the address bar is searched
+
+- **WHEN** the person types words that are not an address into the address bar
+  of the live view
+- **THEN** the browser SHALL search them with DuckDuckGo, not fail on a search
+  engine that posts nowhere
+
 #### Scenario: Human clears the wall
 
 - **WHEN** an agent arms takeover on a blocked tab and a human solves the

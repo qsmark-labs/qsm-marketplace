@@ -35,13 +35,10 @@ COPY requirements.txt /tmp/requirements.txt
 RUN python3 -m venv "$VENV" && pip install --no-cache-dir -r /tmp/requirements.txt
 
 # The stealth build's driver crashes on playwright 1.60 and later. Fail the
-# build here rather than at the first fetch.
-RUN python3 - <<'PY'
-from importlib.metadata import version
-v = tuple(int(x) for x in version("playwright").split(".")[:2])
-assert v < (1, 60), f"playwright {version('playwright')} needs a pin below 1.60"
-print("playwright pin holds:", version("playwright"))
-PY
+# build here rather than at the first fetch. The legacy builder has no heredoc, so this is one -c.
+RUN python3 -c 'from importlib.metadata import version; p = version("playwright"); \
+assert tuple(int(x) for x in p.split(".")[:2]) < (1, 60), f"playwright {p} needs a pin below 1.60"; \
+print("playwright pin holds:", p)'
 
 # The entrypoint runs as whatever user the instance is started as, the host user's own uid, so a
 # file written to /out (bind-mounted from the host) is the host user's. /run is writable by any
@@ -52,6 +49,10 @@ RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin box \
 USER box
 
 RUN camoufox fetch
+
+# The address bar searches with DuckDuckGo, not the "None" engine Camoufox leaves; the script says why.
+COPY search_engine.py /tmp/search_engine.py
+RUN python3 /tmp/search_engine.py
 
 # Our own files come last, so a change to the driver or the entrypoint rebuilds only these two
 # layers, not the browser download above. The entrypoint keeps its executable bit from git.
