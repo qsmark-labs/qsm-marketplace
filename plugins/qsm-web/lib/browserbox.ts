@@ -175,7 +175,12 @@ const BROWSER_TOOL = "github:daijro/camoufox";
  * when the file has no such row.
  */
 export function pinnedBrowser(miseToml: string): string | null {
-  const parsed: unknown = Bun.TOML.parse(miseToml);
+  let parsed: unknown;
+  try {
+    parsed = Bun.TOML.parse(miseToml);
+  } catch {
+    return null;
+  }
   const tools = isRecord(parsed) ? parsed.tools : undefined;
   const version = isRecord(tools) ? tools[BROWSER_TOOL] : undefined;
   return typeof version === "string" ? `official/stable/${version.replace(/^v/, "")}` : null;

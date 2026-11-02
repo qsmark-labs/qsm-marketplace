@@ -49,8 +49,12 @@ RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin box \
 USER box
 
 # The browser build the plugin's mise.toml pins; browserbox passes it, and a build without it fails.
+# `camoufox set` moves a prerelease to its own channel without a word, so the fetched build is
+# checked: before the fetch, `camoufox active` names only the channel.
 ARG CAMOUFOX_BROWSER
-RUN test -n "$CAMOUFOX_BROWSER" && camoufox set "$CAMOUFOX_BROWSER" && camoufox fetch
+RUN test -n "$CAMOUFOX_BROWSER" && camoufox set "$CAMOUFOX_BROWSER" && camoufox fetch \
+ && { camoufox active | grep -q "^$CAMOUFOX_BROWSER " \
+      || { echo "$CAMOUFOX_BROWSER is not a full release: $(camoufox active)" >&2; exit 1; }; }
 
 # The address bar searches with DuckDuckGo, not the "None" engine Camoufox leaves; the script says why.
 COPY search_engine.py /tmp/search_engine.py

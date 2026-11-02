@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   chooseRuntime,
   execDefinition,
@@ -10,6 +12,7 @@ import {
   PORT_HIGH,
   PORT_LOW,
   parseInstances,
+  pinnedBrowser,
   pickPort,
   renderCommand,
   runDefinition,
@@ -137,5 +140,17 @@ describe("outDir", () => {
 describe("renderCommand", () => {
   test("a value with a space is quoted so the line can be pasted", () => {
     expect(renderCommand("docker", ["run", "--name", "a b"])).toBe("docker run --name 'a b'");
+  });
+});
+
+describe("pinnedBrowser", () => {
+  test("the plugin's own mise.toml pins a stable build, named as camoufox set takes it", () => {
+    const pins = readFileSync(join(import.meta.dir, "..", "mise.toml"), "utf8");
+    expect(pinnedBrowser(pins)).toMatch(/^official\/stable\/\d+\.\d+(\.\d+)?-beta\.\d+$/);
+  });
+
+  test("a file without the row, or one that is not TOML, pins nothing", () => {
+    expect(pinnedBrowser('[tools]\nbun = "1.4.4"\n')).toBeNull();
+    expect(pinnedBrowser("[tools\n")).toBeNull();
   });
 });

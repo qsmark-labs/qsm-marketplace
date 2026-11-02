@@ -1,5 +1,6 @@
 # The versions this plugin pins, in one place (epic qsm-1njh). `mise outdated` here names a newer
-# release. Nothing installs on the host: the browser lives only in the browserbox image.
+# release. Nothing installs on the host: the browser lives only in the browserbox image, so never
+# run `mise install` here, and `mise doctor` reporting the row as not installed is expected.
 [settings]
 auto_install = false
 exec_auto_install = false

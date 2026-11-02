@@ -1,6 +1,6 @@
 // qsm-web browserbox: the last rung.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { spawnDetached } from "../../../lib/detach.ts";
 import { home } from "../../../lib/paths.ts";
 import { join } from "node:path";
@@ -19,7 +19,6 @@ import {
   buildDefinition,
   chooseRuntime,
   contextHash,
-  pinnedBrowser,
   execDefinition,
   imageSourceDefinition,
   type Instance,
@@ -28,6 +27,7 @@ import {
   liveViewLink,
   liveViewUrl,
   outDir,
+  pinnedBrowser,
   parseInstances,
   pickPort,
   type Runtime,
@@ -195,10 +195,11 @@ function ensureImage(box: Box): void {
     throw new QsmError("missing", NO_ROOT);
   }
   const context = join(root, "docker");
-  const browser = pinnedBrowser(readFileSync(join(root, "mise.toml"), "utf8"));
+  const pins = join(root, "mise.toml");
+  const browser = existsSync(pins) ? pinnedBrowser(readFileSync(pins, "utf8")) : null;
   if (browser === null) {
-    throw new QsmError("missing", `${join(root, "mise.toml")} pins no Camoufox browser build`, {
-      next: 'add "github:daijro/camoufox" = "v<release>" under [tools]',
+    throw new QsmError("missing", `${pins} pins no Camoufox browser build`, {
+      next: 'add "github:daijro/camoufox" = "v<full release>" under [tools] of a valid mise.toml',
     });
   }
   // The pin is part of what the image was built from, so a new pin rebuilds it.
@@ -207,7 +208,8 @@ function ensureImage(box: Box): void {
   if (image.status === 0 && image.stdout.trim() === source && !box.dryRun) {
     return;
   }
-  const why = image.status === 0 ? "its docker context changed" : "there is none yet";
+  const why =
+    image.status === 0 ? "its docker context or browser pin changed" : "there is none yet";
   process.stderr.write(`qsm-web browserbox: building the image from ${context}, ${why}\n`);
   const built = box.run(buildDefinition(context, source, browser), false);
   if (built.status !== 0) {
