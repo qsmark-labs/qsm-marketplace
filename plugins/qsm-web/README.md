@@ -88,6 +88,9 @@ qsm-web browserbox stop "$name"
 - `opensrc get` of a package spec needs `opensrc` on `PATH`.
 - Only the browser step needs docker or podman. The first `browserbox start` builds an image
   (minutes, about 1 GB), and a start after the plugin's `docker/` files changed builds it again.
+- The Camoufox browser build is pinned in the plugin's `mise.toml` (`github:daijro/camoufox`), the
+  newest full release when it was set. `mise outdated` in the plugin names a newer one; moving the
+  pin rebuilds the image on the next start. Nothing is installed on the host.
 - The live view asks for a random per-instance password. `start` and `ls` print the address
   without it; `takeover` and `view` open the address with it in your desktop browser, and no
   output carries it. Its port is loopback only: never publish it elsewhere.

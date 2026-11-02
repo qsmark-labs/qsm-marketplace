@@ -2,6 +2,7 @@
 // the exact argument vector that starts it.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { isRecord } from "../../../lib/outcome.ts";
 
 export const IMAGE = "qsm-browserbox";
 export const LABEL = "qsm.browserbox";
@@ -153,8 +154,36 @@ export function stopDefinition(name: string): string[] {
   return ["rm", "--force", name];
 }
 
-export function buildDefinition(contextDir: string, source: string): string[] {
-  return ["build", "--tag", IMAGE, "--label", `${SOURCE_LABEL}=${source}`, contextDir];
+export function buildDefinition(contextDir: string, source: string, browser: string): string[] {
+  return [
+    "build",
+    "--tag",
+    IMAGE,
+    "--label",
+    `${SOURCE_LABEL}=${source}`,
+    "--build-arg",
+    `CAMOUFOX_BROWSER=${browser}`,
+    contextDir,
+  ];
+}
+
+/** The mise.toml row that pins the browser build, in the plugin's own version file. */
+const BROWSER_TOOL = "github:daijro/camoufox";
+
+/**
+ * The Camoufox browser build the plugin's mise.toml pins, as `camoufox set` names it, or null
+ * when the file has no such row.
+ */
+export function pinnedBrowser(miseToml: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = Bun.TOML.parse(miseToml);
+  } catch {
+    return null;
+  }
+  const tools = isRecord(parsed) ? parsed.tools : undefined;
+  const version = isRecord(tools) ? tools[BROWSER_TOOL] : undefined;
+  return typeof version === "string" ? `official/stable/${version.replace(/^v/, "")}` : null;
 }
 
 /** Prints the source hash the image was built from, or fails when there is no image. */

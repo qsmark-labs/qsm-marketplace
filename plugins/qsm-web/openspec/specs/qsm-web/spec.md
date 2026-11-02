@@ -418,9 +418,16 @@ one tab waits, other tabs and instances SHALL stay usable.
 ### Requirement: The browser image follows its source
 
 qsm-web browserbox SHALL label the image it builds with a hash of every file under the plugin's
-`docker/` context, and before it starts an instance it SHALL build the image again when no image
-exists or the label differs from the current hash, because an image built from older sources runs
-an older driver that never answers the current one.
+`docker/` context and the Camoufox browser build the plugin's `mise.toml` pins, and before it
+starts an instance it SHALL build the image again when no image exists or the label differs from
+the current one, because an image built from older sources runs an older driver that never answers
+the current one. The image SHALL hold exactly the pinned browser build, never whatever is newest on
+the day of the build, and a `mise.toml` with no pin SHALL fail the start as `missing`.
+
+#### Scenario: The browser pin moved
+
+- **WHEN** the `github:daijro/camoufox` row in the plugin's `mise.toml` names another release
+- **THEN** `qsm-web browserbox start` SHALL build the image again with that browser build
 
 #### Scenario: The docker context changed
 
