@@ -5,18 +5,22 @@ model {
   }
   agent = system 'Agent' 'A Claude Code session that writes and checks models' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'purple' }
   }
   qa = system 'QA agent' 'Runs the cover scenarios of a feature' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'green' }
   }
   reviewer = system 'Review agent' 'Reads each model and its picture against the spec and the rules' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'orange' }
   }
   simplifier = system 'Simplify agent' 'Rewrites a model on request and keeps what keeps the behaviour' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'teal' }
   }
   elk = system 'elkjs' 'ELK layered: places the shapes and routes the edges of a C4 view' {
@@ -58,19 +62,19 @@ model {
     }
   }
 
-  agent -> mp.models.cli 'runs'
-  qa -> mp.models.cli 'asks for the paths to test'
-  reviewer -> mp.models.cli 'lints and renders the model with'
-  simplifier -> mp.models.cli 'proves each rewrite with'
-  owner -> mp.lens 'reads the models in'
-  mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with'
-  mp.models.cli -> mp.models.walk 'lists paths with'
-  mp.models.cli -> mp.models.c4 'lints and renders C4 with'
-  mp.models.cli -> mp.models.conform 'checks the code with'
-  mp.models.walk -> mp.models.bpmn 'reads the process from'
-  mp.models.c4 -> mp.models.source 'reads the model through'
-  mp.models.c4 -> mp.models.drawio 'writes each view with'
-  mp.models.conform -> mp.models.c4 'reads containers and components from'
-  mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with'
-  mp.models.c4 -> elk 'lays out views with'
+  agent -> mp.models.cli 'runs' { technology 'exec, stdio' }
+  qa -> mp.models.cli 'asks for the paths to test' { technology 'exec, stdio' }
+  reviewer -> mp.models.cli 'lints and renders the model with' { technology 'exec, stdio' }
+  simplifier -> mp.models.cli 'proves each rewrite with' { technology 'exec, stdio' }
+  owner -> mp.lens 'reads the models in' { technology 'HTTP, browser' }
+  mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with' { technology 'function call' }
+  mp.models.cli -> mp.models.walk 'lists paths with' { technology 'function call' }
+  mp.models.cli -> mp.models.c4 'lints and renders C4 with' { technology 'function call' }
+  mp.models.cli -> mp.models.conform 'checks the code with' { technology 'function call' }
+  mp.models.walk -> mp.models.bpmn 'reads the process from' { technology 'function call' }
+  mp.models.c4 -> mp.models.source 'reads the model through' { technology 'function call' }
+  mp.models.c4 -> mp.models.drawio 'writes each view with' { technology 'function call' }
+  mp.models.conform -> mp.models.c4 'reads containers and components from' { technology 'function call' }
+  mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with' { technology 'npm import' }
+  mp.models.c4 -> elk 'lays out views with' { technology 'npm import' }
 }

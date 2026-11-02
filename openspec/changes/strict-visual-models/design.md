@@ -25,7 +25,14 @@ none of it in the tree.
    (`external`, `agent`, `shared`) and the properties (`colour`, `group`, `path`); level nesting,
    titled relations, unique titles, a code path on every internal container; the source declares no
    views, the tool generates one per level. Measured: the check finds a container in a container
-   that `likec4 validate` accepts.
+   that `likec4 validate` accepts. What is drawn follows the notebook's sources (c4model.com,
+   "Describing Agentic AI Systems with C4", the Claude Code plugin docs): a plugin is a packaging
+   unit, not a C4 element, so its binary is a container and its skills are `artifact` components
+   of one Skills store, grouped by plugin; a group means a plugin, never a workflow step; every
+   relation names its technology (`exec, stdio`, `file read`, `HTTPS, REST`). An agent is a Claude
+   Code session in one role, a software system we do not build, tagged `agent`. The sources also
+   allow agents as components inside the agent runtime; that would hide every agent's colour from
+   the marketplace's own views, which the owner reads them by, so they stay systems.
 5. **The C4 source format is open** (open decision 1). Everything reads one normalised model, so
    only one adapter differs; the options are in the table below.
 

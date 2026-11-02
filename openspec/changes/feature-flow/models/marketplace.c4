@@ -1,6 +1,7 @@
-// C4 levels 1 and 2 of the marketplace, for the feature flow.
-// Every element name is the lane name a BPMN process uses for the same actor. Relations between
-// containers are the plugin dependencies after this feature and the ones it waits on.
+// C4 levels 1 to 3 of the marketplace, for the feature flow.
+// Every actor's name is the lane name a BPMN process uses for it. An agent is a Claude Code session
+// in one role, a software system we do not build. A plugin is a packaging unit, not a C4 element:
+// its binary is a container, its skills are artifacts in the skills store, grouped by plugin.
 model {
   owner = person 'Owner' 'Writes features, approves plans, merges PRs, accepts features' {
     metadata { colour 'navy' }
@@ -8,100 +9,139 @@ model {
 
   agent = system 'Agent' 'A Claude Code session that plans, splits and builds' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'purple' }
   }
   reviewer = system 'Review agent' 'A Claude Code session that reviews a PR and posts findings' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'orange' }
   }
   qa = system 'QA agent' 'A Claude Code session that tests a feature branch in a sandbox' {
     #agent
+    technology 'Claude Code session'
     metadata { colour 'green' }
   }
 
   github = system 'GitHub' 'Issues, the board, pull requests and Actions of the repository' {
     #external
   }
-  openspec = system 'OpenSpec CLI' 'Validates changes and their artifacts' {
+  openspec = system 'OpenSpec CLI' 'Validates and archives changes' {
+    #external
+  }
+  repo = system 'Git repository' 'The checked-out branch: code, changes and models' {
     #external
   }
 
   mp = system 'qsm-marketplace' 'Plugins installed into Claude Code' {
+    skills = container 'Skills' 'The instructions of every plugin, loaded into a session on demand' {
+      technology 'Markdown files'
+      metadata { path 'plugins' }
+      plan = component 'plan' 'Sizes an ask and splits a feature into tasks' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-plan' }
+      }
+      grilling = component 'grilling' 'Settles the open decisions of a feature in one batch' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-plan' }
+      }
+      propose = component 'spec-propose' 'Writes the change: proposal, models, specs, design' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-openspec' }
+      }
+      apply = component 'spec-apply' 'Builds an approved change task by task' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-openspec' }
+      }
+      archive = component 'spec-archive' 'Folds the change into the specs when the feature lands' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-openspec' }
+      }
+      wreview = component 'workflow-review' 'Reviews a pull request and posts the findings' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-review' }
+      }
+      tasktool = component 'task-tool' 'How to read and change the board' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-tasks' }
+      }
+      model = component 'model' 'How to draw a task or a codebase in BPMN and C4' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-models' }
+      }
+      threads = component 'review-threads' 'How to answer and resolve review threads' {
+        #artifact
+        technology 'SKILL.md'
+        metadata { group 'qsm-forge' }
+      }
+    }
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
       technology 'Bun binary'
-      metadata { group 'Board and pull requests' path 'plugins/qsm-tasks' }
-    }
-    plan = container 'qsm-plan' 'Sizes an ask, grills a feature, splits it into tasks' {
-      technology 'Skills'
-      metadata { group 'Plan and specify' path 'plugins/qsm-plan' }
-    }
-    spec = container 'qsm-openspec' 'The feature schema and the skills that write and consume a change' {
-      technology 'Skills'
-      metadata { group 'Plan and specify' path 'plugins/qsm-openspec' }
+      metadata { path 'plugins/qsm-tasks' }
     }
     models = container 'qsm-models' 'Lints, renders and walks BPMN and C4 models' {
       technology 'Bun binary'
-      metadata { group 'Plan and specify' path 'plugins/qsm-models' }
-    }
-    review = container 'qsm-review' 'Reviews a PR and posts the findings' {
-      technology 'Skills and agents'
-      metadata { group 'Review and see' path 'plugins/qsm-review' }
+      metadata { path 'plugins/qsm-models' }
     }
     forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
       technology 'Bun binary'
-      metadata { group 'Board and pull requests' path 'plugins/qsm-forge' }
+      metadata { path 'plugins/qsm-forge' }
     }
     memory = container 'qsm-memory' 'Earlier sessions, searched by full text' {
       technology 'Bun binary'
-      metadata { group 'Context' path 'plugins/qsm-memory' }
+      metadata { path 'plugins/qsm-memory' }
     }
     index = container 'qsm-index' 'The code index: search, structure, impact' {
       technology 'Bun binary'
-      metadata { group 'Context' path 'plugins/qsm-index' }
+      metadata { path 'plugins/qsm-index' }
     }
-    essentials = container 'qsm-essentials' 'The core: worker agents and the skills every session loads' {
-      #shared
-      technology 'Skills and agents'
-      metadata { group 'Context' path 'plugins/qsm-essentials' }
-    }
-    lens = container 'qsm-builder lens' 'A static page of every plugin, its spec and its models' {
-      technology 'Bun binary'
-      metadata { group 'Review and see' path 'plugins/qsm-builder' }
+    lens = container 'qsm-builder lens' 'A local page of every plugin, its spec and its models' {
+      technology 'Bun binary, web page'
+      metadata { path 'plugins/qsm-builder' }
     }
   }
 
-  owner -> github 'files features, merges PRs'
-  owner -> mp.lens 'reads the models'
-  owner -> agent 'plans and splits with'
+  owner -> github 'files features, merges PRs' { technology 'HTTPS, browser' }
+  owner -> mp.lens 'reads the models' { technology 'HTTP, browser' }
+  owner -> agent 'plans and splits with' { technology 'terminal' }
 
-  agent -> mp.plan 'plans and splits with'
-  agent -> mp.spec 'writes the change with'
-  agent -> mp.models 'lints and renders models with'
-  agent -> mp.tasks 'creates and claims tasks with'
-  agent -> mp.memory 'gathers context from'
-  agent -> mp.index 'gathers context from'
-  agent -> mp.forge 'opens PRs with'
+  agent -> mp.skills 'loads the skill a step needs' { technology 'file read' }
+  agent -> mp.tasks 'creates and claims tasks with' { technology 'exec, stdio' }
+  agent -> mp.models 'lints and renders models with' { technology 'exec, stdio' }
+  agent -> mp.memory 'gathers context from' { technology 'exec, stdio' }
+  agent -> mp.index 'gathers context from' { technology 'exec, stdio' }
+  agent -> mp.forge 'opens PRs with' { technology 'exec, stdio' }
+  agent -> openspec 'validates and archives changes with' { technology 'exec, stdio' }
 
-  reviewer -> mp.review 'reviews with'
-  reviewer -> mp.forge 'posts findings with'
+  reviewer -> mp.skills 'loads the review skills' { technology 'file read' }
+  reviewer -> mp.forge 'posts findings with' { technology 'exec, stdio' }
+  reviewer -> mp.models 'reads the cover paths with' { technology 'exec, stdio' }
 
-  qa -> mp.models 'reads the cover paths from'
-  qa -> mp.tasks 'files fix tasks with'
+  qa -> mp.skills 'loads the test skills' { technology 'file read' }
+  qa -> mp.models 'reads the cover paths from' { technology 'exec, stdio' }
+  qa -> mp.tasks 'files fix tasks with' { technology 'exec, stdio' }
 
-  qa -> mp.review 'runs as an agent of'
+  mp.skills.plan -> mp.tasks 'has the agent file and split features with' { technology 'instruction' }
+  mp.skills.propose -> mp.models 'has the agent lint and render models with' { technology 'instruction' }
+  mp.skills.propose -> mp.tasks 'has the agent bind the change to its feature with' { technology 'instruction' }
+  mp.skills.apply -> mp.forge 'has the agent open the task PR with' { technology 'instruction' }
+  mp.skills.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
+  mp.skills.wreview -> mp.forge 'has the agent post the review with' { technology 'instruction' }
+  mp.skills.tasktool -> mp.tasks 'has the agent run' { technology 'instruction' }
+  mp.skills.model -> mp.models 'has the agent run' { technology 'instruction' }
+  mp.skills.threads -> mp.forge 'has the agent run' { technology 'instruction' }
 
-  mp.plan -> mp.tasks 'files and splits features with'
-  mp.plan -> mp.spec 'hands the change to'
-  mp.spec -> mp.essentials 'hands disjoint work to the agents of'
-  mp.spec -> mp.tasks 'binds the change to its feature with'
-  mp.spec -> mp.models 'lints, renders and walks models with'
-  mp.spec -> mp.forge 'opens the task PR with'
-  mp.review -> mp.forge 'posts reviews with'
-  mp.review -> mp.models 'reads the cover paths with'
-  mp.lens -> mp.tasks 'saves a pen edit with'
-  mp.lens -> mp.spec 'reads the changes with'
-
-  mp.tasks -> github 'reads and writes issues and the board'
-  mp.forge -> github 'opens PRs, reads threads'
-  mp.spec -> openspec 'validates changes with'
+  mp.lens -> mp.tasks 'saves a pen edit with' { technology 'exec, stdio' }
+  mp.lens -> repo 'reads the changes and models of the branch' { technology 'file read' }
+  mp.models -> repo 'reads and writes the models' { technology 'file I/O' }
+  mp.tasks -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
+  mp.forge -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
 }

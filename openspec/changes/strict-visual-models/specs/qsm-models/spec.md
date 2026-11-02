@@ -46,10 +46,10 @@ warnings as errors. Each finding SHALL name the file, the element id and the rul
 ### Requirement: lint holds C4 to its levels
 
 `lint` SHALL accept only the kinds person, system, container and component, the tags `external`,
-`agent` and `shared`, and the properties `colour`, `group` and `path`; and SHALL refuse a person or
-a system that has a parent, a container outside a system, a component outside a container, a
-relation without a title, two elements with one title, an internal container without a code path,
-and a source that declares its own kinds or views.
+`agent`, `shared` and `artifact`, and the properties `colour`, `group` and `path`; and SHALL refuse
+a person or a system that has a parent, a container outside a system, a component outside a
+container, a relation without a title or a technology, two elements with one title, an internal
+container without a code path, and a source that declares its own kinds or views.
 
 #### Scenario: A container inside a container
 
@@ -167,10 +167,10 @@ relations and carry a note naming who uses it.
 
 #### Scenario: The marketplace container view
 
-- **WHEN** the marketplace model has 28 relations among 4 actors and 10 containers
-- **THEN** `render` writes `containers-uses` with the 15 actor relations and `containers-depends`
-  with 12 of the 13 container relations drawn, each in tiers, groups and actor colours; the 13th
-  ends at qsm-essentials, tagged `shared`, which carries the note "used by qsm-openspec"
+- **WHEN** the marketplace container view would hold 22 relations among 4 actors and 6 containers
+- **THEN** `render` writes `containers-uses` with the 13 relations the actors start and
+  `containers-depends` with the 9 that start inside, each in tiers and actor colours, and each
+  links to the other
 
 ### Requirement: lint measures the layout and refuses a worse one
 

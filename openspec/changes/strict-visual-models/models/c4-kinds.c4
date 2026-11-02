@@ -8,4 +8,5 @@ specification {
   tag external
   tag agent
   tag shared
+  tag artifact
 }
