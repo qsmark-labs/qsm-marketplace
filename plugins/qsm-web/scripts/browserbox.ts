@@ -19,6 +19,7 @@ import {
   buildDefinition,
   chooseRuntime,
   contextHash,
+  pinnedBrowser,
   execDefinition,
   imageSourceDefinition,
   type Instance,
@@ -194,14 +195,21 @@ function ensureImage(box: Box): void {
     throw new QsmError("missing", NO_ROOT);
   }
   const context = join(root, "docker");
-  const source = contextHash(context);
+  const browser = pinnedBrowser(readFileSync(join(root, "mise.toml"), "utf8"));
+  if (browser === null) {
+    throw new QsmError("missing", `${join(root, "mise.toml")} pins no Camoufox browser build`, {
+      next: 'add "github:daijro/camoufox" = "v<release>" under [tools]',
+    });
+  }
+  // The pin is part of what the image was built from, so a new pin rebuilds it.
+  const source = `${contextHash(context)}-${browser}`;
   const image = box.run(imageSourceDefinition());
   if (image.status === 0 && image.stdout.trim() === source && !box.dryRun) {
     return;
   }
   const why = image.status === 0 ? "its docker context changed" : "there is none yet";
   process.stderr.write(`qsm-web browserbox: building the image from ${context}, ${why}\n`);
-  const built = box.run(buildDefinition(context, source), false);
+  const built = box.run(buildDefinition(context, source, browser), false);
   if (built.status !== 0) {
     throw new QsmError("failed", `the image build failed (exit ${built.status})`);
   }

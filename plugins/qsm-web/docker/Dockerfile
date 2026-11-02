@@ -48,7 +48,9 @@ RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin box \
  && mkdir /out && chown box:box /out && chmod 1777 /run
 USER box
 
-RUN camoufox fetch
+# The browser build the plugin's mise.toml pins; browserbox passes it, and a build without it fails.
+ARG CAMOUFOX_BROWSER
+RUN test -n "$CAMOUFOX_BROWSER" && camoufox set "$CAMOUFOX_BROWSER" && camoufox fetch
 
 # The address bar searches with DuckDuckGo, not the "None" engine Camoufox leaves; the script says why.
 COPY search_engine.py /tmp/search_engine.py

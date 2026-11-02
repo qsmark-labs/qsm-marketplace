@@ -1,0 +1,11 @@
+# The versions this plugin pins, in one place (epic qsm-1njh). `mise outdated` here names a newer
+# release. Nothing installs on the host: the browser lives only in the browserbox image.
+[settings]
+auto_install = false
+exec_auto_install = false
+not_found_auto_install = false
+
+[tools]
+# The Camoufox browser build the browserbox image fetches: the newest full release, never a
+# prerelease. Without a pin, `camoufox fetch` takes whatever is newest on the day of the build.
+"github:daijro/camoufox" = "v158.0.1-beta.41"
