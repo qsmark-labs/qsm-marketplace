@@ -1,8 +1,7 @@
 // The search verb through its real surface: qsm-web's argv, its stdout, its stderr and its exit
-// code, against a local instance that answers what the test says it answers. Nothing here reads
-// a config file or reaches the internet.
+// code, against a local instance and private test config. Nothing here reaches the internet.
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { envelopeOf, isolatedEnv } from "../../../lib/fixtures/cli.ts";
@@ -310,13 +309,43 @@ describe("qsm-web searxng search", () => {
     });
   }
 
-  test("the old config file is ignored", async () => {
-    const home = sandboxDir("qsm-web-search-");
-    const config = join(home, "config.json");
-    writeFileSync(config, JSON.stringify({ instance: "https://from-file.test" }));
-    const r = await run(["searxng", "search", "q"], { QSM_SEARXNG_CONFIG: config });
-    expect(r.exit).toBe(4);
-    expect(r.stderr).toContain("QSM_SEARXNG_INSTANCE");
+  test("a local instance config makes an unflagged search work", async () => {
+    const configHome = sandboxDir("qsm-web-search-");
+    const dir = join(configHome, "qsm-searxng");
+    mkdirSync(dir);
+    const inst = withResults([PAGE]);
+    writeFileSync(join(dir, "config.json"), JSON.stringify({ instance: inst.base }));
+    const r = await run(["searxng", "search", "q", "--profile", "default"], {
+      XDG_CONFIG_HOME: configHome,
+    });
+    expect(r.exit).toBe(0);
+    expect(inst.seen).toHaveLength(1);
+    expect(inst.seen[0]?.searchParams.has("engines")).toBe(false);
+    expect(inst.seen[0]?.searchParams.size).toBe(2);
+  });
+
+  test("an invalid local config fails without echoing its contents", async () => {
+    const configHome = sandboxDir("qsm-web-search-");
+    const dir = join(configHome, "qsm-searxng");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "config.json"), '{"instance":"not-a-url-private-value"}');
+    const r = await run(["searxng", "search", "q"], { XDG_CONFIG_HOME: configHome });
+    expect(r.exit).toBe(1);
+    expect(r.stderr).toContain("local SearXNG config");
+    expect(r.stderr).not.toContain("not-a-url-private-value");
+  });
+
+  test("an explicit instance does not read a broken local config", async () => {
+    const configHome = sandboxDir("qsm-web-search-");
+    const dir = join(configHome, "qsm-searxng");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "config.json"), "broken");
+    const inst = withResults([PAGE]);
+    const r = await run(["searxng", "search", "q", "--instance", inst.base], {
+      XDG_CONFIG_HOME: configHome,
+    });
+    expect(r.exit).toBe(0);
+    expect(inst.seen).toHaveLength(1);
   });
 
   test("the flag beats the environment, and the environment is used without the flag", async () => {

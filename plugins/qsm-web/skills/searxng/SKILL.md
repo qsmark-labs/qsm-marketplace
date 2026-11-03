@@ -13,9 +13,10 @@ failures are visible; when to call it is the web-ladder skill.
 
 - `qsm-web searxng search "<query>"` prints one JSON array of results. `--json` wraps it in the
   outcome envelope, and the array is `data`.
-- The instance comes from `--instance <url>`, then `QSM_SEARXNG_INSTANCE`. There is no config file
-  and no setup verb: the instance owns the engine and policy defaults, and only the flags you pass
-  are sent.
+- The instance comes from `--instance <url>`, then `QSM_SEARXNG_INSTANCE`, then the `instance`
+  field in `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default `~/.config/qsm-searxng/config.json`).
+  The file stays on the machine; never put its value in the repository. The server owns engine and
+  policy defaults, and only the flags you pass are sent.
 - Narrow before you widen: `--profile`, manual `--engines`, `--time-range day|week|month|year`,
   `--language en`, `--safesearch 0|1|2`, `--num-results <n>` (10 by default), `--timeout <ms>`
   (10000 by default). Widening a bad query returns more of the same noise.

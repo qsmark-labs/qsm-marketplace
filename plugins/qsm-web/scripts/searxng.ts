@@ -1,4 +1,4 @@
-// qsm-web searxng: the search rung. The instance comes from the flag or the environment; the
+// qsm-web searxng: the search rung. The instance comes from the flag, environment or local config; the
 // server owns the search policy, and only the overrides the caller asked for are sent.
 import {
   type Call,
@@ -13,6 +13,7 @@ import {
   DEFAULT_NUM_RESULTS,
   DEFAULT_TIMEOUT_MS,
   formatResults,
+  localInstance,
   parseInstance,
   parseSearchProfile,
   resolveInstance,
@@ -22,7 +23,8 @@ import {
   search,
 } from "../lib/searxng.ts";
 
-const NO_INSTANCE = "no instance to query; set QSM_SEARXNG_INSTANCE or pass --instance <url>";
+const NO_INSTANCE =
+  "no instance to query; configure qsm-searxng/config.json, set QSM_SEARXNG_INSTANCE or pass --instance <url>";
 
 /** A count or a timeout: a positive whole number, or the default. */
 function positive(value: number | undefined, fallback: number, flag: string): number {
@@ -90,7 +92,9 @@ function message(call: Call, results: readonly SearchResult[]): string {
 }
 
 async function searchVerb(call: Call): Promise<Outcome> {
-  const raw = resolveInstance(optionalString(call, "instance"), process.env.QSM_SEARXNG_INSTANCE);
+  const raw =
+    resolveInstance(optionalString(call, "instance"), process.env.QSM_SEARXNG_INSTANCE) ??
+    localInstance(process.env);
   if (raw === undefined) {
     return fail("missing", NO_INSTANCE);
   }
