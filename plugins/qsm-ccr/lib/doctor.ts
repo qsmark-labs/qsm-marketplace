@@ -2,6 +2,7 @@
 import { accessSync, constants } from "node:fs";
 import { basename } from "node:path";
 import {
+  binPath,
   checkTools,
   fail,
   messageOf,
@@ -175,10 +176,13 @@ function teammateCommandRow(s: Json, env: Env): Row {
   const path = env[TEAMMATE_COMMAND] ?? teammateCommandOf(s);
   const rerun = `set ${TEAMMATE_COMMAND} to the qsm-ccr executable for this session`;
   if (path === undefined) {
-    return {
-      code: "missing",
-      detail: `no ${TEAMMATE_COMMAND} in the session or user settings; ${rerun}`,
-    };
+    const binary = binPath("qsm-ccr", env);
+    return binary === null
+      ? { code: "missing", detail: `qsm-ccr is not on PATH; ${rerun}` }
+      : {
+          code: "ok",
+          detail: `${binary}; lead sets it, for a Claude lead ${rerun}`,
+        };
   }
   try {
     accessSync(path, constants.X_OK);

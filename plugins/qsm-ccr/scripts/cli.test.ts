@@ -221,6 +221,13 @@ describe("doctor on user settings", () => {
     expect(doctorJson({ ...w, env }).row("teammate command")?.code).toBe("ok");
     expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({});
   });
+
+  test("doctor outside a session checks the launcher without requiring the session variable", () => {
+    const w = makeWorld({ settings: {} });
+    const row = doctorJson(w).row("teammate command");
+    expect(row?.code).toBe("ok");
+    expect(row?.detail).toContain("for a Claude lead");
+  });
 });
 
 describe("doctor on CCR config", () => {

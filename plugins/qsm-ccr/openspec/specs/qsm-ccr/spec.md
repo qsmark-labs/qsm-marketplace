@@ -202,6 +202,9 @@ Activation SHALL NOT write the teammate command to user settings. A lead receive
 `CLAUDE_CODE_TEAMMATE_COMMAND`, the absolute path of the `qsm-ccr` binary, through its process
 environment. The README names the one-line launch
 `CLAUDE_CODE_TEAMMATE_COMMAND="$(command -v qsm-ccr)" claude`.
+When no teammate command is set, doctor SHALL check that `qsm-ccr` is on PATH and explain that
+`qsm-ccr lead` supplies the command and an ordinary Claude lead needs it in its environment. It
+SHALL NOT report a healthy installation as missing merely because doctor runs outside a session.
 
 #### Scenario: Verification that the environment value reaches the teammate spawn
 
