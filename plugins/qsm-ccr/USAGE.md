@@ -26,8 +26,8 @@ qsm-ccr doctor
 - Exit codes: `ok` 0, `failed` 1, `usage` 2, `worse` 3 (a token expires within 24 hours), `missing`
   4, `blocked` 5.
 - State is `$XDG_STATE_HOME/qsm-ccr` (default `~/.local/state/qsm-ccr`): `homes/` (isolated session
-  homes retained with their transcripts), `launch.log` (one line per launch), `sync.log`,
-  `sync.out`, `ccr.out`, `bootstrap.out`, `router.lock`, `custom-router.js`.
+  homes), `projects/` (shared routed session history), `launch.log` (one line per launch),
+  `sync.log`, `sync.out`, `ccr.out`, `bootstrap.out`, `router.lock`, `custom-router.js`.
 - The session-start hook (function hook in `hooks/register.tsx`) calls
   `$.ccr.sync({ ifStale: true, detach: true })`. A failure is a log line and a toast that reads
   `qsm-ccr ERROR: session.start: <reason>`; the session goes on.

@@ -176,6 +176,9 @@ A teammate SHALL share its lead's team and task directories, so all members see 
 A Claude teammate of a routed lead SHALL start from the original settings, not a model the routed
 lead saved in its isolated settings. A home that cannot
 be prepared SHALL stop the launch with the cause. Session data SHALL NOT be deleted automatically.
+Isolated homes SHALL share a CCR-owned project session directory, so a later `qsm-ccr lead --
+--resume` can find sessions started by an earlier routed lead without changing the original Claude
+home's settings or project sessions.
 `qsm-ccr doctor` SHALL answer `failed` when user settings `model` names a router model: a
 `<provider>,<slug>` pair, a gateway id (`anthropic/claude-ccr-...`), or a catalog slug. Doctor
 SHALL name the value and SHALL NOT rewrite it.
@@ -190,6 +193,11 @@ SHALL name the value and SHALL NOT rewrite it.
 
 - **WHEN** a lead's person picks another model with `/model` and exits
 - **THEN** user settings `model` is byte-identical to before
+
+#### Scenario: Resume a routed session
+
+- **WHEN** a routed lead exits and another routed lead starts with `--resume` for that session
+- **THEN** Claude Code finds the prior session and keeps using the second lead's settings copy
 
 #### Scenario: A router model in user settings is a doctor failure
 
@@ -460,6 +468,12 @@ copies agree; the catalog's default model in the allowlist; the last `sync.log` 
 the daemon runs. A daemon that is not running SHALL be ok, because ensure starts it on demand.
 Each check SHALL run on its own: a check that throws (a file that does not parse) is its own
 `failed` row naming the file, and every other check still runs.
+
+#### Scenario: A gateway table cannot be read
+
+- **WHEN** the CCR database has a config but its gateway key table is missing or unreadable
+- **THEN** doctor reports the failed gateway check and still reports the other checks; it never
+  reports that router values were fully checked when the key could not be read
 
 #### Scenario: Drift is missing with the name
 

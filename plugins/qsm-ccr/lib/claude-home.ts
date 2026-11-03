@@ -29,6 +29,9 @@ export function isolatedHome(env: Env, places: Places): Record<string, string> {
   const root = join(places.stateDir, "homes");
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const dir = mkdtempSync(join(root, "session-"));
+  const projects = join(places.stateDir, "projects");
+  mkdirSync(projects, { recursive: true, mode: 0o700 });
+  symlinkSync(projects, join(dir, "projects"));
   for (const [from, name] of [
     [join(source, "settings.json"), "settings.json"],
     [sourceJson, ".claude.json"],

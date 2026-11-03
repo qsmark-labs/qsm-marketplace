@@ -217,6 +217,7 @@ function settingsChecks(
   settings: Outcome<UserSettings>,
   broken: Broken,
   env: Env,
+  gatewayCheck: Check,
 ): Promise<Check>[] {
   const read = settings.data;
   if (read === undefined) {
@@ -231,7 +232,14 @@ function settingsChecks(
   return [
     // doctor reports damage as failed: the file is wrong; only a start refuses it
     one("router values in user settings", () =>
-      verdictRow(damage === undefined ? undefined : { ...damage, code: "failed" }, "none"),
+      verdictRow(
+        damage === undefined
+          ? gatewayCheck.code === "ok"
+            ? undefined
+            : { code: "failed", detail: "not fully checked: CCR gateway could not be read" }
+          : { ...damage, code: "failed" },
+        "none",
+      ),
     ),
     one("user settings model", () => {
       const model = routerModel(read.json, routerSlugs(places.codexHome, config));
@@ -268,20 +276,32 @@ export async function doctor(env: Env): Promise<Outcome<{ readonly checks: reado
   let config = null as Json | null;
   const configRow = await one("CCR config", () => {
     config = readCcrConfig(places.ccrDb);
-    return verdictRow(
-      guards(places, config, settings).find((v) => v.name === "CCR config"),
-      places.ccrDb,
-    );
+    return config === null
+      ? {
+          code: "missing",
+          detail: `no CCR config at ${places.ccrDb}; run qsm-setup activate qsm-ccr`,
+        }
+      : { code: "ok", detail: places.ccrDb };
   });
-  const violations = guards(places, config, settings);
+  let gateway: Gateway | undefined;
+  const gatewayCheck = await one("CCR gateway", () => {
+    try {
+      gateway = config === null ? undefined : gatewayIn(places.ccrDb);
+    } catch (error) {
+      return { code: "failed", detail: `${places.ccrDb}: ${messageOf(error)}` };
+    }
+    return gateway === undefined && config !== null
+      ? { code: "missing", detail: `no usable gateway key or address in ${places.ccrDb}` }
+      : { code: "ok", detail: gateway === undefined ? "no CCR config" : "address and key found" };
+  });
+  const violations = guards(places, config, settings, gateway);
   const broken: Broken = (name) => violations.find((v) => v.name === name);
-  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   const tools = await Promise.all(toolChecks(env));
   const rest = await Promise.all([
     ...(config === null ? [] : ccrChecks(places, config, broken)),
-    ...settingsChecks(places, config, settings, broken, env),
+    ...settingsChecks(places, config, settings, broken, env, gatewayCheck),
     ...codexChecks(places, config),
     one("daemon", () => daemonRow(places, gateway)),
   ]);
-  return verdict([...tools, configRow, ...rest]);
+  return verdict([...tools, configRow, gatewayCheck, ...rest]);
 }

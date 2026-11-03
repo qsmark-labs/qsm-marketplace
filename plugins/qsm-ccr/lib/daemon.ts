@@ -345,6 +345,7 @@ export function guards(
   places: Places,
   config: Json | null,
   settings: Outcome<UserSettings>,
+  gateway: Gateway | undefined,
 ): Violation[] {
   const broken: Violation[] = [];
   if (config === null) {
@@ -369,7 +370,6 @@ export function guards(
       detail: settings.message ?? "",
     });
   }
-  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   const damage = settings.data === undefined ? [] : routerDamage(settings.data.json, gateway);
   if (damage.length > 0) {
     broken.push({
@@ -388,11 +388,11 @@ interface Admitted {
 
 /** The guards, refusing on the first broken one, and the address a start listens on. */
 function admit(places: Places, config: Json | null): Outcome<Admitted> {
-  const [broken] = guards(places, config, readUserSettings(places.userSettings));
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
+  const [broken] = guards(places, config, readUserSettings(places.userSettings), gateway);
   if (broken !== undefined) {
     return fail(broken.code, broken.detail);
   }
-  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   if (config === null || gateway === undefined) {
     return fail(
       "missing",

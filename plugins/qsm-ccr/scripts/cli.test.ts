@@ -231,6 +231,18 @@ describe("doctor on user settings", () => {
 });
 
 describe("doctor on CCR config", () => {
+  test("a missing gateway table is reported without suppressing the other checks", () => {
+    const w = makeWorld();
+    const db = new Database(w.ccrDb);
+    db.run("DROP TABLE api_keys");
+    db.close();
+    const doctor = doctorJson(w);
+    expect(doctor.row("CCR gateway")?.code).toBe("failed");
+    expect(doctor.row("CCR gateway")?.detail).toContain("no such table");
+    expect(doctor.row("claude on PATH")?.code).toBe("ok");
+    expect(doctor.row("router values in user settings")?.detail).toContain("not fully checked");
+  });
+
   test("drift is missing naming the model and sync, and every other check still runs", () => {
     const w = makeWorld({ ccr: ccrAllowing(freePort(), ["gpt-6.1"]) });
     const doctor = doctorJson(w);
