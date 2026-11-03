@@ -45,12 +45,22 @@ qsm-ccr sync                       # make CCR's tokens and model list match code
 qsm-ccr doctor                     # every seam, one verdict, nothing started
 ```
 
-A teammate is chosen by its name: `gpt-6.1-sol-reviewer` runs on the slug the name begins with,
+A Claude lead started with `CLAUDE_CODE_TEAMMATE_COMMAND="$(command -v qsm-ccr)" claude` routes
+its teammates by name without changing user settings. A teammate is chosen by its name:
+`gpt-6.1-sol-reviewer` runs on the slug the name begins with,
 `gpt-reviewer` on the catalog's default. Take the slugs from `qsm-ccr doctor`. Every verb takes
 `--json`. The full reference is [USAGE.md](USAGE.md).
 
+Routed sessions use a private copy of the current Claude settings. They share login, installed
+plugins, skills and team communication with the originating Claude home. Session homes and their
+transcripts stay under `$XDG_STATE_HOME/qsm-ccr/homes` (default `~/.local/state/qsm-ccr/homes`);
+qsm-ccr does not delete them. A model selected in a routed session is saved only in its copy.
+
 ## Caveats
 
+- Anthropic does not support routing Claude Code to non-Claude models through a gateway. See
+  [the gateway documentation](https://code.claude.com/docs/en/llm-gateway); compatibility can
+  change.
 - The auto permission classifier makes a separate model call per decision through whatever the
   session routes to: about 40k input tokens, measured once.
 - One refresh chain, two holders end in `refresh_token_reused`: never run a second CCR on the same
@@ -59,9 +69,7 @@ A teammate is chosen by its name: `gpt-6.1-sol-reviewer` runs on the slug the na
   never removes them.
 - Activation edits `~/.codex/config.toml` only to remove what CCR wrote there, after copying it to
   `config.toml.qsm-ccr.bak`.
-- To undo activation, remove `env.CLAUDE_CODE_TEAMMATE_COMMAND` from `~/.claude/settings.json` and
-  re-enable the CCR profiles in CCR's own UI.
-- If a plain `claude` lead does not pass the settings value on to its teammates, launch leads with
-  `CLAUDE_CODE_TEAMMATE_COMMAND="$(command -v qsm-ccr)" claude`.
+- Activation does not add a teammate command to Claude settings. Re-enable CCR profiles in its own
+  UI if the profile guard is no longer wanted.
 - OpenRouter and OpenCode Zen are not shipped: each is one more provider-prefix row once the place
   of its API key is decided.

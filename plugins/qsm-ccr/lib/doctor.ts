@@ -12,7 +12,7 @@ import {
 } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
 import { readCatalog } from "./catalog.ts";
-import { claudeTraffic, gatewayOf, modelsFrom, oauthCopies, readCcrConfig } from "./ccr-config.ts";
+import { claudeTraffic, gatewayIn, modelsFrom, oauthCopies, readCcrConfig } from "./ccr-config.ts";
 import { authPath, catalogOverrideIn, configTomlPath, readCodexTokens } from "./codex.ts";
 import { daemonState, foreign, guards } from "./daemon.ts";
 import type { Json } from "./parse.ts";
@@ -171,13 +171,13 @@ async function daemonRow(places: Places, gateway: Gateway | undefined): Promise<
   };
 }
 
-function teammateCommandRow(s: Json): Row {
-  const path = teammateCommandOf(s);
-  const rerun = "run qsm-setup activate qsm-ccr";
+function teammateCommandRow(s: Json, env: Env): Row {
+  const path = env[TEAMMATE_COMMAND] ?? teammateCommandOf(s);
+  const rerun = `set ${TEAMMATE_COMMAND} to the qsm-ccr executable for this session`;
   if (path === undefined) {
     return {
       code: "missing",
-      detail: `user settings env has no ${TEAMMATE_COMMAND}; ${rerun}`,
+      detail: `no ${TEAMMATE_COMMAND} in the session or user settings; ${rerun}`,
     };
   }
   try {
@@ -212,6 +212,7 @@ function settingsChecks(
   config: Json | null,
   settings: Outcome<UserSettings>,
   broken: Broken,
+  env: Env,
 ): Promise<Check>[] {
   const read = settings.data;
   if (read === undefined) {
@@ -240,7 +241,7 @@ function settingsChecks(
         "not a router model",
       );
     }),
-    one("teammate command", () => teammateCommandRow(read.json)),
+    one("teammate command", () => teammateCommandRow(read.json, env)),
   ];
 }
 
@@ -270,11 +271,11 @@ export async function doctor(env: Env): Promise<Outcome<{ readonly checks: reado
   });
   const violations = guards(places, config, settings);
   const broken: Broken = (name) => violations.find((v) => v.name === name);
-  const gateway = config === null ? undefined : gatewayOf(config);
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   const tools = await Promise.all(toolChecks(env));
   const rest = await Promise.all([
     ...(config === null ? [] : ccrChecks(places, config, broken)),
-    ...settingsChecks(places, config, settings, broken),
+    ...settingsChecks(places, config, settings, broken, env),
     ...codexChecks(places, config),
     one("daemon", () => daemonRow(places, gateway)),
   ]);

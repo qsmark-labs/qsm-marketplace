@@ -11,8 +11,8 @@ qsm-ccr doctor
 
 - `lead [slug] [-- claude args]` ensures the router, then runs an interactive Claude Code on the
   slug with `CLAUDE_CODE_TEAMMATE_COMMAND` naming this binary, so its teammates route by name. A
-  Claude model is refused. It never writes user settings; a `model` change it finds after the exit
-  is `failed`, named, never undone.
+  Claude model is refused. The lead and routed teammates use private Claude homes with copies of
+  the original settings. A model picked there does not change the original settings.
 - `sync [--if-stale] [--detach]` refreshes codex's catalog, copies codex's tokens into CCR, sets the
   allowlist to every listed slug, and reloads the daemon only when a field changed. `--if-stale`
   does nothing when the last good sync is under 24 hours old; `--detach` starts the sync in a
@@ -25,8 +25,9 @@ qsm-ccr doctor
 - `--json` on a verb prints one envelope: `{ code, exit, reason, message, warnings, data }`.
 - Exit codes: `ok` 0, `failed` 1, `usage` 2, `worse` 3 (a token expires within 24 hours), `missing`
   4, `blocked` 5.
-- State is `$XDG_STATE_HOME/qsm-ccr` (default `~/.local/state/qsm-ccr`): `launch.log` (one line per
-  launch), `sync.log`, `sync.out`, `ccr.out`, `bootstrap.out`, `router.lock`, `custom-router.js`.
+- State is `$XDG_STATE_HOME/qsm-ccr` (default `~/.local/state/qsm-ccr`): `homes/` (isolated session
+  homes retained with their transcripts), `launch.log` (one line per launch), `sync.log`,
+  `sync.out`, `ccr.out`, `bootstrap.out`, `router.lock`, `custom-router.js`.
 - The session-start hook (function hook in `hooks/register.tsx`) calls
   `$.ccr.sync({ ifStale: true, detach: true })`. A failure is a log line and a toast that reads
   `qsm-ccr ERROR: session.start: <reason>`; the session goes on.

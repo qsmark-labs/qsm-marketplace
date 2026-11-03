@@ -32,7 +32,7 @@ export interface Places {
   readonly home: string;
   /** settings.json in Claude Code's home */
   readonly userSettings: string;
-  /** CCR_INTERNAL_HOME_DIR, else ~/.claude-code-router */
+  /** .claude-code-router in CCR_INTERNAL_HOME_DIR, else HOME */
   readonly ccrHome: string;
   readonly ccrDb: string;
   /** CODEX_HOME, else ~/.codex */
@@ -43,7 +43,7 @@ export interface Places {
 
 export function placesOf(env: Env): Places {
   const h = home(env);
-  const ccrHome = env.CCR_INTERNAL_HOME_DIR ?? join(h, ".claude-code-router");
+  const ccrHome = join(env.CCR_INTERNAL_HOME_DIR ?? h, ".claude-code-router");
   return {
     home: h,
     userSettings: claudeSettingsPath(env),

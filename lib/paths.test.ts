@@ -1,7 +1,7 @@
 // An environment without HOME is refused, never filled in with the real home: a test that builds an
 // empty environment would otherwise write qsm's files into the machine it runs on.
 import { describe, expect, test } from "bun:test";
-import { binDir, home } from "./paths.ts";
+import { binDir, home, withClaudeDirAt } from "./paths.ts";
 import { QsmError } from "./qsm-error.ts";
 
 describe("home", () => {
@@ -11,4 +11,13 @@ describe("home", () => {
       expect(() => binDir(env)).toThrow("HOME is not set");
     }
   });
+});
+
+test("a child Claude home does not change the parent environment", () => {
+  const env = { HOME: "/home/example", CLAUDE_CONFIG_DIR: "/home/example/.claude", OTHER: "kept" };
+  expect(withClaudeDirAt(env, "/state/session")).toEqual({
+    ...env,
+    CLAUDE_CONFIG_DIR: "/state/session",
+  });
+  expect(env.CLAUDE_CONFIG_DIR).toBe("/home/example/.claude");
 });

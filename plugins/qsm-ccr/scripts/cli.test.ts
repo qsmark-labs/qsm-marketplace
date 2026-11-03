@@ -212,7 +212,14 @@ describe("doctor on user settings", () => {
     const row = doctorJson(w).row("teammate command");
     expect(row?.code).toBe("missing");
     expect(row?.detail).toContain("/nowhere/qsm-ccr");
-    expect(row?.detail).toContain("qsm-setup activate qsm-ccr");
+    expect(row?.detail).toContain("for this session");
+  });
+
+  test("the teammate command can be supplied only in the session environment", () => {
+    const w = makeWorld({ settings: {} });
+    const env = { ...w.env, CLAUDE_CODE_TEAMMATE_COMMAND: join(w.bin, "qsm-ccr") };
+    expect(doctorJson({ ...w, env }).row("teammate command")?.code).toBe("ok");
+    expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({});
   });
 });
 
@@ -807,25 +814,15 @@ describe("lead", () => {
     expect(launch?.argv).toEqual(["--resume"]);
   });
 
-  test("user settings that no longer parse after the lead are failed naming the file", () => {
-    const w = makeWorld({ settings: { model: "opus" } });
-    setMode(w, "claude-breaks-settings");
-    const envelope = envelopeOf(runCcr(w, ["lead", "--json"]).stdout);
-    expect(envelope.code).toBe("failed");
-    expect(envelope.message).toContain(w.settingsPath);
-    expect(readFileSync(w.settingsPath, "utf8")).toBe("{ broken");
-  });
-
-  test("a lead that changed user settings model is failed naming the value, and the file is not rewritten", () => {
+  test("a lead's model pick changes only the copied settings", () => {
     const w = makeWorld({ settings: { model: "opus" } });
     setMode(w, "claude-writes-model");
     const envelope = envelopeOf(runCcr(w, ["lead", "--json"]).stdout);
-    expect(envelope.code).toBe("failed");
-    expect(envelope.message).toContain("anthropic/claude-ccr-abc123");
-    // another session's /model lands here too: the message states the fact, not who did it
-    expect(envelope.message).toContain("model changed while the lead ran");
-    expect(envelope.message).not.toContain("the lead changed");
-    expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toMatchObject({
+    expect(envelope.code).toBe("ok");
+    expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({ model: "opus" });
+    const dir = claudeLaunches(w)[0]?.env.CLAUDE_CONFIG_DIR;
+    expect(dir).toBeDefined();
+    expect(JSON.parse(readFileSync(join(dir ?? "", "settings.json"), "utf8"))).toMatchObject({
       model: "anthropic/claude-ccr-abc123",
     });
   });

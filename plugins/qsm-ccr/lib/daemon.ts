@@ -18,7 +18,7 @@ import {
   ok,
 } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
-import { claudeSettingsFiles, gatewayOf, globalProfiles, readCcrConfig } from "./ccr-config.ts";
+import { claudeSettingsFiles, gatewayIn, globalProfiles, readCcrConfig } from "./ccr-config.ts";
 import { CODEX_TIMEOUT_MS } from "./codex.ts";
 import { type Json, parseJson } from "./parse.ts";
 import type { Places } from "./places.ts";
@@ -369,7 +369,7 @@ export function guards(
       detail: settings.message ?? "",
     });
   }
-  const gateway = config === null ? undefined : gatewayOf(config);
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   const damage = settings.data === undefined ? [] : routerDamage(settings.data.json, gateway);
   if (damage.length > 0) {
     broken.push({
@@ -392,9 +392,12 @@ function admit(places: Places, config: Json | null): Outcome<Admitted> {
   if (broken !== undefined) {
     return fail(broken.code, broken.detail);
   }
-  const gateway = config === null ? undefined : gatewayOf(config);
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   if (config === null || gateway === undefined) {
-    return fail("missing", `CCR config at ${places.ccrDb} names no PORT and APIKEY`);
+    return fail(
+      "missing",
+      `CCR config at ${places.ccrDb} has no usable gateway address and local-gateway key`,
+    );
   }
   return ok({ gateway, config });
 }
@@ -451,7 +454,7 @@ async function startProven(
  * undefined when the port does not answer as CCR's daemon. */
 export async function runningDaemon(places: Places): Promise<Outcome<Gateway> | undefined> {
   const config = readCcrConfig(places.ccrDb);
-  const gateway = config === null ? undefined : gatewayOf(config);
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   if (gateway === undefined || (await daemonState(places.ccrHome, gateway.address)) !== "ccr") {
     return undefined;
   }
