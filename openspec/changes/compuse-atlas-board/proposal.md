@@ -10,6 +10,9 @@ machine, and nothing leaves the machine.
 
 - A scenario's `shot NAME @Type` names the surface a shot is about: the item type in the shot's
   item tree whose rectangle the board crops to. A type the tree does not hold fails the run.
+- A shot's `~@PATH` masks an item that animates by design: the shot waits for the rest of the
+  screen and the comparison skips it (added after the owner chose a mask over stopping the
+  network epic's connecting pulse, 2026-11-04).
 - A scenario's `todo @Type STATE` names a state the inventory knows and no journey shoots yet.
 - Every `drive atlas run` writes `board.html` in the run: a pan and zoom canvas with one section
   per surface and one frame per state, each frame the shot cropped to its surface; a click opens
