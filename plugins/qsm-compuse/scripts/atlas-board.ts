@@ -6,7 +6,7 @@
 //   serve SCENARIO_DIR    the scenario's runs on 127.0.0.1, the latest board at /, and comments
 //   comments SCENARIO_DIR the open comments, one per line: shot<TAB>x,y<TAB>text
 //   surface TREE PATH     exits 0 when the item tree holds the surface PATH names (drive's check)
-//   mask TREE PATH...     takes the items the PATHs name out of TREE and prints their rects
+//   mask TREE SCALE PATH... takes the items the PATHs name out of TREE, prints their device rects
 //
 // The board never measures: a crop comes from the shot's item tree, a change from the run's
 // diff-<PREV>/diff.json, a failure from the check's lines. Comments are the one state it owns,
@@ -32,7 +32,7 @@ type Frame = {
   checks: string[];
   checkError: boolean;
   failing: Rect[];
-  // Items that animate by design (logical px): the run neither waits for nor compares them.
+  // Items that animate by design (device px): the run neither waits for nor compares them.
   masks: Rect[];
   changed: { areas: Rect[]; changes: Change[] } | null;
 };
@@ -77,13 +77,18 @@ function findType(node: unknown, type: string, nth: number): Record<string, unkn
   const walk = (at: unknown): Record<string, unknown> | undefined => {
     if (!isRecord(at)) return undefined;
     if (at.type === type && num(at.w) > 0 && num(at.h) > 0 && left-- === 0) return at;
-    return Array.isArray(at.children) ? at.children.map(walk).find(Boolean) : undefined;
+    if (!Array.isArray(at.children)) return undefined;
+    for (const child of at.children) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return undefined;
   };
   return walk(node);
 }
 
 // A path of types, each with an optional index: "PanelSurface/FocusScope" is the first
-// FocusScope inside the first PanelSurface, "RailEntry[4]/SvgIcon" the glyph of the fifth cell.
+// FocusScope inside the first PanelSurface, "RailEntry[5]/SvgIcon" the glyph of the sixth cell.
 function findNode(tree: unknown, path: string): Record<string, unknown> | undefined {
   const node = path.split("/").reduce<unknown>((at, segment) => {
     const [, type = "", nth = "0"] = /^(\w+)(?:\[(\d+)\])?$/u.exec(segment) ?? [];
@@ -105,8 +110,10 @@ function findSurface(tree: unknown, path: string): Rect | undefined {
 }
 
 // Takes the masked items out of a shot's tree, so the consumer's checks and the tree diff never
-// read a value the animation moves, and prints their rects as x,y,w,h;... for shots.tsv.
-function mask(path: string, paths: string[]): void {
+// read a value the animation moves, and prints their rects as x,y,w,h;... in device px (SCALE per
+// logical px, grown to whole pixels) for shots.tsv, the units the captures are compared in.
+function mask(path: string, scale: number, paths: string[]): void {
+  if (!(scale > 0)) fail(`mask needs the screen's scale, got ${scale}`);
   const tree = readJson(path);
   if (!isRecord(tree)) return fail(`${path} is not an item tree`);
   const nodes = paths.map(
@@ -120,7 +127,11 @@ function mask(path: string, paths: string[]): void {
   };
   prune(tree.tree);
   writeAtomic(path, JSON.stringify(tree));
-  const rects = nodes.map(rectOf).map((r) => `${r.x},${r.y},${r.w},${r.h}`);
+  const rects = nodes.map(rectOf).map((r) => {
+    const x = Math.floor(r.x * scale);
+    const y = Math.floor(r.y * scale);
+    return `${x},${y},${Math.ceil((r.x + r.w) * scale) - x},${Math.ceil((r.y + r.h) * scale) - y}`;
+  });
   process.stdout.write(`${rects.join(";")}\n`);
 }
 
@@ -476,7 +487,7 @@ function serve(scenarioDir: string): void {
 const [verb = "", target = "", prev = "", ...rest] = process.argv.slice(2);
 if (target === "")
   fail(
-    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH | mask TREE PATH...",
+    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH | mask TREE SCALE PATH...",
   );
 const where = resolve(target);
 if (verb === "build") build(where, prev);
@@ -487,5 +498,5 @@ else if (verb === "comments")
 else if (verb === "surface") {
   const tree = readJson(where);
   process.exitCode = isRecord(tree) && findSurface(tree.tree, prev) ? 0 : 1;
-} else if (verb === "mask") mask(where, [prev, ...rest]);
+} else if (verb === "mask") mask(where, Number(prev), rest);
 else fail(`unknown verb ${verb} (build, serve, comments, surface, mask)`);

@@ -27,7 +27,7 @@ not hold SHALL stop the run naming the shot.
 
 #### Scenario: A pulsing glyph neither blocks the shot nor reads as a change
 
-- **WHEN** a journey shoots `shot rail-connecting @Rail ~@RailEntry[4]/SvgIcon` while that glyph
+- **WHEN** a journey shoots `shot rail-connecting @Rail ~@RailEntry[5]/SvgIcon` while that glyph
   pulses, twice on unchanged code
 - **THEN** both shots are still, the second run shows no changed frame, and the frame carries
   `animates` with the glyph's rect drawn in focus

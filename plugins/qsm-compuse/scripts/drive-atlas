@@ -86,17 +86,16 @@ atlas_wait_shell() {
   die "the shell in slot '$1' never answered (see $(slot_dir "$1")/qs.log)"
 }
 
-# Shoots OUT once two captures 150 ms apart show no changed area outside MASKS (read against
-# TREE's width), so a shot never lands mid-animation; the last capture is the shot. A screen that
-# never stills (a looping animation) is shot after 5 s and marked moving.
+# Shoots OUT once two captures 150 ms apart show no changed area outside MASKS, so a shot never
+# lands mid-animation; the last capture is the shot. A screen that never stills (a looping
+# animation) is shot after 5 s and marked moving.
 atlas_still() {
-  local out="$1" masks="${2:-}" a="$1.still.png" scale=1 i
+  local out="$1" masks="${2:-}" a="$1.still.png" i
   grim -o "$SLOT_OUTPUT" "$a" || die "grim failed in the atlas slot"
-  [[ -z "$masks" ]] || scale="$(atlas_scale "$a" "$3")"
   for ((i = 0; i < 33; i++)); do
     sleep 0.15
     grim -o "$SLOT_OUTPUT" "$out" || die "grim failed in the atlas slot"
-    if [[ -z "$(atlas_areas "$a" "$out" "$masks" "$scale")" ]]; then
+    if [[ -z "$(atlas_areas "$a" "$out" "$masks")" ]]; then
       rm -f "$a"
       echo still
       return
@@ -143,7 +142,15 @@ atlas_check() {
 }
 
 # A surface or mask path: types (letters, digits, underscore), each with an optional [n], joined by /.
-ATLAS_PATH='^[A-Za-z0-9_]+(\[[0-9]+\])?(/[A-Za-z0-9_]+(\[[0-9]+\])?)*$'
+export ATLAS_PATH='^[A-Za-z0-9_]+(\[[0-9]+\])?(/[A-Za-z0-9_]+(\[[0-9]+\])?)*$'
+
+# Takes a shot's masked items out of its TREE and prints their rects in device px (the slot's scale).
+atlas_mask() {
+  local name="$1" tree="$2"
+  shift 2
+  bun "$MOTION_DIR/atlas-board.ts" mask "$tree" "$SLOT_SCALE" "$@" ||
+    die "shot $name masks $*, and its item tree holds no such item with a size"
+}
 
 # One journey in a fresh desktop slot; prints
 # "journey<TAB>shot<TAB>step<TAB>still<TAB>fails<TAB>surface<TAB>masks" per shot.
@@ -166,23 +173,19 @@ atlas_journey() {
       name="$journey--$shot" surface="" masks=() rects=""
       [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "shot names are letters, digits, dot, dash and underscore: '$name'"
       for word in "${words[@]}"; do
+        [[ "${word#*@}" =~ $ATLAS_PATH ]] ||
+          die "shot $name: '$word' names no item path (letters, digits, underscore, [n]; A/B for a path)"
         case "$word" in
           @*) [[ -z "$surface" ]] || die "shot $name names two surfaces"; surface="${word#@}" ;;
           ~@*) masks+=("${word#~@}") ;;
           *) die "shot $name: '$word' is neither @SURFACE nor ~@MASK" ;;
         esac
       done
-      for word in "$surface" "${masks[@]}"; do
-        [[ -z "$word" || "$word" =~ $ATLAS_PATH ]] ||
-          die "shot $name: '$word' is no item path (letters, digits, underscore, [n]; A/B for a path)"
-      done
-      [[ "$rest" != *"@ "* && "$rest" != *"@" ]] || die "shot $name: a bare @ names no item"
       tree="$run/trees/$name.json"
       # A mask is found before the shot waits, so the wait ignores it from the first capture.
       if ((${#masks[@]})); then
         slot_tree "$slot" >"$tree"
-        rects="$(bun "$MOTION_DIR/atlas-board.ts" mask "$tree" "${masks[@]}")" ||
-          die "shot $name masks ${masks[*]}, and its item tree holds no such item with a size"
+        rects="$(atlas_mask "$name" "$tree" "${masks[@]}")"
       fi
       # shot-now catches a state that times out (an armed button), so it waits for nothing.
       if [[ "$line" == shot-now\ * ]]; then
@@ -192,10 +195,7 @@ atlas_journey() {
         still="$(atlas_still "$run/shots/$name.png" "$rects" "$tree")" || exit 1
       fi
       slot_tree "$slot" >"$tree"
-      if ((${#masks[@]})); then
-        rects="$(bun "$MOTION_DIR/atlas-board.ts" mask "$tree" "${masks[@]}")" ||
-          die "shot $name masks ${masks[*]}, and its item tree holds no such item with a size"
-      fi
+      ((${#masks[@]} == 0)) || rects="$(atlas_mask "$name" "$tree" "${masks[@]}")"
       # The board crops the shot to this item; a renamed component must stop the run, not uncrop it.
       [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$run/trees/$name.json" "$surface" >/dev/null ||
         die "shot $name names @$surface, and its item tree holds no $surface with a size"
@@ -226,7 +226,7 @@ atlas_run() {
   check="$(atlas_path "$check")"
   [[ -n "$desktop" ]] || die "the scenario names no desktop"
   [[ -n "$(atlas_journeys "$scenario")" ]] || die "the scenario has no journey"
-  opt="$(awk '$1 == "todo" && !($2 ~ /^@[A-Za-z0-9_]+(\[[0-9]+\])?(\/[A-Za-z0-9_]+(\[[0-9]+\])?)*$/ && NF >= 3) { print NR ": " $0; exit }' "$scenario")"
+  opt="$(awk '$1 == "todo" && !(substr($2, 1, 1) == "@" && substr($2, 2) ~ ENVIRON["ATLAS_PATH"] && NF >= 3) { print NR ": " $0; exit }' "$scenario")"
   [[ -z "$opt" ]] || die "a todo line is 'todo @Type STATE': line $opt"
   # A pause that sleep refuses would be no pause at all, and the race it covers would pass.
   for opt in settle ready; do
@@ -263,23 +263,17 @@ atlas_run() {
 atlas_runs() { find "$1" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' 2>/dev/null | sort; }
 
 # The changed areas of one shot: "x y w h" per connected region over the noise floor. An area
-# inside a mask (MASKS as x,y,w,h;... in logical px, SCALE device px per logical px, 2 px slack)
-# is the animation it masks, not a change.
+# inside a mask (MASKS as x,y,w,h;... in device px, 2 px slack) is the animation it masks, not a
+# change.
 atlas_areas() {
   magick "$1" "$2" -compose difference -composite -separate -evaluate-sequence max \
     -threshold "$ATLAS_FUZZ%" -define connected-components:verbose=true \
     -define connected-components:area-threshold="$ATLAS_MIN_AREA" -connected-components 8 null: \
-    | awk -v masks="${3:-}" -v s="${4:-1}" 'BEGIN { n = split(masks, m, ";") }
+    | awk -v masks="${3:-}" 'BEGIN { n = split(masks, m, ";") }
       /gray\(255\)|#FFFFFF|white/ { split($2, g, /[x+]/); x = g[3]; y = g[4]; w = g[1]; h = g[2]
         for (i = 1; i <= n; i++) { split(m[i], r, ",")
-          if (x >= r[1] * s - 2 && y >= r[2] * s - 2 && x + w <= (r[1] + r[3]) * s + 2 && y + h <= (r[2] + r[4]) * s + 2) next }
+          if (x >= r[1] - 2 && y >= r[2] - 2 && x + w <= r[1] + r[3] + 2 && y + h <= r[2] + r[4] + 2) next }
         print x, y, w, h }'
-}
-
-# Device px per logical px of a shot: its width over its tree's.
-atlas_scale() {
-  awk -v d="$(magick identify -format '%w' "$1")" -v l="$(jq -e .width "$2")" 'BEGIN { print d / l }' ||
-    die "no screen width in $2"
 }
 
 # Every measure of a shot's item tree as "key<TAB>value", the key a path of types and same-type
@@ -310,7 +304,7 @@ atlas_measures() {
 # (key, before, after for every measure that changed) and diff.json (the same per shot: areas
 # and changes), which the board reads.
 atlas_compare() {
-  local a="$1" b="$2" out png name masks scale areas draw x y w h width
+  local a="$1" b="$2" out png name masks areas draw x y w h width
   out="$b/diff-$(basename "$a")"
   rm -rf "$out"
   mkdir -p "$out"
@@ -320,9 +314,7 @@ atlas_compare() {
     name="$(basename "$png" .png)"
     [[ -f "$a/shots/$name.png" ]] || continue
     masks="$(awk -F'\t' -v n="$name" '$1 "--" $2 == n { print $7 }' "$b/shots.tsv")"
-    scale=1
-    [[ -z "$masks" ]] || scale="$(atlas_scale "$png" "$b/trees/$name.json")"
-    areas="$(atlas_areas "$a/shots/$name.png" "$png" "$masks" "$scale" | tee "$out/$name.areas" | wc -l)"
+    areas="$(atlas_areas "$a/shots/$name.png" "$png" "$masks" | tee "$out/$name.areas" | wc -l)"
     if ((areas > 0)); then
       width="$(magick identify -format '%w' "$png")"
       draw=""

@@ -11,12 +11,16 @@
 state="${DRIVE_STATE:?the nmcli shim runs only inside a desktop slot}"
 jq -e 'has("nm")' "$state" >/dev/null || exec /usr/bin/nmcli "$@"
 
-# The record is read every half second; a read that lands on a half-written file waits for the next.
+# The state file is looked at every half second and read when it changed; a read that lands on a
+# half-written file waits for the next.
 monitor() {
-  local last now
-  last="$(jq -c .nm "$state")"
+  local last now stamp seen
+  last="$(jq -c .nm "$state")" seen="$(stat -c %y "$state")"
   while sleep 0.5; do
+    stamp="$(stat -c %y "$state")"
+    [[ "$stamp" != "$seen" ]] || continue
     now="$(jq -c .nm "$state")" || continue
+    seen="$stamp"
     [[ "$now" != "$last" ]] || continue
     jq -nr --argjson a "$last" --argjson b "$now" --arg q "'" 'if $a.running != $b.running
       then "NetworkManager is \(if $b.running == false then "stopped" else "running" end)"

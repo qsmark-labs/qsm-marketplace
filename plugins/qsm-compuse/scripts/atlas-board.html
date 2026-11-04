@@ -290,7 +290,7 @@ function overlay(f, img, withPins) {
   for (const r of f.failing)
     svg.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
   for (const m of f.masks)
-    svg.append(s("rect", { x: m.x - 2, y: m.y - 2, width: m.w + 4, height: m.h + 4, fill: "none", stroke: "#7fd1c7", "stroke-width": 2, "stroke-dasharray": "4 3" }));
+    svg.append(s("rect", { x: m.x / f.scale - 2, y: m.y / f.scale - 2, width: m.w / f.scale + 4, height: m.h / f.scale + 4, fill: "none", stroke: "#7fd1c7", "stroke-width": 2, "stroke-dasharray": "4 3" }));
   for (const a of f.changed ? f.changed.areas : [])
     svg.append(s("rect", { x: a.x / f.scale - 3, y: a.y / f.scale - 3, width: a.w / f.scale + 6, height: a.h / f.scale + 6, fill: "none", stroke: "#ff6bd8", "stroke-width": 2 }));
   if (withPins)
