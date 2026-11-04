@@ -44,7 +44,7 @@ code is checked against. This feature adds the one tool that makes BPMN and C4 s
 - **A way to make a model, and a way to simplify it**: a skill `model` takes any piece of work, a
   task up to the whole marketplace, to its views; a reviewer agent reads every picture; a
   simplifier agent, run on request, rewrites the model and keeps only what `paths --compare`
-  proves keeps the behaviour.
+  finds with every signature and the reviewer passes.
 
 ## Not in this feature
 

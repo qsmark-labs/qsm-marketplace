@@ -20,7 +20,8 @@ picture above shows.
   verdict is a note that starts `QA passed`, after which the change is archived on the branch;
   the owner's merge of the feature pull request into main closes the feature. No test-it task, no
   tasks.md, no `accept`.
-- **Feedback** is filed by `qsm-tasks feedback` into its own issue type, never by an issue number.
+- **Feedback** is filed by `qsm-tasks feedback` as a plain issue from the template, never by an
+  issue number.
 - **The readers of `br` go**: the worktree redirect, the task lines of `orient`, the cockpit's
   Tasks card, the lens's task reads; the lens keeps one write, a pen edit as a loose task.
 - **The word feature replaces epic** in every skill, agent, instruction file and README.

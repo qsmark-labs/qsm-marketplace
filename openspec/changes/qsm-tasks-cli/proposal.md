@@ -16,7 +16,8 @@ feature's Status true to its tasks.
   flow, `plan` and `qa` for a feature, `feedback`, `flow`, `doctor`, `setup`. A flag wherever
   GitHub already models the thing.
 - **GitHub's defaults**: a feature is the issue type Feature, a task a sub-issue of type Task, one
-  Status field, Priority P0 to P2, Feedback its own issue type with `area:`, `kind:`, `from:`.
+  Status field, Priority P0 to P2, feedback a plain issue from a template, labelled `feedback`,
+  `area:`, `kind:`, `from:`.
 - **A change binds to its feature** by the label `change:<id>`.
 - **One Action, `.github/workflows/qsm-tasks.yml`**: it derives a feature's Status (the model
   above): In Dev when the split adds the first task; when the last task closes it brings
@@ -39,15 +40,17 @@ Status options In Progress, In Review and Ready For Human Review are renamed In 
 and Human Review; Ready For Test, In Test and Blocked are added; the built-in workflow "Pull
 request linked to issue" sets Agent Review; the field Epic stage and the issue type Epic are
 deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters `-type:Feature
--type:Feedback`. `doctor` reports each leftover with its fix.
+-label:feedback`. `doctor` reports each leftover with its fix.
 
 ## Decisions of the owner
 
 1. **`close` stays** (2026-10-29): it finishes a task no merge closes, such as a decision.
-2. **Feedback is an issue type with labels** (2026-10-30): "i want area, kind, from/who noticed,
-   some basic log of things that lead to that, WITHOUT ANY PERSONAL OR SYSTEM INFO, just abstract
-   stuff, and than the rest. Ideally no suggested fix, but how i want it to behave." The `from:`
-   label on a public repository: "its an AI marketplace, im okay with keeping this there."
+2. **Feedback is a plain issue from a template, with labels** (2026-10-30, the type dropped
+   2026-11-04: what happened, where, how to reproduce it in the abstract, what it should do): "i
+   want area, kind, from/who noticed, some basic log of things that lead to that, WITHOUT ANY
+   PERSONAL OR SYSTEM INFO, just abstract stuff, and than the rest. Ideally no suggested fix, but
+   how i want it to behave." The `from:` label on a public repository: "its an AI marketplace, im
+   okay with keeping this there."
 3. **Priority is a field, P0 to P2** (2026-10-30).
 4. **GitHub's defaults** (2026-10-30): "Cannot we use features instead of epics, than stack tasks
    under them, and than qa test the feature instead of the epic? So we dont overengineer and

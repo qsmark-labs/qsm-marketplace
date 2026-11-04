@@ -55,7 +55,7 @@ its cause and do nothing in its place. It SHALL copy no Status name or definitio
 - **THEN** the agent reports the cause and the fix the verb printed, and does not create the issue
   another way
 
-### Requirement: Work not done now is deferred, and feedback is its own issue type
+### Requirement: Work not done now is deferred, and feedback is a plain issue from the template
 
 Real work that is not for now SHALL be deferred with `unclaim --until`, work that will not be done
 closed with `close --not-planned` and a reason, and the title words searched with `list --search`

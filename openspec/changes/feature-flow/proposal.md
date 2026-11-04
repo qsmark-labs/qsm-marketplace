@@ -63,13 +63,14 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
 | 5 | `agent-identity` | Agents open and review pull requests under their own identity, so the owner's approval is a gate GitHub enforces | `qsm-tasks-cli` | stub |
-| 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | stub |
+| 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
 
 ## Decisions of the owner
 
 1. **Features, no epics** (2026-11-01): "we removed epics fully". A feature is GitHub's default
-   issue type Feature; a task is a sub-issue; feedback is its own type.
+   issue type Feature; a task is a sub-issue; feedback is a plain issue from a
+   template.
 2. **Strict visual models everywhere** (2026-11-01): "vsude strict defined theorem visual models,
    tak aby bylo jasne na vsechny strany really co chceme". BPMN is behaviour, C4 is structure.
 3. **Near the loop** (2026-11-01): "I want to take the problem apart and know about it." Specs

@@ -27,21 +27,23 @@ name the cause. The skills SHALL say "the task tool" and never name a binary.
 
 ### Requirement: Archive runs on the feature branch at step 9 and closes nothing
 
-spec-archive SHALL run on `feature/<n>` when the feature is In Test with no open sub-issue and its
-latest comment from QA starts with `QA passed`, archive the change there, and then the agent SHALL
-open the feature pull request to main. It SHALL close no issue and set no Status: the owner's merge
-of the feature pull request closes the feature.
+Step 9 follows `land.bpmn` of the feature-flow change: once the feature is In Test with no open
+sub-issue and its latest comment from QA starts with `QA passed`, the agent opens the feature pull
+request to main and the owner reads it. spec-archive SHALL run on `feature/<n>` only after the
+owner accepts that pull request, and archive the change there. It SHALL close no issue and set no
+Status: the owner's merge of the feature pull request closes the feature.
 
-#### Scenario: QA passed
+#### Scenario: The owner accepts the feature pull request
 
-- **WHEN** feature 3 is In Test with no open sub-issue and its last QA note starts with `QA passed`
-- **THEN** the change is archived in a commit on `feature/3`, the feature pull request to main is
-  opened, and feature 3 stays open
+- **WHEN** feature 3's pull request to main is open and the owner accepts it
+- **THEN** the change is archived in a commit on `feature/3` and feature 3 stays open until the
+  owner merges
 
-#### Scenario: No verdict yet
+#### Scenario: The owner has not accepted yet
 
-- **WHEN** spec-archive is asked to run on a feature In Test with no `QA passed` note
-- **THEN** it archives nothing and says the feature waits for the QA agent
+- **WHEN** spec-archive is asked to run on a feature whose pull request to main the owner has not
+  accepted, or that has no `QA passed` note
+- **THEN** it archives nothing and names what the feature waits for: the QA agent or the owner
 
 ## REMOVED Requirements
 

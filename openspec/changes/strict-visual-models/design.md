@@ -91,10 +91,10 @@ none of it in the tree.
     one out, so the reviewer judges the names.
 15. **Behaviour survives a rewrite by signature.** A cover path changes id when an activity is
     renamed or merged, so `paths --compare` compares signatures: the split answers in order and the
-    end name. This is what QA observes, so a rewrite that keeps every signature keeps every
-    scenario. It is also what the owner's test case needs: merging "Close the tasks the PR names"
-    with "Tasks still open?" drops the answers, and both `one-flow-out` and the signatures refuse
-    it.
+    end name. This is what QA observes, not what an activity does, so a rewrite that keeps every
+    signature is kept only after `model-reviewer` reads the changed activities. It is also what the
+    owner's test case needs: merging "Close the tasks the PR names" with "Tasks still open?" drops
+    the answers, and both `one-flow-out` and the signatures refuse it.
 16. **Review always, simplify on request.** `model-reviewer` runs on sonnet after every model a
     change adds (a review is never haiku); `model-simplifier` runs on opus, because one mind must
     hold the whole graph, and only when asked, because a pass costs several times a review.

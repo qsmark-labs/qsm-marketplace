@@ -107,8 +107,8 @@
     <bpmn:sequenceFlow id="f_need_request" sourceRef="need" targetRef="request" />
     <bpmn:sequenceFlow id="f_request_plan" sourceRef="request" targetRef="plan" />
     <bpmn:sequenceFlow id="f_plan_planned" sourceRef="plan" targetRef="planned" />
-    <bpmn:sequenceFlow id="f_planned_split" name="yes" sourceRef="planned" targetRef="split" />
-    <bpmn:sequenceFlow id="f_planned_dropped" name="no" sourceRef="planned" targetRef="dropped" />
+    <bpmn:sequenceFlow id="f_planned_split" name="Plan approved" sourceRef="planned" targetRef="split" />
+    <bpmn:sequenceFlow id="f_planned_dropped" name="Feature not planned" sourceRef="planned" targetRef="dropped" />
     <bpmn:sequenceFlow id="f_split_buildJoin" sourceRef="split" targetRef="buildJoin" />
     <bpmn:sequenceFlow id="f_buildJoin_build" sourceRef="buildJoin" targetRef="build" />
     <bpmn:sequenceFlow id="f_build_sync" sourceRef="build" targetRef="sync" />
@@ -121,8 +121,8 @@
     <bpmn:sequenceFlow id="f_fixTask_buildJoin" sourceRef="fixTask" targetRef="buildJoin" />
     <bpmn:sequenceFlow id="f_holds_land" name="yes" sourceRef="holds" targetRef="land" />
     <bpmn:sequenceFlow id="f_land_accepted" sourceRef="land" targetRef="accepted" />
-    <bpmn:sequenceFlow id="f_accepted_done" name="yes" sourceRef="accepted" targetRef="done" />
-    <bpmn:sequenceFlow id="f_accepted_buildJoin" name="no" sourceRef="accepted" targetRef="buildJoin" />
+    <bpmn:sequenceFlow id="f_accepted_done" name="Feature closed on main" sourceRef="accepted" targetRef="done" />
+    <bpmn:sequenceFlow id="f_accepted_buildJoin" name="Changes asked" sourceRef="accepted" targetRef="buildJoin" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_feature_flow_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_feature_flow_collab" bpmnElement="feature_flow_collab">
@@ -216,7 +216,7 @@
       <bpmndi:BPMNEdge id="BPMNEdge_f_need_request" bpmnElement="f_need_request" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="216.8" y="236" /><di:waypoint x="375.6" y="236" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_request_plan" bpmnElement="f_request_plan" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="475.6" y="236" /><di:waypoint x="695.6" y="236" /><di:waypoint x="695.6" y="508" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_plan_planned" bpmnElement="f_plan_planned" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="745.6" y="548" /><di:waypoint x="906.85" y="548" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_split" bpmnElement="f_planned_split" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="956.85" y="548" /><di:waypoint x="1118.1000000000001" y="548" /><bpmndi:BPMNLabel><dc:Bounds x="1021.2750000000001" y="521.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_split" bpmnElement="f_planned_split" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="956.85" y="548" /><di:waypoint x="1118.1000000000001" y="548" /><bpmndi:BPMNLabel><dc:Bounds x="1003.0999999999999" y="509.29999999999995" width="60" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_split_buildJoin" bpmnElement="f_split_buildJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1218.1000000000001" y="548" /><di:waypoint x="1379.3500000000001" y="548" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_buildJoin_build" bpmnElement="f_buildJoin_build" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1429.3500000000001" y="548" /><di:waypoint x="1590.6000000000001" y="548" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_build_sync" bpmnElement="f_build_sync" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1690.6000000000001" y="548" /><di:waypoint x="1910.6000000000001" y="548" /><di:waypoint x="1910.6000000000001" y="970.8000000000001" /></bpmndi:BPMNEdge>
@@ -225,13 +225,13 @@
       <bpmndi:BPMNEdge id="BPMNEdge_f_qa_holds" bpmnElement="f_qa_holds" bioc:stroke="#15803d" color:border-color="#15803d"><di:waypoint x="2433.1000000000004" y="1530.8" /><di:waypoint x="2594.3500000000004" y="1530.8" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_holds_land" bpmnElement="f_holds_land" bioc:stroke="#15803d" color:border-color="#15803d"><di:waypoint x="2644.3500000000004" y="1530.8" /><di:waypoint x="2855.6000000000004" y="1530.8" /><di:waypoint x="2855.6000000000004" y="276" /><bpmndi:BPMNLabel><dc:Bounds x="2742.525" y="1504.3" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_land_accepted" bpmnElement="f_land_accepted" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2905.6000000000004" y="236" /><di:waypoint x="3066.8500000000004" y="236" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_done" bpmnElement="f_accepted_done" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="3116.8500000000004" y="236" /><di:waypoint x="3266.9" y="236" /><bpmndi:BPMNLabel><dc:Bounds x="3181.275" y="209.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_dropped" bpmnElement="f_planned_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="931.85" y="573" /><di:waypoint x="931.85" y="727.4" /><di:waypoint x="1150.1000000000001" y="727.4" /><bpmndi:BPMNLabel><dc:Bounds x="943.1" y="647.6" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_done" bpmnElement="f_accepted_done" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="3116.8500000000004" y="236" /><di:waypoint x="3266.9" y="236" /><bpmndi:BPMNLabel><dc:Bounds x="3188.1000000000004" y="155.2" width="64" height="42" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_dropped" bpmnElement="f_planned_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="931.85" y="573" /><di:waypoint x="931.85" y="727.4" /><di:waypoint x="1150.1000000000001" y="727.4" /><bpmndi:BPMNLabel><dc:Bounds x="952.6" y="640.6" width="80" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_conflictTask" bpmnElement="f_conflict_conflictTask" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="2146.85" y="1035.8000000000002" /><di:waypoint x="2146.85" y="1218.8" /><di:waypoint x="2333.1000000000004" y="1218.8" /><bpmndi:BPMNLabel><dc:Bounds x="2218.7250000000004" y="1192.3" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_holds_fixTask" bpmnElement="f_holds_fixTask" bioc:stroke="#15803d" color:border-color="#15803d"><di:waypoint x="2619.3500000000004" y="1555.8" /><di:waypoint x="2619.3500000000004" y="1738.8" /><di:waypoint x="2805.6000000000004" y="1738.8" /><bpmndi:BPMNLabel><dc:Bounds x="2630.6000000000004" y="1644.7" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_buildJoin" bpmnElement="f_conflictTask_buildJoin" bioc:stroke="#4b5563" color:border-color="#4b5563"><di:waypoint x="2356.1000000000004" y="1258.8" /><di:waypoint x="2356.1000000000004" y="1296.8" /><di:waypoint x="1404.3500000000001" y="1296.8" /><di:waypoint x="1404.3500000000001" y="573" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_fixTask_buildJoin" bpmnElement="f_fixTask_buildJoin" bioc:stroke="#15803d" color:border-color="#15803d"><di:waypoint x="2828.6000000000004" y="1778.8" /><di:waypoint x="2828.6000000000004" y="1816.8" /><di:waypoint x="1404.3500000000001" y="1816.8" /><di:waypoint x="1404.3500000000001" y="573" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_buildJoin" bpmnElement="f_accepted_buildJoin" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="3091.8500000000004" y="261" /><di:waypoint x="3091.8500000000004" y="606.5" /><di:waypoint x="1404.3500000000001" y="606.5" /><di:waypoint x="1404.3500000000001" y="573" /><bpmndi:BPMNLabel><dc:Bounds x="2239.1000000000004" y="580" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_buildJoin" bpmnElement="f_accepted_buildJoin" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="3091.8500000000004" y="261" /><di:waypoint x="3091.8500000000004" y="606.5" /><di:waypoint x="1404.3500000000001" y="606.5" /><di:waypoint x="1404.3500000000001" y="573" /><bpmndi:BPMNLabel><dc:Bounds x="2221.275" y="567.8" width="55" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

@@ -18,7 +18,7 @@ edit no code, and commit the change only after the owner's yes.
 
 #### Scenario: Code does not start without the person's yes
 
-- **WHEN** the change is apply-ready and the owner has not merged its pull request
+- **WHEN** the change is apply-ready and the owner has not said yes to the plan in the session
 - **THEN** spec-propose SHALL NOT hand to the split
 
 #### Scenario: An open decision sends it back to grilling

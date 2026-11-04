@@ -4,9 +4,10 @@
 
 `CLAUDE.md` SHALL hold who the user is, how to talk, the prime directive, intent first, which rule
 wins, where things live, the loop with the owner of each of its seven steps, and the one place for
-feedback: the verb `qsm-tasks feedback --area --kind --from`, which files an issue of the type
-`Feedback`, with the labels `area:`, `kind:` and `from:` (who noticed) and the body sections what
-happened and expected behaviour, never by an issue number. The table "where things live" SHALL name
+feedback: the verb `qsm-tasks feedback --area --kind --from`, which files a plain issue from the
+template, with the labels `feedback`, `area:`, `kind:` and `from:` (who noticed) and the body
+sections what happened, where, how to reproduce it in the abstract and expected behaviour, never by
+an issue number. The table "where things live" SHALL name
 the task tool `qsm-tasks` and the memory tool `qsm-memory`, each row with what tasks, or memory,
 mean for us and the few verbs an agent uses daily, in the table's three columns. The implementation
 rule SHALL hold the six questions asked before any design, the table of kinds of things with the

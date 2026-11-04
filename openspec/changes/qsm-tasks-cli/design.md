@@ -44,20 +44,20 @@ column Sub-issues progress, eight built-in workflows on, and `gh` 2.102.1 JSON w
 11. **Done is GitHub's**: "Item closed" sets it for every kind; no verb writes Done and no verb adds
     to the board except `claim`, which may run before auto-add did.
 12. **Errors**: `blocked` (`wrong-kind`, `wrong-status`, `held`, `private-data`), `missing`
-    (`no-gh`, `no-repo`, `no-board`, `no-feedback-type`, `no-file`), `failed` (`refused`,
+    (`no-gh`, `no-repo`, `no-board`, `no-file`), `failed` (`refused`,
     `not-found`). No retry, no second route, no rollback; each write is idempotent, so a repeat
     finishes a half-done verb.
 13. **`doctor` checks names, never descriptions; `setup` adds what is missing and never renames.**
     A check the API cannot answer is `manual` and `doctor` exits `partial`, never green on a guess.
-14. **Feedback rules are data in `lib/feedback.ts`**: values, sections, the private-data patterns.
+14. **Feedback rules are data in `lib/feedback.ts`**: values, the template's sections, the
+    private-data patterns. Feedback has no issue type: the label `feedback` names the kind.
 15. **Ghost mode**: the binary's only own texts are the label `deferred` and the comment `Deferred
     until <value>`; `from:` names an agent by the owner's choice.
 
 ## Unmeasured, measured before the code
 
-1. Can GraphQL add and rename a Status option, create the issue type Feedback and the field
-   Priority, and read the board's workflows and views? Each answer makes a `setup` and `doctor`
-   line `ok` or `manual`.
+1. Can GraphQL add and rename a Status option, create the field Priority, and read the board's
+   workflows and views? Each answer makes a `setup` and `doctor` line `ok` or `manual`.
 2. Does an Action on `issues: opened` see the parent of an issue made with `add --feature`? If not,
    decision 5 is revised before the Action is built, with no silent second route.
 3. Does `PROJECT_TOKEN` let the Action close the issues a merge into `feature/*` names, and push

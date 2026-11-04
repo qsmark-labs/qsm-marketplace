@@ -167,9 +167,9 @@ relations and carry a note naming who uses it.
 
 #### Scenario: The marketplace container view
 
-- **WHEN** the marketplace container view would hold 36 relations among 5 actors and 28 containers
+- **WHEN** the marketplace container view would hold 44 relations among 5 actors and 33 containers
 - **THEN** `render` writes `containers-uses` with the 16 relations the actors start and only the
-  containers they reach, and `containers-depends` with every container and the 20 relations that
+  containers they reach, and `containers-depends` with every container and the 28 relations that
   start inside, each in tiers and actor colours, and each links to the other
 
 ### Requirement: lint measures the layout and refuses a worse one
@@ -186,24 +186,32 @@ each measure that grew, unless the commit message names the measure and why.
   1.1
 - **THEN** `lint` exits `worse` naming lane jumps and both numbers
 
-### Requirement: paths --compare proves a rewrite keeps the behaviour
+### Requirement: paths --compare checks what QA observes
 
 A path's signature SHALL be its split answers in order and the name of its end event.
 `paths --compare <old.bpmn> <new.bpmn>` SHALL exit `worse` naming each signature one model has and
 the other lacks. Merging two activities in a row keeps every signature; removing a split or an
-answer does not.
+answer does not. A signature holds no activity, so keeping every signature SHALL NOT be enough to
+keep a rewrite: `model-reviewer` reads the changed activities first.
 
-#### Scenario: A simplification drops an answer (path p-2fe723)
+#### Scenario: A simplification drops an answer (path p-9edef7)
 
 - **WHEN** the simplify agent merges a split into the activity before it
 - **THEN** `paths --compare` exits `worse` naming the signatures that lost the split's answers, and
   the rewrite is dropped
 
-#### Scenario: Two steps in a row merge (path p-b9aa8b)
+#### Scenario: Two steps in a row merge (path p-f914aa)
 
 - **WHEN** the simplify agent merges two activities of one lane that follow each other
 - **THEN** `paths --compare` finds every signature in both models, `check` and the layout measures
-  pass, and the rewrite is kept
+  pass, and the rewrite is kept once `model-reviewer` has read the merged activity
+
+#### Scenario: A merge keeps every signature but loses what an activity does (path p-855310)
+
+- **WHEN** the simplify agent merges "Run the scenarios" into "File a fix task per finding", every
+  signature is kept, and `model-reviewer` reads that the merged activity no longer says the
+  scenarios run
+- **THEN** the rewrite is dropped, and the report names the activity and the reviewer's reason
 
 ### Requirement: The model skill takes any piece of work to checked models
 
@@ -224,7 +232,8 @@ component view; the marketplace gets the main flow and its context and container
 The plugin SHALL ship an agent `model-reviewer` that reads each picture and its source against the
 spec and the rules and returns findings, and an agent `model-simplifier`, run only on request, that
 walks the graph, proposes merges, splits and reorders as a change to the source, and keeps only the
-ones `paths --compare`, `check` and the layout measures accept.
+ones `paths --compare`, `check` and the layout measures accept and `model-reviewer` passes after
+reading the changed activities.
 
 #### Scenario: The reviewer finds a model unclear (path p-31cb80)
 

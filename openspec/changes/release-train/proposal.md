@@ -1,4 +1,6 @@
-Stub: Why, What, open decisions and one anchor requirement only. Designed later with its own
+Parked: the owner deferred versions and releases until an app has a full release flow; the
+marketplace has none yet (feature-flow design, the owner's answer 4). This change holds the Why,
+the What and the open decisions only, and no requirement until it is designed with its own
 grilling.
 
 ## Why

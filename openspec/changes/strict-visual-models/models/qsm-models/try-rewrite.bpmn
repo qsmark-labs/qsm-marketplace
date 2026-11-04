@@ -8,12 +8,17 @@
       <bpmn:lane id="lane_0" name="Simplify agent">
         <bpmn:flowNodeRef>start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>propose</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>prove</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>check</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>ok</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>keep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>dropJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>drop</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>kept</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>dropped</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="lane_1" name="Review agent">
+        <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>right</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:startEvent id="start" name="A rewrite to try">
@@ -21,23 +26,37 @@
     </bpmn:startEvent>
     <bpmn:task id="propose" name="Propose one rewrite">
       <bpmn:incoming>f_start_propose</bpmn:incoming>
-      <bpmn:outgoing>f_propose_prove</bpmn:outgoing>
+      <bpmn:outgoing>f_propose_check</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="prove" name="Prove the rewrite">
-      <bpmn:incoming>f_propose_prove</bpmn:incoming>
-      <bpmn:outgoing>f_prove_ok</bpmn:outgoing>
+    <bpmn:serviceTask id="check" name="Compare signatures, C4 and measures">
+      <bpmn:incoming>f_propose_check</bpmn:incoming>
+      <bpmn:outgoing>f_check_ok</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="ok" name="Behaviour kept and no measure worse?">
-      <bpmn:incoming>f_prove_ok</bpmn:incoming>
-      <bpmn:outgoing>f_ok_keep</bpmn:outgoing>
-      <bpmn:outgoing>f_ok_drop</bpmn:outgoing>
+    <bpmn:exclusiveGateway id="ok" name="Signatures kept and no measure worse?">
+      <bpmn:incoming>f_check_ok</bpmn:incoming>
+      <bpmn:outgoing>f_ok_read</bpmn:outgoing>
+      <bpmn:outgoing>f_ok_dropJoin</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="read" name="Read the changed activities">
+      <bpmn:incoming>f_ok_read</bpmn:incoming>
+      <bpmn:outgoing>f_read_right</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="right" name="Activities still say what the spec says?">
+      <bpmn:incoming>f_read_right</bpmn:incoming>
+      <bpmn:outgoing>f_right_keep</bpmn:outgoing>
+      <bpmn:outgoing>f_right_dropJoin</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:task id="keep" name="Keep the rewrite">
-      <bpmn:incoming>f_ok_keep</bpmn:incoming>
+      <bpmn:incoming>f_right_keep</bpmn:incoming>
       <bpmn:outgoing>f_keep_kept</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:exclusiveGateway id="dropJoin">
+      <bpmn:incoming>f_ok_dropJoin</bpmn:incoming>
+      <bpmn:incoming>f_right_dropJoin</bpmn:incoming>
+      <bpmn:outgoing>f_dropJoin_drop</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
     <bpmn:task id="drop" name="Drop the rewrite">
-      <bpmn:incoming>f_ok_drop</bpmn:incoming>
+      <bpmn:incoming>f_dropJoin_drop</bpmn:incoming>
       <bpmn:outgoing>f_drop_dropped</bpmn:outgoing>
     </bpmn:task>
     <bpmn:endEvent id="kept" name="Rewrite kept">
@@ -47,20 +66,27 @@
       <bpmn:incoming>f_drop_dropped</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="f_start_propose" sourceRef="start" targetRef="propose" />
-    <bpmn:sequenceFlow id="f_propose_prove" sourceRef="propose" targetRef="prove" />
-    <bpmn:sequenceFlow id="f_prove_ok" sourceRef="prove" targetRef="ok" />
-    <bpmn:sequenceFlow id="f_ok_keep" name="yes" sourceRef="ok" targetRef="keep" />
-    <bpmn:sequenceFlow id="f_ok_drop" name="no" sourceRef="ok" targetRef="drop" />
+    <bpmn:sequenceFlow id="f_propose_check" sourceRef="propose" targetRef="check" />
+    <bpmn:sequenceFlow id="f_check_ok" sourceRef="check" targetRef="ok" />
+    <bpmn:sequenceFlow id="f_ok_read" name="yes" sourceRef="ok" targetRef="read" />
+    <bpmn:sequenceFlow id="f_ok_dropJoin" name="no" sourceRef="ok" targetRef="dropJoin" />
+    <bpmn:sequenceFlow id="f_read_right" sourceRef="read" targetRef="right" />
+    <bpmn:sequenceFlow id="f_right_keep" name="yes" sourceRef="right" targetRef="keep" />
+    <bpmn:sequenceFlow id="f_right_dropJoin" name="no" sourceRef="right" targetRef="dropJoin" />
     <bpmn:sequenceFlow id="f_keep_kept" sourceRef="keep" targetRef="kept" />
+    <bpmn:sequenceFlow id="f_dropJoin_drop" sourceRef="dropJoin" targetRef="drop" />
     <bpmn:sequenceFlow id="f_drop_dropped" sourceRef="drop" targetRef="dropped" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_try_rewrite_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_try_rewrite_collab" bpmnElement="try_rewrite_collab">
       <bpmndi:BPMNShape id="BPMNShape_try_rewrite_pool" bpmnElement="try_rewrite_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="1393.2" height="520" />
+        <dc:Bounds x="80" y="80" width="2135.7000000000003" height="832" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#0f766e" bioc:fill="#c1e3e0" color:border-color="#0f766e" color:background-color="#c1e3e0" isHorizontal="true">
-        <dc:Bounds x="110" y="80" width="1363.2" height="520" />
+        <dc:Bounds x="110" y="80" width="2105.7000000000003" height="520" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#c2410c" bioc:fill="#f4d2c1" color:border-color="#c2410c" color:background-color="#f4d2c1" isHorizontal="true">
+        <dc:Bounds x="110" y="600" width="2105.7000000000003" height="312" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_start" bpmnElement="start" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff">
         <dc:Bounds x="180.8" y="218" width="36" height="36" />
@@ -71,40 +97,56 @@
       <bpmndi:BPMNShape id="BPMNShape_propose" bpmnElement="propose" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
         <dc:Bounds x="375.6" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_prove" bpmnElement="prove" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
+      <bpmndi:BPMNShape id="BPMNShape_check" bpmnElement="check" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
         <dc:Bounds x="645.6" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_ok" bpmnElement="ok" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
         <dc:Bounds x="906.85" y="211" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="815.375" y="136.5" width="75" height="56" />
+          <dc:Bounds x="814.2" y="136.5" width="76" height="56" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#742707" bioc:fill="#c2410c" color:border-color="#742707" color:background-color="#c2410c">
+        <dc:Bounds x="1118.1000000000001" y="716" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_right" bpmnElement="right" bioc:stroke="#c2410c" bioc:fill="#ffffff" color:border-color="#c2410c" color:background-color="#ffffff" isMarkerVisible="true">
+        <dc:Bounds x="1379.3500000000001" y="731" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1286.7" y="656.5" width="76" height="56" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_keep" bpmnElement="keep" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
-        <dc:Bounds x="1118.1000000000001" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+        <dc:Bounds x="1590.6000000000001" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_dropJoin" bpmnElement="dropJoin" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff" isMarkerVisible="true">
+        <dc:Bounds x="1615.6000000000001" y="419" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_drop" bpmnElement="drop" bioc:stroke="#094742" bioc:fill="#0f766e" color:border-color="#094742" color:background-color="#0f766e">
-        <dc:Bounds x="1118.1000000000001" y="404" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+        <dc:Bounds x="1860.6000000000001" y="404" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_kept" bpmnElement="kept" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff">
-        <dc:Bounds x="1376.9" y="218" width="36" height="36" />
+        <dc:Bounds x="1892.6000000000001" y="218" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1349.9" y="268" width="90" height="14" />
+          <dc:Bounds x="1865.6000000000001" y="268" width="90" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_dropped" bpmnElement="dropped" bioc:stroke="#0f766e" bioc:fill="#ffffff" color:border-color="#0f766e" color:background-color="#ffffff">
-        <dc:Bounds x="1376.9" y="426" width="36" height="36" />
+        <dc:Bounds x="2119.4" y="426" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1365.9" y="478.1" width="58" height="28" />
+          <dc:Bounds x="2108.4" y="478.1" width="58" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_f_start_propose" bpmnElement="f_start_propose" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="216.8" y="236" /><di:waypoint x="375.6" y="236" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_propose_prove" bpmnElement="f_propose_prove" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="475.6" y="236" /><di:waypoint x="645.6" y="236" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_prove_ok" bpmnElement="f_prove_ok" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="745.6" y="236" /><di:waypoint x="906.85" y="236" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_ok_keep" bpmnElement="f_ok_keep" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="956.85" y="236" /><di:waypoint x="1118.1000000000001" y="236" /><bpmndi:BPMNLabel><dc:Bounds x="1021.2750000000001" y="209.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_keep_kept" bpmnElement="f_keep_kept" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="1218.1000000000001" y="236" /><di:waypoint x="1376.9" y="236" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_ok_drop" bpmnElement="f_ok_drop" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="931.85" y="261" /><di:waypoint x="931.85" y="444" /><di:waypoint x="1118.1000000000001" y="444" /><bpmndi:BPMNLabel><dc:Bounds x="943.1" y="349.90000000000003" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_drop_dropped" bpmnElement="f_drop_dropped" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="1218.1000000000001" y="444" /><di:waypoint x="1376.9" y="444" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_propose_check" bpmnElement="f_propose_check" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="475.6" y="236" /><di:waypoint x="645.6" y="236" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_check_ok" bpmnElement="f_check_ok" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="745.6" y="236" /><di:waypoint x="906.85" y="236" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ok_read" bpmnElement="f_ok_read" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="956.85" y="236" /><di:waypoint x="1168.1000000000001" y="236" /><di:waypoint x="1168.1000000000001" y="716" /><bpmndi:BPMNLabel><dc:Bounds x="1055.025" y="209.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_right" bpmnElement="f_read_right" bioc:stroke="#c2410c" color:border-color="#c2410c"><di:waypoint x="1218.1000000000001" y="756" /><di:waypoint x="1379.3500000000001" y="756" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_right_keep" bpmnElement="f_right_keep" bioc:stroke="#c2410c" color:border-color="#c2410c"><di:waypoint x="1404.3500000000001" y="731" /><di:waypoint x="1404.3500000000001" y="236" /><di:waypoint x="1590.6000000000001" y="236" /><bpmndi:BPMNLabel><dc:Bounds x="1415.4750000000001" y="333" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_keep_kept" bpmnElement="f_keep_kept" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="1690.6000000000001" y="236" /><di:waypoint x="1892.6000000000001" y="236" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ok_dropJoin" bpmnElement="f_ok_dropJoin" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="931.85" y="261" /><di:waypoint x="931.85" y="814.5" /><di:waypoint x="1606.8500000000001" y="814.5" /><di:waypoint x="1606.8500000000001" y="502.5" /><di:waypoint x="1640.6000000000001" y="502.5" /><di:waypoint x="1640.6000000000001" y="469" /><bpmndi:BPMNLabel><dc:Bounds x="1618.1000000000001" y="651.5" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_right_dropJoin" bpmnElement="f_right_dropJoin" bioc:stroke="#c2410c" color:border-color="#c2410c"><di:waypoint x="1404.3500000000001" y="731" /><di:waypoint x="1404.3500000000001" y="444" /><di:waypoint x="1615.6000000000001" y="444" /><bpmndi:BPMNLabel><dc:Bounds x="1496.6000000000001" y="417.5" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_dropJoin_drop" bpmnElement="f_dropJoin_drop" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="1665.6000000000001" y="444" /><di:waypoint x="1860.6000000000001" y="444" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_drop_dropped" bpmnElement="f_drop_dropped" bioc:stroke="#0f766e" color:border-color="#0f766e"><di:waypoint x="1960.6000000000001" y="444" /><di:waypoint x="2119.4" y="444" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

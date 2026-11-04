@@ -28,7 +28,7 @@ id.
 ### Requirement: A failure is a typed outcome with a reason
 
 A failure SHALL carry an outcome code and a `data.reason`: `usage`, `missing` (`no-gh`, `no-repo`,
-`no-board`, `no-feedback-type`, `no-file`), `blocked` (`wrong-kind`, `wrong-status`, `held`,
+`no-board`, `no-file`), `blocked` (`wrong-kind`, `wrong-status`, `held`,
 `private-data`), `failed` (`refused`, `not-found`).
 
 #### Scenario: A wrong call runs nothing
@@ -220,10 +220,12 @@ A verb that sends body text SHALL pass it to GitHub on stdin.
 - **WHEN** `edit 3 --spec` gets an id of 60 characters
 - **THEN** it exits `usage` and the recorded `gh` calls are empty
 
-### Requirement: Feedback is an issue of its own type, labelled, abstract, and with no fix
+### Requirement: Feedback is a plain issue from the template, labelled, abstract, and with no fix
 
-`feedback "<title>" --area <a> --kind <k> --from <who>` SHALL file an issue of type Feedback with no
-parent, labelled `area:`, `kind:` and `from:`, the area `marketplace` or a plugin of
+`feedback "<title>" --area <a> --kind <k> --from <who>` SHALL file an issue with no issue type and
+no parent, shaped like the repository's template `.github/ISSUE_TEMPLATE/feedback.yml`, labelled
+`feedback`, `area:`, `kind:` and `from:`; the label `feedback` makes it the kind Feedback. The area
+is `marketplace` or a plugin of
 `marketplace.json`, the kind `tool-broken`, `tool-missing`, `wrong-output`, `guidance` or
 `agent-mistake`, who `user`, `main-agent` or `subagent`.
 
@@ -234,8 +236,9 @@ parent, labelled `area:`, `kind:` and `from:`, the area `marketplace` or a plugi
 
 ### Requirement: A feedback body has fixed sections and no fix
 
-The body SHALL hold `## What happened` and `## Expected behaviour`, MAY hold `## Context`, and no
-other `##`. The rules of feedback SHALL live in `lib/feedback.ts`.
+The body SHALL hold the template's four sections, `## What happened`, `## Where`,
+`## How to reproduce` (in the abstract) and `## Expected behaviour`, and no other `##`. The rules of
+feedback SHALL live in `lib/feedback.ts`.
 
 #### Scenario: A body with a suggested fix
 
@@ -255,7 +258,7 @@ A home path, the OS login, the hostname, an email or a secret shape SHALL be ref
 
 ### Requirement: A feedback with an open title becomes a comment
 
-An open Feedback issue with the same title SHALL get the body as a comment.
+An open issue labelled `feedback` with the same title SHALL get the body as a comment.
 
 #### Scenario: The same feedback twice
 
@@ -397,9 +400,9 @@ and serialise two events under one parent.
 
 ### Requirement: The last closed task merges main into the feature branch
 
-When the last task closes, the workflow SHALL merge main into `feature/<n>` and set Ready For Test
-only when that is clean; on a conflict it SHALL file one task
-`Resolve the conflict of feature/<n> with main` under the feature.
+When the last open task closes and at least one task of the feature closed as completed, the
+workflow SHALL merge main into `feature/<n>` and set Ready For Test only when that is clean; on a
+conflict it SHALL file one task `Resolve the conflict of feature/<n> with main` under the feature.
 
 #### Scenario: The last task closes and main merges in clean (path p-b8fc2e)
 
@@ -409,7 +412,8 @@ only when that is clean; on a conflict it SHALL file one task
 
 #### Scenario: The last task closes and main conflicts (path p-d90e26)
 
-- **WHEN** the last open sub-issue closes and merging main into `feature/<n>` conflicts
+- **WHEN** the last open sub-issue closes, one of them completed, and merging main into
+  `feature/<n>` conflicts
 - **THEN** a conflict task is open under the feature, the Status stays In Dev, and Ready For Test
   follows the merge of its resolution pull request
 
@@ -460,8 +464,8 @@ only `manual` remain, else `missing` or `failed`.
 ### Requirement: doctor checks the login, the repository and the board
 
 `doctor` SHALL check `gh` with a login and the `project` scope, the repository and its board, the
-issue types Feature, Task, Bug and Feedback, the fields Status and Priority with exactly the flow
-table's names, and the labels `deferred`, `kind:*` and `from:*`.
+issue types Feature, Task and Bug, the fields Status and Priority with exactly the flow table's
+names, and the labels `feedback`, `deferred`, `kind:*` and `from:*`.
 
 #### Scenario: A leftover
 
@@ -472,8 +476,8 @@ table's names, and the labels `deferred`, `kind:*` and `from:*`.
 
 `doctor` SHALL check the built-in workflows "Auto-add to project", "Auto-add sub-issues to
 project", "Item added to project" (Todo), "Item closed" (Done) and "Pull request linked to issue"
-(Agent Review), the views Tasks and Features, `.github/workflows/qsm-tasks.yml` and the secret
-`PROJECT_TOKEN`.
+(Agent Review), the views Tasks and Features, `.github/workflows/qsm-tasks.yml`,
+`.github/ISSUE_TEMPLATE/feedback.yml` and the secret `PROJECT_TOKEN`.
 
 #### Scenario: The Action's file is missing
 
@@ -482,8 +486,8 @@ project", "Item added to project" (Todo), "Item closed" (Done) and "Pull request
 
 ### Requirement: setup creates what is missing and never renames or deletes
 
-`setup` SHALL create the missing fields, options, the type Feedback and the labels, never rename or
-delete, and print the rest as `doctor` does.
+`setup` SHALL create the missing fields, options and labels, never rename or delete, and print the
+rest as `doctor` does.
 
 #### Scenario: A new board, run twice
 

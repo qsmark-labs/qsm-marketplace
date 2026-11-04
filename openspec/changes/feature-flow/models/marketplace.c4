@@ -25,7 +25,7 @@ model {
     technology 'Claude Code session'
     metadata { colour 'green' }
   }
-  simplifier = system 'Simplify agent' 'A Claude Code session that rewrites a model and keeps what keeps the behaviour' {
+  simplifier = system 'Simplify agent' 'A Claude Code session that rewrites a model and keeps what the checks and the reviewer pass' {
     #agent
     technology 'Claude Code session'
     metadata { colour 'teal' }
@@ -197,6 +197,11 @@ model {
         technology 'agent .md'
         metadata { path 'plugins/qsm-review/agents/strict-reviewer.md' }
       }
+      qaagent = component 'QA agent' 'Runs the cover scenarios of a feature as a blackbox (change qa-agent)' {
+        #artifact
+        technology 'agent .md'
+        metadata { path 'plugins/qsm-review/agents/qa.md' }
+      }
     }
     cockpit = container 'qsm-cockpit' 'The loop view beside the session: stages, agents, tasks' {
       technology 'Bun binary'
@@ -236,9 +241,29 @@ model {
       technology 'Bun binary'
       metadata { group 'Code quality' path 'plugins/qsm-langdev' }
     }
-    langs = container 'Language packs' 'qsm-langdev-dotnet, -fish, -py, -shell, -ts, -zsh: one language each' {
-      technology 'skills, gate config'
-      metadata { group 'Code quality' path 'plugins' }
+    langdotnet = container 'qsm-langdev-dotnet' 'C# idioms for an agent writing .NET, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-dotnet' }
+    }
+    langfish = container 'qsm-langdev-fish' 'Fish shell idioms for scripts, functions and config, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-fish' }
+    }
+    langpy = container 'qsm-langdev-py' 'Modern Python idioms, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-py' }
+    }
+    langshell = container 'qsm-langdev-shell' 'Bash idioms for scripts, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-shell' }
+    }
+    langts = container 'qsm-langdev-ts' 'TypeScript and Bun idioms, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-ts' }
+    }
+    langzsh = container 'qsm-langdev-zsh' 'Zsh idioms and where zsh is not bash, beside the gate' {
+      technology 'skill'
+      metadata { group 'Code quality' path 'plugins/qsm-langdev-zsh' }
     }
     secrets = container 'qsm-secrets' 'Keeps tokens out of the context, the transcript and the log' {
       technology 'Bun binary, skills'
@@ -289,20 +314,28 @@ model {
   reviewer -> mp.forge 'posts findings with' { technology 'exec, stdio' }
   qa -> mp.models 'reads the cover paths from' { technology 'exec, stdio' }
   qa -> mp.tasks 'files fix tasks with' { technology 'exec, stdio' }
-  simplifier -> mp.models 'proves each rewrite with' { technology 'exec, stdio' }
+  simplifier -> mp.models 'checks each rewrite with' { technology 'exec, stdio' }
 
   // plugin.json dependencies
   mp.builder -> mp.spec 'reads the changes with' { technology 'exec, stdio' }
   mp.builder -> mp.tasks 'saves a pen edit with' { technology 'exec, stdio' }
   mp.cockpit -> mp.tasks 'reads the open tasks with' { technology 'exec, stdio' }
   mp.knowledge -> mp.essentials 'builds on the method of' { technology 'skill reference' }
-  mp.langs -> mp.langdev 'plug their language into' { technology 'gate config' }
+  mp.langdotnet -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
+  mp.langfish -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
+  mp.langpy -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
+  mp.langshell -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
+  mp.langts -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
+  mp.langzsh -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
   mp.memory -> mp.tasks 'adds the open tasks to the briefing with' { technology 'exec, stdio' }
   mp.spec.apply -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
   mp.spec.propose -> mp.tasks.tool 'has the agent bind the change to its feature with' { technology 'instruction' }
   mp.plan.planskill -> mp.tasks.tool 'has the agent file and split features with' { technology 'instruction' }
   mp.plan.planskill -> mp.spec.propose 'hands the change to' { technology 'skill reference' }
   mp.review.workflow -> mp.forge.tool 'has the agent post the review with' { technology 'instruction' }
+  mp.spec.propose -> mp.models.cli 'has the agent lint, render and walk the models of a change with' { technology 'instruction' }
+  mp.spec.apply -> mp.forge.tool 'has the agent open the task pull request with' { technology 'instruction' }
+  mp.review.qaagent -> mp.models.cli 'reads the cover paths of a feature with' { technology 'instruction' }
   mp.setup -> mp.essentials 'installs the method of' { technology 'file copy' }
   mp.setup -> mp.registry 'reads the plugins it can install from' { technology 'file read' }
 
