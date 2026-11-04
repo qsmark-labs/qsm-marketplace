@@ -274,6 +274,8 @@ atlas_compare() {
   out="$b/diff-$(basename "$a")"
   rm -rf "$out"
   mkdir -p "$out"
+  # Two runs may share no shot, and diff.json is then an empty list.
+  : >"$out/diff.jsonl"
   for png in "$b"/shots/*.png; do
     name="$(basename "$png" .png)"
     [[ -f "$a/shots/$name.png" ]] || continue
