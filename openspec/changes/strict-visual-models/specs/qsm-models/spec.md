@@ -1,7 +1,8 @@
 ## Purpose
 
-Strict visual models: BPMN for behaviour and C4 for structure, linted, rendered, walked into test
-paths and checked against the code by one binary, so the owner, the agents and QA read one picture.
+Strict visual models: one BPMN graph of the business and one C4 graph of the architecture per
+project, linted by their standard tools, rendered, walked into test paths, their links resolved and
+checked against the code by one binary, so the owner, the agents and QA read one picture.
 
 ## ADDED Requirements
 
@@ -9,52 +10,108 @@ paths and checked against the code by one binary, so the owner, the agents and Q
 
 The plugin SHALL ship one binary `qsm-models`, named after the plugin, with the verbs `lint`,
 `layout`, `render`, `paths` and `check` described in `qsm.json` and the noun `$.models`. It SHALL
-read BPMN 2.0 XML files (`.bpmn`) and one C4 source format, and SHALL need no program outside the
-binary: BPMN is laid out by bpmn-auto-layout and drawn by bpmn-js, C4 is laid out by elkjs and drawn
-by the binary itself.
+read BPMN 2.0 XML (`.bpmn`) and LikeC4 (`.c4`) and nothing else. BPMN SHALL be laid out by
+bpmn-auto-layout and drawn by bpmn-js, C4 laid out by elkjs and drawn by the binary itself.
 
 #### Scenario: Rendered on a clean machine
 
 - **WHEN** `qsm-models render models/` runs on a machine with no Graphviz and no browser
 - **THEN** it writes every picture, the same bytes as on any other machine
 
-### Requirement: lint holds BPMN to the Analytic sub-class and to one actor per step
+### Requirement: One graph per kind per project
 
-`lint` SHALL refuse a BPMN element outside the BPMN 2.0.2 Analytic sub-class, a flow out of an
-exclusive or inclusive split without a label, a flow node in no lane or in two, a lane that names no
-person or top-level system of the C4 model, and every rule of bpmnlint's recommended set, its
-warnings as errors. Each finding SHALL name the file, the element id and the rule, and exit
-`worse`.
+A project SHALL have one BPMN graph, `models/<project>.bpmn`, holding its main process and every
+process a call activity calls, and one C4 graph, `models/<project>.c4`, each complete and usable
+alone. `check` SHALL exit `worse` naming every `.bpmn` or `.c4` file elsewhere in the project, the
+archive of OpenSpec changes left out.
 
-#### Scenario: An unlabelled answer (path p-085ebe)
+#### Scenario: A change brings its own model file
+
+- **WHEN** a change adds `openspec/changes/x/models/y.bpmn`
+- **THEN** `check` exits `worse` naming the file and saying the change edits
+  `models/marketplace.bpmn`
+
+### Requirement: The file decides where a graph lives
+
+A graph SHALL be in repo mode when its file under `models/` is committed: the file is the source and
+a change edits it on its branch. With no such file the graph SHALL be in local mode: it lives only
+in the qsm-docs store, as the newest snapshot of its kind on the branch, and an edit is `qsm-docs
+get`, the edit, the gates on that file, then `qsm-docs create` with the old snapshot as parent.
+
+#### Scenario: A project without a committed graph
+
+- **WHEN** the agent changes the BPMN of a project that has no `models/<project>.bpmn`
+- **THEN** it gets the newest `bpmn` snapshot of the branch, edits it, runs `lint` and `check` on
+  it, and creates the new snapshot with the old one as parent, and no file is added to the
+  repository
+
+### Requirement: The marketplace's models migrate once into the one graph
+
+The marketplace's existing models, the BPMN files of `feature-flow`, `strict-visual-models` and
+`qsm-tasks-cli` and the C4 source of `feature-flow`, SHALL move once into `models/marketplace.bpmn`
+and `models/marketplace.c4`, and the old files SHALL be deleted. Every path signature SHALL be kept,
+every scenario that cites a path id whose id changed SHALL cite the new id, and every proposal SHALL
+link the pictures under the root `models/`.
+
+#### Scenario: Ten files become one graph
+
+- **WHEN** the migration has run
+- **THEN** `paths --compare` finds every signature of the ten old processes in the one graph,
+  `paths --specs openspec/changes` exits `ok`, and `check` finds no model file outside `models/`
+
+### Requirement: lint holds BPMN to the Analytic sub-class and to one lane per step
+
+`lint` SHALL run bpmnlint with its recommended rules, warnings raised to errors, and with the rules
+of this plugin as bpmnlint rules: an element outside the BPMN 2.0.2 Analytic sub-class, a flow out
+of an exclusive or inclusive split without a label, and a flow node in no lane or in two. A lane
+SHALL name a business role and need no C4 element. Each finding SHALL name the file, the element id
+and the rule, and exit `worse`.
+
+#### Scenario: An unlabelled answer (path p-750c84)
 
 - **WHEN** a split gateway "Findings?" has two outgoing flows and one has no label, and once the
-  model is clean its cover path has no scenario yet
+  graph is clean its cover path has no scenario yet
 - **THEN** `lint` exits `worse` naming the flow's id and the rule `split-flows-labelled`, the agent
-  fixes the model before it renders, and writes the missing scenario before it commits
+  fixes the graph before it renders, and writes the missing scenario before it commits
 
-#### Scenario: A lane nobody is
+#### Scenario: A lane no C4 element names
 
-- **WHEN** a lane is named "Bot" and the C4 model has no person or system titled "Bot"
-- **THEN** `lint` exits `worse` naming the lane and the C4 file it read
+- **WHEN** a lane is named "Accountant" and the C4 graph has no element titled "Accountant"
+- **THEN** `lint` passes, because a lane is a business role
 
 #### Scenario: An element outside Analytic
 
 - **WHEN** a process holds a complex gateway
 - **THEN** `lint` exits `worse` naming it as outside the Analytic sub-class
 
+### Requirement: lint runs LikeC4's own check and holds C4 to the vocabulary
+
+`lint` SHALL run `likec4 validate` on the source first, then accept only the kinds person, system,
+container and component, the tags `external`, `agent`, `shared` and `artifact`, and the properties
+`colour`, `group`, `path`, `project`, `verified`, `decision`, `layer` and `order`, and refuse a
+source that declares its own kinds or views.
+
+#### Scenario: A source LikeC4 refuses
+
+- **WHEN** a relation names an element that does not exist
+- **THEN** `lint` exits `worse` with the message of `likec4 validate`, naming the file and line
+
 ### Requirement: lint holds C4 to its levels
 
-`lint` SHALL accept only the kinds person, system, container and component, the tags `external`,
-`agent`, `shared` and `artifact`, and the properties `colour`, `group` and `path`; and SHALL refuse
-a person or a system that has a parent, a container outside a system, a component outside a
-container, a relation without a title or a technology, two elements with one title, an internal
-container without a code path, and a source that declares its own kinds or views.
+`lint` SHALL refuse a person or a system that has a parent, a container outside a system, a
+component outside a container, a relation without a title or a technology, two elements with one
+title, and an internal container without a code path. A container without components SHALL be
+valid: level 3 is optional.
 
 #### Scenario: A container inside a container
 
 - **WHEN** a C4 source puts container B inside container A, which LikeC4 itself accepts
 - **THEN** `lint` exits `worse` saying a container sits in a system, not in a container
+
+#### Scenario: A plugin drawn without its parts
+
+- **WHEN** the container qsm-cockpit has no components
+- **THEN** `lint` passes and `render` writes no component view for it
 
 ### Requirement: lint holds BPMN to Method and Style
 
@@ -66,7 +123,7 @@ process's end events.
 
 #### Scenario: A named merge
 
-- **WHEN** the merge before "Write the model source" is named "Model to write"
+- **WHEN** the merge before "Edit the graph" is named "Graph to edit"
 - **THEN** `lint` exits `worse` naming it and the rule `merge-unnamed`
 
 ### Requirement: An activity names one action
@@ -78,7 +135,7 @@ the reviewer's judgment, because no structure shows it.
 #### Scenario: A name that hides a second step
 
 - **WHEN** an activity is named "Open the feature PR, change archived"
-- **THEN** the reviewer returns it as two actions, and the model gets "Archive the change" and
+- **THEN** the reviewer returns it as two actions, and the graph gets "Archive the change" and
   "Open the feature PR"
 
 #### Scenario: Two actions merged into one activity
@@ -93,19 +150,40 @@ the reviewer's judgment, because no structure shows it.
 - **THEN** `lint` exits `worse` naming the level and saying to move a run of steps into a call
   activity with its own diagram
 
+### Requirement: The BPMN graph knows nothing of code
+
+The BPMN graph SHALL model the business: roles, steps, decisions and their outcomes. It SHALL name
+no file, command, plugin or code element; the only way it reaches the architecture is an optional
+link. The reviewer judges a name; `lint` refuses a name that holds a path or a command in backticks.
+
+#### Scenario: A step named after a command
+
+- **WHEN** an activity is named "Run `qsm-tasks close`"
+- **THEN** `lint` exits `worse` naming it, and the graph gets "Close the task"
+
 ### Requirement: The colour of an actor is one colour everywhere
 
 Every top-level person and every system tagged `agent` SHALL carry one colour from the tool's
 palette (navy, purple, orange, green, teal, red), no two the same. An external system SHALL be grey,
-a container light blue, and a relation that starts inside the system grey and dashed. A BPMN lane
-SHALL take the colour of the C4 actor it names. Every picture SHALL carry a legend of the colours
-and shapes it uses. `lint` SHALL refuse an actor without a colour and two actors with one.
+a container light blue, and a relation that starts inside the system grey and dashed. Every picture
+SHALL carry a legend of the colours and shapes it uses. `lint` SHALL refuse an actor without a
+colour and two actors with one.
+
+#### Scenario: Two agents in one colour
+
+- **WHEN** the QA agent and the Review agent are both orange
+- **THEN** `lint` exits `worse` naming both and the colour
+
+### Requirement: A lane takes the colour of the actor it links to
+
+A BPMN lane that links to a C4 element SHALL take that element's colour; a lane without a link
+SHALL take the palette's colours not yet used, in lane order.
 
 #### Scenario: The QA agent in two pictures
 
-- **WHEN** the QA agent is green in the C4 model
-- **THEN** its lane in every BPMN is green, its relations in every C4 view are green, and both
-  legends say so
+- **WHEN** the QA agent is green in the C4 graph and a lane links to it
+- **THEN** that lane is green in the BPMN picture, the QA agent's relations are green in every C4
+  view, and both legends say so
 
 ### Requirement: Generated C4 views are drawn in tiers
 
@@ -125,26 +203,28 @@ their own line, never over a box.
 ### Requirement: A BPMN picture reads at a glance
 
 A BPMN picture SHALL draw lanes across with the flow left to right, each lane tinted and each step
-filled in its actor's colour with white text, flows 3 px wide with a small arrow in the middle of
+filled in its lane's colour with white text, flows 3 px wide with a small arrow in the middle of
 every segment longer than 70 px, and enough room that no flow touches a step or a label.
 
 #### Scenario: The middle of a long flow
 
 - **WHEN** the owner looks at the middle of the flow from "8.2 File a fix task per finding" back to
-  the merge before "4-6 Build every open task" in `flow.svg`
+  the merge before "4-6 Build every open task" in the picture of the feature flow
 - **THEN** a small arrow on that segment shows which way it runs
 
 ### Requirement: Diagrams link to each other
 
-A call activity SHALL name the process it calls in `calledElement`. `render` SHALL make each call
+A call activity SHALL name the process it calls in `calledElement`: a process of the same graph, or
+`<project>:<process>` for a process of another project's graph. `render` SHALL make each call
 activity a link to the picture of the process it calls, and SHALL put above the pool of a called
-process one link back per step that calls it, each link relative to where the picture lives.
+process one link back per step that calls it, each link relative to where the picture lives. A call
+into another project SHALL be drawn with that project's name and link to no local picture.
 
 #### Scenario: From the flow into planning and back
 
-- **WHEN** the owner clicks "2 Plan the feature" in `flow.svg`
-- **THEN** `plan.svg` opens, and its line "Called by "2 Plan the feature" in A feature from request
-  to main" leads back to `flow.svg`
+- **WHEN** the owner clicks "2 Plan the feature" in the picture of the feature flow
+- **THEN** the picture of planning opens, and its line "Called by "2 Plan the feature" in A feature
+  from request to main" leads back
 
 ### Requirement: C4 views zoom in and out
 
@@ -154,31 +234,31 @@ two halves of a split view SHALL link to each other.
 
 #### Scenario: From the context down to components and back
 
-- **WHEN** the owner clicks qsm-marketplace in `marketplace.context`, then qsm-models in the
-  container view
+- **WHEN** the owner clicks qsm-marketplace in the context view, then qsm-models in the container
+  view
 - **THEN** the component view of qsm-models opens, and its "Zoom out" link leads back to the
   container view, whose own link leads back to the context
 
-### Requirement: A crowded container view is split by question
+### Requirement: A crowded view is split by question
 
-A container view with more than 15 relations SHALL be split into two views, who uses which
-container and how the containers depend on each other. A container tagged `shared` SHALL draw no
-relations and carry a note naming who uses it.
+A view with more than 15 relations SHALL be split into two views, who uses which element and how the
+elements depend on each other. A container tagged `shared` SHALL draw no relations and carry a note
+naming who uses it.
 
 #### Scenario: The marketplace container view
 
-- **WHEN** the marketplace container view would hold 44 relations among 5 actors and 33 containers
-- **THEN** `render` writes `containers-uses` with the 16 relations the actors start and only the
-  containers they reach, and `containers-depends` with every container and the 28 relations that
+- **WHEN** the marketplace container view would hold 49 relations among 5 actors and 34 containers
+- **THEN** `render` writes `containers-uses` with the 18 relations the actors start and only the
+  containers they reach, and `containers-depends` with every container and the 31 relations that
   start inside, each in tiers and actor colours, and each links to the other
 
 ### Requirement: lint measures the layout and refuses a worse one
 
 `lint` SHALL measure each picture from its geometry: edge crossings, segments two edges share, total
 and longest edge length, bends per edge, lane jumps per flow, labels that touch a line or a box, and
-area per element, each divided by the element count. In the
-commit gate it SHALL compare the staged picture with the one it replaces and exit `worse` naming
-each measure that grew, unless the commit message names the measure and why.
+area per element, each divided by the element count. In the commit gate it SHALL compare the staged
+picture with the one it replaces and exit `worse` naming each measure that grew, unless the commit
+message names the measure and why.
 
 #### Scenario: A reordered lane makes flows jump further
 
@@ -186,10 +266,24 @@ each measure that grew, unless the commit message names the measure and why.
   1.1
 - **THEN** `lint` exits `worse` naming lane jumps and both numbers
 
+### Requirement: An applied move survives the next render
+
+A BPMN graph's layout SHALL be its diagram geometry: `render` draws it as it is and never lays out a
+file that has geometry. A C4 element MAY carry the layout hints `layer` (its tier, counted from 0)
+and `order` (its place within the tier); `render` SHALL hand them to the layout as constraints in
+every view that draws the element, so a move the owner made and the agent applied stays where it
+was put.
+
+#### Scenario: qsm-docs moved left of qsm-builder
+
+- **WHEN** the agent applies a move that puts qsm-docs before qsm-builder, as `order` hints on both
+- **THEN** the next `render` draws qsm-docs left of qsm-builder in every container view, and a
+  second render writes the same bytes
+
 ### Requirement: paths --compare checks what QA observes
 
 A path's signature SHALL be its split answers in order and the name of its end event.
-`paths --compare <old.bpmn> <new.bpmn>` SHALL exit `worse` naming each signature one model has and
+`paths --compare <old.bpmn> <new.bpmn>` SHALL exit `worse` naming each signature one graph has and
 the other lacks. Merging two activities in a row keeps every signature; removing a split or an
 answer does not. A signature holds no activity, so keeping every signature SHALL NOT be enough to
 keep a rewrite: `model-reviewer` reads the changed activities first.
@@ -203,7 +297,7 @@ keep a rewrite: `model-reviewer` reads the changed activities first.
 #### Scenario: Two steps in a row merge (path p-f914aa)
 
 - **WHEN** the simplify agent merges two activities of one lane that follow each other
-- **THEN** `paths --compare` finds every signature in both models, `check` and the layout measures
+- **THEN** `paths --compare` finds every signature in both graphs, `check` and the layout measures
   pass, and the rewrite is kept once `model-reviewer` has read the merged activity
 
 #### Scenario: A merge keeps every signature but loses what an activity does (path p-855310)
@@ -215,45 +309,51 @@ keep a rewrite: `model-reviewer` reads the changed activities first.
 
 ### Requirement: The model skill takes any piece of work to checked models
 
-The plugin SHALL ship a skill `model`: behaviour becomes BPMN and structure C4, and the scale
-decides the views. A task changes a feature's process only when it changes behaviour; a feature
-gets a process of at most 10 activities, a called process per call activity, and the container
-view of what it touches; a plugin gets a process per verb that holds a state or a decision, and a
-component view; the marketplace gets the main flow and its context and container views.
+The plugin SHALL ship a skill `model`: behaviour goes into the project's BPMN graph and structure
+into its C4 graph, and the scale decides where. A task changes a process only when it changes
+behaviour; a feature gets a process of at most 10 activities and a called process per call
+activity; a plugin gets a container with components when its parts matter; the project gets its
+main process and its context and container views.
 
 #### Scenario: A feature changes how a task is reviewed
 
 - **WHEN** a feature adds a second review round to the task loop
-- **THEN** the skill has the agent change `build-task.bpmn`, not `flow.bpmn`, run `lint` and
-  `render`, and look at the picture before the model reaches the spec
+- **THEN** the skill has the agent change the build-task process, not the feature flow, run `lint`
+  and `render`, and look at the picture before the graph reaches the spec
 
-### Requirement: A reviewer reads every model, a simplifier runs on request
+#### Scenario: The owner asks for a change to a graph (path p-1d3d18)
 
-The plugin SHALL ship an agent `model-reviewer` that reads each picture and its source against the
-spec and the rules and returns findings, and an agent `model-simplifier`, run only on request, that
-walks the graph, proposes merges, splits and reorders as a change to the source, and keeps only the
-ones `paths --compare`, `check` and the layout measures accept and `model-reviewer` passes after
-reading the changed activities.
+- **WHEN** the owner reads a picture and it does not say what he wants
+- **THEN** his request goes back to the agent, and the graph is edited, linted, rendered, its links
+  checked and reviewed again before he reads it once more
 
-#### Scenario: The reviewer finds a model unclear (path p-31cb80)
+### Requirement: A reviewer reads every graph change, a simplifier runs on request
 
-- **WHEN** a model passed lint, render and the gate, and the reviewer finds a split whose answers
-  do not say what the spec says
-- **THEN** the finding goes back to the agent, the model is written, linted and rendered again,
-  and the reviewer reads it once more before the owner does
+The plugin SHALL ship an agent `model-reviewer` that reads each changed picture and its source
+against the spec and the rules and returns findings, and an agent `model-simplifier`, run only on
+request, that walks the graph, proposes merges, splits and reorders as a change to the source, and
+keeps only the ones `paths --compare`, `check` and the layout measures accept and `model-reviewer`
+passes after reading the changed activities.
+
+#### Scenario: The reviewer finds a graph unclear (path p-9108fb)
+
+- **WHEN** a change passed lint, render, the link check and the gate, and the reviewer finds a
+  split whose answers do not say what the spec says
+- **THEN** the finding goes back to the agent, the graph is edited, linted and rendered again, and
+  the reviewer reads it once more before the owner does
 
 #### Scenario: Simplify on request (path p-298cd0)
 
-- **WHEN** the owner asks to simplify `flow.bpmn`, the first rewrite drops a split's answer, the
-  second merges two steps in a row, and a third try is refused
+- **WHEN** the owner asks to simplify the feature flow, the first rewrite drops a split's answer,
+  the second merges two steps in a row, and a third try is refused
 - **THEN** the simplifier drops the first naming `paths --compare`, keeps the second with the
-  measures before and after, reports both, and the owner takes the simplified model
+  measures before and after, reports both, and the owner takes the simplified graph
 
-#### Scenario: The owner keeps the model as it was (path p-c7c303)
+#### Scenario: The owner keeps the graph as it was (path p-c7c303)
 
 - **WHEN** the first rewrite is kept, no other is tried, and the owner reads the report and
   declines it
-- **THEN** the model stays as it was and nothing is committed
+- **THEN** the graph stays as it was and nothing is committed
 
 #### Scenario: Nothing to simplify (path p-e8bca2)
 
@@ -263,55 +363,56 @@ reading the changed activities.
 
 ### Requirement: layout never overwrites a drawn diagram
 
-`layout <file.bpmn>` SHALL write the diagram geometry, pool and lanes included, into a BPMN file
-that has none, deterministically, and SHALL exit `blocked` and change nothing when the file
-already has geometry.
+`layout <file.bpmn>` SHALL write the diagram geometry, pool and lanes included, for each process of
+the file that has none, deterministically, and SHALL exit `blocked` and change nothing when the
+process already has geometry.
 
 #### Scenario: The owner moved shapes in bpmn.io
 
 - **WHEN** `layout` runs on a file the owner saved from bpmn.io
 - **THEN** it exits `blocked` saying the file has a layout, and the file is unchanged
 
-### Requirement: render commits a picture beside every source
+### Requirement: render commits a picture beside the graph
 
-`render` SHALL write `<name>.svg` beside each BPMN file, and for a C4 source one
-`<name>.<level>.drawio.svg` per generated view: the picture, with the view's draw.io diagram, its
-shapes carrying draw.io's C4 attributes, in the root element's `content` attribute. `render
---check` SHALL write nothing and exit `worse` naming each output that differs.
+`render` SHALL write `models/<project>.<process>.svg` per process of the BPMN graph, and one
+`models/<project>.<view>.drawio.svg` per generated C4 view: the picture, with the view's draw.io
+diagram, its shapes carrying draw.io's C4 attributes, in the root element's `content` attribute.
+`render --check` SHALL write nothing and exit `worse` naming each output that differs.
 
-#### Scenario: A model changed and its SVG did not (path p-356c6b)
+#### Scenario: A graph changed and its SVG did not (path p-30235a)
 
-- **WHEN** the agent edits a BPMN file after it rendered the picture and commits both
+- **WHEN** the agent edits the BPMN graph after it rendered the pictures and commits the graph
 - **THEN** `render --check` in the commit gate exits `worse` naming the stale SVG, the commit is
-  refused, and the model goes back to be written, linted and rendered again
+  refused, and the graph goes back to be edited, linted and rendered again
 
-#### Scenario: The picture is unreadable (path p-2c87cd)
+#### Scenario: The picture is unreadable (path p-edf226)
 
 - **WHEN** the agent looks at a rendered SVG and a label is cut or two shapes overlap
-- **THEN** it changes the model and renders again before the model reaches a spec
+- **THEN** it changes the graph and renders again before the graph reaches a spec
 
 ### Requirement: A path runs from a start to an end and has a stable id
 
-A path SHALL run from a start to an end event taking each flow at most twice, so each loop goes
-round at most once; its id SHALL be `p-` and the first six hex digits of the SHA-256 of its flow
-ids joined by spaces.
+A path SHALL run from a start to an end event of one process taking each flow at most twice, so each
+loop goes round at most once; its id SHALL be `p-` and the first six hex digits of the SHA-256 of
+its flow ids joined by spaces.
 
 #### Scenario: A re-layout keeps every id
 
-- **WHEN** the owner moves shapes of `build-task.bpmn` in bpmn.io and saves it
+- **WHEN** the owner moves shapes of the build-task process in bpmn.io and saves it
 - **THEN** `paths` prints the same ids as before, because no flow id changed
 
-### Requirement: paths lists the cover of a process
+### Requirement: paths lists the cover of each process
 
-The cover SHALL be built by taking, until every flow is taken, the path that adds the most flows
-not yet taken, a tie going to the fewer flows, then the lowest id. `paths` SHALL print the cover,
-`--all` every path; `--specs <dir>` SHALL exit `worse` per cover path no scenario cites and per
-cited id that does not exist.
+The cover of a process SHALL be built by taking, until every flow is taken, the path that adds the
+most flows not yet taken, a tie going to the fewer flows, then the lowest id. `paths` SHALL print
+the cover of every process of the graph, `--process <id>` of one, `--all` every path;
+`--specs <dir>` SHALL exit `worse` per cover path no scenario cites and per cited id that does not
+exist.
 
 #### Scenario: Every cover path is cited
 
-- **WHEN** `paths build-task.bpmn --specs specs/` runs on a change whose scenarios cite the three
-  ids of its cover
+- **WHEN** `paths models/marketplace.bpmn --process build_task --specs openspec/` runs and the
+  scenarios cite the three ids of its cover
 - **THEN** it prints the three paths and exits `ok`, the same ids on every run
 
 #### Scenario: A path with no end
@@ -319,25 +420,66 @@ cited id that does not exist.
 - **WHEN** a task has no outgoing flow and is not an end event
 - **THEN** `paths` exits `worse` naming it, because a path that does not end cannot be tested
 
-### Requirement: check holds the C4 model to the code
+### Requirement: check holds the C4 graph to the code
 
 `check` SHALL exit `worse` for an internal container whose path does not exist, a relation between
 two internal containers that the source's `plugin.json` does not declare as a dependency, a
 declared dependency with no relation, and a generated `.dependency-cruiser.models.cjs` that differs
-from the model. `check --write` SHALL regenerate that file, one allowed rule per component relation.
+from the graph. `check --write` SHALL regenerate that file, one allowed rule per component relation.
 The generator is proved before the first task that depends on it (design, Verify 1).
 
-#### Scenario: The model and the manifest disagree
+#### Scenario: The graph and the manifest disagree
 
-- **WHEN** the model says qsm-plan uses qsm-tasks and `plugins/qsm-plan/.claude-plugin/plugin.json`
+- **WHEN** the graph says qsm-plan uses qsm-tasks and `plugins/qsm-plan/.claude-plugin/plugin.json`
   declares no dependency on it
 - **THEN** `check` exits `worse` naming both and the file to change
 
+### Requirement: A graph's links are optional and of four kinds
+
+A graph SHALL carry no link but these, each optional: a BPMN element's `qsm:c4` to an element of the
+C4 graph; a Gherkin tag `@p-<id>` in the project's `.feature` files to a path of the BPMN graph; a
+`<project>:` call activity or a C4 element's `project` to another project's graph; and a node's
+`qsm:decision` or `decision` to a numbered decision of an OpenSpec design (`design:<file>#<n>`) or
+to a commit (`commit:<sha>`).
+
+#### Scenario: A process with no links
+
+- **WHEN** the BPMN graph carries no `qsm:c4`, no `qsm:decision` and no call into another project
+- **THEN** `check` passes on the BPMN graph
+
+### Requirement: Every link resolves or the check fails
+
+`check` SHALL exit `worse` naming each link present that does not resolve: the C4 element, the
+path, the decision or the commit it names does not exist, or the other project has no snapshot of
+that kind on main in the qsm-docs store. A link that is absent SHALL never be a finding.
+
+#### Scenario: A link that no longer resolves (path p-93184e)
+
+- **WHEN** a change renames the C4 container `mp.tasks` and a BPMN task still carries
+  `qsm:c4="mp.tasks"`
+- **THEN** `check` exits `worse` naming the task, the link and the missing element, and the agent
+  edits the graph again before it commits
+
+### Requirement: A C4 node may say when it was last verified
+
+A C4 element MAY carry `verified` with the commit at which it was last checked against the code.
+`check` SHALL exit `worse` when that commit is not in the history of the checked-out branch. The
+page of the C4 graph shows how many commits ago it was verified (change `models-pages`).
+
+#### Scenario: A verified commit that was rebased away
+
+- **WHEN** qsm-tasks carries `verified 'a1b2c3d'` and that commit is not in the branch's history
+- **THEN** `check` exits `worse` naming qsm-tasks and the commit
+
 ### Requirement: Dependencies
 
-The plugin SHALL declare no plug-in in `dependencies` and SHALL need no program on PATH.
+The plugin SHALL declare these plug-ins in `dependencies`, and SHALL need no program on PATH but
+those the design's Verify 4 names:
 
-#### Scenario: Installed alone
+- `qsm-docs`: a graph in local mode lives in its store, and the link check finds another project's
+  graph there.
 
-- **WHEN** only qsm-models is installed
-- **THEN** every verb runs on a model directory without any other plugin
+#### Scenario: The store is not installed
+
+- **WHEN** qsm-docs is not installed and `check` meets a call into another project
+- **THEN** `check` exits `missing` naming qsm-docs

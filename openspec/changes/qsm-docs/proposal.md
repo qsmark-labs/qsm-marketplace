@@ -56,8 +56,9 @@ cloud store, an update of a snapshot, a delete by an agent, an automatic apply, 
 
 - **Devil's advocate: the store is a second source of truth beside git.** In repo mode the model
   is committed and also snapshotted, and the two can disagree. Fixed: the snapshot is a copy made
-  from the committed file at apply, and the page of a repo-mode graph names the commit the snapshot
-  came from (models-pages). The store is the truth only in local mode, where nothing is committed.
+  from the committed file after the commit, and the page of a repo-mode graph says when the file
+  in the checkout differs from the snapshot it shows (models-pages). The store is the truth only in
+  local mode, where nothing is committed.
 - **Devil's advocate: a timestamp id collides.** Two creates in one millisecond get one id. Fixed:
   `create` refuses an id that exists with `blocked`, so nothing is overwritten; the caller runs it
   again.

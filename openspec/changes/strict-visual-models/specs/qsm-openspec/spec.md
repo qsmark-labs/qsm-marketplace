@@ -1,16 +1,20 @@
 ## ADDED Requirements
 
-### Requirement: Archive moves a change's models to their owners
+### Requirement: A change edits the project's one graph
 
-When spec-archive archives a feature's change, it SHALL move each BPMN file by its directory, a
-`models/<plugin>/<f>.bpmn` into `plugins/<plugin>/models/` and a top-level `models/<f>.bpmn` into
-the root `models/`, with its picture; and merge each C4 element by id, persons, systems and
-containers into the root marketplace model, components into the model of the plugin their
-container's path names. It SHALL then lint and render the owners' models and stop on a finding.
+A feature's change SHALL hold no model source. spec-propose SHALL have the agent edit the
+project's graphs under `models/` on the change's branch, in local mode through the qsm-docs store,
+and the change's `models/` SHALL hold only pictures of the processes and views it touches.
+spec-archive SHALL move no model, because the graph already holds the change.
 
-#### Scenario: A plugin's process and a component are archived
+#### Scenario: A change adds a step to the task loop
 
-- **WHEN** a change holds `models/qsm-tasks/feature-status.bpmn` and a C4 component of the
-  container `qsm-tasks`
-- **THEN** after the archive the BPMN and its picture are in `plugins/qsm-tasks/models/`, the
-  component is in the qsm-tasks model, and `qsm-models lint` and `render --check` pass on both
+- **WHEN** spec-propose writes a change that adds a review round to the build-task process
+- **THEN** the change's branch edits `models/marketplace.bpmn`, the change's `models/` holds the
+  picture of the build-task process, and `qsm-models check` finds no model file in the change
+
+#### Scenario: The change is archived
+
+- **WHEN** spec-archive archives that change
+- **THEN** `models/marketplace.bpmn` is unchanged by the archive, and the change's pictures go to
+  the archive with it

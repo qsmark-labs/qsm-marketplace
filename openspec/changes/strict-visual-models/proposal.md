@@ -1,4 +1,4 @@
-![How a model enters a change, BPMN](models/qsm-models/model-gate.svg)
+![A change to a graph is checked, BPMN](models/qsm-models/model-gate.svg)
 
 ![A model simplified on request, BPMN](models/qsm-models/simplify.svg)
 
@@ -10,7 +10,8 @@
 
 qsm-models is one container of the marketplace's one C4 model; its context and container views are
 `../feature-flow/models/marketplace.context.drawio.svg` and the two `containers` views. Each
-`.drawio.svg` opens editable in draw.io.
+`.drawio.svg` opens editable in draw.io. These pictures are still per change, because the one graph
+this change brings does not exist yet; they move into it with the rest.
 
 ## Why
 
@@ -18,47 +19,49 @@ The owner wants every side to see the same thing: "vsude strict defined theorem 
 aby bylo jasne na vsechny strany really co chceme". Today nothing in the marketplace draws a
 process, nothing checks a diagram, and a spec is text only. A model an agent can write but nobody
 checks is a picture that drifts; a strict one is a contract the owner reads, QA tests, and the
-code is checked against. This feature adds the one tool that makes BPMN and C4 strict.
+code is checked against. This feature adds the one tool that makes BPMN and C4 strict, and one
+graph of each per project that every change works on.
 
 ## What
 
 - **A new plugin `qsm-models`, one binary**: `lint`, `layout`, `render`, `paths`, `check`.
-- **BPMN is strict**: the BPMN 2.0.2 Analytic sub-class only, every split's answers labelled,
-  every step in one lane, every lane an actor of the C4 model, no step without a way to an end.
-- **C4 is strict**: four kinds (person, system, container, component), each at its level, every
-  relation says what it does, every internal container names its code; views are generated per
-  level, so no view mixes levels.
-- **Rendered and committed**: an SVG beside each BPMN, a `.drawio.svg` per C4 level that GitHub
-  shows and draw.io opens; a stale picture fails the commit.
-- **The cover becomes scenarios**: `paths` lists the cover of a process, a set of start-to-end
-  paths that together take every flow, each with a stable id; every cover path has a spec
-  scenario, and QA runs the scenarios.
+- **One graph per kind per project**: `models/<project>.bpmn` and `models/<project>.c4`, never a
+  copy per change or per plugin. Committed means repo mode; absent means the graph lives only in
+  the qsm-docs store. The marketplace's existing models migrate once into its one graph.
+- **The standards check their own sources**: bpmnlint with its recommended rules and our Method and
+  Style rules, and `likec4 validate`, before our own rules.
+- **BPMN is pure business**: every step in one lane, a lane a business role that needs no C4
+  element, the Analytic sub-class only, every split's answers labelled, no step without a way to an
+  end, no file or command in a name.
+- **C4 is strict**: four kinds, each at its level, every relation says what it does, every internal
+  container names its code; level 3 is optional; views are generated per level.
+- **Links are optional and checked**: a business task to the C4 element that does it, a scenario
+  to its path, a call into another project's graph, a node to the decision behind it. `check`
+  fails naming any link present that does not resolve.
+- **A C4 node may say when it was last verified** against the code, by commit.
+- **An applied move survives**: BPMN keeps its own geometry, a C4 element carries layout hints.
+- **Rendered and committed**: an SVG per process, a `.drawio.svg` per C4 view, beside the graph; a
+  stale picture fails the commit.
+- **The cover becomes scenarios**: `paths` lists the cover of each process, with stable ids; every
+  cover path has a spec scenario, and QA runs the scenarios.
 - **Checked against the code** (to be proved first, see the design's Verify): container
   dependencies and generated import rules.
-- **Seen in the lens**: a Models section per plugin, the features in flight with their SVGs, and a
-  BPMN viewer.
-- **Drawn to rules, not by hand**: BPMN follows Bruce Silver's Method and Style (at most 10
-  activities a level, one action per activity, loops back through a merge gateway, named end
-  states); C4 views come in tiers (actors, the system with its groups, external systems) and split
-  by question when crowded. One actor has one colour in every picture, and every picture has a
-  legend. The agent changes the model, an engine places the shapes, and measures (crossings, edge
-  length, bends, lane jumps, area) refuse a picture that got worse.
-- **A way to make a model, and a way to simplify it**: a skill `model` takes any piece of work, a
-  task up to the whole marketplace, to its views; a reviewer agent reads every picture; a
-  simplifier agent, run on request, rewrites the model and keeps only what `paths --compare`
-  finds with every signature and the reviewer passes.
+- **Drawn to rules, not by hand**, with a skill `model`, a reviewer on every change, and a
+  simplifier on request, as before.
 
 ## Not in this feature
 
-Executing BPMN, BPMN Common Executable elements, round-trip of draw.io geometry, a C4 deployment
-or dynamic view, the QA agent that runs the paths (`qa-agent`).
+Executing BPMN, BPMN Common Executable elements, round-trip of draw.io geometry, a C4 deployment or
+dynamic view, the QA agent that runs the paths (`qa-agent`), the pages of the graphs and the kinds
+behind them (`models-pages`), scenario results on a process (`models-scenarios`), the before and
+after pictures of a PR (`models-pr-pictures`), and the lens showing models.
 
 ## Decisions of the owner
 
 1. **BPMN as `.bpmn`, edited in bpmn.io** (2026-11-01): settled.
 2. **C4 as `.drawio.svg`** (2026-11-01): one file, an SVG with the draw.io diagram inside, that
-   GitHub shows and draw.io opens. Built that way. Which text an agent writes the C4 model in is
-   open: design decision 5 and open decision 1.
+   GitHub shows and draw.io opens. Built that way. The source an agent writes is LikeC4 `.c4`
+   (decision 6).
 3. **Strict layout, more colour, clear layers** (2026-11-01): "aby ty graph items byly bliz u sebe,
    a mely lepsi structure", "vice barvicek, a vice layer separation", and rules and a workflow "jak
    udelat cokoliv do BPMN a do C4, od mensiho tasku, do celeho codebase", reviewed after creation,
@@ -68,3 +71,44 @@ or dynamic view, the QA agent that runs the paths (`qa-agent`).
    the owner took the three recommendations where the sources disagree (design decision 13).
 5. **One activity, one action** (2026-11-01), the owner's own words on a merged step: "ta jedna
    aktivita dela dve akce, a ma delat jednu, protoze je to jedna aktivita".
+6. **One graph per kind per project, standard sources, pure-business BPMN** (2026-11-04, epic
+   qsm-vgw0): "One graph per kind per project, never a copy per change or per plugin." BPMN 2.0 XML
+   and LikeC4 `.c4`, validated by bpmnlint and `likec4 validate`; the BPMN graph "knows nothing
+   about code"; links are optional, and "every link must resolve or the gate fails". This revised
+   the change: the lane-is-a-C4-actor rule, the model per change merged at archive, the lens's
+   model view and the open C4 format are gone.
+
+## Critiques
+
+- **Devil's advocate: one XML file is a merge conflict waiting.** Two changes in flight that both
+  edit `models/marketplace.bpmn` conflict in one file. Waived for now: one maintainer, few changes
+  in flight, and the agent resolves the conflict and the gates run again; design decision 7 reopens
+  when it costs more.
+- **Devil's advocate: `qsm:` attributes may not survive an editor.** Fixed by design Verify 6
+  before the first task that writes a link.
+- **Devil's advocate: this change's own models break its new rule.** Its BPMN and C4 files are per
+  change, and the current pipeline (`gen3.mjs`) still requires every lane to name a top-level C4
+  actor, which this change drops. Waived: the pipeline is the prototype the plugin replaces, and the
+  migration task moves these files into the one graph.
+- **Devil's advocate: `likec4` may need a program on PATH.** It does not install under bun
+  (measured). Open until Verify 4: in the binary, or npm on PATH named in Dependencies.
+- **Future archaeologist: why some path ids changed at the migration.** Design decision 20:
+  colliding ids get a prefix; the signature is the identity, and the scenarios are rewritten in the
+  same commit.
+- **Future archaeologist: why a commit count is not in the picture.** Design decision 18: it would
+  make every committed picture stale on every commit.
+- **Scope sniper: the lint of backticks in a BPMN name.** The epic says the BPMN graph knows nothing
+  of code, and names no check. Kept: one cheap rule for the case that is mechanical; the rest is
+  the reviewer's.
+- **Scope sniper: pictures copied into a change by hand.** Until `models-pr-pictures` lands, a
+  change copies the pictures of what it touches from the root `models/` into its own `models/`.
+  Accepted gap: the pieces land in order, and the next one replaces the copy with the before and
+  after.
+- **Scope sniper: the change no longer needs its qsm-builder delta.** Removed, because the pages
+  of `models-pages` show the graphs and the lens moves onto qsm-docs later.
+- A compiled renderer is 100 MB (measured). Accepted over Chrome, which bpmn-to-image needs.
+- The render stubs use bpmn-js internals. The version is pinned; a break fails the render loud.
+- bpmn-auto-layout routes every loop back along one channel, so loops into one merge share a
+  segment (`build-task.svg` two, `model-gate.svg` six). Accepted for now: the layout measure
+  "segments two edges share" counts it, and the open decision holds the alternative, lanes and
+  routing drawn by us.

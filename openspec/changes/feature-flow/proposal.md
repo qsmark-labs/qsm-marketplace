@@ -58,7 +58,7 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | Order | Feature (change) | Intent | Depends on | State |
 | --- | --- | --- | --- | --- |
 | 1 | `qsm-tasks-cli` | One binary is the agents' only door to the board; an Action derives a feature's Status, brings `feature/<n>` up to date with main, and closes the tasks a merge into `feature/*` names | nothing | spec, revised to this flow |
-| 1 | `strict-visual-models` | Strict BPMN and C4 models with one tool that lints, renders and walks them, shown in the lens | the C4 source format (its open decision 1) | spec, new |
+| 1 | `strict-visual-models` | One BPMN and one C4 graph per project with one tool that lints, renders, walks and link-checks them | `qsm-docs` (epic qsm-vgw0) | spec, revised to epic qsm-vgw0 |
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
