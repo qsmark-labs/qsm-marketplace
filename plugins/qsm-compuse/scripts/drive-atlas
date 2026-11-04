@@ -185,7 +185,8 @@ atlas_journey() {
       # A mask is found before the shot waits, so the wait ignores it from the first capture.
       if ((${#masks[@]})); then
         slot_tree "$slot" >"$tree"
-        rects="$(atlas_mask "$name" "$tree" "${masks[@]}")"
+        # die in a command substitution ends only the subshell.
+        rects="$(atlas_mask "$name" "$tree" "${masks[@]}")" || exit 1
       fi
       # shot-now catches a state that times out (an armed button), so it waits for nothing.
       if [[ "$line" == shot-now\ * ]]; then
@@ -195,7 +196,7 @@ atlas_journey() {
         still="$(atlas_still "$run/shots/$name.png" "$rects" "$tree")" || exit 1
       fi
       slot_tree "$slot" >"$tree"
-      ((${#masks[@]} == 0)) || rects="$(atlas_mask "$name" "$tree" "${masks[@]}")"
+      if ((${#masks[@]})); then rects="$(atlas_mask "$name" "$tree" "${masks[@]}")" || exit 1; fi
       # The board crops the shot to this item; a renamed component must stop the run, not uncrop it.
       [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$run/trees/$name.json" "$surface" >/dev/null ||
         die "shot $name names @$surface, and its item tree holds no $surface with a size"
