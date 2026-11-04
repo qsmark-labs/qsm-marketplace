@@ -49,7 +49,8 @@ get`, the edit, the gates on that file, then `qsm-docs create` with the old snap
 
 The marketplace's existing models, the BPMN files of `feature-flow`, `strict-visual-models` and
 `qsm-tasks-cli` and the C4 source of `feature-flow`, SHALL move once into `models/marketplace.bpmn`
-and `models/marketplace.c4`, and the old files SHALL be deleted. Every path signature SHALL be kept,
+and `models/marketplace.c4`, and the old files SHALL be deleted, with `c4-kinds.c4`, whose
+vocabulary the tool supplies. Every path signature SHALL be kept,
 every scenario that cites a path id whose id changed SHALL cite the new id, and every proposal SHALL
 link the pictures under the root `models/`.
 

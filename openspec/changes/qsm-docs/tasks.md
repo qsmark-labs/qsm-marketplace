@@ -25,4 +25,5 @@ Each line can be shown working alone; the proof is the run named after it.
   save in the browser shows one line on the next prompt. Blocked by 4.
 - [ ] 6. The gate that no skill, agent, command or hook calls `qsm-docs delete` or `$.docs.delete`.
       Files: `.gates/validate-no-docs-delete.ts`, `package.json` validate script. Proof: the gate
-      fails on a fixture skill that holds the line, and passes on the tree. Blocked by 1.
+      fails on a fixture skill that holds the line, and passes on the tree, where the guard's own
+      refusal text in qsm-docs is not a call. Blocked by 1.
