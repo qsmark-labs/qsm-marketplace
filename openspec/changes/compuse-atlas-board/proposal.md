@@ -21,9 +21,9 @@ machine, and nothing leaves the machine.
 - `drive atlas review [SCENARIO]` serves the latest run's board on localhost, so a comment pinned
   to a point in a frame lands in the scenario's `comments.json`; `drive atlas comments SCENARIO`
   prints the open comments for an agent, which marks one resolved in the board.
-- `drive atlas run` prints the board's path after the report's. Whether `board.html` replaces
-  `index.html` is the owner's decision, open until he has used the board; both are written until
-  then.
+- `board.html` replaces `index.html`, the old one-page report (the owner's decision): `drive atlas
+  run` and `drive atlas diff` write and print only the board, and `diff-<prev>/summary.tsv`, which
+  only that report read, is no longer written.
 
 ## Capabilities
 
@@ -39,7 +39,8 @@ machine, and nothing leaves the machine.
 ## Impact
 
 - `plugins/qsm-compuse/scripts/drive-atlas`: the `@Type` and `todo` grammar, the surface column in
-  `shots.tsv`, the board build in place of `atlas_report`, the `review` and `comments` verbs.
+  `shots.tsv`, the board build in place of `atlas_report`, which is deleted, the `review` and
+  `comments` verbs.
 - New `plugins/qsm-compuse/scripts/atlas-board.ts` (Bun): builds `board.html` from a run, serves
   it, and owns `comments.json`.
 - `plugins/qsm-compuse/USAGE.md`: the `drive atlas run` row, two new rows.
@@ -48,8 +49,9 @@ machine, and nothing leaves the machine.
 ## Critiques
 
 - Devil's advocate: "the existing `index.html` already shows every shot; a second report is a
-  second copy." Open for the owner: the board is built to replace it, and the old report is
-  deleted once he says so, because a second report nobody reads is a second path.
+  second copy." Fixed: the owner chose the board, and `atlas_report` is deleted, because a second
+  report nobody reads is a second path. What only it showed, a depth-3 dump of each tree, stays
+  in `trees/` for `drive geom dump`.
 - Devil's advocate: "a crop from the tree is wrong when two items share the type." Waived with a
   reason: the board crops to the first item of the type in tree order, the shot names which one
   it means by its type, and a desktop whose surfaces share a type names a narrower one.

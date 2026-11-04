@@ -22,10 +22,9 @@
 # is the first B inside the first A, for a surface whose own type is generic.
 # todo @Type STATE, anywhere: a state of that surface no journey shoots yet, an empty frame on the board.
 #
-# A run is <scenario>/<date>-<time>-<rng>/: index.html (everything on one page), board.html (the
-# review board, see scripts/atlas-board.ts), shots/ (the
-# captures as taken), trees/ (the item tree of each shot), logs/ (the shell's log per journey),
-# checks/ (what the scenario's check printed per shot),
+# A run is <scenario>/<date>-<time>-<rng>/: board.html (the review board, see
+# scripts/atlas-board.ts), shots/ (the captures as taken), trees/ (the item tree of each shot),
+# logs/ (the shell's log per journey), checks/ (what the scenario's check printed per shot),
 # diff-<run>/ (a comparison with that run, see atlas_compare).
 
 ATLAS_ROOT="${DRIVE_ATLAS_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/qsm/compuse/atlas}"
@@ -225,8 +224,6 @@ atlas_run() {
   command mv "$run" "$dir/$id"
   run="$dir/$id"
   if [[ -n "$prev" ]]; then atlas_compare "$dir/$prev" "$run"; fi
-  atlas_report "$run" "$prev"
-  printf '%s/index.html\n' "$run"
   atlas_board "$run" "$prev"
   printf '%s/board.html\n' "$run"
   # The run is kept either way; the exit code tells an agent a law failed.
@@ -270,10 +267,10 @@ atlas_measures() {
 
 # Run B against run A, per shot both hold, into B/diff-<A>/: NAME.png (run A beside run B, each
 # changed area boxed, B's changed pixels marked), NAME.areas (x y w h, device px), NAME.measures
-# (key, before, after for every measure that changed), summary.tsv (name, areas, measures) and
-# diff.json (the same per shot: areas and changes).
+# (key, before, after for every measure that changed) and diff.json (the same per shot: areas
+# and changes), which the board reads.
 atlas_compare() {
-  local a="$1" b="$2" out png name areas changed draw x y w h width
+  local a="$1" b="$2" out png name areas draw x y w h width
   out="$b/diff-$(basename "$a")"
   rm -rf "$out"
   mkdir -p "$out"
@@ -292,9 +289,8 @@ atlas_compare() {
         -evaluate-sequence max -threshold "$ATLAS_FUZZ%" -fill '#ff3df0' -opaque white -transparent black \) \
         -compose over -composite \) +append -fill none -stroke '#ff3df0' -strokewidth 3 -draw "$draw" "$out/$name.png"
     fi
-    changed="$(join -t $'\t' -a1 -a2 -e GONE -o 0,1.2,2.2 <(atlas_measures "$a/trees/$name.json" | sort) \
-      <(atlas_measures "$b/trees/$name.json" | sort) | awk -F'\t' '$2 != $3' | tee "$out/$name.measures" | wc -l)"
-    printf '%s\t%s\t%s\n' "$name" "$areas" "$changed" >>"$out/summary.tsv"
+    join -t $'\t' -a1 -a2 -e GONE -o 0,1.2,2.2 <(atlas_measures "$a/trees/$name.json" | sort) \
+      <(atlas_measures "$b/trees/$name.json" | sort) | awk -F'\t' '$2 != $3' >"$out/$name.measures"
     jq -cn --arg name "$name" --rawfile areas "$out/$name.areas" --rawfile changes "$out/$name.measures" '{name: $name,
       areas: [$areas | splits("\n") | select(length > 0) | split(" ") | map(tonumber) | {x: .[0], y: .[1], w: .[2], h: .[3]}],
       changes: [$changes | splits("\n") | select(length > 0) | split("\t") | {key: .[0], before: .[1], after: .[2]}]}' >>"$out/diff.jsonl"
@@ -316,8 +312,6 @@ atlas_diff() {
   [[ "$(readlink -f "$(dirname "$against")")" == "$(readlink -f "$(dirname "$run")")" ]] ||
     die "AGAINST '$against' is a run of another scenario than RUN"
   atlas_compare "$against" "$run"
-  atlas_report "$run" "$(basename "$against")"
-  printf '%s/index.html\n' "$run"
   atlas_board "$run" "$(basename "$against")"
   printf '%s/board.html\n' "$run"
 }
@@ -350,62 +344,4 @@ cmd_atlas() {
     comments) d="$(atlas_dir "${1:-}")" && bun "$MOTION_DIR/atlas-board.ts" comments "$d" ;;
     *) die "atlas needs run SCENARIO | diff RUN [AGAINST] | review [SCENARIO] | comments [SCENARIO] | ls" ;;
   esac
-}
-
-atlas_html() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
-
-# One page per run: every shot by journey, its changed areas and measures against the run it was compared with.
-atlas_report() {
-  local run="$1" against="${2:-}" diff="" journey shot step still name img areas moved last=""
-  [[ -z "$against" ]] || diff="diff-$against"
-  {
-    cat <<HTML
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas $(basename "$(dirname "$run")")</title><style>
-:root{--bg:#120d1c;--card:#1d1629;--line:#2c2340;--text:#ece6f6;--muted:#a99cbf;--accent:#c5a5e9;--change:#ff3df0}
-body{margin:0;padding:24px 16px;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1280px;margin:0 auto}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:32px 0 12px;color:var(--accent)}
-p{margin:0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
-figure{margin:0;background:var(--card);border-radius:12px;overflow:hidden}figure img{display:block;width:100%;height:auto}
-figcaption{padding:10px 12px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}figcaption b{font-weight:600}
-.same{color:var(--muted)}.changed{color:var(--change);font-weight:600}a{color:var(--accent)}
-details{padding:0 12px 10px;color:var(--muted);font-size:13px}pre{white-space:pre-wrap;margin:6px 0 0}
-</style></head><body><main>
-<h1>Atlas $(basename "$(dirname "$run")") · $(basename "$run")</h1>
-<p>desktop $(atlas_html <"$run/desktop-version") · $(if [[ -n "$against" ]]; then printf 'compared with %s' "$against"; else printf 'first run, nothing to compare'; fi)</p>
-HTML
-    # Tab is IFS whitespace, so read would merge an empty fails column with the surface after it.
-    while IFS= read -r row && IFS=$'\x1f' read -r journey shot step still fails _ <<<"${row//$'\t'/$'\x1f'}"; do
-      [[ "$journey" == "$last" ]] || { [[ -z "$last" ]] || echo '</div>'; printf '<h2>%s</h2><div class="grid">\n' "$journey"; last="$journey"; }
-      name="$journey--$shot"
-      areas="" moved=""
-      [[ -z "$diff" ]] || read -r areas moved < <(awk -F'\t' -v n="$name" '$1 == n { print $2, $3 }' "$run/$diff/summary.tsv" 2>/dev/null)
-      img="shots/$name.png"
-      [[ -z "$diff" || ! -f "$run/$diff/$name.png" ]] || img="$diff/$name.png"
-      printf '<figure><a href="shots/%s.png"><img src="%s" alt="%s"></a><figcaption><b>%s</b><span class="same">step %s</span>' \
-        "$name" "$img" "$shot" "$shot" "$step"
-      [[ "$still" != moving ]] || printf '<span class="changed">never still</span>'
-      if [[ -z "$areas" ]]; then printf '<span class="same">new</span>'
-      elif ((areas == 0 && moved == 0)); then printf '<span class="same">unchanged</span>'
-      else printf '<span class="changed">areas changed: %s · measures changed: %s</span>' "$areas" "$moved"; fi
-      case "$fails" in
-        "") ;;
-        0) printf '<span class="same">checks ok</span>' ;;
-        error) printf '<span class="changed">check could not run</span>' ;;
-        *) printf '<span class="changed">checks: %s FAIL</span>' "$fails" ;;
-      esac
-      printf '</figcaption>'
-      [[ ! -s "$run/checks/$name.txt" ]] || printf '<details><summary>checks</summary><pre>%s</pre></details>' "$(atlas_html <"$run/checks/$name.txt")"
-      printf '<details><summary>surfaces</summary><pre>%s</pre></details>' \
-        "$(GEOM_TREE="$run/trees/$name.json" "$MOTION_DIR/geom" dump --depth 3 | atlas_html)"
-      if [[ -n "$diff" && -s "$run/$diff/$name.areas" ]]; then
-        printf '<details><summary>changed areas (x y w h, device px)</summary><pre>%s</pre></details>' "$(head -40 "$run/$diff/$name.areas" | atlas_html)"
-      fi
-      if [[ -n "$diff" && -s "$run/$diff/$name.measures" ]]; then
-        printf '<details><summary>measures that changed (before, after; GONE = absent)</summary><pre>%s</pre></details>' "$(head -40 "$run/$diff/$name.measures" | atlas_html)"
-      fi
-      printf '</figure>\n'
-    done <"$run/shots.tsv"
-    printf '</div></main></body></html>\n'
-  } >"$run/index.html"
 }
