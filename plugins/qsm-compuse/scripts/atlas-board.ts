@@ -6,6 +6,7 @@
 //   serve SCENARIO_DIR    the scenario's runs on 127.0.0.1, the latest board at /, and comments
 //   comments SCENARIO_DIR the open comments, one per line: shot<TAB>x,y<TAB>text
 //   surface TREE PATH     exits 0 when the item tree holds the surface PATH names (drive's check)
+//   mask TREE SCALE PATH... takes the items the PATHs name out of TREE, prints their device rects
 //
 // The board never measures: a crop comes from the shot's item tree, a change from the run's
 // diff-<PREV>/diff.json, a failure from the check's lines. Comments are the one state it owns,
@@ -31,6 +32,8 @@ type Frame = {
   checks: string[];
   checkError: boolean;
   failing: Rect[];
+  // Items that animate by design (device px): the run neither waits for nor compares them.
+  masks: Rect[];
   changed: { areas: Rect[]; changes: Change[] } | null;
 };
 type Section = { title: string; at: { x: number; y: number }; w: number; frames: Frame[] };
@@ -67,27 +70,78 @@ const fail = (message: string): never => {
 
 const num = (value: unknown): number => (typeof value === "number" ? value : 0);
 
-// The first node of a type with a size, depth first: the order geom dumps the tree in. A collapsed
-// popout of the same type (0x0) shows nothing, so it is never the surface.
-function findType(node: unknown, type: string): Record<string, unknown> | undefined {
-  if (!isRecord(node)) return undefined;
-  if (node.type === type && num(node.w) > 0 && num(node.h) > 0) return node;
-  if (!Array.isArray(node.children)) return undefined;
-  for (const child of node.children) {
-    const found = findType(child, type);
-    if (found) return found;
-  }
-  return undefined;
+// The nth node of a type with a size (0 the first), depth first: the order geom dumps the tree
+// in. A collapsed popout of the same type (0x0) shows nothing, so it is never the surface.
+function findType(node: unknown, type: string, nth: number): Record<string, unknown> | undefined {
+  let left = nth;
+  const walk = (at: unknown): Record<string, unknown> | undefined => {
+    if (!isRecord(at)) return undefined;
+    if (at.type === type && num(at.w) > 0 && num(at.h) > 0 && left-- === 0) return at;
+    if (!Array.isArray(at.children)) return undefined;
+    for (const child of at.children) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return walk(node);
 }
 
-// A surface is a type, or a path of them: "PanelSurface/FocusScope" is the first FocusScope inside
-// the first PanelSurface, for a surface whose own type is generic.
-function findSurface(tree: unknown, path: string): Rect | undefined {
-  const node = path.split("/").reduce<unknown>((at, type) => findType(at, type), tree);
-  return isRecord(node)
-    ? { x: num(node.x), y: num(node.y), w: num(node.w), h: num(node.h) }
-    : undefined;
+// A path of types, each with an optional index: "PanelSurface/FocusScope" is the first
+// FocusScope inside the first PanelSurface, "RailEntry[5]/SvgIcon" the glyph of the sixth cell.
+function findNode(tree: unknown, path: string): Record<string, unknown> | undefined {
+  const node = path.split("/").reduce<unknown>((at, segment) => {
+    const [, type = "", nth = "0"] = /^(\w+)(?:\[(\d+)\])?$/u.exec(segment) ?? [];
+    return findType(at, type, Number(nth));
+  }, tree);
+  return isRecord(node) ? node : undefined;
 }
+
+const rectOf = (node: Record<string, unknown>): Rect => ({
+  x: num(node.x),
+  y: num(node.y),
+  w: num(node.w),
+  h: num(node.h),
+});
+
+function findSurface(tree: unknown, path: string): Rect | undefined {
+  const node = findNode(tree, path);
+  return node ? rectOf(node) : undefined;
+}
+
+// Takes the masked items out of a shot's tree, so the consumer's checks and the tree diff never
+// read a value the animation moves, and prints their rects as x,y,w,h;... in device px (SCALE per
+// logical px, grown to whole pixels) for shots.tsv, the units the captures are compared in.
+function mask(path: string, scale: number, paths: string[]): void {
+  if (!(scale > 0)) fail(`mask needs the screen's scale, got ${scale}`);
+  const tree = readJson(path);
+  if (!isRecord(tree)) return fail(`${path} is not an item tree`);
+  const nodes = paths.map(
+    (p) => findNode(tree.tree, p) ?? fail(`${path} holds no ${p} with a size`),
+  );
+  const prune = (at: unknown): void => {
+    if (!isRecord(at) || !Array.isArray(at.children)) return;
+    const kept: unknown[] = at.children.filter((child: unknown) => !nodes.some((n) => n === child));
+    at.children = kept;
+    kept.forEach(prune);
+  };
+  prune(tree.tree);
+  writeAtomic(path, JSON.stringify(tree));
+  const rects = nodes.map(rectOf).map((r) => {
+    const x = Math.floor(r.x * scale);
+    const y = Math.floor(r.y * scale);
+    return `${x},${y},${Math.ceil((r.x + r.w) * scale) - x},${Math.ceil((r.y + r.h) * scale) - y}`;
+  });
+  process.stdout.write(`${rects.join(";")}\n`);
+}
+
+const masksOf = (field: string): Rect[] =>
+  field === ""
+    ? []
+    : field.split(";").map((r) => {
+        const [x = 0, y = 0, w = 0, h = 0] = r.split(",").map(Number);
+        return { x, y, w, h };
+      });
 
 // A PNG's size is in its header, so the builder needs no image tool.
 function pngSize(path: string): { w: number; h: number } {
@@ -195,28 +249,36 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   checks: [],
   checkError: false,
   failing: [],
+  masks: [],
   changed: null,
 });
 
+// The frame's crop: its surface padded by PAD and clipped to the screen, else the whole screen.
+function cropOf(
+  tree: Record<string, unknown>,
+  screen: { w: number; h: number },
+  surface: string,
+): Rect {
+  if (surface === "") return { x: 0, y: 0, w: screen.w, h: screen.h };
+  const item = findSurface(tree.tree, surface) ?? fail(`a tree holds no ${surface}`);
+  const x = Math.max(0, item.x - PAD);
+  const y = Math.max(0, item.y - PAD);
+  return {
+    x,
+    y,
+    w: Math.min(screen.w, item.x + item.w + PAD) - x,
+    h: Math.min(screen.h, item.y + item.h + PAD) - y,
+  };
+}
+
 function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]>): Frame {
-  const [journey = "", state = "", , still = "", fails = "", surface = ""] = row;
+  const [journey = "", state = "", , still = "", fails = "", surface = "", masks = ""] = row;
   const name = `${journey}--${state}`;
   const tree = readJson(join(run, "trees", `${name}.json`));
   if (!isRecord(tree)) return fail(`the tree of ${name} is not an object`);
   const screen = { w: num(tree.width), h: num(tree.height) };
   const image = pngSize(join(run, "shots", `${name}.png`));
-  let crop: Rect = { x: 0, y: 0, w: screen.w, h: screen.h };
-  if (surface !== "") {
-    const item = findSurface(tree.tree, surface) ?? fail(`the tree of ${name} holds no ${surface}`);
-    const x = Math.max(0, item.x - PAD);
-    const y = Math.max(0, item.y - PAD);
-    crop = {
-      x,
-      y,
-      w: Math.min(screen.w, item.x + item.w + PAD) - x,
-      h: Math.min(screen.h, item.y + item.h + PAD) - y,
-    };
-  }
+  const crop = cropOf(tree, screen, surface);
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
@@ -234,6 +296,7 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
     // drive writes "error" when the check itself could not run.
     checkError: fails === "error",
     failing: failingOf(checks),
+    masks: masksOf(masks),
     changed: diffs.get(name) ?? null,
   };
 }
@@ -421,10 +484,10 @@ function serve(scenarioDir: string): void {
   process.stdout.write(`http://127.0.0.1:${server.port}/\n`);
 }
 
-const [verb = "", target = "", prev = ""] = process.argv.slice(2);
+const [verb = "", target = "", prev = "", ...rest] = process.argv.slice(2);
 if (target === "")
   fail(
-    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH",
+    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH | mask TREE SCALE PATH...",
   );
 const where = resolve(target);
 if (verb === "build") build(where, prev);
@@ -435,4 +498,5 @@ else if (verb === "comments")
 else if (verb === "surface") {
   const tree = readJson(where);
   process.exitCode = isRecord(tree) && findSurface(tree.tree, prev) ? 0 : 1;
-} else fail(`unknown verb ${verb} (build, serve, comments, surface)`);
+} else if (verb === "mask") mask(where, Number(prev), rest);
+else fail(`unknown verb ${verb} (build, serve, comments, surface, mask)`);

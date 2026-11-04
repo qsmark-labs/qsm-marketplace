@@ -55,7 +55,19 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   non-zero exit, the way every `drive` verb does (`die`); a run whose board fails to build still
   keeps its shots and fails the run, because a report that silently did not appear is a lie.
 
+- **A mask removes the item from the shot's tree, and its rect from the pixel comparison.** An
+  item that animates by design (the connecting pulse) changes pixels, its opacity in the tree and
+  the contrast the consumer's check measures from the pixels, in a different phase every run.
+  Removing the node keeps every check and the tree diff off it without a flag each of them must
+  honour; the rect, kept in `shots.tsv` in device px (the slot's scale), the units the captures
+  are compared in, is all the wait, the comparison and the board need. An
+  index in a path (`RailEntry[5]`) exists because the tree's nodes carry no names, and the sixth
+  rail cell is otherwise unreachable.
+
 ## Risks / Trade-offs
+
+- An index names a position: a rail that gains a cell before the network one masks the wrong glyph.
+  The pulse is then unmasked, so the shot reads moving and changed, and the run says so.
 
 - Two reports while the owner decides; the old one goes when he says so.
 - A board of a hundred full-resolution PNGs is a few hundred MB of decoded images, all of them

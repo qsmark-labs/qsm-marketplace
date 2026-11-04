@@ -21,6 +21,7 @@
   --changed: #ff6bd8;
   --fail: #ff7a6b;
   --moving: #f5c96b;
+  --animates: #7fd1c7;
   --ui: ui-sans-serif, system-ui, "Inter", sans-serif;
   --mono: ui-monospace, "JetBrains Mono", monospace;
 }
@@ -61,6 +62,7 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 .badge.changed { background: var(--changed); }
 .badge.fail { background: var(--fail); }
 .badge.moving { background: var(--moving); }
+.badge.animates { background: var(--animates); }
 .badge.todo { background: var(--muted); }
 .badge.note { background: var(--accent); }
 
@@ -149,6 +151,7 @@ function badges(f) {
     f.checks.length > 0 && h("span", { class: "badge fail" }, `FAIL · ${f.checks.length}`),
     f.checkError && h("span", { class: "badge fail" }, "check did not run"),
     f.still === "moving" && h("span", { class: "badge moving" }, "never still"),
+    f.masks.length > 0 && h("span", { class: "badge animates", title: "an item animates by design: the run neither waits for it nor compares it" }, "animates"),
     notesOf(f).length > 0 && h("span", { class: "badge note" }, `${notesOf(f).length} note${notesOf(f).length > 1 ? "s" : ""}`),
   ];
 }
@@ -286,6 +289,8 @@ function overlay(f, img, withPins) {
   const svg = s("svg", { viewBox: `0 0 ${f.screen.w} ${f.screen.h}`, preserveAspectRatio: "none" });
   for (const r of f.failing)
     svg.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
+  for (const m of f.masks)
+    svg.append(s("rect", { x: m.x / f.scale - 2, y: m.y / f.scale - 2, width: m.w / f.scale + 4, height: m.h / f.scale + 4, fill: "none", stroke: "#7fd1c7", "stroke-width": 2, "stroke-dasharray": "4 3" }));
   for (const a of f.changed ? f.changed.areas : [])
     svg.append(s("rect", { x: a.x / f.scale - 3, y: a.y / f.scale - 3, width: a.w / f.scale + 6, height: a.h / f.scale + 6, fill: "none", stroke: "#ff6bd8", "stroke-width": 2 }));
   if (withPins)

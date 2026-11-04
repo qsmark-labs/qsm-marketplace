@@ -18,8 +18,10 @@ command to check unless asked.
    The log path is the one the main agent gave you. Otherwise make a unique one in the scratchpad
    directory named in your system prompt, whatever directory the command runs in, because two
    runners of one command must not share a file:
-   `mktemp --suffix=.log <scratchpad>/runner.<short-name>.XXXXXX`. Keep the command's exit code
-   (`set -o pipefail`, or `${PIPESTATUS[0]}` in bash, `${pipestatus[1]}` in zsh).
+   `mktemp --suffix=.log <scratchpad>/runner.<short-name>.XXXXXX`. Capture the exit code without a
+   pipe: `<command> > <log> 2>&1; code=$?`, then read the log. A pipe into `tee` loses it: the shell
+   here is zsh, where `$PIPESTATUS` is empty (its name is `$pipestatus`, 1-indexed), and two runners
+   in a row reported "exit not captured" for that reason.
 2. Do not change the command: no added flags, no `--quiet`, no `| head`. The one time you do not
    run it is when it looks dangerous (deletes, force-pushes, drops a database, touches something
    outside the named directory) and the main agent did not say it knows; say what you see instead.

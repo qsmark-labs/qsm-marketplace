@@ -17,6 +17,21 @@ holds no node of that type.
 - **WHEN** a shot names `@NetworkPopup` and the tree holds no `NetworkPopup`
 - **THEN** `drive atlas run` exits non-zero naming the shot and the type
 
+### Requirement: A shot masks what animates by design
+
+A shot's `~@PATH` words SHALL each name an item, found as a surface is, with `Type[n]` the nth
+node of that type with a size. The shot SHALL wait for a still screen outside the masked items,
+the comparison with the previous run SHALL count no changed area inside them, the shot's item
+tree SHALL hold them no more, and the board SHALL mark the frame `animates`. A mask the tree does
+not hold SHALL stop the run naming the shot.
+
+#### Scenario: A pulsing glyph neither blocks the shot nor reads as a change
+
+- **WHEN** a journey shoots `shot rail-connecting @Rail ~@RailEntry[5]/SvgIcon` while that glyph
+  pulses, twice on unchanged code
+- **THEN** both shots are still, the second run shows no changed frame, and the frame carries
+  `animates` with the glyph's rect drawn in focus
+
 ### Requirement: The inventory shows its holes
 
 A scenario's `todo @Type STATE` SHALL put an empty frame titled STATE in the Type's section of the

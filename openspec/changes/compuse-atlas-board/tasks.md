@@ -5,6 +5,11 @@
   by `atlas_steps`; the header grammar names both. Proof: a one-journey scenario with a right and a
   wrong type (passes, then dies naming the shot), and `shots.tsv` holds the type.
 
+- [x] 1.2 `scripts/drive-atlas` and `scripts/atlas-board.ts mask`: `~@PATH` on a shot, `Type[n]`
+  in a path, the masked wait and compare, the seventh `shots.tsv` column, the badge. Proof: the
+  desktop's network-states journey, run twice with its connecting glyph pulsing, gives still
+  shots and no changed frame.
+
 ## 2. The board
 
 - [x] 2.1 `scripts/atlas-board.ts build RUN`: reads `shots.tsv`, the trees (crop), the checks
@@ -12,8 +17,9 @@
   `RUN/board.html` with the data inlined. Proof: built from the latest desktop run, opened from
   disk in the browser, a capture of the canvas, the fit, one focus with a FAIL, one changed frame.
   Blocked by 1.1.
-- [x] 2.2 `drive atlas run` and `drive atlas diff` build the board after the report and print its
-  path. Proof: a run prints both paths and the board exists.
+- [x] 2.2 `drive atlas run` and `drive atlas diff` build the board in place of the report and print
+  its path; `atlas_report` and `summary.tsv` go. Proof: `drive atlas diff` on two kept runs prints
+  one path, writes no `index.html`, and the board shows the changed frames.
 
 ## 3. Comments
 
