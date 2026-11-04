@@ -40,7 +40,10 @@ model {
   repo = system 'Git repository' 'The checked-out branch: code, changes and models' {
     #external
   }
-  bpmnio = system 'bpmn.io libraries' 'bpmn-moddle, bpmn-auto-layout, bpmnlint, bpmn-js' {
+  bpmnio = system 'bpmn.io libraries' 'bpmn-moddle, bpmn-auto-layout, bpmnlint, bpmn-js, bpmn-js-differ' {
+    #external
+  }
+  likec4 = system 'LikeC4' 'likec4 validate: the standard check of a .c4 source' {
     #external
   }
   elk = system 'elkjs' 'ELK layered: places the shapes and routes the edges of a C4 view' {
@@ -64,6 +67,30 @@ model {
     setup = container 'qsm-setup' 'Installs the marketplace and writes the instructions every session reads' {
       technology 'Bun binary, skill'
       metadata { group 'Core' path 'plugins/qsm-setup' }
+    }
+    docs = container 'qsm-docs' 'Immutable snapshots of generated documents, and their pages on 127.0.0.1' {
+      technology 'Bun binary, web page, hooks'
+      metadata { group 'Core' path 'plugins/qsm-docs' }
+      tool = component 'qsm-docs' 'The binary: get, create, list, diff, delete, kind, serve' {
+        technology 'Bun binary'
+        metadata { path 'plugins/qsm-docs/scripts' }
+      }
+      store = component 'Snapshot store' 'One file per snapshot, one append-only ledger per project' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-docs/lib/store' }
+      }
+      kinds = component 'Kind registry' 'Each kind: its data type, page assets, convert and diff commands' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-docs/lib/kinds' }
+      }
+      server = component 'Page server' 'The page shell on 127.0.0.1; edit mode saves a proposal' {
+        technology 'TypeScript, web page'
+        metadata { path 'plugins/qsm-docs/lib/serve' }
+      }
+      hooks = component 'Hooks' 'The new-proposal line on session start and prompt; the delete guard' {
+        technology 'TypeScript hooks module'
+        metadata { path 'plugins/qsm-docs/hooks' }
+      }
     }
     builder = container 'qsm-builder' 'The builder skills, the gates, and the lens: a local page of every plugin and change' {
       technology 'Bun binary, skills, web page'
@@ -144,7 +171,7 @@ model {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/paths.ts' }
       }
-      c4 = component 'C4 core' 'Level rules, generated views per level, lanes against actors' {
+      c4 = component 'C4 core' 'Level rules, likec4 validate, generated views per level, layout hints' {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/c4' }
       }
@@ -152,9 +179,25 @@ model {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/c4/drawio.ts' }
       }
-      conform = component 'Code check' 'Container paths, plugin dependencies, generated import rules' {
+      conform = component 'Code check' 'Container paths, plugin dependencies, import rules, every link resolves' {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/conform.ts' }
+      }
+      kinds = component 'Kinds' 'bpmn, c4 and c4-change: converters to JSON and the semantic diff' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/kinds' }
+      }
+      pages = component 'Pages' 'The BPMN page in the bpmn-js modeler and the C4 page, each with edit mode' {
+        technology 'JavaScript, bpmn-js'
+        metadata { path 'plugins/qsm-models/pages' }
+      }
+      subgraph = component 'Subgraph' 'What a change touches plus one hop, drawn before and after' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/subgraph.ts' }
+      }
+      scenarios = component 'Scenario link' 'Gherkin tags on cover paths, results from the Cucumber JSON' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-models/lib/scenarios.ts' }
       }
       skill = component 'model' 'How to draw a task or a codebase in BPMN and C4' {
         #artifact
@@ -299,13 +342,15 @@ model {
   // level 1 and the actors of level 2
   owner -> agent 'plans, splits and reviews with' { technology 'terminal' }
   owner -> github 'files features, merges PRs' { technology 'HTTPS, browser' }
-  owner -> mp.builder 'reads the models in the lens' { technology 'HTTP, browser' }
+  owner -> mp.builder 'reads the plugins in the lens' { technology 'HTTP, browser' }
+  owner -> mp.docs 'edits model pages in, deletes snapshots with' { technology 'browser, terminal' }
   owner -> mp.cockpit 'watches the loop in' { technology 'terminal pane' }
   owner -> mp.setup 'installs the chosen plugins with' { technology 'terminal' }
   agent -> mp.plan 'plans and splits with' { technology 'skill load' }
   agent -> mp.spec 'writes and applies the change with' { technology 'skill load, exec' }
   agent -> mp.tasks 'creates and claims tasks with' { technology 'exec, stdio' }
   agent -> mp.models 'lints and renders models with' { technology 'exec, stdio' }
+  agent -> mp.docs 'gets, creates, lists and diffs snapshots with' { technology 'exec, stdio' }
   agent -> mp.memory 'gathers context from' { technology 'exec, stdio' }
   agent -> mp.index 'gathers context from' { technology 'MCP' }
   agent -> mp.forge 'opens PRs with' { technology 'exec, stdio' }
@@ -328,6 +373,8 @@ model {
   mp.langts -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
   mp.langzsh -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
   mp.memory -> mp.tasks 'adds the open tasks to the briefing with' { technology 'exec, stdio' }
+  mp.models.kinds -> mp.docs.tool 'installs the bpmn, c4 and c4-change kinds with' { technology 'exec, stdio' }
+  mp.models.subgraph -> mp.docs.tool 'gets the base and branch snapshots with' { technology 'exec, stdio' }
   mp.spec.apply -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
   mp.spec.propose -> mp.tasks.tool 'has the agent bind the change to its feature with' { technology 'instruction' }
   mp.plan.planskill -> mp.tasks.tool 'has the agent file and split features with' { technology 'instruction' }
@@ -374,6 +421,16 @@ model {
   mp.forge.tool -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
   mp.spec.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
   mp.builder -> repo 'reads the changes and models of the branch' { technology 'file read' }
+  mp.docs.tool -> repo 'reads the project and branch of' { technology 'exec, git' }
+
+  // inside qsm-docs
+  mp.docs.tool -> mp.docs.store 'creates, reads and deletes snapshots with' { technology 'function call' }
+  mp.docs.tool -> mp.docs.kinds 'looks up the kind of a snapshot with' { technology 'function call' }
+  mp.docs.tool -> mp.docs.server 'starts' { technology 'function call' }
+  mp.docs.tool -> mp.lib 'builds its verbs on' { technology 'import' }
+  mp.docs.server -> mp.docs.store 'reads and creates snapshots with' { technology 'function call' }
+  mp.docs.server -> mp.docs.kinds 'serves page assets and converts with' { technology 'function call' }
+  mp.docs.hooks -> mp.docs.tool 'calls the verbs through the noun' { technology 'function call' }
 
   // inside qsm-models
   mp.models.cli -> mp.models.bpmn 'lints, lays out and renders BPMN with' { technology 'function call' }
@@ -385,6 +442,15 @@ model {
   mp.models.c4 -> mp.models.drawio 'writes each view with' { technology 'function call' }
   mp.models.conform -> mp.models.c4 'reads containers and components from' { technology 'function call' }
   mp.models.skill -> mp.models.cli 'has the agent run' { technology 'instruction' }
+  mp.models.cli -> mp.models.kinds 'converts and diffs snapshots with' { technology 'function call' }
+  mp.models.cli -> mp.models.subgraph 'draws the PR pictures with' { technology 'function call' }
+  mp.models.cli -> mp.models.scenarios 'links scenarios to paths with' { technology 'function call' }
+  mp.models.scenarios -> mp.models.walk 'reads the cover paths from' { technology 'function call' }
+  mp.models.subgraph -> mp.models.kinds 'diffs base and branch with' { technology 'function call' }
+  mp.models.kinds -> bpmnio 'diffs BPMN with' { technology 'npm import' }
+  mp.models.pages -> bpmnio 'edits BPMN in the browser with' { technology 'bundled script' }
+  mp.models.c4 -> likec4 'validates the source with' { technology 'exec' }
+  mp.models.kinds -> mp.models.pages 'declares as the page of each kind' { technology 'kind manifest' }
   mp.models.bpmn -> bpmnio 'parses, lints, lays out and draws with' { technology 'npm import' }
   mp.models.c4 -> elk 'lays out views with' { technology 'npm import' }
   mp.models.conform -> repo 'reads the code and plugin.json of' { technology 'file read' }

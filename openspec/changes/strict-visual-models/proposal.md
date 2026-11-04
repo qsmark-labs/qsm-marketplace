@@ -4,7 +4,9 @@
 
 ![One try of the simplify pass, BPMN](models/qsm-models/try-rewrite.svg)
 
-![qsm-models, C4 components](../feature-flow/models/marketplace.components-models.drawio.svg)
+![qsm-models, C4 components, who uses what](../feature-flow/models/marketplace.components-models-uses.drawio.svg)
+
+![qsm-models, C4 components, what depends on what](../feature-flow/models/marketplace.components-models-depends.drawio.svg)
 
 qsm-models is one container of the marketplace's one C4 model; its context and container views are
 `../feature-flow/models/marketplace.context.drawio.svg` and the two `containers` views. Each
