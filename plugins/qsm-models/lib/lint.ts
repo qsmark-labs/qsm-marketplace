@@ -2,10 +2,11 @@
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
 import { type Finding, formatFinding, lintBpmn } from "./bpmn/lint.ts";
 import { readGraph } from "./bpmn/model.ts";
+import { lintC4 } from "./c4/lint.ts";
 import { graphFiles } from "./graphs.ts";
 
 async function lintFile(file: string): Promise<Finding[]> {
-  return lintBpmn(file, (await readGraph(file)).defs);
+  return file.endsWith(".c4") ? lintC4(file) : lintBpmn(file, (await readGraph(file)).defs);
 }
 
 export async function lintPath(path: string): Promise<Outcome<{ findings: Finding[] }>> {

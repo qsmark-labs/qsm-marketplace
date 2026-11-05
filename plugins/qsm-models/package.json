@@ -3,6 +3,7 @@
   "private": true,
   "dependencies": {
     "bpmn-moddle": "10.3.1",
-    "bpmnlint": "12.0.0"
+    "bpmnlint": "12.0.0",
+    "likec4": "1.60.0"
   }
 }

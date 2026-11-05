@@ -71,7 +71,7 @@ model {
     docs = container 'qsm-docs' 'Immutable snapshots of generated documents, and their pages on 127.0.0.1' {
       technology 'Bun binary, web page, hooks'
       metadata { group 'Core' path 'plugins/qsm-docs' }
-      tool = component 'qsm-docs' 'The binary: get, create, list, diff, delete, kind, serve' {
+      tool = component 'qsm-docs binary' 'The binary: get, create, list, diff, delete, kind, serve' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-docs/scripts' }
       }
@@ -87,7 +87,7 @@ model {
         technology 'TypeScript, web page'
         metadata { path 'plugins/qsm-docs/lib/serve' }
       }
-      hooks = component 'Hooks' 'The new-proposal line on session start and prompt; the delete guard' {
+      hooks = component 'qsm-docs hooks' 'The new-proposal line on session start and prompt; the delete guard' {
         technology 'TypeScript hooks module'
         metadata { path 'plugins/qsm-docs/hooks' }
       }
@@ -114,11 +114,11 @@ model {
     spec = container 'qsm-openspec' 'Writes, applies and archives a change' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-openspec' }
-      tool = component 'qsm-openspec' 'The binary: its verbs and its doctor' {
+      tool = component 'qsm-openspec binary' 'The binary: its verbs and its doctor' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-openspec/scripts' }
       }
-      hooks = component 'Hooks' 'React to harness events through the generated noun' {
+      hooks = component 'qsm-openspec hooks' 'React to harness events through the generated noun' {
         technology 'TypeScript hooks module'
         metadata { path 'plugins/qsm-openspec/hooks' }
       }
@@ -141,7 +141,7 @@ model {
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-tasks' }
-      tool = component 'qsm-tasks' 'The binary: ready, add, claim, close and the other board verbs' {
+      tool = component 'qsm-tasks binary' 'The binary: ready, add, claim, close and the other board verbs' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-tasks/scripts' }
       }
@@ -208,11 +208,11 @@ model {
     forge = container 'qsm-forge' 'Opens PRs, reads and resolves review threads' {
       technology 'Bun binary, skill'
       metadata { group 'Features' path 'plugins/qsm-forge' }
-      tool = component 'qsm-forge' 'The binary: pull requests and review threads on GitHub and GitLab' {
+      tool = component 'qsm-forge binary' 'The binary: pull requests and review threads on GitHub and GitLab' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-forge/scripts' }
       }
-      hooks = component 'Hooks' 'Guard git and forge commands through the generated noun' {
+      hooks = component 'qsm-forge hooks' 'Guard git and forge commands through the generated noun' {
         technology 'TypeScript hooks module'
         metadata { path 'plugins/qsm-forge/hooks' }
       }
@@ -240,7 +240,7 @@ model {
         technology 'agent .md'
         metadata { path 'plugins/qsm-review/agents/strict-reviewer.md' }
       }
-      qaagent = component 'QA agent' 'Runs the cover scenarios of a feature as a blackbox (change qa-agent)' {
+      qaagent = component 'qa' 'Runs the cover scenarios of a feature as a blackbox (change qa-agent)' {
         #artifact
         technology 'agent .md'
         metadata { path 'plugins/qsm-review/agents/qa.md' }

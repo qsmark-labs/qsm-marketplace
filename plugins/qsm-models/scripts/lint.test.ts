@@ -169,3 +169,84 @@ describe("lint on BPMN", () => {
     expect(rulesOf(r.findings, "context")).toContain("label-required");
   });
 });
+
+const C4 = readFileSync(
+  resolve(import.meta.dir, "../../../openspec/changes/feature-flow/models/marketplace.c4"),
+  "utf8",
+);
+
+/** The marketplace's C4 source with `from` replaced by `to`, which must be there. */
+function c4(from: string, to: string): string {
+  expect(C4).toContain(from);
+  return C4.replace(from, to);
+}
+
+describe("lint on C4", () => {
+  it("passes the marketplace's source, a container without components included", () => {
+    expect(lint(C4, "marketplace.c4")).toEqual({ exit: 0, findings: [] });
+  });
+
+  it("gives the message and line of likec4 validate for a relation to a missing element", () => {
+    const r = lint(c4("  owner -> agent 'plans", "  owner -> nobody 'plans"), "marketplace.c4");
+    expect(r.exit).toBe(3);
+    const line = C4.split("\n").findIndex((l) => l.startsWith("  owner -> agent 'plans")) + 1;
+    expect(r.findings.map(({ id, rule, message }) => ({ id, rule, message }))).toContainEqual({
+      id: `line ${line}`,
+      rule: "likec4-validate",
+      message: "Could not resolve reference to Referenceable named 'nobody'.",
+    });
+  });
+
+  it("refuses a container inside a container, which LikeC4 accepts", () => {
+    const r = lint(
+      c4(
+        "    cockpit = container 'qsm-cockpit'",
+        "    nested = container 'Nested' 'x' {\n      metadata { path 'x' }\n      inner = container 'Inner' 'y' { metadata { path 'y' } }\n    }\n    cockpit = container 'qsm-cockpit'",
+      ),
+      "marketplace.c4",
+    );
+    const found = r.findings.find((f) => f.id === "mp.nested.inner");
+    expect(found?.rule).toBe("level");
+    expect(found?.message).toContain("a container sits in a system");
+  });
+
+  it("refuses two agents in one colour, naming both and the colour", () => {
+    const r = lint(
+      c4("metadata { colour 'green' }", "metadata { colour 'orange' }"),
+      "marketplace.c4",
+    );
+    expect(r.findings.map(({ id, rule, message }) => ({ id, rule, message }))).toContainEqual({
+      id: "reviewer, qa",
+      rule: "actor-colour",
+      message: "reviewer and qa are both orange: each actor has its own colour",
+    });
+  });
+
+  it("refuses a source with its own specification or views", () => {
+    const r = lint(
+      `${C4}\nspecification {\n  element box\n}\nviews {\n  view mine {\n    include *\n  }\n}\n`,
+      "marketplace.c4",
+    );
+    expect(r.findings.map((f) => f.rule).toSorted()).toEqual(["own-views", "own-vocabulary"]);
+  });
+
+  it("refuses a relation without technology, two equal titles and a container without its path", () => {
+    const r = lint(
+      c4(
+        "  owner -> agent 'plans, splits and reviews with' { technology 'terminal' }",
+        "  owner -> agent 'plans, splits and reviews with'",
+      )
+        .replace("ccr = container 'qsm-ccr'", "ccr = container 'qsm-cockpit'")
+        .replace(
+          "metadata { group 'Harness' path 'plugins/qsm-opencode' }",
+          "metadata { group 'Harness' }",
+        ),
+      "marketplace.c4",
+    );
+    expect(r.findings.map((f) => `${f.id} ${f.rule}`).toSorted()).toEqual([
+      "mp.cockpit, mp.ccr unique-title",
+      "mp.opencode container-path",
+      "owner -> agent relation-technology",
+    ]);
+  });
+});
