@@ -11,17 +11,18 @@ agents, received-findings, review-threads, `/simplify`, the review skill. Nothin
    design; `apply.requires: [design]`, `apply.tracks: null`. Rejected: `spec-driven` (it writes
    tasks.md ahead, which the owner removed) and no OpenSpec. Measured on 1.6.0: the schema
    validates, `status` lists four artifacts, `validate --strict` passes with no tasks.md.
-2. **Models come before specs.** `specs` requires `models`, so the SHALL text is written against
-   a drawn process. `flow.bpmn` models our own process, not product behaviour: its cover paths
-   are the scenarios of this spec. A product feature's BPMN models what QA runs.
-3. **The change lives on `feature/<n>` from the owner's yes, and is archived after the accept.**
-   The planning session works in its own worktree (git rule 1) on the local branch `feature/<n>`
-   cut from main; the owner's yes is given in the session (`plan.bpmn` 2.7), so no pull request
-   carries the plan, and only then is the change committed. Step 3 pushes the branch. The lens
-   shows the branch the checkout is on, so the plan shows before the push. A revision during the
-   build is a commit on the branch. At step 9 the change is archived only after the owner accepts
-   the feature pull request (`land.bpmn`), so a round of fixes never archives it twice (the archive
-   rule is in `tasks-on-github-issues`).
+2. **Models come before specs.** `specs` requires `models`, so the SHALL text is written against a
+   drawn process. `feature_flow_process` of `models/marketplace.bpmn` models our own process, not
+   product behaviour: its cover paths are the scenarios of this spec. A product feature's BPMN
+   models what QA runs.
+3. **The change lives on `feature/<n>` from the owner's yes, and is archived after the accept.** The
+   planning session works in its own worktree (git rule 1) on the local branch `feature/<n>` cut
+   from main; the owner's yes is given in the session (`plan_process` 2.7), so no pull request
+   carries the plan, and only then is the change committed. Step 3 pushes the branch. The lens shows
+   the branch the checkout is on, so the plan shows before the push. A revision during the build is
+   a commit on the branch. At step 9 the change is archived only after the owner accepts the feature
+   pull request (`land_process`), so a round of fixes never archives it twice (the archive rule is
+   in `tasks-on-github-issues`).
 4. **Tasks are cut at the split, on the board.** `qsm-tasks add --feature <n>` with `--after`
    for order; the first sub-issue makes the feature In Dev (the Action). A task is one concern
    the owner reads in one sitting, and every fake it adds has a later task that replaces it, so
@@ -64,8 +65,9 @@ elsewhere: `task-tool`, `spec-archive` (`tasks-on-github-issues`). New elsewhere
 4. **Versions and a release train wait** for a full release flow of an app; the marketplace has
    none yet.
 5. **The three ways back are drawn**: the owner's comments on a task pull request
-   (`build-task.bpmn` 6.2), changes asked on the feature pull request (`land.bpmn` 9.5), a plan
-   the owner drops (`plan.bpmn` 2.10). A model that leaves them out would say less than happens.
+   (`build_task_process` 6.2), changes asked on the feature pull request (`land_process` 9.5), a
+   plan the owner drops (`plan_process` 2.10). A model that leaves them out would say less than
+   happens.
 
 ## Critiques
 

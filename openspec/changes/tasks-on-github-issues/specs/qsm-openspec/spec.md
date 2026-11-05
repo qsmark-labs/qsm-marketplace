@@ -27,7 +27,7 @@ name the cause. The skills SHALL say "the task tool" and never name a binary.
 
 ### Requirement: Archive runs on the feature branch at step 9 and closes nothing
 
-Step 9 follows `land.bpmn` of the feature-flow change: once the feature is In Test with no open
+Step 9 follows `land_process` of `models/marketplace.bpmn`: once the feature is In Test with no open
 sub-issue and its latest comment from QA starts with `QA passed`, the agent opens the feature pull
 request to main and the owner reads it. spec-archive SHALL run on `feature/<n>` only after the
 owner accepts that pull request, and archive the change there. It SHALL close no issue and set no

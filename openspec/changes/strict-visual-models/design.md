@@ -178,11 +178,11 @@ in the tree, unless it says 2026-11-04.
    dependency-cruiser refuse it.
 2. **bpmnlint inside a compiled binary**: the CLI resolves rules by `require` and fails compiled
    ("cannot resolve config", measured). Proof: `bun build --compile` a binary that hands its rules
-   to bpmnlint's static resolver and lints `flow.bpmn` with the same findings as the CLI.
-   **Verdict 2026-11-05: holds.** bpmnlint 12.0.0's `StaticResolver`, fed every recommended rule by
-   a static import, compiled by `bun build --compile` (bun 1.4.4): `flow.bpmn` clean in both, and a
-   fixture with a complex gateway, unnamed nodes and no DI gives the same 29 findings, rule and id,
-   as the CLI, run from `/` with no `node_modules` beside it.
+   to bpmnlint's static resolver and lints `models/marketplace.bpmn` with the same findings as the
+   CLI. **Verdict 2026-11-05: holds.** bpmnlint 12.0.0's `StaticResolver`, fed every recommended
+   rule by a static import, compiled by `bun build --compile` (bun 1.4.4): `flow.bpmn` clean in
+   both, and a fixture with a complex gateway, unnamed nodes and no DI gives the same 29 findings,
+   rule and id, as the CLI, run from `/` with no `node_modules` beside it.
 3. **draw.io opens a `.drawio.svg`** written this way: no draw.io here. Proof: open one in draw.io
    desktop and save it unchanged.
 4. **`likec4 validate` from the binary**: under bun the package does not install (measured). Proof:
