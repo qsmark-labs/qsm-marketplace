@@ -27,7 +27,7 @@ open and its first-build part says `(done)` once it is built.
       Verify 5.
 - [ ] 6. `paths` per process, `--process`, `--specs`, `--compare`. Files: `lib/paths.ts`. Proof: the
   cover of every migrated process equals the measured one. Blocked by 3.
-  **First build:** `paths` without `--compare`. **Waits:** `--compare`.
+  **First build (done):** `paths` without `--compare`. **Waits:** `--compare`.
 - [ ] 7. `check`: model files outside `models/`, the code check, the links, the verified commit,
   another project through `qsm-docs list`. Files: `lib/conform.ts`, `lib/links.ts`. Proof: design
   Verify 1 and the moddle half of Verify 6, then one fixture per broken link kind. Blocked by 4, 6.

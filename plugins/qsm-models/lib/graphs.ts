@@ -30,3 +30,13 @@ export function graphFiles(path: string): string[] {
 
 /** The project name a graph file carries: `models/<project>.bpmn`. */
 export const projectOf = (file: string): string => basename(file).replace(/\.(bpmn|c4)$/, "");
+
+/** The one graph of a kind in a directory; none or two is a failure that names the directory. */
+export function oneGraph(dir: string, ext: ".bpmn" | ".c4"): string {
+  const found = graphFiles(dir).filter((f) => f.endsWith(ext));
+  const [first] = found;
+  if (found.length !== 1 || first === undefined) {
+    throw new QsmError("failed", `${dir} holds ${found.length} ${ext} graphs: a project has one`);
+  }
+  return first;
+}

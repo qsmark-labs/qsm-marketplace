@@ -6,9 +6,10 @@
 import { flagArg, optionalString, requiredString, runCli } from "../../../lib/cli-base.ts";
 import { doctorVerdict, fail } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
-import { MODELS_DIR } from "../lib/graphs.ts";
+import { MODELS_DIR, oneGraph } from "../lib/graphs.ts";
 import { layoutFile } from "../lib/bpmn/layout.ts";
 import { lintPath } from "../lib/lint.ts";
+import { pathsOf } from "../lib/paths.ts";
 import { renderPath } from "../lib/render.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 
@@ -24,7 +25,13 @@ if (import.meta.main) {
       layout: (call) => layoutFile(requiredString(call, "file")),
       render: (call) =>
         renderPath(optionalString(call, "path") ?? MODELS_DIR, flagArg(call, "check")),
-      paths: notBuilt("paths"),
+      paths: (call) =>
+        pathsOf({
+          file: optionalString(call, "file") ?? oneGraph(MODELS_DIR, ".bpmn"),
+          process: optionalString(call, "process"),
+          all: flagArg(call, "all"),
+          specs: optionalString(call, "specs"),
+        }),
       check: notBuilt("check"),
       pages: notBuilt("pages"),
     }),

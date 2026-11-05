@@ -65,7 +65,7 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 8. **Paths become scenarios through the cover.** The cover's definition is in the spec, once.
    Measured (paths, cover): `flow.bpmn` 5, 4; `plan.bpmn` 4, 2; `split.bpmn` 2, 1; `build-task.bpmn`
    3, 2; `consume-task.bpmn` 1, 1; `land.bpmn` 2, 2; `feature-status.bpmn` 11, 11; `model-gate.bpmn`
-   9, 5; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 2, 2; `edit-graph.bpmn` 4, 2; `pr-pictures.bpmn`
+   10, 6; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 3, 3; `edit-graph.bpmn` 4, 2; `pr-pictures.bpmn`
    3, 2; `delete.bpmn` 2, 2; `proposal.bpmn` 2, 2. A product feature's BPMN models what QA runs; a
    process model such as `flow.bpmn` models our own steps, and its cover paths are the scenarios of
    its spec, not sandbox runs. A BPMN split carries no data, so a memory such as "was any rewrite

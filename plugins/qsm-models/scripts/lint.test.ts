@@ -6,9 +6,7 @@ import { join, resolve } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { isRecord } from "../../../lib/outcome.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
-
-const CLI = resolve(import.meta.dir, "cli.ts");
-const PLAN = readFileSync(resolve(import.meta.dir, "fixtures/plan.bpmn"), "utf8");
+import { CLI, PLAN } from "./fixtures/plan.ts";
 
 interface Found {
   id: string;

@@ -1,12 +1,10 @@
 // layout and render through the real binary entry: a graph on disk in, files and one envelope out.
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
-
-const CLI = resolve(import.meta.dir, "cli.ts");
-const PLAN = readFileSync(resolve(import.meta.dir, "fixtures/plan.bpmn"), "utf8");
+import { CLI, PLAN } from "./fixtures/plan.ts";
 
 describe("layout", () => {
   it("refuses a file the owner drew and leaves it unchanged", () => {
