@@ -154,11 +154,12 @@ no item of the shell holds it (the cursor, the wallpaper, a client window).
 
 ### Requirement: Comments land where the agent reads them
 
-`drive atlas review [SCENARIO]` SHALL serve the latest run's board on 127.0.0.1 and print its
-address; a comment pinned to a point of a frame SHALL be saved to the scenario's `comments.json` and
-shown on that shot in every later board until it is resolved. `drive atlas comments [SCENARIO]`
-SHALL print the open comments one per line as `shot<TAB>x,y<TAB>text`; without SCENARIO both verbs
-take the scenario run last.
+`drive atlas review [SCENARIO]` SHALL serve the latest run's board on 127.0.0.1:40400, so its
+address stays the same across restarts, and print it; a port another program holds SHALL stop it
+with an error naming the port. A comment pinned to a point of a frame SHALL be saved to the
+scenario's `comments.json` and shown on that shot in every later board until it is resolved.
+`drive atlas comments [SCENARIO]` SHALL print the open comments one per line as
+`shot<TAB>x,y<TAB>text`; without SCENARIO both verbs take the scenario run last.
 
 #### Scenario: The owner comments and the agent reads it
 
