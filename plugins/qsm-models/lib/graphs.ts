@@ -51,3 +51,17 @@ export function graphIn(dir: string, ext: ".bpmn" | ".c4"): string | undefined {
     ? oneGraph(dir, ext)
     : undefined;
 }
+
+/** The graphs of a project under `models/`: at least one, or the call fails naming `models/`. */
+export function projectGraphs(root: string): { bpmn: string | undefined; c4: string | undefined } {
+  const dir = join(root, MODELS_DIR);
+  const bpmn = graphIn(dir, ".bpmn");
+  const c4 = graphIn(dir, ".c4");
+  if (bpmn === undefined && c4 === undefined) {
+    throw new QsmError(
+      "failed",
+      `${MODELS_DIR}/ holds no graph: no ${MODELS_DIR}/<project>.bpmn and no ${MODELS_DIR}/<project>.c4`,
+    );
+  }
+  return { bpmn, c4 };
+}

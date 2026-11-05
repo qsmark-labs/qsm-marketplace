@@ -40,6 +40,24 @@ describe("check", () => {
     expect(check(GRAPH).exit).toBe(0);
   });
 
+  it("fails naming models/ where neither graph exists", () => {
+    const { repo } = repoWith("qsm-models-check-", { "README.md": "x" });
+    const run = runBin(CLI, ["check", "--json"], { cwd: repo });
+    expect(run.exit).toBe(1);
+    expect(envelopeOf(run.stdout).message).toContain("models/ holds no graph");
+  });
+
+  it("finds models/ of the checkout from a subdirectory for lint and paths", () => {
+    const { repo } = repoWith("qsm-models-check-", {
+      "models/shop.bpmn": GRAPH,
+      "sub/README.md": "x",
+    });
+    const sub = join(repo, "sub");
+    for (const args of [["lint"], ["paths", "--all"]]) {
+      expect(runBin(CLI, args, { cwd: sub }).exit).toBe(0);
+    }
+  });
+
   it("passes a process with no links", () => {
     expect(check(ALONE).exit).toBe(0);
   });

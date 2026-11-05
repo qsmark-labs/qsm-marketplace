@@ -15,7 +15,7 @@ import { lintRead } from "../c4/lint.ts";
 import { type C4Model, modelOrThrow, readC4 } from "../c4/model.ts";
 import { renderC4 } from "../c4/render.ts";
 import { type Finding, formatFinding } from "../bpmn/lint.ts";
-import { graphIn, MODELS_DIR, projectOf } from "../graphs.ts";
+import { MODELS_DIR, projectGraphs, projectOf } from "../graphs.ts";
 import { esc } from "../svg.ts";
 import { lintFile } from "../lint.ts";
 
@@ -68,25 +68,11 @@ async function c4Page(file: string, model: C4Model): Promise<string> {
   return fill(c4Template, { "<!--PROJECT-->": esc(project), "<!--VIEWS-->": sections.join("\n") });
 }
 
-/** The graphs of a project under `models/`: at least one, or the call fails naming `models/`. */
-function graphsOf(root: string): { bpmn: string | undefined; c4: string | undefined } {
-  const dir = join(root, MODELS_DIR);
-  const bpmn = graphIn(dir, ".bpmn");
-  const c4 = graphIn(dir, ".c4");
-  if (bpmn === undefined && c4 === undefined) {
-    throw new QsmError(
-      "failed",
-      `${MODELS_DIR}/ holds no graph: no ${MODELS_DIR}/<project>.bpmn and no ${MODELS_DIR}/<project>.c4`,
-    );
-  }
-  return { bpmn, c4 };
-}
-
 export async function writePages(
   root: string,
   out: string | undefined,
 ): Promise<Outcome<{ written: string[]; findings: Finding[] }>> {
-  const { bpmn, c4 } = graphsOf(root);
+  const { bpmn, c4 } = projectGraphs(root);
   // the C4 source is read once: the lint and the page both use it
   const c4Read = c4 === undefined ? undefined : await readC4(c4);
   const findings: Finding[] = [];

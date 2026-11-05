@@ -7,7 +7,7 @@ import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { readGraph } from "./bpmn/model.ts";
 import { readC4OrThrow } from "./c4/model.ts";
-import { GRAPH_FILE, graphIn, MODELS_DIR } from "./graphs.ts";
+import { GRAPH_FILE, MODELS_DIR, projectGraphs } from "./graphs.ts";
 import { bpmnLinkFindings, c4LinkFindings, type LinkContext } from "./links.ts";
 
 /** Directories that hold no project model: tooling, dependencies, and the archive of changes. */
@@ -49,9 +49,7 @@ const commitIn =
     spawnSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: root }).status === 0;
 
 export async function checkProject(root: string): Promise<Outcome<{ findings: string[] }>> {
-  const models = join(root, MODELS_DIR);
-  const bpmnFile = graphIn(models, ".bpmn");
-  const c4File = graphIn(models, ".c4");
+  const { bpmn: bpmnFile, c4: c4File } = projectGraphs(root);
   const home = (ext: string): string => {
     const own = ext === ".c4" ? c4File : bpmnFile;
     return own === undefined ? `${MODELS_DIR}/<project>${ext}` : relative(root, own);
