@@ -33,10 +33,23 @@ and the layout hints of `strict-visual-models`.
    found Camunda's call activity binding `latest`, `deployment` or `versionTag`, and the epic chose
    latest on main.
 
+7. **The Gherkin notes are the task's own `documentation` element.** Options: a text annotation
+   linked to the task, a `qsm:` attribute, a file beside the graph. Choice: BPMN's `documentation`
+   with `textFormat="text/x-gherkin"`, because it is the standard's place for text on an element and
+   every BPMN tool keeps it. A comment stays a text annotation (it is a note to the agent, not model
+   content). The printed form is one `Feature` named after the process, a `Rule` per task and the
+   stored text under it; `--task` prints that task's rule alone. No tag, no result, no test link
+   (owner decision, 2026-11-05). Reopens when: the owner wants one `.feature` file per task.
+8. **The pages start from the first build's.** The static `bpmn.html` and `c4.html` of
+   `strict-visual-models` (decision 22) become the kinds' page assets: the Viewer becomes the
+   Modeler in edit mode, and the SVG views are the C4 page's drawing. Reason: one drawing of each
+   graph, so the page and the committed picture never differ.
+
 ## Verify, each proved before the first task that depends on it
 
 1. **bpmn-js-differ 3.2.0 under bun**: unverified that it runs outside a browser. Proof: diff two
-   versions of one process under bun and read `_layoutChanged`.
+   versions of one process under bun, read `_layoutChanged`, and read a `documentation` edit as
+   `_changed`.
 2. **ELK bundled for the browser**: proof: the C4 page lays out the container view in the browser
    with the bytes the binary writes.
 

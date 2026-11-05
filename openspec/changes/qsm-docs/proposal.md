@@ -49,8 +49,11 @@ cloud store, an update of a snapshot, a delete by an agent, an automatic apply, 
    denied and the owner runs it with `!`.
 3. **No MCP** (2026-11-04): "No MCP until a harness without a shell needs it, and then generated
    from the same `qsm.json`."
-4. **Five changes in this order** (2026-11-04): qsm-docs, the revised strict-visual-models,
-   models-pages, models-scenarios, models-pr-pictures, then a test-it task.
+4. **Four changes in this order** (2026-11-04, revised 2026-11-05): qsm-docs, the revised
+   strict-visual-models, models-pages, models-pr-pictures, then a test-it task.
+5. **A first build comes before qsm-docs** (2026-11-05): `strict-visual-models` builds the validated
+   graphs and static pages with no store (its design decision 22), so the owner sees the models
+   first. This change waits until he has looked.
 
 ## Critiques
 

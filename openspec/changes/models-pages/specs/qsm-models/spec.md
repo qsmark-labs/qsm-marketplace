@@ -151,3 +151,41 @@ assets, and request nothing outside 127.0.0.1.
 - **WHEN** a scripted browser opens `/bpmn` and `/c4`, drills one level down in each and saves a
   proposal
 - **THEN** every request it recorded went to 127.0.0.1
+
+### Requirement: A task's details page holds its Gherkin notes
+
+On the BPMN page a click on a task SHALL open its details page, with its name, its lane and, in edit
+mode, a text field for Gherkin scenarios. Save SHALL put the text in the task's BPMN `documentation`
+element with `textFormat="text/x-gherkin"`, in the same proposal as the other edits. The notes SHALL
+be text only: no tag links them to a path or a test, and nothing stores a result.
+
+#### Scenario: Two scenarios written under a task
+
+- **WHEN** the owner opens "Review the graph", writes two scenarios in its details and saves
+- **THEN** the proposal's XML holds them in that task's `documentation` with `text/x-gherkin`, and
+  `qsm-docs diff <id>` prints one `changed` line naming the task
+
+#### Scenario: A details page without notes
+
+- **WHEN** the owner opens a task that has no `documentation`
+- **THEN** the details page shows its name and lane and an empty notes field
+
+### Requirement: gherkin prints a graph's notes as feature text
+
+`gherkin <graph> [--task <id>]`, the graph a `.bpmn` file or a `bpmn` snapshot id, SHALL print
+`Feature:` and the process's name, then for each task with notes `Rule:` and the task's name
+followed by the stored text, or only that task's rule with `--task`. A task without notes and a
+graph without any SHALL exit `failed` naming it, and an unknown task id SHALL exit `failed`
+naming the id.
+
+#### Scenario: One task's scenarios
+
+- **WHEN** `qsm-models gherkin models/marketplace.bpmn --task review_graph` runs on a task that
+  holds two scenarios
+- **THEN** it prints the `Feature`, one `Rule: Review the graph` and the two scenarios, as the owner
+  wrote them
+
+#### Scenario: A task with no notes
+
+- **WHEN** `gherkin --task` names a task whose `documentation` is empty
+- **THEN** it exits `failed` naming the task, and prints no `Feature` line

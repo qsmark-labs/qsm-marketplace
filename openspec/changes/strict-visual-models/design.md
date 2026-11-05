@@ -144,10 +144,9 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
     - `models-pages/models/qsm-models/edit-graph.bpmn`: `edit_graph_process`;
     - `models-pr-pictures/models/qsm-models/pr-pictures.bpmn`: `pr_pictures_process`.
 
-    The C4 source `feature-flow/models/marketplace.c4` becomes `models/marketplace.c4`.
-    `models-scenarios` is gone, with its `cover-path.bpmn`. A path's signature is what QA observes
-    (decision 15), so `paths --compare` proves the behaviour kept, and every scenario that cites a
-    changed id is rewritten in the same commit.
+    The C4 source `feature-flow/models/marketplace.c4` becomes `models/marketplace.c4`. A path's
+    signature is what QA observes (decision 15), so `paths --compare` proves the behaviour kept, and
+    every scenario that cites a changed id is rewritten in the same commit.
 21. **The owner's style departs from the standard in one place.** Small arrows in the middle of long
     flows are not BPMN notation, which has one arrowhead at the target (notebook, Trisotech,
     Silver); the owner keeps them because the picture reads better, and they change no meaning.
