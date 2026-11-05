@@ -160,7 +160,8 @@ const image = (f) => `shots/${f.name}.png`;
 function loop(attrs) {
   const v = h("video", { muted: "", autoplay: "", playsinline: "", ...attrs });
   v.muted = true;
-  v.addEventListener("ended", () => setTimeout(() => { v.currentTime = 0; v.play(); }, 1000));
+  // A redrawn board detaches the old element; it stops there instead of looping unseen.
+  v.addEventListener("ended", () => setTimeout(() => { if (!v.isConnected) return; v.currentTime = 0; v.play(); }, 1000));
   return v;
 }
 // What a frame shows: its recording looping over the still it starts from, or the still. STYLE

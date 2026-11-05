@@ -134,6 +134,17 @@ atlas_rec_save() {
   kill -INT "$ATLAS_REC_PID" 2>/dev/null
   # wf-recorder finalises the file on its next frame, and a still screen sends none.
   slot_wake
+  local i
+  for ((i = 0; i < 100; i++)); do
+    kill -0 "$ATLAS_REC_PID" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "$ATLAS_REC_PID" 2>/dev/null; then
+    kill -KILL "$ATLAS_REC_PID" 2>/dev/null
+    wait "$ATLAS_REC_PID" 2>/dev/null
+    ATLAS_REC_PID=""
+    die "recording $journey--$name: wf-recorder did not finish within 10 s of its stop"
+  fi
   wait "$ATLAS_REC_PID" 2>/dev/null
   ATLAS_REC_PID=""
   [[ -s "$base.mkv" ]] || die "recording $journey--$name: wf-recorder wrote no video"
@@ -144,6 +155,9 @@ atlas_rec_save() {
     awk -F, -v fps=60 -f "$MOTION_DIR/cadence.awk" |
     awk '{ for (i = 1; i <= NF; i++) { split($i, kv, "="); v[kv[1]] = kv[2] } }
       END { printf "%d\t%.3f\t%.1f\t%.1f\t%d", v["frames"], v["span"], v["effective_fps"], v["max_gap"], v["gaps_over_1.5_periods"] }')"
+  # A screen that never changed while it recorded gives one frame: nothing moved that should have.
+  ((${cadence%%$'\t'*} >= 2)) ||
+    die "recording $journey--$name caught ${cadence%%$'\t'*} frames: the screen did not change while it recorded"
   ffmpeg -v error -y -i "$base.mkv" -an -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -crf 34 -b:v 0 \
     -fps_mode passthrough "$base.webm" || die "recording $journey--$name: ffmpeg could not write WebM"
   rm -f "$base.mkv"
@@ -203,6 +217,9 @@ atlas_journey() {
   local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line shot surface name still fails
   local rest word rects tree recording="" rec_surface=""
   local -a steps words masks
+  # A recording shares no name with a shot or another recording of its journey: the board keys
+  # frames and notes by name, and a masked shot's recording already takes its shot's.
+  local -A named=()
   shift 7
   slot_start "$slot" "$@" >/dev/null
   export DRIVE_SLOT="$slot"
@@ -216,6 +233,8 @@ atlas_journey() {
       read -r _ shot rest <<<"$line"
       read -ra words <<<"$rest"
       name="$journey--$shot" surface="" masks=() rects=""
+      [[ "${named[$shot]:-}" != record ]] || die "shot $name has the name of a recording of its journey"
+      named[$shot]=shot
       [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "shot names are letters, digits, dot, dash and underscore: '$name'"
       for word in "${words[@]}"; do
         [[ "${word#*@}" =~ $ATLAS_PATH ]] ||
@@ -256,6 +275,9 @@ atlas_journey() {
       fi
     elif [[ "$line" == record\ * ]]; then
       read -r _ shot rest <<<"$line"
+      [[ -n "$shot" && "$shot" != @* ]] || die "journey $journey: record needs a NAME: '$line'"
+      [[ -z "${named[$shot]:-}" ]] || die "journey $journey: record $shot has the name of a shot or recording of it"
+      named[$shot]=record
       [[ -z "$recording" ]] || die "journey $journey: record $shot starts while $recording records"
       [[ "$journey--$shot" =~ ^[A-Za-z0-9._-]+$ ]] || die "recording names are letters, digits, dot, dash and underscore: '$shot'"
       rec_surface="${rest#@}"
