@@ -50,7 +50,7 @@ open and its first-build part says `(done)` once it is built.
   `openspec/schemas/feature/`. Proof: `bun run eval qsm-openspec`. Blocked by 8. **Waits.**
 - [ ] 11. The skill `model`, `model-reviewer`, `model-simplifier`. Files:
   `plugins/qsm-models/skills/`, `agents/`. Proof: `bun run eval qsm-models`. Blocked by 8.
-  **First build:** the skill `model` and `model-reviewer`. **Waits:** `model-simplifier`.
+  **First build (done):** the skill `model` and `model-reviewer`. **Waits:** `model-simplifier`.
 - [x] 12. `pages`: `bpmn.html` and `c4.html` in `.qsm/models/`, `.qsm/` in `.gitignore` unless the
   lens change already put it there. Files: `plugins/qsm-models/lib/pages/`,
   `plugins/qsm-models/pages/` (the inlined templates), `.gitignore`. Proof: design Verify 7, then

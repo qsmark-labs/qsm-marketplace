@@ -189,12 +189,12 @@ in the tree, unless it says 2026-11-04.
    a compiled binary that validates `marketplace.c4` with LikeC4's language services and gives the
    same verdict as the CLI; failing that, `likec4` installed by npm on PATH, named as a program the
    plugin needs, and `missing` without it.
-   **Verdict 2026-11-05: holds in the binary, no program on PATH.** Under bun 1.4.4 `likec4@1.60.0`
-   installs; its CLI still breaks there (`cliui` not found), but its API does not need it:
-   `LikeC4.fromWorkspace` and `getErrors()` compiled into a binary run from `/` give the npm CLI's
-   verdict, valid on `marketplace.c4` with the vocabulary (79 elements, 104 relations), and on a
-   relation to a missing element the same two errors on the same line. The binary is 94 MB with
-   likec4 alone.
+   **Verdict 2026-11-05: holds in the binary, no program on PATH.** Under bun 1.4.3 and 1.4.4
+   `likec4@1.60.0` installs; its CLI still breaks there (`cliui` not found), but its API does not
+   need it: `LikeC4.fromWorkspace` and `getErrors()` compiled into a binary run from `/` give the
+   npm CLI's verdict, valid on `marketplace.c4` with the vocabulary (79 elements, 104 relations),
+   and on a relation to a missing element the same two errors on the same line. The binary is 94 MB
+   with likec4 alone.
 5. **ELK keeps an order hint under hierarchy**: unverified. Proof: render the container view with
    `order` on qsm-docs and qsm-builder swapped, twice, and read the positions.
 6. **A `qsm:` attribute survives**: unverified. First build: bpmn-moddle reads a `qsm:c4` attribute

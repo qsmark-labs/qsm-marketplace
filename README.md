@@ -133,7 +133,7 @@ These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm
 | [qsm-toolbox](plugins/qsm-toolbox/README.md) | Every agent should know the same set of command-line tools this machine has, and a tool nobody names is a tool nobody uses. | 1 skill, CLI |
 | [qsm-uix](plugins/qsm-uix/README.md) | A UI made by taste and judged by looking ships defects nobody measured, and some of them lock people out entirely. | 24 skills, 1 agent, CLI |
 | [qsm-worktrunk](plugins/qsm-worktrunk/README.md) | The harness's own worktree is a bare checkout: it carries only what git tracks, while a project also runs on the env file, the local docs and the generated config that never enter the repository. | 1 skill, CLI, 8 hooks |
-| [qsm-models](plugins/qsm-models/README.md) | A model an agent can draw but nobody checks is a picture that drifts, and a spec in text alone leaves every reader to imagine the process and the architecture differently. | CLI |
+| [qsm-models](plugins/qsm-models/README.md) | A model an agent can draw but nobody checks is a picture that drifts, and a spec in text alone leaves every reader to imagine the process and the architecture differently. | 1 skill, 1 agent, CLI |
 
 A plugin's kind is the first of core, planning, code quality and languages, and knowledge and web
 that names one of its `keywords` in plugin.json. Every other plugin is tooling.

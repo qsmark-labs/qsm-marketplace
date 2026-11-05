@@ -22,6 +22,8 @@ standard tools of BPMN and C4 checked these rules and drew these pictures by the
 | Tool | `qsm-models paths` | The cover of each process: start-to-end paths with stable ids, and which of them no spec scenario cites |
 | Tool | `qsm-models check` | Model files outside `models/`, and every link the graphs carry |
 | Tool | `qsm-models pages` | `bpmn.html` and `c4.html` in `.qsm/models/`: one file each, nothing requested outside it |
+| Skill | `model` | How a piece of work becomes checked models, from one task to a whole codebase |
+| Agent | `model-reviewer` | Reads each changed picture and its source against the spec and the rules, on sonnet |
 
 ## Install
 
