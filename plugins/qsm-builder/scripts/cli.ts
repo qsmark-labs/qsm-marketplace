@@ -15,6 +15,7 @@ import {
 } from "../../../lib/cli-base.ts";
 import { fail, ok, onPath } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
+import { untilStopped } from "../../../lib/loopback.ts";
 import { briefOf } from "../lib/lens/brief.ts";
 import { readMarketplace } from "../lib/lens/model.ts";
 import { renderDocument } from "../lib/lens/page.ts";
@@ -165,10 +166,7 @@ const lensServe: Handler = async (call) => {
   const served = serveLens(root, optionalNumber(call, "port") ?? DEFAULT_PORT);
   // Status goes to stderr: stdout stays the outcome, as under --json.
   process.stderr.write(`serving ${root} on ${served.url} (Ctrl-C stops it)\n`);
-  await new Promise<void>((done) => {
-    process.once("SIGINT", done);
-    process.once("SIGTERM", done);
-  });
+  await untilStopped();
   await served.stop();
   return ok({ url: served.url }, `stopped ${served.url}`);
 };

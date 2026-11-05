@@ -127,6 +127,10 @@
     {
       "name": "qsm-models",
       "source": "./plugins/qsm-models"
+    },
+    {
+      "name": "qsm-docs",
+      "source": "./plugins/qsm-docs"
     }
   ]
 }

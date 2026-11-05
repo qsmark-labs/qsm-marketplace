@@ -2,7 +2,7 @@
 // request, and one event stream that says when a file of the marketplace changed. It listens on
 // 127.0.0.1 only.
 
-import { serve } from "bun";
+import { fromLoopbackHost, fromOwnPage, listenLoopback } from "../../../../lib/loopback.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { createEditTask, EditError, parseEdit } from "./edits.ts";
 import { readMarketplace } from "./model.ts";
@@ -102,24 +102,12 @@ const json = (status: number, body: unknown): Response =>
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 
-/** The loopback hosts this server answers to; any other Host is a DNS name rebound to 127.0.0.1. */
-const loopback = (port: number): ReadonlySet<string> =>
-  new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
-
 /**
  * A saved edit: one task, no file. Only the page this server sent may post it: a request without a
  * loopback Origin or without a JSON content type is refused, since any web page can reach 127.0.0.1.
  */
 async function saveEdit(req: Request, root: string, port: number): Promise<Response> {
-  const origin = req.headers
-    .get("origin")
-    ?.toLowerCase()
-    .replace(/^http:\/\//, "");
-  if (
-    req.headers.get("content-type")?.split(";")[0] !== "application/json" ||
-    origin === undefined ||
-    !loopback(port).has(origin)
-  ) {
+  if (!fromOwnPage(req, port)) {
     return json(403, { error: "edits come from the page this server sent" });
   }
   try {
@@ -135,24 +123,6 @@ async function saveEdit(req: Request, root: string, port: number): Promise<Respo
   }
 }
 
-/** The server, or the reason it could not listen: a taken port names itself and `--port`. */
-function listen(
-  port: number,
-  fetch: (req: Request) => Response | Promise<Response>,
-): ReturnType<typeof serve> | Error {
-  try {
-    // An event stream is idle between changes; the default would cut it after ten seconds.
-    return serve({ hostname: "127.0.0.1", port, idleTimeout: 0, fetch });
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "EADDRINUSE") {
-      return new QsmError("failed", `port ${port} is taken; choose another with --port <number>`, {
-        cause: error,
-      });
-    }
-    throw error;
-  }
-}
-
 /** One request: a loopback Host only, since a page on a rebound DNS name reaches 127.0.0.1 too. */
 function route(
   req: Request,
@@ -160,7 +130,7 @@ function route(
   streams: ReturnType<typeof eventStreams>,
   port: number,
 ): Response | Promise<Response> {
-  if (!loopback(port).has(req.headers.get("host")?.toLowerCase() ?? "")) {
+  if (!fromLoopbackHost(req, port)) {
     return new Response("forbidden\n", { status: 403 });
   }
   const path = new URL(req.url).pathname;
@@ -181,10 +151,10 @@ export function serveLens(root: string, port: number): Served {
   const streams = eventStreams();
   // The real port is known only after listen; a `--port 0` server learns it here.
   const at = { port };
-  const server = listen(port, (req) => route(req, root, streams, at.port));
-  if (server instanceof Error) {
-    throw server;
-  }
+  // An event stream is idle between changes; the default would cut it after ten seconds.
+  const server = listenLoopback(port, (req) => route(req, root, streams, at.port), {
+    idleTimeout: 0,
+  });
   at.port = server.port ?? port;
   const unwatch = watchMarketplace(root, streams.tell);
   return {

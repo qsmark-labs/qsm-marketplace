@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>json</title>
+<link rel="stylesheet" href="/shell.css">
+</head>
+<body class="page">
+<p id="status" role="status"></p>
+<pre id="view"></pre>
+<div id="editor" class="page" hidden>
+<textarea id="text" spellcheck="false" aria-label="the JSON document"></textarea>
+<div class="actions"><button id="save" type="button">Save as proposal</button></div>
+</div>
+<script src="page.js"></script>
+</body>
+</html>

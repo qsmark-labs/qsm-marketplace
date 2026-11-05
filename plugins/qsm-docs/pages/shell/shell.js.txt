@@ -1,0 +1,11 @@
+// The shell's one behaviour: edit mode, told to the kind's page through its frame's fragment.
+const frame = document.getElementById("page");
+const button = document.getElementById("edit");
+const base = frame.getAttribute("src");
+
+button.addEventListener("click", () => {
+  const editing = button.getAttribute("aria-pressed") !== "true";
+  button.setAttribute("aria-pressed", String(editing));
+  button.textContent = editing ? "View" : "Edit";
+  frame.src = editing ? `${base}&edit=1` : base;
+});

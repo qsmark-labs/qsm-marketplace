@@ -1,0 +1,10 @@
+{
+  "name": "qsm-docs",
+  "description": "An immutable store of document snapshots per project and branch, a registry of kinds other plugins install, and one page server on 127.0.0.1 where an edit in the browser becomes a proposal the agent hears of on its next prompt; only the owner deletes a snapshot.",
+  "keywords": ["documents", "snapshots", "store", "pages", "proposals", "edit"],
+  "author": {
+    "name": "qsm"
+  },
+  "types": "./types/index.d.ts",
+  "dependencies": []
+}
