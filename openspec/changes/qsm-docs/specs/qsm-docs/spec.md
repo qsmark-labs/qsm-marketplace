@@ -87,22 +87,41 @@ only proposals no later snapshot names as its parent. A deleted snapshot SHALL n
 
 ### Requirement: diff names what changed through the kind
 
-`diff <id> [<other>]` SHALL run the kind's diff command on the snapshot and its parent, or on the
-two snapshots named, and print the changes it returns, each with its operation and the element it
-names. Two snapshots of different kinds, or a snapshot without a parent and no second id, SHALL fail
-`usage`.
+`diff <id> [<other>]` SHALL run the diff command of `<id>`'s kind with the parent as `{a}` and
+`<id>` as `{b}`, whatever kind the parent is, or on the two snapshots named, and print one line per
+change, `<op> <element>`. Two snapshots named of different kinds, or a snapshot without a parent and
+no second id, SHALL fail `usage`.
 
 #### Scenario: A JSON value changed
 
 - **WHEN** a `json` snapshot was saved from the page with `title` changed and `tags` removed
 - **THEN** `qsm-docs diff <id>` prints `changed title` and `removed tags` against its parent
 
+#### Scenario: A change of another kind than its parent
+
+- **WHEN** a `c4-change` snapshot was saved from the page of a `c4` snapshot and the agent runs
+  `qsm-docs diff <change-id>`
+- **THEN** the `c4-change` kind's diff command runs with the `c4` parent as `{a}`, and its changes
+  are printed
+
+### Requirement: Every kind's diff prints one change record shape
+
+A kind's diff command SHALL print a JSON array of change records, each `{"op", "element"}` with an
+optional `"detail"` string, where `op` is `added`, `removed`, `changed`, `renamed`, `moved` or
+`commented` and `element` is the id or path it names. Any other output SHALL fail `failed` naming
+the kind and the first record that does not fit. `diff --json` SHALL print the records unchanged.
+
+#### Scenario: A kind prints another shape
+
+- **WHEN** a kind's diff command prints `{"changes": 3}` and the agent runs `qsm-docs diff <id>`
+- **THEN** it exits `failed` naming the kind and the record that does not fit, and prints no change
+
 ### Requirement: A kind is a manifest another plugin installs
 
 `kind add <manifest>` SHALL install a kind from a JSON manifest that names the kind, its media type
 and file extension, a directory of page assets, the command that converts a file to JSON on stdout,
 and the command that diffs two files to a JSON list of changes. It SHALL refuse a manifest missing
-any of these with `usage`.
+any of these, or a page directory without `index.html`, with `usage`.
 
 #### Scenario: qsm-models installs its kinds
 
@@ -110,6 +129,17 @@ any of these with `usage`.
   `c4-change`
 - **THEN** `qsm-docs kind list` prints the three with their media types, and `qsm-docs create bpmn
   models/marketplace.bpmn` converts the file before it stores it
+
+### Requirement: kind add keeps its own copy of the page files
+
+`kind add` SHALL copy the manifest's page directory into qsm-docs' own data, so the kind keeps
+working when the installing plugin's tree moves, and SHALL replace that copy when the kind is added
+again.
+
+#### Scenario: The installing tree is rebuilt
+
+- **WHEN** qsm-models added its kinds, then its plugin directory was deleted and built again
+- **THEN** `qsm-docs serve` still shows a `bpmn` snapshot's page
 
 ### Requirement: A removed kind leaves its snapshots
 
@@ -149,6 +179,40 @@ nothing outside 127.0.0.1, and no page SHALL request anything outside it.
 
 - **WHEN** a scripted browser opens every page of a served store and records each request
 - **THEN** every request went to 127.0.0.1
+
+### Requirement: The shell shows a kind page in a frame
+
+The shell SHALL show a kind's `index.html` in a frame at `/kinds/<kind>/index.html#id=<id>`, with
+`&edit=1` in edit mode, and serve the kind's other page files under `/kinds/<kind>/`.
+
+#### Scenario: Edit mode reaches the kind page
+
+- **WHEN** the owner turns on edit mode on a `json` snapshot's page
+- **THEN** the frame's address ends in `#id=<id>&edit=1` and the `json` page offers its text editor
+
+### Requirement: A kind page talks to the server through one API
+
+A kind page SHALL read the snapshot with `GET /api/snapshots/<id>`, which returns the stored bytes
+with the kind's media type, and `GET /api/snapshots/<id>/json`, which returns the converter's
+output. It SHALL save with `POST /api/snapshots`, a JSON body `{"kind", "parent", "content"}`,
+answered `201` with `{"id"}`. A failed request SHALL be answered with the store's error as
+`{"code", "message"}` and the status of its code.
+
+#### Scenario: A page saves an edit
+
+- **WHEN** the `json` page posts `{"kind": "json", "parent": "<id>", "content": "{}"}`
+- **THEN** the server answers 201 with the new id, and `qsm-docs list --open` names it
+
+### Requirement: The server answers only its own pages
+
+A `POST` without a JSON content type or a loopback `Origin`, and any request whose `Host` is not
+127.0.0.1 or localhost on the server's port, SHALL be refused with 403, because any page in the
+browser can reach 127.0.0.1.
+
+#### Scenario: A post from another site
+
+- **WHEN** a page from another origin posts a snapshot to the server
+- **THEN** the server answers 403 and `qsm-docs list` shows no new snapshot
 
 ### Requirement: Edit mode saves a proposal
 

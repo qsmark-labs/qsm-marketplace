@@ -60,6 +60,19 @@ it as the next piece.
    lens onto it later. A content security policy of `'self'` on every response makes the browser
    refuse anything else, which is stronger than trusting each kind's page. Reopens when: a kind
    needs a resource it cannot bundle.
+10. **A kind page is a frame that speaks HTTP to the server.** Options: the shell imports the kind's
+    script into its own page, the shell and the page exchange messages, the page is a frame that
+    calls the server's API itself. Choice: a frame of the same origin, told its snapshot and mode by
+    the address's fragment, reading and saving through `/api/snapshots`. Reason: the kind's script
+    and styles cannot break the shell, the contract is three requests a test can make without a
+    browser, and the Host, Origin and content type checks are the lens's, already proved there.
+    `kind add` copies the page directory because a manifest that points into another plugin's tree
+    breaks when that tree moves or is rebuilt. Reopens when: a kind page needs to change the shell.
+11. **The diff runs the child's kind.** A page may save a snapshot of another kind than the one it
+    opened (`c4-change` from a `c4`), so the kind of the newer snapshot is the one that knows how to
+    read both; two snapshots named by the caller must share a kind, because no kind is then the
+    obvious reader. The change record is the one shape every kind prints, so the CLI, the hook and
+    the pages read changes without knowing a kind.
 
 ## Verify, each proved before the first task that depends on it
 

@@ -79,6 +79,13 @@ cloud store, an update of a snapshot, a delete by an agent, an automatic apply, 
   proposals, and the logic belongs behind a verb, not in the hook.
 - **Scope sniper: the built-in `json` kind.** Kept: without it the store, the server and edit mode
   cannot be proved before qsm-models exists, and the lens will be a JSON document.
+- **Review: a `c4-change` could not be diffed against its `c4` parent.** Fixed: the diff runs the
+  newer snapshot's kind whatever the parent's kind (design decision 11).
+- **Review: the API between the shell and a kind page was undefined, and whether `kind add` copies
+  the page files.** Fixed: a same-origin frame and three requests on `/api/snapshots`, the lens's
+  Host and Origin checks, and a copy of the page directory (design decision 10).
+- **Review: the change record had no shape.** Fixed: one JSON shape every kind's diff prints,
+  checked by the CLI.
 - **Open: the schema has no tasks artifact.** The feature schema says a feature's tasks live on the
   board; the brief and spec-propose ask for a `tasks.md`. A `tasks.md` is written beside the
   artifacts as the build order; the owner decides whether it stays.
