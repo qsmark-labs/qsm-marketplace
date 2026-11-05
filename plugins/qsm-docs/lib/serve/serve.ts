@@ -4,19 +4,40 @@
 
 import { existsSync, statSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
-import { fromLoopbackHost, fromOwnPage, listenLoopback } from "../../../../lib/loopback.ts";
+import {
+  fromLoopbackHost,
+  fromOwnPage,
+  jsonResponse as json,
+  listenLoopback,
+  reply,
+} from "../../../../lib/loopback.ts";
 import { isRecord, type OutcomeCode, UsageError } from "../../../../lib/outcome.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { kindOf } from "../kinds/kind.ts";
-import { createSnapshot, entryOf, listSnapshots, readSnapshot } from "../store/store.ts";
+import {
+  createSnapshot,
+  entryOf,
+  listSnapshots,
+  readSnapshot,
+  readStore,
+  type Entry,
+} from "../store/store.ts";
 import type { Where } from "../store/where.ts";
 import { JSON_PAGE, SHELL_ASSETS, shellPage, indexPage, notFoundPage } from "./shell.ts";
 
 export interface Served {
   readonly url: string;
-  readonly port: number;
   readonly stop: () => Promise<void>;
+}
+
+/** What every request of one server reads: the store, the checkout a page without an id opens,
+ * and each snapshot's converter output, kept for the server's life because a snapshot never
+ * changes. */
+interface Context {
+  readonly env: Env;
+  readonly where: Where;
+  readonly converted: Map<string, string>;
 }
 
 /** Nothing but this origin: no script, style, frame, image or request from anywhere else. */
@@ -32,17 +53,8 @@ const HTTP_STATUS: Readonly<Record<Exclude<OutcomeCode, "ok">, number>> = {
   partial: 500,
 };
 
-const json = (status: number, body: unknown): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-  });
-
 const html = (status: number, body: string): Response =>
-  new Response(body, {
-    status,
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-  });
+  reply(status, body, "text/html; charset=utf-8");
 
 /** A store error as the API answers it: `{code, message}` with the status of its code. */
 function apiError(error: unknown): Response {
@@ -92,7 +104,7 @@ async function save(env: Env, req: Request, port: number): Promise<Response> {
     const entry = createSnapshot(env, {
       kind: body.kind,
       bytes: new TextEncoder().encode(body.content),
-      parent: parent.id,
+      parent,
       where: { project: parent.project, branch: parent.branch },
       by: "page",
     });
@@ -103,20 +115,23 @@ async function save(env: Env, req: Request, port: number): Promise<Response> {
 }
 
 /** `GET /api/snapshots/<id>`: the stored bytes with the kind's media type; `/json` the converter's
- * output. */
-function snapshotApi(env: Env, rest: string): Response {
+ * output, converted once per server. */
+function snapshotApi({ env, converted }: Context, rest: string): Response {
   const asJson = rest.endsWith("/json");
   const id = decodeURIComponent(asJson ? rest.slice(0, -"/json".length) : rest);
+  const kept = asJson ? converted.get(id) : undefined;
+  if (kept !== undefined) {
+    return reply(200, kept, "application/json");
+  }
   try {
-    const { entry, bytes } = readSnapshot(env, id);
+    const { entry, bytes } = readSnapshot(env, entryOf(env, id));
     const kind = kindOf(entry.kind, env, entry.plugin);
-    return asJson
-      ? new Response(kind.convert(bytes), {
-          headers: { "content-type": "application/json", "cache-control": "no-store" },
-        })
-      : new Response(new Uint8Array(bytes), {
-          headers: { "content-type": kind.mediaType, "cache-control": "no-store" },
-        });
+    if (!asJson) {
+      return reply(200, new Uint8Array(bytes), kind.mediaType);
+    }
+    const out = kind.convert(bytes);
+    converted.set(id, out);
+    return reply(200, out, "application/json");
   } catch (error) {
     return apiError(error);
   }
@@ -142,14 +157,31 @@ function kindFile(env: Env, kindName: string, rel: string): Response {
   }
 }
 
+/** The snapshot a page opens and the snapshots of its branch, newest first, each ledger read once:
+ * `id`, or the newest of the kind on the server's branch when there is none. */
+function located(
+  env: Env,
+  where: Where,
+  kindName: string,
+  id: string | null,
+): { entry: Entry | undefined; siblings: Entry[] } {
+  if (id === null) {
+    const siblings = listSnapshots(env, where.project, { branch: where.branch });
+    return { entry: siblings.find((e) => e.kind === kindName), siblings };
+  }
+  const store = readStore(env);
+  const entry = entryOf(env, id, store);
+  const siblings = [...store.values()]
+    .filter((e) => e.project === entry.project && e.branch === entry.branch)
+    .toReversed();
+  return { entry, siblings };
+}
+
 /** `/<kind>/<id>`, or `/<kind>` for the newest snapshot of the kind on the server's branch. */
 function shell(env: Env, where: Where, kindName: string, id: string | null): Response {
   try {
     kindOf(kindName, env);
-    const entry =
-      id === null
-        ? listSnapshots(env, where.project, { branch: where.branch, kind: kindName })[0]
-        : entryOf(env, id);
+    const { entry, siblings } = located(env, where, kindName, id);
     if (entry === undefined) {
       return html(
         404,
@@ -159,7 +191,6 @@ function shell(env: Env, where: Where, kindName: string, id: string | null): Res
     if (entry.kind !== kindName) {
       return html(404, notFoundPage(`${entry.id} is ${entry.kind}, not ${kindName}`));
     }
-    const siblings = listSnapshots(env, entry.project, { branch: entry.branch });
     return html(200, shellPage(entry, siblings));
   } catch (error) {
     return pageError(error);
@@ -167,21 +198,22 @@ function shell(env: Env, where: Where, kindName: string, id: string | null): Res
 }
 
 /** One request: a loopback Host only, since a page on a rebound DNS name reaches 127.0.0.1 too. */
-function route(env: Env, where: Where, req: Request, port: number): Response | Promise<Response> {
+function route(ctx: Context, req: Request, port: number): Response | Promise<Response> {
   if (!fromLoopbackHost(req, port)) {
     return new Response("forbidden\n", { status: 403 });
   }
   const path = new URL(req.url).pathname;
   if (req.method === "POST") {
-    return path === "/api/snapshots" ? save(env, req, port) : html(404, notFoundPage(path));
+    return path === "/api/snapshots" ? save(ctx.env, req, port) : html(404, notFoundPage(path));
   }
   return req.method === "GET"
-    ? read(env, where, path)
+    ? read(ctx, path)
     : new Response("method not allowed\n", { status: 405 });
 }
 
 /** A GET: the shell's own files, the index, the API, a kind's page file, or a shell page. */
-function read(env: Env, where: Where, path: string): Response {
+function read(ctx: Context, path: string): Response {
+  const { env, where } = ctx;
   const asset = SHELL_ASSETS[path];
   if (asset !== undefined) {
     return new Response(asset.body, { headers: { "content-type": asset.type } });
@@ -190,7 +222,7 @@ function read(env: Env, where: Where, path: string): Response {
     return html(200, indexPage(where, env));
   }
   if (path.startsWith("/api/snapshots/")) {
-    return snapshotApi(env, path.slice("/api/snapshots/".length));
+    return snapshotApi(ctx, path.slice("/api/snapshots/".length));
   }
   const kindAt = /^\/kinds\/([^/]+)\/(.+)$/.exec(path);
   if (kindAt !== null) {
@@ -206,19 +238,11 @@ function read(env: Env, where: Where, path: string): Response {
 
 /** Starts the server; throws a `failed` QsmError naming the port when it cannot listen there. */
 export function serveDocs(env: Env, where: Where, port: number): Served {
-  // The real port is known only after listen; a `--port 0` server learns it here.
-  const at = { port };
-  const server = listenLoopback(port, async (req) => {
-    const res = await route(env, where, req, at.port);
+  const ctx: Context = { env, where, converted: new Map() };
+  const server = listenLoopback(port, async (req, at) => {
+    const res = await route(ctx, req, at);
     res.headers.set("content-security-policy", CSP);
     return res;
   });
-  at.port = server.port ?? port;
-  return {
-    url: `http://127.0.0.1:${at.port}/`,
-    port: at.port,
-    async stop() {
-      await server.stop(true);
-    },
-  };
+  return { url: `http://127.0.0.1:${server.port}/`, stop: () => server.stop(true) };
 }

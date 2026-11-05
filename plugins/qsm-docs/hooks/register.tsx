@@ -1,13 +1,48 @@
 // qsm-docs' function-hooks module: the noun, `$.docs`; the line that tells the agent of a proposal
-// the owner saved in the browser; and the guard that denies the agent a snapshot delete. The
+// the owner saved in the browser; and the guard that denies `qsm-docs delete` to the agent. The
 // open proposals are the `list --open` verb's; the guard's decision is deleteRefusal in lib/.
 
-import type { On } from "claude-code";
+import type { EngineInterface, On } from "claude-code";
 import { deleteRefusal } from "../lib/delete-guard.ts";
 import { failure, registerNoun } from "./noun.generated.ts";
 
 /** What this session has already named, kept in the plugin's store until the session ends. */
 const named = (session: string): string => `sessions/${session}`;
+
+/** What a session remembers: the ledger as it last read it, and the proposals it named. */
+interface Seen {
+  readonly ledger: string;
+  readonly ids: readonly string[];
+}
+
+function seenOf(value: unknown): Seen | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const ledger: unknown = Reflect.get(value, "ledger");
+  const ids: unknown = Reflect.get(value, "ids");
+  return typeof ledger === "string" && Array.isArray(ids)
+    ? { ledger, ids: ids.map(String) }
+    : undefined;
+}
+
+/** The project's ledger as `<mtime>:<size>`, or `none` before its first snapshot: what changes
+ * whenever a snapshot is created or deleted, so an unchanged one needs no `list`. The store is
+ * `$XDG_DATA_HOME/qsm-docs`, `~/.local/share/qsm-docs` without it, as the binary reads it. */
+async function ledgerMark($: EngineInterface, project: string): Promise<string> {
+  const xdg = await $.env.get("XDG_DATA_HOME");
+  const home = await $.env.get("HOME");
+  if (xdg === undefined && home === undefined) {
+    throw new Error("neither XDG_DATA_HOME nor HOME is set, so the store cannot be found");
+  }
+  const data = xdg ?? `${home}/.local/share`;
+  const ledger = `${data}/qsm-docs/${project}/ledger.jsonl`;
+  if (!(await $.fs.exists(ledger))) {
+    return "none";
+  }
+  const stat = await $.fs.stat(ledger);
+  return `${stat.mtimeMs}:${stat.size}`;
+}
 
 /** The id and kind of each snapshot `list --json` answered. */
 function proposalsOf(data: unknown): { id: string; kind: string }[] {
@@ -29,30 +64,36 @@ export function register(on: On): void {
   registerNoun(on);
 
   // The engine adds hidden context only to a prompt, so the session's first prompt carries the
-  // line a start owes: every open proposal; each later prompt names only the new ones.
+  // line a start owes: every open proposal; each later prompt names only the new ones. A prompt
+  // whose project ledger did not change since the last one runs no `list` and writes nothing.
   on("prompt.submit", async ($, e, next) => {
     const repo = await $.session.repo();
     if (repo === null) {
       return next(e);
     }
     const project = repo.root.split("/").at(-1) ?? repo.root;
-    const open = proposalsOf(await $.docs.list({ project, open: true }));
     const key = named(await $.session.id());
-    const before: unknown = await $.store.get(key);
-    const seen = new Set(Array.isArray(before) ? before.map(String) : []);
+    const before = seenOf(await $.store.get(key));
+    const ledger = await ledgerMark($, project);
+    if (before?.ledger === ledger) {
+      return next(e);
+    }
+    const open = ledger === "none" ? [] : proposalsOf(await $.docs.list({ project, open: true }));
+    const seen = new Set(before?.ids ?? []);
     const fresh = open.filter((p) => !seen.has(p.id));
-    await $.store.set(key, [...seen, ...fresh.map((p) => p.id)]);
+    await $.store.set(key, { ledger, ids: [...seen, ...fresh.map((p) => p.id)] });
     if (fresh.length === 0) {
       return next(e);
     }
-    const lines = Array.isArray(before)
-      ? fresh.map(
-          (p) =>
-            `qsm-docs: the owner saved a proposal, ${p.id} (${p.kind}); read it with qsm-docs get ${p.id} and qsm-docs diff ${p.id}, and apply it with --parent ${p.id}`,
-        )
-      : [
-          `qsm-docs: open proposals of ${project}: ${fresh.map((p) => `${p.id} (${p.kind})`).join(", ")}; read each with qsm-docs get and qsm-docs diff`,
-        ];
+    const lines =
+      before === undefined
+        ? [
+            `qsm-docs: open proposals of ${project}: ${fresh.map((p) => `${p.id} (${p.kind})`).join(", ")}; read each with qsm-docs get and qsm-docs diff`,
+          ]
+        : fresh.map(
+            (p) =>
+              `qsm-docs: the owner saved a proposal, ${p.id} (${p.kind}); read it with qsm-docs get ${p.id} and qsm-docs diff ${p.id}, and apply it with --parent ${p.id}`,
+          );
     return next({ ...e, context: [...(e.context ?? []), ...lines] });
   }).catch(($, e, next) => {
     failure($, "prompt.submit", next.error);

@@ -19,15 +19,6 @@ import { QsmError } from "../../../../lib/qsm-error.ts";
 import { docsDir } from "../store/where.ts";
 import { convertJson, diffJson } from "./json.ts";
 
-const CHANGE_OPS = ["added", "removed", "changed", "renamed", "moved", "commented"] as const;
-
-/** The one record every kind's diff prints, one per change. */
-export interface Change {
-  readonly op: (typeof CHANGE_OPS)[number];
-  readonly element: string;
-  readonly detail?: string;
-}
-
 export interface Kind {
   readonly name: string;
   /** the plugin that installed it, named when it is gone */
@@ -90,6 +81,20 @@ function run(kind: string, argv: readonly string[], fill: Record<string, string>
   return r.stdout;
 }
 
+/** What a kind's command printed, parsed; `failed` names the kind and the command when it is no
+ * JSON. */
+function parsedJson(kind: string, what: string, out: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(out);
+    return parsed;
+  } catch (error) {
+    throw new QsmError(
+      "failed",
+      `${kind}: the ${what} printed no JSON: ${messageOf(error)}: ${out.slice(0, 200)}`,
+    );
+  }
+}
+
 function installedKind(m: Manifest, pages: string): Kind {
   return {
     name: m.name,
@@ -103,28 +108,13 @@ function installedKind(m: Manifest, pages: string): Kind {
         const file = join(dir, `snapshot.${m.ext}`);
         writeFileSync(file, bytes);
         const out = run(m.name, m.convert, { file });
-        try {
-          JSON.parse(out);
-        } catch (error) {
-          throw new QsmError(
-            "failed",
-            `${m.name}: the converter printed no JSON: ${messageOf(error)}`,
-          );
-        }
+        parsedJson(m.name, "converter", out);
         return out;
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     },
-    diff: (a, b) => {
-      const out = run(m.name, m.diff, { a, b });
-      try {
-        const parsed: unknown = JSON.parse(out);
-        return parsed;
-      } catch {
-        throw new QsmError("failed", `${m.name}: the diff printed no JSON: ${out.slice(0, 200)}`);
-      }
-    },
+    diff: (a, b) => parsedJson(m.name, "diff", run(m.name, m.diff, { a, b })),
   };
 }
 
@@ -164,26 +154,22 @@ function parseManifest(raw: unknown, file: string): Manifest {
   };
 }
 
-/** The kind named, or null when neither built in nor installed. */
-function findKind(name: string, env: Env): Kind | null {
+/** The kind named, or `missing` naming it and, when known, the plugin that installs it. */
+export function kindOf(name: string, env: Env, plugin?: string): Kind {
   if (name === JSON_KIND.name) {
     return JSON_KIND;
   }
   const dir = join(kindsDir(env), name);
-  if (name.includes("/") || name.startsWith(".") || !existsSync(join(dir, "manifest.json"))) {
-    return null;
-  }
   const file = join(dir, "manifest.json");
-  return installedKind(
-    parseManifest(JSON.parse(readFileSync(file, "utf8")), file),
-    join(dir, "pages"),
-  );
-}
-
-/** The kind named, or `missing` naming it and, when known, the plugin that installs it. */
-export function kindOf(name: string, env: Env, plugin?: string): Kind {
-  const kind = findKind(name, env);
-  if (kind === null) {
+  let text: string | null = null;
+  try {
+    text = name.includes("/") || name.startsWith(".") ? null : readFileSync(file, "utf8");
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
+  if (text === null) {
     throw new QsmError("missing", `the kind ${name} is not installed`, {
       next:
         plugin === undefined
@@ -191,38 +177,7 @@ export function kindOf(name: string, env: Env, plugin?: string): Kind {
           : `install ${plugin}, whose installer adds the kind ${name}`,
     });
   }
-  return kind;
-}
-
-/** A kind's diff output checked against the change record; `failed` names the first misfit. */
-export function changesOf(kind: string, raw: unknown): Change[] {
-  if (!Array.isArray(raw)) {
-    throw new QsmError(
-      "failed",
-      `${kind}: the diff printed ${JSON.stringify(raw).slice(0, 200)}, not a list of change records`,
-    );
-  }
-  const records: unknown[] = raw;
-  return records.map((record) => {
-    const op = isRecord(record) ? CHANGE_OPS.find((o) => o === record.op) : undefined;
-    if (
-      !isRecord(record) ||
-      op === undefined ||
-      typeof record.element !== "string" ||
-      !(record.detail === undefined || typeof record.detail === "string") ||
-      !Object.keys(record).every((key) => ["op", "element", "detail"].includes(key))
-    ) {
-      throw new QsmError(
-        "failed",
-        `${kind}: the diff printed a record that is not {"op", "element", "detail"?}: ${JSON.stringify(record).slice(0, 200)}`,
-      );
-    }
-    return {
-      op,
-      element: record.element,
-      ...(typeof record.detail === "string" ? { detail: record.detail } : {}),
-    };
-  });
+  return installedKind(parseManifest(JSON.parse(text), file), join(dir, "pages"));
 }
 
 export interface KindRow {

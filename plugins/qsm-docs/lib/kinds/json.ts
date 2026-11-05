@@ -1,7 +1,7 @@
 // The one kind qsm-docs carries itself: a JSON document. Its converter checks the text parses and
 // prints it; its diff names each path that was added, removed or changed.
 import { isRecord } from "../../../../lib/outcome.ts";
-import type { Change } from "./kind.ts";
+import type { Change } from "./change.ts";
 
 /** The document as JSON, or a throw with the parser's message. */
 export function convertJson(text: string): string {

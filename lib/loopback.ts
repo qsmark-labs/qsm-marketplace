@@ -1,5 +1,6 @@
 // A page server on 127.0.0.1 that answers only its own pages: the loopback Host and Origin checks,
-// the listen that names a taken port, and the wait for Ctrl-C a serving verb ends with.
+// the listen that names a taken port, the uncached response its pages read, and the wait for
+// Ctrl-C a serving verb ends with.
 import { serve } from "bun";
 import { QsmError } from "./qsm-error.ts";
 
@@ -28,14 +29,32 @@ export function fromOwnPage(req: Request, port: number): boolean {
   );
 }
 
-/** Listens on 127.0.0.1 only; a taken port is a `failed` QsmError naming it and `--port`. */
+/** A response no browser keeps, because the page reads what the server holds now. */
+export function reply(status: number, body: BodyInit, contentType: string): Response {
+  return new Response(body, {
+    status,
+    headers: { "content-type": contentType, "cache-control": "no-store" },
+  });
+}
+
+/** `body` as JSON, uncached. */
+export const jsonResponse = (status: number, body: unknown): Response =>
+  reply(status, JSON.stringify(body), "application/json");
+
+/** Listens on 127.0.0.1 only, handing each request the port it was served on (the real one of a
+ * `--port 0` server); a taken port is a `failed` QsmError naming it and `--port`. */
 export function listenLoopback(
   port: number,
-  fetch: (req: Request) => Response | Promise<Response>,
+  fetch: (req: Request, port: number) => Response | Promise<Response>,
   options: { readonly idleTimeout?: number } = {},
 ): ReturnType<typeof serve> {
   try {
-    return serve({ hostname: "127.0.0.1", port, fetch, ...options });
+    return serve({
+      hostname: "127.0.0.1",
+      port,
+      fetch: (req, server) => fetch(req, server.port ?? port),
+      ...options,
+    });
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "EADDRINUSE") {
       throw new QsmError("failed", `port ${port} is taken; choose another with --port <number>`, {

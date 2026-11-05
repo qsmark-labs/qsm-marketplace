@@ -25,8 +25,8 @@ const table = (rows: readonly (readonly string[])[]): string =>
   rows.map((r) => r.join("  ")).join("\n");
 
 const get: Handler = async (call) => {
-  const { readSnapshot } = await import("../lib/store/store.ts");
-  const { entry, bytes } = readSnapshot(env, requiredString(call, "id"));
+  const { entryOf, readSnapshot } = await import("../lib/store/store.ts");
+  const { entry, bytes } = readSnapshot(env, entryOf(env, requiredString(call, "id")));
   if (call.json) {
     return ok({ ...entry, content: new TextDecoder().decode(bytes) });
   }
@@ -36,9 +36,10 @@ const get: Handler = async (call) => {
 };
 
 const create: Handler = async (call) => {
-  const { createSnapshot } = await import("../lib/store/store.ts");
+  const { createSnapshot, entryOf } = await import("../lib/store/store.ts");
   const { whereOf } = await import("../lib/store/where.ts");
   const file = requiredString(call, "file");
+  const parent = optionalString(call, "parent");
   const where = whereOf(process.cwd(), {
     project: optionalString(call, "project"),
     branch: optionalString(call, "branch"),
@@ -46,7 +47,7 @@ const create: Handler = async (call) => {
   const entry = createSnapshot(env, {
     kind: requiredString(call, "kind"),
     bytes: readFileSync(file),
-    parent: optionalString(call, "parent") ?? null,
+    parent: parent === undefined ? null : entryOf(env, parent),
     where,
     by: "cli",
   });

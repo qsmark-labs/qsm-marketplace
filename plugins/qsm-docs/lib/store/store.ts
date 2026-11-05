@@ -14,7 +14,8 @@ import { join } from "node:path";
 import { isRecord, UsageError } from "../../../../lib/outcome.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
-import { type Change, changesOf, kindOf } from "../kinds/kind.ts";
+import { type Change, changesOf } from "../kinds/change.ts";
+import { kindOf } from "../kinds/kind.ts";
 import { docsDir, type Where } from "./where.ts";
 
 /** One snapshot as its ledger line records it. */
@@ -60,36 +61,21 @@ function lineOf(raw: unknown, where: string): Line {
   ) {
     return { op: "delete", id: raw.id, time: raw.time };
   }
-  const entry = isRecord(raw) && raw.op === "create" ? entryFrom(raw) : null;
-  if (entry === null) {
+  if (!(isRecord(raw) && raw.op === "create" && isEntry(raw))) {
     throw new QsmError("failed", `${where} is not a ledger line of qsm-docs`);
   }
-  return { op: "create", entry };
+  return { op: "create", entry: raw };
 }
 
-/** A create line's entry, or null when a field is missing or of another type. */
-function entryFrom(raw: Record<string, unknown>): Entry | null {
-  const { id, kind, plugin, ext, project, branch, time, sha256: sha, parent, by } = raw;
-  const texts = [id, kind, plugin, ext, project, branch, time, sha];
-  if (
-    !texts.every((v) => typeof v === "string") ||
-    !(by === "page" || by === "cli") ||
-    !(parent === null || typeof parent === "string")
-  ) {
-    return null;
-  }
-  return {
-    id: String(id),
-    kind: String(kind),
-    plugin: String(plugin),
-    ext: String(ext),
-    project: String(project),
-    branch: String(branch),
-    time: String(time),
-    sha256: String(sha),
-    parent,
-    by,
-  };
+const TEXT_FIELDS = ["id", "kind", "plugin", "ext", "project", "branch", "time", "sha256"];
+
+/** Whether a create line holds every field of an entry, each of its type. */
+function isEntry(raw: Record<string, unknown>): raw is Record<string, unknown> & Entry {
+  return (
+    TEXT_FIELDS.every((key) => typeof raw[key] === "string") &&
+    (raw.by === "page" || raw.by === "cli") &&
+    (raw.parent === null || typeof raw.parent === "string")
+  );
 }
 
 function readLedger(env: Env, project: string): Line[] {
@@ -116,25 +102,28 @@ function projects(env: Env): string[] {
   return existsSync(root) ? readdirSync(root).filter((name) => !name.startsWith(".")) : [];
 }
 
+/** Every live snapshot of the store by id, each project's ledger read once. */
+export function readStore(env: Env): Map<string, Entry> {
+  return new Map(projects(env).flatMap((p) => liveEntries(env, p).map((e) => [e.id, e] as const)));
+}
+
 /** The live snapshot `id` in any project, or `missing`. The id is never parsed. */
-export function entryOf(env: Env, id: string): Entry {
-  for (const project of projects(env)) {
-    const found = liveEntries(env, project).find((e) => e.id === id);
-    if (found !== undefined) {
-      return found;
-    }
+export function entryOf(env: Env, id: string, store = readStore(env)): Entry {
+  const found = store.get(id);
+  if (found === undefined) {
+    throw new QsmError("missing", `no snapshot ${id} in the store`, {
+      next: "qsm-docs list <project> names the snapshots there are",
+    });
   }
-  throw new QsmError("missing", `no snapshot ${id} in the store`, {
-    next: "qsm-docs list <project> names the snapshots there are",
-  });
+  return found;
 }
 
 /** A snapshot's bytes, checked against the sha256 recorded at create. */
 export function readSnapshot(
   env: Env,
-  id: string,
+  entry: Entry,
 ): { entry: Entry; bytes: Uint8Array; file: string } {
-  const entry = entryOf(env, id);
+  const { id } = entry;
   const file = fileOf(env, entry);
   if (!existsSync(file)) {
     throw new QsmError(
@@ -159,19 +148,16 @@ const stampOf = (d: Date): string => d.toISOString().replaceAll(/[-:.]/g, "");
 export interface CreateRequest {
   readonly kind: string;
   readonly bytes: Uint8Array;
-  readonly parent: string | null;
+  readonly parent: Entry | null;
   readonly where: Where;
   readonly by: "page" | "cli";
 }
 
 /** Converts, then stores the bytes read-only and appends the ledger line; nothing is stored when
- * the converter refuses, the parent is missing or the id exists. */
+ * the converter refuses or the id exists. The caller resolves the parent. */
 export function createSnapshot(env: Env, req: CreateRequest): Entry {
   const kind = kindOf(req.kind, env);
   kind.convert(req.bytes);
-  if (req.parent !== null) {
-    entryOf(env, req.parent);
-  }
   const now = new Date();
   const entry: Entry = {
     id: `${req.where.project}-${req.where.branch.replaceAll("/", "_")}-${stampOf(now)}`,
@@ -181,24 +167,18 @@ export function createSnapshot(env: Env, req: CreateRequest): Entry {
     project: req.where.project,
     branch: req.where.branch,
     time: now.toISOString(),
-    parent: req.parent,
+    parent: req.parent?.id ?? null,
     sha256: sha256(req.bytes),
     by: req.by,
   };
-  const taken = new QsmError("blocked", `the id ${entry.id} exists; nothing was stored`, {
-    next: "run the create again",
-  });
-  if (
-    readLedger(env, entry.project).some((l) => (l.op === "create" ? l.entry.id : l.id) === entry.id)
-  ) {
-    throw taken;
-  }
   mkdirSync(projectDir(env, entry.project), { recursive: true });
   try {
     writeFileSync(fileOf(env, entry), req.bytes, { flag: "wx", mode: 0o444 });
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "EEXIST") {
-      throw taken;
+      throw new QsmError("blocked", `the id ${entry.id} exists; nothing was stored`, {
+        next: "run the create again",
+      });
     }
     throw error;
   }
@@ -223,8 +203,7 @@ export function listSnapshots(env: Env, project: string, filter: ListFilter = {}
         (filter.kind === undefined || e.kind === filter.kind) &&
         (filter.open !== true || (e.by === "page" && !parents.has(e.id))),
     )
-    .toReversed()
-    .toSorted((a, b) => b.time.localeCompare(a.time));
+    .toReversed();
 }
 
 /** Removes the snapshot's file and records the delete. */
@@ -240,12 +219,13 @@ export function deleteSnapshot(env: Env, id: string): Entry {
 
 /** The changes from the parent (or `other`) to `id`, through the kind of `id`. */
 export function diffSnapshots(env: Env, id: string, other?: string): Change[] {
-  const b = readSnapshot(env, id);
+  const store = readStore(env);
+  const b = readSnapshot(env, entryOf(env, id, store));
   const againstId = other ?? b.entry.parent;
   if (againstId === null) {
     throw new UsageError(`${id} has no parent: name a second snapshot to compare it with`);
   }
-  const a = readSnapshot(env, againstId);
+  const a = readSnapshot(env, entryOf(env, againstId, store));
   if (other !== undefined && a.entry.kind !== b.entry.kind) {
     throw new UsageError(
       `${other} is ${a.entry.kind} and ${id} is ${b.entry.kind}: two snapshots named must share a kind`,

@@ -1,7 +1,8 @@
 // `claude plugin test plugins/qsm-docs` drives register.tsx against the engine itself: which prompt
 // carries which proposal line, the session's store and its removal, and the delete guard.
 // `qsm-docs list` itself is proved by scripts/serve.test.ts and the guard's line forms by
-// lib/delete-guard.test.ts. `process.run`, `session.*`, `store.*` and `ui.*` are host operations,
+// lib/delete-guard.test.ts. `process.run`, `session.*`, `store.*`, `env.get`, `fs.*` and `ui.*`
+// are host operations,
 // so the test supplies them with `on(<name>, ...)` returning `{ value }`.
 import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
@@ -12,16 +13,24 @@ interface Row {
   readonly kind: string;
 }
 
-/** The host: a checkout of `demo`, session `s1`, an in-memory store, and `qsm-docs list` answering
- * whatever `open` holds when it runs, or failing when `fails`. */
+/** The host: a checkout of `demo`, session `s1`, an in-memory store, the project's ledger at
+ * `/data/qsm-docs/demo/ledger.jsonl` with the size in `ledger` (none at 0), and `qsm-docs list`
+ * answering whatever `open` holds when it runs, or failing when `fails`. */
 function host(on: On, open: Row[], { inRepo = true, fails = false } = {}) {
   const store = new Map<string, unknown>();
   const seen = Object.assign(
     recordingHost(on, () =>
       fails ? printed("missing", 4, "qsm-docs is not on PATH") : printed("ok", 0, "", open),
     ),
-    { store, tools: 0 },
+    { store, tools: 0, ledger: { size: 100 } },
   );
+  on("env.get", (_$, e) => ({ value: e.name === "XDG_DATA_HOME" ? "/data" : undefined }));
+  on("fs.exists", (_$, e) => ({
+    value: e.path === "/data/qsm-docs/demo/ledger.jsonl" && seen.ledger.size > 0,
+  }));
+  on("fs.stat", () => ({
+    value: { kind: "file", size: seen.ledger.size, mtimeMs: seen.ledger.size, isLink: false },
+  }));
   on("prompt.submit", (_$, e) => ({ text: e.text, context: e.context }));
   on("session.end", (_$, e) => ({ sessionId: e.sessionId }));
   on("tool.call", () => {
@@ -56,7 +65,7 @@ test("the first prompt names every open proposal in one line; a later prompt wit
   const first = await $.prompt.submit(PROMPT);
   const second = await $.prompt.submit(PROMPT);
 
-  expect(seen.runs[0]).toBe("qsm-docs list demo --open --json");
+  expect(seen.runs).toEqual(["qsm-docs list demo --open --json"]);
   expect(first.context).toEqual([
     `qsm-docs: open proposals of demo: ${A.id} (json); read each with qsm-docs get and qsm-docs diff`,
   ]);
@@ -65,10 +74,11 @@ test("the first prompt names every open proposal in one line; a later prompt wit
 
 test("a proposal saved while the session runs is named once on the next prompt", async ($, on) => {
   const open: Row[] = [];
-  host(on, open);
+  const seen = host(on, open);
 
   const before = await $.prompt.submit(PROMPT);
   open.push(B);
+  seen.ledger.size += 200;
   const next = await $.prompt.submit(PROMPT);
   const after = await $.prompt.submit(PROMPT);
 
@@ -76,6 +86,22 @@ test("a proposal saved while the session runs is named once on the next prompt",
   expect(next.context).toHaveLength(1);
   expect(next.context?.[0]).toContain(`saved a proposal, ${B.id} (json)`);
   expect(after.context).toBeUndefined();
+  expect(seen.runs).toHaveLength(2);
+});
+
+test("a project with no ledger yet runs no list and is named as new once it has one", async ($, on) => {
+  const open: Row[] = [];
+  const seen = host(on, open);
+  seen.ledger.size = 0;
+
+  const first = await $.prompt.submit(PROMPT);
+  open.push(A);
+  seen.ledger.size = 100;
+  const next = await $.prompt.submit(PROMPT);
+
+  expect(first.context).toBeUndefined();
+  expect(seen.runs).toEqual(["qsm-docs list demo --open --json"]);
+  expect(next.context?.[0]).toContain(`saved a proposal, ${A.id} (json)`);
 });
 
 test("a session outside a repository runs nothing and says nothing", async ($, on) => {
