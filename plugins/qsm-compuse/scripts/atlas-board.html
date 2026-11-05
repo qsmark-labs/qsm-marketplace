@@ -44,14 +44,13 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 #stage.panning { cursor: grabbing; }
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
-/* A section title sits on its first row and grows upward, keeping a readable size at any zoom. */
-.title { position: absolute; transform: translateY(-100%); text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: max(40px, calc(14px / var(--k, 1))); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; cursor: zoom-in; color: var(--text); background: none; border: 0; padding: 0; }
+/* Every label is sized in canvas px and scales with its frame, so nothing slides or pops while
+   zooming; draw() measures each one and gives it the room it needs. */
+.title { position: absolute; text-align: left; font-size: 96px; line-height: 1.4; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; cursor: zoom-in; color: var(--text); background: none; border: 0; padding: 0; }
 .title small { display: block; font-size: 0.4em; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .frame { position: absolute; cursor: pointer; }
-/* The name strip keeps its screen size at every zoom, as a design canvas does: --k is the zoom. */
-.frame .strip { position: absolute; left: 0; bottom: 100%; display: flex; gap: 0.45em; align-items: center; padding-bottom: 0.4em; font-size: calc(13px / var(--k, 1)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; white-space: nowrap; color: var(--muted); }
+.frame .strip { position: absolute; left: 0; bottom: 100%; display: flex; gap: 0.45em; align-items: center; padding-bottom: 0.4em; font-size: 28px; line-height: 1.4; pointer-events: none; white-space: nowrap; color: var(--muted); }
 .frame .strip b { color: var(--text); font-weight: 600; }
-#world.far .strip b, #world.far .strip .journey, #world.far .title small { display: none; }
 .frame .crop { position: relative; overflow: hidden; width: 100%; height: 100%; border-radius: 2px; background: #000; box-shadow: 0 0 0 1px var(--line); }
 .frame:hover .crop { box-shadow: 0 0 0 2px var(--accent); }
 .frame .crop img { position: absolute; max-width: none; user-select: none; -webkit-user-drag: none; }
@@ -83,7 +82,8 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 .side li code, .side pre { font: 12px var(--mono); }
 .side .fail li { border-color: color-mix(in srgb, var(--fail) 60%, var(--line)); }
 .side table { width: 100%; border-collapse: collapse; font: 11px var(--mono); margin-bottom: 16px; }
-.side td { border-top: 1px solid var(--line); padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
+.side td, .side th { border-top: 1px solid var(--line); padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; text-align: left; }
+.side th { color: var(--muted); font-weight: 600; border-top: 0; }
 .side .hint { color: var(--muted); margin: 0 0 16px; }
 .pinform { position: absolute; z-index: 2; width: 240px; padding: 8px; display: grid; gap: 6px; background: var(--sheet); border: 1px solid var(--accent); border-radius: 8px; pointer-events: auto; }
 .pinform textarea { font: inherit; color: inherit; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; min-height: 64px; resize: vertical; }
@@ -144,15 +144,29 @@ function s(tag, attrs) {
 const image = (f) => `shots/${f.name}.png`;
 const notesOf = (f) => comments.filter((c) => c.shot === f.name);
 
+// "20261101-050202-7ad8", the id drive atlas gives a run, reads "1 Nov 05:02".
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function when(run) {
+  const m = /^\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(run);
+  return m ? `${Number(m[2])} ${MONTHS[Number(m[1]) - 1]} ${m[3]}:${m[4]}` : run;
+}
+const before = `the run of ${when(board.prev)}`;
+const now = `this run of ${when(board.run)}`;
+
+function badge(kind, text, title) {
+  return h("span", { class: `badge ${kind}`, ...(title ? { title } : {}) }, text);
+}
 function badges(f) {
+  const n = notesOf(f).length;
   return [
-    f.todo && h("span", { class: "badge todo" }, "todo"),
-    f.changed && h("span", { class: "badge changed" }, f.changed.areas.length ? `changed · ${f.changed.areas.length}` : "tree changed"),
-    f.checks.length > 0 && h("span", { class: "badge fail" }, `FAIL · ${f.checks.length}`),
-    f.checkError && h("span", { class: "badge fail" }, "check did not run"),
-    f.still === "moving" && h("span", { class: "badge moving" }, "never still"),
-    f.masks.length > 0 && h("span", { class: "badge animates", title: "an item animates by design: the run neither waits for it nor compares it" }, "animates"),
-    notesOf(f).length > 0 && h("span", { class: "badge note" }, `${notesOf(f).length} note${notesOf(f).length > 1 ? "s" : ""}`),
+    f.todo && badge("todo", "todo"),
+    f.changed && badge("changed", `changed vs ${when(board.prev)}`,
+      `${f.changed.areas.length} pixel areas and ${f.changed.changes.length} tree measures changed against run ${board.prev}`),
+    f.checks.length > 0 && badge("fail", `FAIL · ${f.checks.length}`),
+    f.checkError && badge("fail", "check did not run"),
+    f.still === "moving" && badge("moving", "never still"),
+    f.masks.length > 0 && badge("animates", "animates", "an item animates by design: the run neither waits for it nor compares it"),
+    n > 0 && badge("note", `${n} note${n > 1 ? "s" : ""}`),
   ];
 }
 
@@ -160,7 +174,7 @@ function badges(f) {
 document.getElementById("name").textContent = `${board.scenario} · ${board.run}`;
 document.title = `Atlas ${board.scenario}`;
 document.getElementById("meta").textContent =
-  `desktop ${board.desktop} · ${board.prev ? `against ${board.prev}` : "first run, nothing to compare"}`;
+  `desktop ${board.desktop} · ${board.prev ? `compared with ${before} (${board.prev})` : "first run, nothing to compare"}`;
 function counts() {
   const shot = frames.filter((f) => !f.todo);
   const n = (p) => shot.filter(p).length;
@@ -185,17 +199,56 @@ function orphans() {
       served && h("button", { type: "button", onclick: (e) => resolveNote(c, e.target.parentElement) }, "Resolve")))));
 }
 
-// The canvas: the builder placed every frame; the page only draws them.
+// The canvas, in canvas px. Sections flow left to right like blocks of text and wrap past ROW_W,
+// so the canvas stays near square; inside one, frames run left to right and wrap after PER_ROW.
+// Each cell is as wide as the longer of its frame and its label, measured as drawn: a label is
+// never clipped and never covers a neighbour's.
+const PER_ROW = 6, ROW_W = 9000, GAP = 80, SECTION_GAP = 240;
 const world = document.getElementById("world");
+let extent = { w: 1, h: 1 };
 function draw() {
   world.replaceChildren();
-  for (const section of board.sections) {
-    world.append(h("button", {
-      class: "title", type: "button", style: { left: `${section.at.x}px`, top: `calc(${frameTop(section)}px - 26px / var(--k, 1))`, maxWidth: `${section.w}px` },
-      onclick: () => fit(section.at.x, section.at.y, section.w, sectionHeight(section)),
-    }, section.title, h("small", {}, `${section.frames.length} ${section.frames.length === 1 ? "state" : "states"}`)));
-    for (const f of section.frames) world.append(frameEl(f));
-  }
+  extent = { w: 1, h: 1 };
+  const drawn = board.sections.map((section) => {
+    const title = h("button", {
+      class: "title", type: "button", onclick: () => fit(section.at.x, section.at.y, section.w, section.h),
+    }, section.title, h("small", {}, `${section.frames.length} ${section.frames.length === 1 ? "state" : "states"}`));
+    const els = section.frames.map(frameEl);
+    world.append(title, ...els);
+    return { section, title, els };
+  });
+  // All reads before any write, so the browser lays the canvas out once; a transform changes no
+  // offsetWidth, so these are canvas px at any zoom.
+  const sizes = drawn.map(({ title, els }) => ({
+    title: { w: title.offsetWidth, h: title.offsetHeight },
+    labels: els.map((el) => { const strip = el.querySelector(".strip"); return { w: strip.offsetWidth, h: strip.offsetHeight }; }),
+  }));
+  let x = 0, y = 0, rowH = 0;
+  drawn.forEach(({ section, title, els }, si) => {
+    const { title: t, labels } = sizes[si];
+    const label = Math.max(...labels.map((l) => l.h));
+    let rowY = t.h + label, w = t.w;
+    for (let i = 0; i < section.frames.length; i += PER_ROW) {
+      let fx = 0;
+      for (let j = i; j < Math.min(i + PER_ROW, section.frames.length); j++) {
+        section.frames[j].at = { x: fx, y: rowY };
+        fx += Math.max(section.frames[j].crop.w, labels[j].w) + GAP;
+      }
+      w = Math.max(w, fx - GAP);
+      rowY += Math.max(...section.frames.slice(i, i + PER_ROW).map((f) => f.crop.h)) + GAP + label;
+    }
+    const sh = rowY - GAP - label;
+    if (x > 0 && x + w > ROW_W) { x = 0; y += rowH + SECTION_GAP; rowH = 0; }
+    Object.assign(section, { at: { x, y }, w, h: sh });
+    Object.assign(title.style, { left: `${x}px`, top: `${y}px` });
+    section.frames.forEach((f, j) => {
+      f.at = { x: f.at.x + x, y: f.at.y + y };
+      Object.assign(els[j].style, { left: `${f.at.x}px`, top: `${f.at.y}px` });
+    });
+    x += w + SECTION_GAP;
+    rowH = Math.max(rowH, sh);
+    extent = { w: Math.max(extent.w, x - SECTION_GAP), h: Math.max(extent.h, y + rowH) };
+  });
   counts();
 }
 function frameEl(f) {
@@ -209,13 +262,10 @@ function frameEl(f) {
   const control = f.todo ? {} : { tabindex: "0", role: "button", "aria-label": `${f.name}, open` };
   return h("div", {
     class: cls, ...control,
-    style: { left: `${f.at.x}px`, top: `${f.at.y}px`, width: `${f.crop.w}px`, height: `${f.crop.h}px` },
+    style: { width: `${f.crop.w}px`, height: `${f.crop.h}px` },
     onclick: () => openFocus(f), onkeydown: (e) => { if (e.key === "Enter") openFocus(f); },
   }, h("div", { class: "strip" }, h("b", {}, f.state), f.journey && f.surface ? h("span", { class: "journey" }, `· ${f.journey}`) : "", badges(f)), crop);
 }
-// The title stands on the name strips of the section's first row, which keep their screen size.
-const frameTop = (section) => Math.min(...section.frames.map((f) => f.at.y));
-const sectionHeight = (section) => Math.max(...section.frames.map((f) => f.at.y + f.crop.h)) - section.at.y;
 
 // Pan and zoom: one transform on the world.
 const stage = document.getElementById("stage");
@@ -223,24 +273,18 @@ const view = { x: 40, y: 80, k: 0.25 };
 function apply(glide) {
   world.classList.toggle("glide", Boolean(glide));
   world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
-  world.style.setProperty("--k", String(view.k));
-  // Zoomed far out, a frame keeps only its badges: names would cover the frames above them.
-  world.classList.toggle("far", view.k < 0.2);
 }
+// The window less the bar (TOP) and a margin (PAD) on every side is what a fit fills.
+const TOP = 70, PAD = 40;
+const fitK = (w, hgt) => Math.min((innerWidth - 2 * PAD) / w, (innerHeight - TOP - 2 * PAD) / hgt, 2);
 function fit(x, y, w, hgt, glide = true) {
-  const top = 70, pad = 40;
-  const k = Math.min((innerWidth - 2 * pad) / w, (innerHeight - top - 2 * pad) / hgt, 2);
+  const k = fitK(w, hgt);
   view.k = k;
-  view.x = pad + ((innerWidth - 2 * pad) - w * k) / 2 - x * k;
-  view.y = top + pad - (y - 60) * k;
+  view.x = PAD + ((innerWidth - 2 * PAD) - w * k) / 2 - x * k;
+  view.y = TOP + PAD - y * k;
   apply(glide);
 }
-function fitAll(glide = true) {
-  if (board.sections.length === 0) return;
-  const w = Math.max(...board.sections.map((sec) => sec.at.x + sec.w), 1);
-  const hgt = Math.max(...board.sections.map((sec) => sec.at.y + sectionHeight(sec)), 1);
-  fit(0, 0, w, hgt, glide);
-}
+const fitAll = (glide = true) => fit(0, 0, extent.w, extent.h, glide);
 let drag = null;
 stage.addEventListener("pointerdown", (e) => {
   if (e.button !== 0 || e.target.closest(".frame, .title")) return;
@@ -257,7 +301,9 @@ stage.addEventListener("pointermove", (e) => {
 stage.addEventListener("pointerup", () => { drag = null; stage.classList.remove("panning"); });
 stage.addEventListener("wheel", (e) => {
   e.preventDefault();
-  const k = Math.min(4, Math.max(0.03, view.k * Math.exp(-e.deltaY * 0.0015)));
+  // Out stops at the whole board, or at 100 % for a board smaller than the window: smaller, the
+  // window shows nothing more.
+  const k = Math.min(4, Math.max(Math.min(fitK(extent.w, extent.h), 1), view.k * Math.exp(-e.deltaY * 0.0015)));
   view.x = e.clientX - ((e.clientX - view.x) * k) / view.k;
   view.y = e.clientY - ((e.clientY - view.y) * k) / view.k;
   view.k = k;
@@ -333,16 +379,31 @@ function renderFocus() {
   const screen = document.getElementById("focus-screen");
   const title = document.getElementById("screen-title");
   if (mode === "diff") {
-    title.textContent = `Diff · ${board.prev} beside ${board.run}`;
+    title.textContent = `Diff · ${before} beside ${now}`;
     screen.replaceChildren(h("img", { src: `diff-${board.prev}/${f.name}.png`, alt: "previous run beside this run, changes boxed", style: { maxWidth: "100%" } }));
   } else if (mode === "before") {
-    title.textContent = `Before · ${board.prev}`;
+    title.textContent = `Before · ${before} (${board.prev})`;
     screen.replaceChildren(h("img", { src: `../${board.prev}/shots/${f.name}.png`, alt: "previous run", style: { maxWidth: "100%" } }));
   } else {
-    title.textContent = served ? "Screen · click to pin a note" : "Screen";
+    title.textContent = `${f.changed ? `After · ${now}` : "Screen"}${served ? " · click to pin a note" : ""}`;
     screen.replaceChildren(overlay(f, h("img", { src: image(f), alt: f.name }), true));
   }
   renderSide(f);
+}
+
+// One line per item (its name and its rect, so two glyphs of one type stay two lines) with the
+// box around its areas, since a changed text is one area per glyph cluster; an area no shell item
+// holds keeps its own line, since those share no place. Areas and the box are device px.
+function byItem(areas) {
+  const items = new Map();
+  for (const [i, a] of areas.entries()) {
+    const key = a.held ? `${a.item} ${a.held.x},${a.held.y} ${a.held.w}x${a.held.h}` : `none ${i}`;
+    const b = items.get(key);
+    const x = Math.min(b?.box.x ?? a.x, a.x), y = Math.min(b?.box.y ?? a.y, a.y);
+    const x1 = Math.max(b ? b.box.x + b.box.w : 0, a.x + a.w), y1 = Math.max(b ? b.box.y + b.box.h : 0, a.y + a.h);
+    items.set(key, { item: a.item, n: (b?.n ?? 0) + 1, box: { x, y, w: x1 - x, h: y1 - y } });
+  }
+  return [...items.values()];
 }
 
 function renderSide(f) {
@@ -362,11 +423,18 @@ function renderSide(f) {
     side.append(h("ul", { class: "fail" }, f.checks.map((l) => h("li", {}, h("code", {}, l)))));
   }
   if (f.changed) {
-    side.append(h("h3", {}, `Changed against ${board.prev}`));
+    side.append(h("h3", {}, `Changed against ${before}`));
     side.append(h("p", { class: "hint" }, `${f.changed.areas.length} pixel areas · ${f.changed.changes.length} tree measures`));
+    const px = (v) => Math.round(v / f.scale);
+    if (f.changed.areas.length)
+      side.append(h("ul", {}, byItem(f.changed.areas).map(({ item, n, box }) => h("li", {},
+        h("b", {}, item || "no shell item"), ` · ${n} area${n > 1 ? "s" : ""}, ${px(box.w)}x${px(box.h)} at ${px(box.x)},${px(box.y)}`,
+        !item && h("small", { class: "hint", style: { display: "block" } }, "the cursor, the wallpaper or a client window")))));
     if (f.changed.changes.length)
-      side.append(h("table", {}, h("tbody", {}, f.changed.changes.slice(0, 200).map((c) =>
-        h("tr", {}, h("td", {}, c.key.split("/").slice(-2).join("/")), h("td", {}, c.before), h("td", {}, c.after))))));
+      side.append(h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, "item measure"), h("th", {}, when(board.prev)), h("th", {}, when(board.run)))),
+        h("tbody", {}, f.changed.changes.slice(0, 200).map((c) =>
+          h("tr", {}, h("td", {}, c.key.split("/").slice(-2).join("/")), h("td", {}, c.before), h("td", {}, c.after))))));
   }
   side.append(h("h3", {}, "Shot"));
   side.append(h("p", { class: "hint" }, `journey ${f.journey} · ${f.surface ? `surface ${f.surface}` : "full screen"} · screen ${f.still}`));

@@ -21,6 +21,14 @@
   its path; `atlas_report` and `summary.tsv` go. Proof: `drive atlas diff` on two kept runs prints
   one path, writes no `index.html`, and the board shows the changed frames.
 
+- [x] 2.3 `scripts/atlas-board.ts` layout and `atlas-board.html`: labels in canvas px, cells as
+  wide as their label, wrapping badge rows, no zoom threshold, wheel zoom floored at the whole-board
+  fit. Proof: the latest desktop run's board in the browser at the fit, at a section and at 100 %,
+  captured: no clipped label, no label over another.
+- [x] 2.4 `scripts/atlas-board.ts`: each changed area named by the deepest tree node holding its
+  centre, or as outside the shell; the badge names the compared run by date. Proof: the focus of
+  `rest--rest` in the run of 4 Nov against 1 Nov lists the cursor area as outside the shell.
+
 ## 3. Comments
 
 - [x] 3.1 `scripts/atlas-board.ts serve SCENARIO_DIR` and `comments SCENARIO_DIR`; `drive atlas
@@ -31,3 +39,13 @@
 ## 4. Docs
 
 - [x] 4.1 `USAGE.md`: the `drive atlas run` row names the board, rows for `review` and `comments`.
+
+## 5. Recordings
+
+- [ ] 5.1 `scripts/drive-atlas`: `record NAME [@Type]` / `stop`, WebM and `recordings.tsv`, a
+  missing pair stops the run. Proof: a one-journey scenario that records typing in the launcher
+  writes the WebM and its cadence; one with `record` and no `stop` exits non-zero naming it.
+- [ ] 5.2 `scripts/atlas-board.ts` and `atlas-board.html`: recording frames, looping, focus beside
+  the previous run's with both cadences. Proof: two runs of that scenario, the board in the
+  browser, focus on the recording plays both. Blocked by 5.1.
+  `USAGE.md`: the scenario grammar row names `record` and `stop`.

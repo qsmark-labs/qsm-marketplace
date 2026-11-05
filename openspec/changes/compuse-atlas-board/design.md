@@ -36,8 +36,9 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   report, and `drive atlas diff` after its report.
 - **Pan and zoom is one transform.** The canvas is one absolutely placed layer moved by
   `translate()` and `scale()`: drag pans, the wheel zooms about the pointer, `F` fits everything,
-  a section title fits that section, `0` resets. Frames are laid out by the builder (sections top
-  to bottom, frames left to right, wrapping at 6), so the page does no layout work of its own.
+  a section title fits that section, `0` resets. The page lays the frames out (sections flowing
+  like blocks of text, frames left to right, wrapping at 6), because only the page can measure a
+  label as drawn; the builder hands it each frame's crop and nothing about position.
 - **Focus is the frame, the screen and its record.** A click opens one frame: the crop and the
   full screen side by side, the check lines with the failing rectangles drawn on both, the changed
   areas, a before / after / overlay switch when the frame changed, the changed measures, and the
@@ -63,6 +64,35 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   are compared in, is all the wait, the comparison and the board need. An
   index in a path (`RailEntry[5]`) exists because the tree's nodes carry no names, and the sixth
   rail cell is otherwise unreachable.
+
+- **Labels live in the canvas, not on the screen.** The first board kept names and badges at their
+  screen size while the frames scaled, so a frame narrower than its label clipped it (`FAI`), and
+  the labels slid against their frames while zooming and vanished below a zoom threshold. Now every
+  label is sized in canvas px and scales with its frame like one image: nothing slides, nothing
+  pops. The page draws every label, measures it (a transform changes no `offsetWidth`, so the
+  reading is canvas px at any zoom), and gives each frame a cell as wide as the longer of the frame
+  and its label; a notes badge added while the page is open widens its cell on the next draw. At
+  the fit of the whole board the names are too small to read and the coloured ring
+  of a changed or failing frame carries its state; a section title is large enough to read there,
+  and a click on it fits the section. The wheel stops at that fit, because a board smaller than the
+  window shows nothing more.
+- **A changed area is named by the tree.** The builder maps each changed area (device px, divided
+  by the shot's scale) to the deepest node of the shot's tree with a size whose rectangle holds the
+  area's centre, and the badge names the run it was compared with by date (`changed vs 1 Nov
+  05:02`). The cursor, the wallpaper and a client window are in no tree, so an area there says so
+  instead of borrowing the name of whatever item lies beneath. A component is named by the nearest
+  type that is not one of Qt's own (`Item`, `Rectangle`, the layouts, the effects): the tree carries
+  no flag for a shell type, and a Qt type missing from that list only names the area less
+  precisely.
+- **A recording is a separate kind of frame.** `record NAME [@Type]` starts wf-recorder on the
+  slot's output in the background and `stop` ends it with SIGINT, the way `drive record` does, so
+  the frames keep their capture timestamps. After `stop` the run reads the tree (for the crop),
+  transcodes to WebM (VP9, passthrough timing, since the browser plays no Matroska H.264
+  reliably) and writes the cadence `drive cadence` prints into `recordings.tsv` (journey, name,
+  surface, cadence). Recordings are never compared by pixels: an animation lands on another phase
+  every run. The board compares the cadence numbers with the previous run's recording of the same
+  name and plays both side by side. The canvas frame is a muted looping `<video>` cropped like an
+  image; only the focused frame and its neighbours play, so a board of many recordings decodes few.
 
 ## Risks / Trade-offs
 

@@ -17,6 +17,11 @@ import { tryFlock, writeAtomic } from "../../../lib/fs.ts";
 import { isRecord, messageOf } from "../../../lib/outcome.ts";
 
 type Rect = { x: number; y: number; w: number; h: number };
+// A changed area (device px) and the item of the shot's tree that holds it (its rect in logical
+// px), "" when none of the shell's items does (the cursor, the wallpaper, a client window).
+type Area = Rect & { item: string; held: Rect | null };
+// One shot of diff.json, before its areas are named.
+type Diff = { areas: Rect[]; changes: Change[] };
 type Change = { key: string; before: string; after: string };
 type Frame = {
   name: string;
@@ -28,15 +33,14 @@ type Frame = {
   screen: { w: number; h: number };
   scale: number;
   crop: Rect;
-  at: { x: number; y: number };
   checks: string[];
   checkError: boolean;
   failing: Rect[];
   // Items that animate by design (device px): the run neither waits for nor compares them.
   masks: Rect[];
-  changed: { areas: Rect[]; changes: Change[] } | null;
+  changed: { areas: Area[]; changes: Change[] } | null;
 };
-type Section = { title: string; at: { x: number; y: number }; w: number; frames: Frame[] };
+type Section = { title: string; frames: Frame[] };
 type NewComment = { shot: string; x: number; y: number; text: string; run: string };
 type Comment = {
   id: string;
@@ -52,14 +56,6 @@ type Comment = {
 // Logical px around a surface: its edge, its focus ring and the chrome its holder draws around it
 // (a popout's title sits above its content item) stay in the frame.
 const PAD = 32;
-// The canvas grid: frames left to right, a row wraps after PER_ROW; sections flow in rows ROW_W wide.
-const PER_ROW = 6;
-const ROW_W = 9000;
-const GAP_X = 80;
-const GAP_Y = 120;
-const TITLE_H = 140;
-const TITLE_CHAR = 26;
-const SECTION_GAP = 240;
 // An empty frame for a state no journey shoots yet, when its section has no shot to size it by.
 const TODO_SIZE = { w: 320, h: 240 };
 
@@ -206,7 +202,7 @@ const records = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
 // One shot of diff.json: its changed areas (device px) and its changed tree measures.
-function changedOf(entry: Record<string, unknown>): Frame["changed"] {
+function changedOf(entry: Record<string, unknown>): Diff | null {
   const areas = records(entry.areas).map((a) => ({
     x: num(a.x),
     y: num(a.y),
@@ -221,8 +217,8 @@ function changedOf(entry: Record<string, unknown>): Frame["changed"] {
   return areas.length === 0 && changes.length === 0 ? null : { areas, changes };
 }
 
-function diffOf(run: string, prev: string): Map<string, Frame["changed"]> {
-  const diffs = new Map<string, Frame["changed"]>();
+function diffOf(run: string, prev: string): Map<string, Diff> {
+  const diffs = new Map<string, Diff>();
   const path = join(run, `diff-${prev}`, "diff.json");
   if (prev === "" || !existsSync(path)) return diffs;
   const value = readJson(path);
@@ -245,7 +241,6 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   screen: { w: 0, h: 0 },
   scale: 1,
   crop: { x: 0, y: 0, w: 0, h: 0 },
-  at: { x: 0, y: 0 },
   checks: [],
   checkError: false,
   failing: [],
@@ -271,7 +266,94 @@ function cropOf(
   };
 }
 
-function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]>): Frame {
+// Qt's own types say how an item is drawn, never which part of the shell it is.
+const GENERIC = new Set([
+  "Item",
+  "Rectangle",
+  "Row",
+  "Column",
+  "RowLayout",
+  "ColumnLayout",
+  "GridLayout",
+  "Flickable",
+  "Loader",
+  "MouseArea",
+  "FocusScope",
+  "Text",
+  "Image",
+  "MultiEffect",
+  "ShaderEffect",
+  "QGfxSourceProxyME",
+  "ProxyWindowContentItem",
+]);
+
+// Whether item R holds all of area A (logical px), with a pixel of slack for the rounding between
+// device and logical px.
+const holds = (r: Rect, a: Rect): boolean =>
+  r.w > 0 &&
+  r.h > 0 &&
+  a.x >= r.x - 1 &&
+  a.y >= r.y - 1 &&
+  a.x + a.w <= r.x + r.w + 1 &&
+  a.y + a.h <= r.y + r.h + 1;
+
+// An item named by the nearest shell component above it (OWNER), its own type unless Qt's, and
+// the first words of its text: PopoutRow › Prose "Wi-Fi".
+function itemName(at: Record<string, unknown>, owner: string): string {
+  const type = str(at.type);
+  const name =
+    owner === "" || owner === type ? type : GENERIC.has(type) ? owner : `${owner} › ${type}`;
+  const text = str(at.text).replaceAll(/\s+/gu, " ").trim();
+  if (text === "") return name;
+  return `${name} "${text.length > 28 ? `${text.slice(0, 27)}…` : text}"`;
+}
+
+// The deepest drawn item smaller than the screen that holds the whole area (logical px), by
+// itemName. The shell's layers each span the whole screen, so they hold every area and name none.
+// An item at opacity 0 (a hover layer at rest) draws nothing, nor do its children. A child may
+// stand outside its parent (QML does not clip), so every drawn branch is walked.
+const drawn = (at: unknown): at is Record<string, unknown> =>
+  isRecord(at) && at.opacity !== 0 && at.visible !== false;
+
+function itemAt(
+  tree: unknown,
+  screen: { w: number; h: number },
+  area: Rect,
+): { item: string; held: Rect | null } {
+  let best: { item: string; held: Rect | null; depth: number } = {
+    item: "",
+    held: null,
+    depth: -1,
+  };
+  const names = (r: Rect): boolean => holds(r, area) && (r.w < screen.w || r.h < screen.h);
+  const walk = (at: unknown, owner: string, depth: number): void => {
+    if (!drawn(at)) return;
+    const r = rectOf(at);
+    if (depth > best.depth && names(r)) best = { item: itemName(at, owner), held: r, depth };
+    const type = str(at.type);
+    const next = GENERIC.has(type) ? owner : type;
+    if (Array.isArray(at.children)) for (const child of at.children) walk(child, next, depth + 1);
+  };
+  walk(tree, "", 0);
+  return { item: best.item, held: best.held };
+}
+
+// A shot's diff with each area (device px) named by the shot's tree (logical px, SCALE apart).
+function namedChange(
+  diff: Diff | undefined,
+  tree: unknown,
+  screen: { w: number; h: number },
+  scale: number,
+): Frame["changed"] {
+  if (!diff) return null;
+  const areas = diff.areas.map((a) => ({
+    ...a,
+    ...itemAt(tree, screen, { x: a.x / scale, y: a.y / scale, w: a.w / scale, h: a.h / scale }),
+  }));
+  return { ...diff, areas };
+}
+
+function frameOf(run: string, row: string[], diffs: Map<string, Diff>): Frame {
   const [journey = "", state = "", , still = "", fails = "", surface = "", masks = ""] = row;
   const name = `${journey}--${state}`;
   const tree = readJson(join(run, "trees", `${name}.json`));
@@ -279,6 +361,8 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
   const screen = { w: num(tree.width), h: num(tree.height) };
   const image = pngSize(join(run, "shots", `${name}.png`));
   const crop = cropOf(tree, screen, surface);
+  const scale = screen.w > 0 ? image.w / screen.w : 1;
+  const changed = namedChange(diffs.get(name), tree.tree, screen, scale);
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
@@ -290,14 +374,14 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
     journey,
     still,
     screen,
-    scale: screen.w > 0 ? image.w / screen.w : 1,
+    scale,
     crop,
     checks,
     // drive writes "error" when the check itself could not run.
     checkError: fails === "error",
     failing: failingOf(checks),
     masks: masksOf(masks),
-    changed: diffs.get(name) ?? null,
+    changed,
   };
 }
 
@@ -317,7 +401,7 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   const sectionFor = (title: string): Section => {
     const found = sections.get(title);
     if (found) return found;
-    const made: Section = { title, at: { x: 0, y: 0 }, w: 0, frames: [] };
+    const made: Section = { title, frames: [] };
     sections.set(title, made);
     return made;
   };
@@ -336,47 +420,6 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   return [...sections.values()];
 }
 
-// One section's frames from its own corner: left to right, a row wraps after PER_ROW. Returns the
-// section's size.
-function placeFrames(section: Section): { w: number; h: number } {
-  let rowY = TITLE_H;
-  let w = 0;
-  for (let i = 0; i < section.frames.length; i += PER_ROW) {
-    const row = section.frames.slice(i, i + PER_ROW);
-    let x = 0;
-    for (const frame of row) {
-      frame.at = { x, y: rowY };
-      x += frame.crop.w + GAP_X;
-    }
-    w = Math.max(w, x - GAP_X);
-    rowY += Math.max(...row.map((f) => f.crop.h)) + GAP_Y;
-  }
-  return { w, h: rowY - GAP_Y };
-}
-
-// The builder places every frame, so the page draws and never lays out. Sections flow left to
-// right like blocks of text, a row of sections wrapping past ROW_W, so the canvas stays near square.
-function layout(sections: Section[]): void {
-  let x = 0;
-  let y = 0;
-  let rowH = 0;
-  for (const section of sections) {
-    const size = placeFrames(section);
-    // The title is 40 px at rest, about 26 px a character: a narrow section keeps room for it.
-    size.w = Math.max(size.w, section.title.length * TITLE_CHAR);
-    if (x > 0 && x + size.w > ROW_W) {
-      x = 0;
-      y += rowH + SECTION_GAP;
-      rowH = 0;
-    }
-    section.at = { x, y };
-    section.w = size.w;
-    for (const frame of section.frames) frame.at = { x: frame.at.x + x, y: frame.at.y + y };
-    x += size.w + SECTION_GAP;
-    rowH = Math.max(rowH, size.h);
-  }
-}
-
 function build(run: string, prev: string): void {
   const tsv = join(run, "shots.tsv");
   if (!existsSync(tsv)) fail(`${run} is not an atlas run (no shots.tsv)`);
@@ -387,7 +430,6 @@ function build(run: string, prev: string): void {
     .map((l) => l.split("\t"));
   const frames = rows.map((row) => frameOf(run, row, diffs));
   const sections = sectionsOf(frames, todosOf(join(run, "scenario")));
-  layout(sections);
   const scenarioDir = dirname(run);
   const board = {
     scenario: basename(scenarioDir),
