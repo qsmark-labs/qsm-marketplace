@@ -4,19 +4,18 @@
 // the pages that show them.
 
 import { flagArg, optionalString, requiredString, runCli } from "../../../lib/cli-base.ts";
-import { doctorVerdict, fail } from "../../../lib/outcome.ts";
+import { doctorVerdict } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { MODELS_DIR, oneGraph } from "../lib/graphs.ts";
 import { layoutFile } from "../lib/bpmn/layout.ts";
 import { checkProject, repoRoot } from "../lib/conform.ts";
 import { lintPath } from "../lib/lint.ts";
+import { writePages } from "../lib/pages/pages.ts";
 import { pathsOf } from "../lib/paths.ts";
 import { renderPath } from "../lib/render.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 
 const manifest = parseManifest(manifestJson, "qsm-models/qsm.json");
-
-const notBuilt = (verb: string) => () => fail("missing", `qsm-models ${verb} is not built yet`);
 
 if (import.meta.main) {
   process.exit(
@@ -34,7 +33,7 @@ if (import.meta.main) {
           specs: optionalString(call, "specs"),
         }),
       check: () => checkProject(repoRoot()),
-      pages: notBuilt("pages"),
+      pages: (call) => writePages(repoRoot(), optionalString(call, "out")),
     }),
   );
 }

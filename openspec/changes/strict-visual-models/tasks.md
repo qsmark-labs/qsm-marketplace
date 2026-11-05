@@ -51,7 +51,7 @@ open and its first-build part says `(done)` once it is built.
 - [ ] 11. The skill `model`, `model-reviewer`, `model-simplifier`. Files:
   `plugins/qsm-models/skills/`, `agents/`. Proof: `bun run eval qsm-models`. Blocked by 8.
   **First build:** the skill `model` and `model-reviewer`. **Waits:** `model-simplifier`.
-- [ ] 12. `pages`: `bpmn.html` and `c4.html` in `.qsm/models/`, `.qsm/` in `.gitignore` unless the
+- [x] 12. `pages`: `bpmn.html` and `c4.html` in `.qsm/models/`, `.qsm/` in `.gitignore` unless the
   lens change already put it there. Files: `plugins/qsm-models/lib/pages/`,
   `plugins/qsm-models/pages/` (the inlined templates), `.gitignore`. Proof: design Verify 7, then
   the scenarios of the requirement: a scripted browser opens both files from disk, drills a call

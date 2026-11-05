@@ -49,7 +49,7 @@ declare module "jsdom" {
   export const JSDOM: new (html: string, options?: { pretendToBeVisual?: boolean }) => Dom;
 }
 
-declare module "*.html" {
+declare module "bpmn-js/dist/*.js" {
   const text: string;
   export default text;
 }

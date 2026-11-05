@@ -639,29 +639,33 @@ function withZoomLinks(
       : views.find((w) => w !== v && w.boundary !== v.boundary && w.box.has(v.boundary ?? ""));
   const twin =
     v.boundary === null ? undefined : views.find((w) => w !== v && w.boundary === v.boundary);
-  const nav = [
-    up === undefined
-      ? ""
-      : `<a href="${esc(fileOf(up.name))}"><text x="0" y="-44" font-size="13" fill="#08427b" text-decoration="underline">&#8593; Zoom out: ${esc(up.title)}</text></a>`,
-    twin === undefined
-      ? ""
-      : `<a href="${esc(fileOf(twin.name))}"><text x="${up === undefined ? 0 : 520}" y="-44" font-size="13" fill="#08427b" text-decoration="underline">&#8594; ${esc(twin.title.split(", ").pop() ?? "")}</text></a>`,
-  ].filter((x) => x !== "");
+  // each link on a line of its own above the title, so a narrow view cuts neither off
+  const targets = [
+    ...(up === undefined ? [] : [{ to: up, text: `&#8593; Zoom out: ${esc(up.title)}` }]),
+    ...(twin === undefined
+      ? []
+      : [{ to: twin, text: `&#8594; ${esc(twin.title.split(", ").pop() ?? "")}` }]),
+  ];
+  const lift = 24 * targets.length;
+  const nav = targets.map(
+    (t, i) =>
+      `<a href="${esc(fileOf(t.to.name))}"><text x="0" y="${-44 - 24 * (targets.length - 1 - i)}" font-size="13" fill="#08427b" text-decoration="underline">${t.text}</text></a>`,
+  );
   let doc = v.doc;
-  if (nav.length > 0) {
+  if (lift > 0) {
     doc = doc
       .replace(
         /viewBox="-10 -40 ([\d.]+) ([\d.]+)"/,
-        (_, w: string, h: string) => `viewBox="-10 -64 ${w} ${Number(h) + 24}"`,
+        (_, w: string, h: string) => `viewBox="-10 ${-40 - lift} ${w} ${Number(h) + lift}"`,
       )
       .replace(
         / height="([\d.]+)" viewBox/,
-        (_, h: string) => ` height="${Number(h) + 24}" viewBox`,
+        (_, h: string) => ` height="${Number(h) + lift}" viewBox`,
       )
       .replace(
         /<rect x="-10" y="-40" width="([\d.]+)" height="([\d.]+)" fill="#ffffff"\/>/,
         (_, w: string, h: string) =>
-          `<rect x="-10" y="-64" width="${w}" height="${Number(h) + 24}" fill="#ffffff"/>`,
+          `<rect x="-10" y="${-40 - lift}" width="${w}" height="${Number(h) + lift}" fill="#ffffff"/>`,
       );
   }
   return `${doc.replace(/<\/svg>$/, `<g class="zoom-links">${links.join("")}${nav.join("")}</g></svg>`)}\n`;
@@ -702,5 +706,9 @@ export async function renderC4(m: C4Model, project: string): Promise<Picture[]> 
     );
   }
   const fileOf = (name: string): string => viewName(project, name);
-  return views.map((v) => ({ name: fileOf(v.name), svg: withZoomLinks(v, views, fileOf, g) }));
+  return views.map((v) => ({
+    name: fileOf(v.name),
+    title: v.title,
+    svg: withZoomLinks(v, views, fileOf, g),
+  }));
 }

@@ -206,8 +206,9 @@ in the tree, unless it says 2026-11-04.
    **Verdict 2026-11-05: holds.** bpmn-js 18.31.1's navigated viewer inlined with three processes of
    one definitions (`flow`, `plan`, `split`): `open` on the diagram whose collaboration holds the
    called process draws planning after a click on "2 Plan the feature", and Chromium records one
-   request, the file. The scratch page is 278 KB; the size of the full graph's page is written
-   here by line 12.
+   request, the file. The scratch page is 278 KB; `pages` on the one graph, fourteen processes,
+   writes a `bpmn.html` of 448 KB and a `c4.html` of 168 KB with its twelve views, and a scripted
+   Chromium drills both with one request each, the file.
 
 ## Open decisions
 

@@ -14,6 +14,7 @@ import {
 /** One picture a render writes: the file name beside the graph, and its bytes. */
 export interface Picture {
   readonly name: string;
+  readonly title: string;
   readonly svg: string;
 }
 
@@ -259,6 +260,7 @@ export async function renderBpmn(graph: Graph, xml: string, project: string): Pr
     const { svg } = await viewer.saveSVG();
     out.push({
       name: pictureName(project, p.id ?? ""),
+      title: p.name ?? p.id ?? "",
       svg: pictureOf(svg, reg, graph.defs, p, project),
     });
   }
