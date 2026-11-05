@@ -8,8 +8,8 @@ checked against the code by one binary, so the owner, the agents and QA read one
 
 ### Requirement: One binary, qsm-models, serves the model port
 
-The plugin SHALL ship one binary `qsm-models`, named after the plugin, with the verbs `lint`,
-`layout`, `render`, `paths` and `check` described in `qsm.json` and the noun `$.models`. It SHALL
+The plugin SHALL ship one binary `qsm-models`, named after the plugin, with the verbs described in
+`qsm.json` and the noun `$.models`. It SHALL
 read BPMN 2.0 XML (`.bpmn`) and LikeC4 (`.c4`) and nothing else. BPMN SHALL be laid out by
 bpmn-auto-layout and drawn by bpmn-js, C4 laid out by elkjs and drawn by the binary itself.
 
@@ -47,18 +47,18 @@ get`, the edit, the gates on that file, then `qsm-docs create` with the old snap
 
 ### Requirement: The marketplace's models migrate once into the one graph
 
-The marketplace's existing models, the BPMN files of `feature-flow`, `strict-visual-models` and
-`qsm-tasks-cli` and the C4 source of `feature-flow`, SHALL move once into `models/marketplace.bpmn`
-and `models/marketplace.c4`, and the old files SHALL be deleted, with `c4-kinds.c4`, whose
-vocabulary the tool supplies. Every path signature SHALL be kept,
-every scenario that cites a path id whose id changed SHALL cite the new id, and every proposal SHALL
-link the pictures under the root `models/`.
+The marketplace's fourteen BPMN files and its C4 source, named in design decision 20, SHALL move
+once into `models/marketplace.bpmn` and `models/marketplace.c4`, and the old files SHALL be deleted,
+with `c4-kinds.c4`, whose vocabulary the tool supplies. Every path signature SHALL be kept, every
+scenario that cites a changed path id SHALL cite the new id, and every proposal SHALL link the
+pictures under the root `models/`.
 
-#### Scenario: Ten files become one graph
+#### Scenario: Fourteen files become one graph
 
 - **WHEN** the migration has run
-- **THEN** `paths --compare` finds every signature of the ten old processes in the one graph,
-  `paths --specs openspec/changes` exits `ok`, and `check` finds no model file outside `models/`
+- **THEN** every signature of the fourteen old processes is in the one graph (`paths --compare`
+  finds none missing once it exists, and `paths --all` of each process shows it before), `paths
+  --specs openspec/changes` exits `ok`, and `check` finds no model file outside `models/`
 
 ### Requirement: lint holds BPMN to the Analytic sub-class and to one lane per step
 
@@ -248,9 +248,9 @@ naming who uses it.
 
 #### Scenario: The marketplace container view
 
-- **WHEN** the marketplace container view would hold 49 relations among 5 actors and 34 containers
+- **WHEN** the marketplace container view would hold 50 relations among 5 actors and 34 containers
 - **THEN** `render` writes `containers-uses` with the 18 relations the actors start and only the
-  containers they reach, and `containers-depends` with every container and the 31 relations that
+  containers they reach, and `containers-depends` with every container and the 32 relations that
   start inside, each in tiers and actor colours, and each links to the other
 
 ### Requirement: lint measures the layout and refuses a worse one
@@ -435,24 +435,36 @@ The generator is proved before the first task that depends on it (design, Verify
   declares no dependency on it
 - **THEN** `check` exits `worse` naming both and the file to change
 
-### Requirement: A graph's links are optional and of four kinds
+### Requirement: A graph's links are optional and of three kinds
 
 A graph SHALL carry no link but these, each optional: a BPMN element's `qsm:c4` to an element of the
-C4 graph; a Gherkin tag `@p-<id>` in the project's `.feature` files to a path of the BPMN graph; a
-`<project>:` call activity or a C4 element's `project` to another project's graph; and a node's
-`qsm:decision` or `decision` to a numbered decision of an OpenSpec design (`design:<file>#<n>`) or
-to a commit (`commit:<sha>`).
+C4 graph; a `<project>:` call activity or a C4 element's `project` to another project's graph; and
+a node's `qsm:decision` or `decision` to a numbered decision of an OpenSpec design or to a commit.
+A task's Gherkin notes are no link: they are text in the task's own `documentation`.
 
 #### Scenario: A process with no links
 
 - **WHEN** the BPMN graph carries no `qsm:c4`, no `qsm:decision` and no call into another project
 - **THEN** `check` passes on the BPMN graph
 
+### Requirement: A decision link is repo-relative and numbered
+
+A design link SHALL be `design:<path>#<n>`, the path relative to the repository root, for example
+`design:openspec/changes/strict-visual-models/design.md#3`, and `<n>` SHALL be a numbered item of
+that file; a commit link SHALL be `commit:<sha>`.
+
+#### Scenario: A decision link that resolves
+
+- **WHEN** a node carries `qsm:decision="design:openspec/changes/strict-visual-models/design.md#3"`
+  and that design's item 3 exists
+- **THEN** `check` passes on that link
+
 ### Requirement: Every link resolves or the check fails
 
 `check` SHALL exit `worse` naming each link present that does not resolve: the C4 element, the
-path, the decision or the commit it names does not exist, or the other project has no snapshot of
-that kind on main in the qsm-docs store. A link that is absent SHALL never be a finding.
+decision (its file, or its numbered item) or the commit it names does not exist, or the other
+project has no snapshot of that kind on main in the qsm-docs store. A link that is absent SHALL
+never be a finding.
 
 #### Scenario: A link that no longer resolves (path p-93184e)
 
@@ -460,6 +472,12 @@ that kind on main in the qsm-docs store. A link that is absent SHALL never be a 
   `qsm:c4="mp.tasks"`
 - **THEN** `check` exits `worse` naming the task, the link and the missing element, and the agent
   edits the graph again before it commits
+
+#### Scenario: A design link to a number the file lacks
+
+- **WHEN** a node carries `qsm:decision="design:openspec/changes/strict-visual-models/design.md#99"`
+  and that design has no item 99
+- **THEN** `check` exits `worse` naming the node, the file and the number
 
 ### Requirement: A C4 node may say when it was last verified
 
@@ -472,13 +490,66 @@ page of the C4 graph shows how many commits ago it was verified (change `models-
 - **WHEN** qsm-tasks carries `verified 'a1b2c3d'` and that commit is not in the branch's history
 - **THEN** `check` exits `worse` naming qsm-tasks and the commit
 
+### Requirement: pages writes one self-contained HTML per graph kind
+
+`pages [--out <dir>]` SHALL run the checks of `lint` and, when they pass, write `bpmn.html` for the
+project's BPMN graph and `c4.html` for its C4 graph into `<repo>/.qsm/models/`, which the
+repository's `.gitignore` names, replacing what an earlier run wrote. A page SHALL hold the bpmn-js
+Viewer at its pinned version, its styles, the graph and the C4 views inside the file, and SHALL
+request nothing outside it. A graph `lint` refuses SHALL write no page and exit `worse`.
+
+#### Scenario: Both pages from a clean checkout
+
+- **WHEN** `qsm-models pages` runs in a checkout with `models/marketplace.bpmn` and
+  `models/marketplace.c4`, then a scripted browser opens each file from disk and records its
+  requests
+- **THEN** `.qsm/models/bpmn.html` and `.qsm/models/c4.html` exist, both open, and the browser made
+  no request except for the file itself
+
+#### Scenario: A project with one graph
+
+- **WHEN** `pages` runs where only `models/shop.bpmn` exists
+- **THEN** it writes `bpmn.html` only and says there is no C4 graph, and where neither file exists
+  it exits `failed` naming `models/`
+
+#### Scenario: A graph that fails lint
+
+- **WHEN** `pages` runs on a graph with an unlabelled split answer
+- **THEN** it exits `worse` naming the flow and the rule, and the files of the earlier run are
+  unchanged
+
+### Requirement: The static pages walk the graph
+
+`bpmn.html` SHALL open on the main process, SHALL open the process a clicked call activity calls
+with a breadcrumb back, and SHALL show a clicked task's lane, name and its `documentation` of format
+`text/x-gherkin` as read-only text. `c4.html` SHALL open on the context view and SHALL open the
+child view of a clicked element that has one, with a link back.
+
+#### Scenario: Into a called process and back
+
+- **WHEN** the owner clicks the call activity "2 Plan the feature" on the page of the feature flow
+- **THEN** the process of planning opens, the breadcrumb names both processes, and clicking the
+  first leads back
+
+#### Scenario: From the context down to the components
+
+- **WHEN** the owner clicks qsm-marketplace on `c4.html`, then qsm-models, then qsm-cockpit
+- **THEN** the container view opens, then the components of qsm-models, and qsm-cockpit, which has
+  no components, opens nothing
+
+#### Scenario: A task holding Gherkin notes
+
+- **WHEN** a task's `documentation` has `textFormat="text/x-gherkin"` and the owner clicks the task
+  on `bpmn.html`
+- **THEN** its details show the lane, the name and the scenarios as text, and cannot be edited
+
 ### Requirement: Dependencies
 
 The plugin SHALL declare these plug-ins in `dependencies`, and SHALL need no program on PATH but
 those the design's Verify 4 names:
 
 - `qsm-docs`: a graph in local mode lives in its store, and the link check finds another project's
-  graph there.
+  graph there. The first build (design decision 22) declares none, because it has repo mode only.
 
 #### Scenario: The store is not installed
 

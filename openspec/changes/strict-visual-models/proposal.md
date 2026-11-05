@@ -24,7 +24,7 @@ graph of each per project that every change works on.
 
 ## What
 
-- **A new plugin `qsm-models`, one binary**: `lint`, `layout`, `render`, `paths`, `check`.
+- **A new plugin `qsm-models`, one binary**, its verbs the ones described in `qsm.json`.
 - **One graph per kind per project**: `models/<project>.bpmn` and `models/<project>.c4`, never a
   copy per change or per plugin. Committed means repo mode; absent means the graph lives only in
   the qsm-docs store. The marketplace's existing models migrate once into its one graph.
@@ -35,8 +35,12 @@ graph of each per project that every change works on.
   end, no file or command in a name.
 - **C4 is strict**: four kinds, each at its level, every relation says what it does, every internal
   container names its code; level 3 is optional; views are generated per level.
-- **Links are optional and checked**: a business task to the C4 element that does it, a scenario
-  to its path, a call into another project's graph, a node to the decision behind it. `check`
+- **Links are optional and checked**: a business task to the C4 element that does it, a call into
+  another project's graph, a node to the decision behind it
+  (`design:openspec/changes/<name>/design.md#<n>` or a commit).
+- **The first build shows the models**: `pages` writes one self-contained HTML per graph kind into
+  `.qsm/models/`, a BPMN page with drill-down and a C4 page with levels, so the owner sees the
+  models before anything else is built. Tasks.md marks which lines are in it. `check`
   fails naming any link present that does not resolve.
 - **A C4 node may say when it was last verified** against the code, by commit.
 - **An applied move survives**: BPMN keeps its own geometry, a C4 element carries layout hints.
@@ -52,9 +56,10 @@ graph of each per project that every change works on.
 ## Not in this feature
 
 Executing BPMN, BPMN Common Executable elements, round-trip of draw.io geometry, a C4 deployment or
-dynamic view, the QA agent that runs the paths (`qa-agent`), the pages of the graphs and the kinds
-behind them (`models-pages`), scenario results on a process (`models-scenarios`), the before and
-after pictures of a PR (`models-pr-pictures`), and the lens showing models.
+dynamic view, the QA agent that runs the paths (`qa-agent`), the editable pages of the graphs and
+the kinds behind them (`models-pages`, which also holds the Gherkin notes), any link between Gherkin
+and tests, the before and after pictures of a PR (`models-pr-pictures`), and the lens showing
+models.
 
 ## Decisions of the owner
 
@@ -78,14 +83,25 @@ after pictures of a PR (`models-pr-pictures`), and the lens showing models.
    the change: the lane-is-a-C4-actor rule, the model per change merged at archive, the lens's
    model view and the open C4 format are gone.
 
+7. **A first build for visualization, static pages and no store** (2026-11-05): the tools are an MVP
+   for visualization, "absolute bare bones: generate, show proper models, with validation rules and
+   proper modeling". `qsm-models` validates, renders and writes one HTML per graph kind into
+   `<repo>/.qsm/models/`; the pages request nothing outside the file. Waiting: local mode, layout
+   hints, `--compare`, the verified commit, the code check against dependencies, links to other
+   projects, the commit gate, the spec-propose and archive change, the simplifier.
+8. **No link between Gherkin and tests** (2026-11-05): the owner writes Gherkin scenarios in a
+   task's `documentation` on its details page and `qsm-models gherkin` prints them; no tags, no
+   results, no generation. The change `models-scenarios` is removed (`models-pages` holds the rest).
+
 ## Critiques
 
 - **Devil's advocate: one XML file is a merge conflict waiting.** Two changes in flight that both
   edit `models/marketplace.bpmn` conflict in one file. Waived for now: one maintainer, few changes
   in flight, and the agent resolves the conflict and the gates run again; design decision 7 reopens
   when it costs more.
-- **Devil's advocate: `qsm:` attributes may not survive an editor.** Fixed by design Verify 6
-  before the first task that writes a link.
+- **Devil's advocate: `qsm:` attributes may not survive an editor.** Fixed by design Verify 6:
+  moddle's half in the first build (tasks line 7), the modeler's half before `models-pages` saves
+  anything.
 - **Devil's advocate: this change's own models break its new rule.** Its BPMN and C4 files are per
   change, and the current pipeline (`gen3.mjs`) still requires every lane to name a top-level C4
   actor, which this change drops. Waived: the pipeline is the prototype the plugin replaces, and the
@@ -112,3 +128,15 @@ after pictures of a PR (`models-pr-pictures`), and the lens showing models.
   segment (`build-task.svg` two, `model-gate.svg` six). Accepted for now: the layout measure
   "segments two edges share" counts it, and the open decision holds the alternative, lanes and
   routing drawn by us.
+- **Devil's advocate: the first build skips the store, so the pages are thrown away.** Waived: the
+  pages are one verb and two templates, and `models-pages` reuses the Viewer and the SVG views as
+  its kinds' page assets; the throw-away part is the verb, which stays as the way to see a graph
+  with no server.
+- **Devil's advocate: a half-built change cannot be archived.** The change is one spec, built in two
+  stages; tasks.md marks the stage of each line and nothing is archived until the waiting lines are
+  built or moved to a change of their own at the owner's word.
+- **Scope sniper: a Verify 7 for one HTML file.** Kept: bpmn-js Viewer opening several diagrams of
+  one file is the page's whole drill-down, and unverified.
+- **Future archaeologist: why no Gherkin tag links a scenario to a path.** Owner decision 8: the
+  tools are for visualization; the cover paths stay cited by this repository's spec scenarios and
+  checked by `paths --specs`, which is a different thing from a project's Gherkin.

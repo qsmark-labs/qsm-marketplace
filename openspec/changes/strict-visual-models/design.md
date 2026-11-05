@@ -10,12 +10,14 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 
 1. **A plugin of its own, `qsm-models`, one binary.** Rejected: verbs in qsm-builder or
    qsm-openspec. It would be installed alone, carries npm packages neither needs, and serves the
-   spec tool, the QA agent and the commit gate. It depends on qsm-docs for the graphs in local mode
-   and for another project's graph; the lens does not depend on it.
-2. **Five verbs**: `lint`, `layout`, `render [--check]`, `paths [--all] [--specs]`, `check
-   [--write]`. `layout` refuses a file that has geometry, because bpmn-auto-layout discards it and
-   the owner's bpmn.io layout must survive. No `doctor`: a verb fails `missing` naming the
-   package it lacks.
+   spec tool, the QA agent and the commit gate. From local mode on it depends on qsm-docs, for the
+   graphs in local mode and for another project's graph; the first build has repo mode only and
+   declares no dependency (decision 22). The lens does not depend on it.
+2. **The verbs are the ones described in `qsm.json`, the one list.** The rules that bind them:
+   `layout` refuses a file that has geometry, because bpmn-auto-layout discards it and the owner's
+   bpmn.io layout must survive; `render --check` writes nothing. Later changes add their verbs
+   to `qsm.json` and need no edit of any requirement here. No `doctor`: a verb fails `missing`
+   naming the package it lacks.
 3. **Strict BPMN, as bpmnlint rules, and pure business.** bpmnlint `recommended` with warnings
    raised to errors, plus `analytic-only` (BPMN 2.0.2 clause 2.2, tables 2.1 and 2.2),
    `split-flows-labelled`, `lanes-hold-every-node`, the Method and Style rules of decision 14 and no
@@ -60,13 +62,14 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
    works on the graph on its branch, so the archive moves nothing. Reopens when: two changes in
    flight conflict in the one XML file more than the agent can resolve.
 8. **Paths become scenarios through the cover.** The cover's definition is in the spec, once.
-   Measured (paths, cover): `flow.bpmn` 5, 4; `plan.bpmn` 4, 2; `split.bpmn` 2, 1;
-   `build-task.bpmn` 3, 2; `consume-task.bpmn` 1, 1; `land.bpmn` 2, 2; `feature-status.bpmn` 11,
-   11; `model-gate.bpmn` 9, 5; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 2, 2. A product feature's
-   BPMN models what QA runs; a process model such as `flow.bpmn` models our own steps, and its
-   cover paths are the scenarios of its spec, not sandbox runs. A BPMN split carries no data, so a
-   memory such as "was any rewrite kept" is drawn as structure (a first try, then further tries),
-   never as a split that asks about the past, which would put a path in the cover that no run takes.
+   Measured (paths, cover): `flow.bpmn` 5, 4; `plan.bpmn` 4, 2; `split.bpmn` 2, 1; `build-task.bpmn`
+   3, 2; `consume-task.bpmn` 1, 1; `land.bpmn` 2, 2; `feature-status.bpmn` 11, 11; `model-gate.bpmn`
+   9, 5; `simplify.bpmn` 10, 3; `try-rewrite.bpmn` 2, 2; `edit-graph.bpmn` 4, 2; `pr-pictures.bpmn`
+   3, 2; `delete.bpmn` 2, 2; `proposal.bpmn` 2, 2. A product feature's BPMN models what QA runs; a
+   process model such as `flow.bpmn` models our own steps, and its cover paths are the scenarios of
+   its spec, not sandbox runs. A BPMN split carries no data, so a memory such as "was any rewrite
+   kept" is drawn as structure (a first try, then further tries), never as a split that asks about
+   the past, which would put a path in the cover that no run takes.
 9. **C4 against the code.** CLI calls are invisible to an import graph, so: container relations
    equal `plugin.json` dependencies both ways; component relations become
    `.dependency-cruiser.models.cjs`, one `allowed` rule each, which the repository's config
@@ -109,7 +112,10 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 17. **Links are optional, written in the standard's own extension points, and checked where
     present** (2026-11-04). BPMN 2.0 allows attributes of another namespace on any element, so a
     link is `qsm:c4` or `qsm:decision`; LikeC4 has `metadata`, so a C4 link is `project` or
-    `decision`; a scenario links to a path by its Gherkin tag. Reason: "if the diagram doesn't break
+    `decision`. A decision link is repo-relative, `design:openspec/changes/<name>/design.md#<n>`,
+    where `<n>` is a numbered item of that file; a link relative to anything else resolves
+    differently in a worktree and in the archive. No link joins a task's Gherkin notes to a test
+    (2026-11-05): they are text in the task's `documentation`. Reason: "if the diagram doesn't break
     the build when it's wrong, nobody updates it" (research 2026-11-04), so every link present must
     resolve, and none is required, because the graphs must stay usable alone. A decision lives in a
     spec's design or a commit, never a separate ADR file. Reopens when: bpmn.io drops the attributes
@@ -122,16 +128,45 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
     and `order` on the element, handed to ELK layered as its layer choice and position choice
     constraints. Reason: a PR picture nobody can read gets no review (research 2026-11-04). Reopens
     when: Verify 5 shows ELK ignores the constraints under hierarchy.
-20. **The migration keeps signatures, not ids.** Ten files merged into one need unique element ids
-    across processes, so colliding flow ids get their process id as prefix and some path ids
-    change. A path's signature is what QA observes (decision 15), so `paths --compare` proves the
-    behaviour kept, and every scenario that cites a changed id is rewritten in the same commit.
+20. **The migration keeps signatures, not ids.** Fourteen files merged into one need unique
+    element ids across processes, so colliding flow ids get their process id as prefix and some
+    path ids change. Each file under `openspec/changes/` becomes one process of
+    `models/marketplace.bpmn`, kept under its process id:
+    - `feature-flow/models/flow.bpmn`: `feature_flow_process`, the main process;
+    - `feature-flow/models/plan.bpmn`: `plan_process`; `split.bpmn`: `split_process`;
+      `build-task.bpmn`: `build_task_process`; `consume-task.bpmn`: `consume_task_process`;
+      `land.bpmn`: `land_process`;
+    - `qsm-tasks-cli/models/qsm-tasks/feature-status.bpmn`: `feature_status_process`;
+    - `strict-visual-models/models/qsm-models/model-gate.bpmn`: `model_gate_process`;
+      `simplify.bpmn`: `simplify_process`; `try-rewrite.bpmn`: `try_rewrite_process`;
+    - `qsm-docs/models/qsm-docs/delete.bpmn`: `docs_delete_process`; `proposal.bpmn`:
+      `docs_proposal_process`;
+    - `models-pages/models/qsm-models/edit-graph.bpmn`: `edit_graph_process`;
+    - `models-pr-pictures/models/qsm-models/pr-pictures.bpmn`: `pr_pictures_process`.
+
+    The C4 source `feature-flow/models/marketplace.c4` becomes `models/marketplace.c4`.
+    `models-scenarios` is gone, with its `cover-path.bpmn`. A path's signature is what QA observes
+    (decision 15), so `paths --compare` proves the behaviour kept, and every scenario that cites a
+    changed id is rewritten in the same commit.
 21. **The owner's style departs from the standard in one place.** Small arrows in the middle of long
     flows are not BPMN notation, which has one arrowhead at the target (notebook, Trisotech,
     Silver); the owner keeps them because the picture reads better, and they change no meaning.
     Filled steps in the actor's colour with white text are within the standard. Levels are separate
     diagrams linked through `calledElement`, as Method and Style prefers; one picture of every level
     with dashed connectors was dropped, because a dashed line in BPMN means a message flow.
+
+22. **The first build is the visualization: static pages, no store** (2026-11-05). The owner wants
+    to see the models before anything else: "absolute bare bones: generate, show proper models, with
+    validation rules and proper modeling". Options: wait for qsm-docs and its pages (a store, a
+    server and a page shell first), or `pages`, a verb that writes one self-contained HTML per graph
+    kind. Choice: `pages`. `bpmn.html` is the bpmn-js Viewer pinned and inlined with the graph, the
+    drill-down through call activities, and a details panel that shows a task's Gherkin notes as
+    text; `c4.html` is the generated SVG views inlined, a click on an element opening its child
+    view, the committed picture's zoom links rewritten to in-page links. Both go to
+    `<repo>/.qsm/models/`, gitignored and regenerated on each run, the lens export's convention
+    (`.qsm/lens.html`). The pages are later kinds of qsm-docs (`models-pages`), which replaces this
+    verb's output and adds the store, edit mode and the Gherkin notes the owner writes. Reopens
+    when: the page file passes 2 MB (measure in Verify 7) and loading is slow.
 
 ## Verify, each proved before the first task that depends on it
 
@@ -149,8 +184,12 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
    plugin needs, and `missing` without it.
 5. **ELK keeps an order hint under hierarchy**: unverified. Proof: render the container view with
    `order` on qsm-docs and qsm-builder swapped, twice, and read the positions.
-6. **bpmn.io keeps a `qsm:` attribute on save**: unverified. Proof: open a graph with a `qsm:c4`
-   attribute in the bpmn-js modeler, move a shape, save, and find the attribute.
+6. **A `qsm:` attribute survives**: unverified. First build: bpmn-moddle reads a `qsm:c4` attribute
+   and writes it back (a fixture in line 7's proof). Waits for `models-pages`: the bpmn-js modeler
+   keeps it on save; proof: open a graph with the attribute, move a shape, save, find the attribute.
+7. **bpmn-js Viewer from one file**: unverified. Proof: `pages` on the one graph writes a single
+   HTML whose script opens a file with several diagrams, `open` switches to a called process, and
+   a scripted browser records no request but the file; the file size is written into the design.
 
 ## Open decisions
 
