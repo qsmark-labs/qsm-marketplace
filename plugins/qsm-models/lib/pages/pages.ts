@@ -11,6 +11,7 @@ import { QsmError } from "../../../../lib/qsm-error.ts";
 import bpmnTemplate from "../../pages/bpmn.html.txt" with { type: "text" };
 import c4Template from "../../pages/c4.html.txt" with { type: "text" };
 import { readC4 } from "../c4/model.ts";
+import { esc } from "../c4/drawio.ts";
 import { renderC4 } from "../c4/render.ts";
 import { type Finding, formatFinding } from "../bpmn/lint.ts";
 import { MODELS_DIR, oneGraph, projectOf } from "../graphs.ts";
@@ -41,7 +42,7 @@ function scriptText(text: string, what: string): string {
 function bpmnPage(file: string): string {
   return fill(bpmnTemplate, {
     "/*BPMN-JS-CSS*/": `${diagramCss}\n${bpmnCss}`,
-    "<!--PROJECT-->": projectOf(file),
+    "<!--PROJECT-->": esc(projectOf(file)),
     "<!--GRAPH-->": scriptText(readFileSync(file, "utf8"), file),
     "/*BPMN-JS*/": scriptText(viewerJs, "bpmn-js"),
   });
@@ -65,9 +66,9 @@ async function c4Page(file: string): Promise<string> {
         /href="([^"#]+\.drawio\.svg)"/g,
         (_, target: string) => `href="#${viewOf(target)}"`,
       );
-    return `<section data-view="${viewOf(v.name)}" data-title="${v.title}">${svg}</section>`;
+    return `<section data-view="${esc(viewOf(v.name))}" data-title="${esc(v.title)}">${svg}</section>`;
   });
-  return fill(c4Template, { "<!--PROJECT-->": project, "<!--VIEWS-->": sections.join("\n") });
+  return fill(c4Template, { "<!--PROJECT-->": esc(project), "<!--VIEWS-->": sections.join("\n") });
 }
 
 /** The graphs of a project under `models/`: at least one, or the call fails naming `models/`. */
