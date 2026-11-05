@@ -301,8 +301,9 @@ stage.addEventListener("pointermove", (e) => {
 stage.addEventListener("pointerup", () => { drag = null; stage.classList.remove("panning"); });
 stage.addEventListener("wheel", (e) => {
   e.preventDefault();
-  // Out stops at the whole board: smaller, the window shows nothing more.
-  const k = Math.min(4, Math.max(fitK(extent.w, extent.h), view.k * Math.exp(-e.deltaY * 0.0015)));
+  // Out stops at the whole board, or at 100 % for a board smaller than the window: smaller, the
+  // window shows nothing more.
+  const k = Math.min(4, Math.max(Math.min(fitK(extent.w, extent.h), 1), view.k * Math.exp(-e.deltaY * 0.0015)));
   view.x = e.clientX - ((e.clientX - view.x) * k) / view.k;
   view.y = e.clientY - ((e.clientY - view.y) * k) / view.k;
   view.k = k;
@@ -391,14 +392,16 @@ function renderFocus() {
 }
 
 // One line per item with the box around its areas, since a changed text is one area per glyph
-// cluster. Areas and the box are device px.
+// cluster; an area no shell item holds keeps its own line, since those share no place. Areas and
+// the box are device px.
 function byItem(areas) {
   const items = new Map();
-  for (const a of areas) {
-    const b = items.get(a.item);
+  for (const [i, a] of areas.entries()) {
+    const key = a.item || `none ${i}`;
+    const b = items.get(key);
     const x = Math.min(b?.box.x ?? a.x, a.x), y = Math.min(b?.box.y ?? a.y, a.y);
     const x1 = Math.max(b ? b.box.x + b.box.w : 0, a.x + a.w), y1 = Math.max(b ? b.box.y + b.box.h : 0, a.y + a.h);
-    items.set(a.item, { item: a.item, n: (b?.n ?? 0) + 1, box: { x, y, w: x1 - x, h: y1 - y } });
+    items.set(key, { item: a.item, n: (b?.n ?? 0) + 1, box: { x, y, w: x1 - x, h: y1 - y } });
   }
   return [...items.values()];
 }

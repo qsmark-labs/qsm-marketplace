@@ -123,8 +123,9 @@ and overlay switch for a changed shot, the changed tree measures, and the neighb
 ### Requirement: A change says what changed and against what
 
 A changed frame's badge SHALL name the run it was compared with by its date and time. Its focus
-SHALL list each changed area with its size, its place and the deepest item of the shot's tree that
-holds it, or say that no item of the shell holds it (the cursor, the wallpaper, a client window).
+SHALL name each changed area by the deepest drawn item of the shot's tree that holds all of it, one
+line per item with the count of its areas and the box around them, or, one line per area, say that
+no item of the shell holds it (the cursor, the wallpaper, a client window).
 
 #### Scenario: A cursor change is named as outside the shell
 

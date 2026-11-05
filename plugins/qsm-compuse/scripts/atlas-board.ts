@@ -287,8 +287,15 @@ const GENERIC = new Set([
   "ProxyWindowContentItem",
 ]);
 
-const holdsPoint = (r: Rect, px: number, py: number): boolean =>
-  r.w > 0 && r.h > 0 && px >= r.x && py >= r.y && px <= r.x + r.w && py <= r.y + r.h;
+// Whether item R holds all of area A (logical px), with a pixel of slack for the rounding between
+// device and logical px.
+const holds = (r: Rect, a: Rect): boolean =>
+  r.w > 0 &&
+  r.h > 0 &&
+  a.x >= r.x - 1 &&
+  a.y >= r.y - 1 &&
+  a.x + a.w <= r.x + r.w + 1 &&
+  a.y + a.h <= r.y + r.h + 1;
 
 // An item named by the nearest shell component above it (OWNER), its own type unless Qt's, and
 // the first words of its text: PopoutRow › Prose "Wi-Fi".
@@ -301,22 +308,40 @@ function itemName(at: Record<string, unknown>, owner: string): string {
   return `${name} "${text.length > 28 ? `${text.slice(0, 27)}…` : text}"`;
 }
 
-// The deepest item smaller than the screen that holds the point (logical px), by itemName. The
-// shell's layers each span the whole screen, so they hold every point and name none. A child may
-// stand outside its parent (QML does not clip), so every branch is walked.
-function itemAt(tree: unknown, screen: { w: number; h: number }, px: number, py: number): string {
+// The deepest drawn item smaller than the screen that holds the whole area (logical px), by
+// itemName. The shell's layers each span the whole screen, so they hold every area and name none.
+// An item at opacity 0 (a hover layer at rest) draws nothing, nor do its children. A child may
+// stand outside its parent (QML does not clip), so every drawn branch is walked.
+const drawn = (at: unknown): at is Record<string, unknown> =>
+  isRecord(at) && at.opacity !== 0 && at.visible !== false;
+
+function itemAt(tree: unknown, screen: { w: number; h: number }, area: Rect): string {
   let best = { item: "", depth: -1 };
+  const names = (r: Rect): boolean => holds(r, area) && (r.w < screen.w || r.h < screen.h);
   const walk = (at: unknown, owner: string, depth: number): void => {
-    if (!isRecord(at)) return;
-    const r = rectOf(at);
-    if (holdsPoint(r, px, py) && (r.w < screen.w || r.h < screen.h) && depth > best.depth)
-      best = { item: itemName(at, owner), depth };
+    if (!drawn(at)) return;
+    if (depth > best.depth && names(rectOf(at))) best = { item: itemName(at, owner), depth };
     const type = str(at.type);
     const next = GENERIC.has(type) ? owner : type;
     if (Array.isArray(at.children)) for (const child of at.children) walk(child, next, depth + 1);
   };
   walk(tree, "", 0);
   return best.item;
+}
+
+// A shot's diff with each area (device px) named by the shot's tree (logical px, SCALE apart).
+function namedChange(
+  diff: Diff | undefined,
+  tree: unknown,
+  screen: { w: number; h: number },
+  scale: number,
+): Frame["changed"] {
+  if (!diff) return null;
+  const areas = diff.areas.map((a) => ({
+    ...a,
+    item: itemAt(tree, screen, { x: a.x / scale, y: a.y / scale, w: a.w / scale, h: a.h / scale }),
+  }));
+  return { ...diff, areas };
 }
 
 function frameOf(run: string, row: string[], diffs: Map<string, Diff>): Frame {
@@ -328,16 +353,7 @@ function frameOf(run: string, row: string[], diffs: Map<string, Diff>): Frame {
   const image = pngSize(join(run, "shots", `${name}.png`));
   const crop = cropOf(tree, screen, surface);
   const scale = screen.w > 0 ? image.w / screen.w : 1;
-  const diff = diffs.get(name);
-  const changed = diff
-    ? {
-        ...diff,
-        areas: diff.areas.map((a) => ({
-          ...a,
-          item: itemAt(tree.tree, screen, (a.x + a.w / 2) / scale, (a.y + a.h / 2) / scale),
-        })),
-      }
-    : null;
+  const changed = namedChange(diffs.get(name), tree.tree, screen, scale);
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
