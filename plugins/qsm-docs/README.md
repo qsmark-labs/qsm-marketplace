@@ -24,7 +24,7 @@ plugin generates and carried the owner's edits back to the agent by itself.
 | Tool | `qsm-docs delete` | The owner's verb: removes a snapshot and records it; the agent is denied |
 | Tool | `qsm-docs kind add`, `kind list`, `kind remove` | The kinds other plugins install from a manifest, each with its own copy of its page files |
 | Tool | `qsm-docs serve` | The page shell on 127.0.0.1 with each kind's page in a frame, and edit mode, where a save is a proposal |
-| Hook | `prompt.submit` | One line per new proposal of the session's project; the first prompt names every open one |
+| Hook | `prompt.submit`, `session.end` | One line per new proposal of the session's project, the first prompt naming every open one; what a session named is forgotten when it ends |
 | Hook | `tool.call` on Bash | Denies `qsm-docs delete` to the agent and names `! qsm-docs delete <id>` for the owner |
 
 ## Install

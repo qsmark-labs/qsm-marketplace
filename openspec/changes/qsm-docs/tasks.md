@@ -19,7 +19,7 @@ Each line can be shown working alone; the proof is the run named after it.
   `plugins/qsm-docs/lib/serve/`, `plugins/qsm-docs/pages/json/`. Proof: design Verify 1, then a
   scripted browser run that edits a `json` snapshot, saves, and finds the proposal in
   `list --open`. Blocked by 3.
-- [ ] 5. The hooks: the proposal line at session start and on a prompt, the per-session state and
+- [x] 5. The hooks: the proposal line at session start and on a prompt, the per-session state and
   its removal, the delete guard in `lib/`. Files: `plugins/qsm-docs/hooks/`,
   `plugins/qsm-docs/lib/delete-guard.ts`. Proof: `bun run test:hooks`, and a real session where a
   save in the browser shows one line on the next prompt. Blocked by 4.
