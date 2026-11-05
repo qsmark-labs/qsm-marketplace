@@ -143,7 +143,7 @@ const isLabel = (v: unknown): v is Label =>
 export function newLabel(): Label {
   const label = new BpmnModdle().create("bpmndi:BPMNLabel");
   if (!isLabel(label)) {
-    throw new Error("bpmn-moddle created no BPMNLabel");
+    throw new QsmError("failed", "bpmn-moddle created no BPMNLabel", { cause: label });
   }
   return label;
 }

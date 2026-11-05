@@ -2,6 +2,7 @@
 // diagram-js measures text on a canvas, which jsdom has not, so text is measured by an average
 // glyph width; the result is the same on every machine, so a render writes the same bytes.
 import { JSDOM } from "jsdom";
+import { QsmError } from "../../../../lib/qsm-error.ts";
 
 const GLOBALS = [
   "window",
@@ -194,7 +195,7 @@ export function domContainer(): HTMLElement {
   patch(w.SVGSVGElement.prototype, "createSVGTransformFromMatrix", transformFromMatrix);
   const container = w.document.querySelector<HTMLElement>("#c");
   if (container === null) {
-    throw new Error("jsdom lost its container");
+    throw new QsmError("failed", "jsdom lost the container of the diagram", { cause: container });
   }
   installed = container;
   return container;
