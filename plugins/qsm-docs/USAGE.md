@@ -18,6 +18,13 @@ repository is one project; the branch is the checked-out one. `--project` and `-
 outside a checkout. An id is `<project>-<branch>-<timestamp>`, the branch with each `/` as `_`, the
 time in UTC to the millisecond (`qsm-marketplace-spec_qsm-docs-20261104T173012345Z`).
 
+The store is `$XDG_DATA_HOME/qsm-docs`, `~/.local/share/qsm-docs` without it:
+`projects/<project>/` holds each snapshot's file and the project's `ledger.jsonl`, and
+`kinds/<kind>/` each installed kind's manifest and its copy of the page files. Only the owner
+changes these files: the hook denies the agent `qsm-docs delete` and any Bash `rm`, `mv`, `cp`
+onto the store, `truncate`, `>` or `>>` redirect, `chmod` or `sed -i` whose target lies there, and
+names the `! <command>` the owner runs; `cat`, `ls` and other reads run.
+
 | Verb | Does | Exit |
 | --- | --- | --- |
 | `create` | Converts the file with its kind's converter, stores a read-only copy of its bytes and appends the ledger line with its sha256; prints the id | `failed` (1) naming the converter's message and nothing stored; `blocked` (5) when the id exists; `missing` (4) for a `--parent` or a kind that is not there; `usage` (2) outside git without both flags; `blocked` (5) on a detached HEAD without `--branch` |

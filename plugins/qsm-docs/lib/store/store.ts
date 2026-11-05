@@ -16,7 +16,7 @@ import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { type Change, changesOf } from "../kinds/change.ts";
 import { kindOf } from "../kinds/kind.ts";
-import { ledgerIn } from "./layout.ts";
+import { ledgerIn, projectsIn } from "./layout.ts";
 import { docsDir, type Where } from "./where.ts";
 
 /** One snapshot as its ledger line records it. */
@@ -40,11 +40,12 @@ type Line =
 
 const sha256 = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
 
+/** A project's directory; `usage` for a name that is no single directory name. */
 function projectDir(env: Env, project: string): string {
-  if (project === "" || project.startsWith(".") || project.includes("/")) {
+  if (project === "" || project === "." || project === ".." || project.includes("/")) {
     throw new UsageError(`"${project}" is not a project name`);
   }
-  return join(docsDir(env), project);
+  return join(projectsIn(docsDir(env)), project);
 }
 
 const ledgerOf = (env: Env, project: string): string => {
@@ -108,8 +109,8 @@ function liveEntries(env: Env, project: string): Entry[] {
 
 /** The projects the store holds. */
 function projects(env: Env): string[] {
-  const root = docsDir(env);
-  return existsSync(root) ? readdirSync(root).filter((name) => !name.startsWith(".")) : [];
+  const root = projectsIn(docsDir(env));
+  return existsSync(root) ? readdirSync(root) : [];
 }
 
 /** Finds snapshots for one call, reading each project's ledger at most once. */

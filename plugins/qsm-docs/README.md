@@ -51,8 +51,10 @@ qsm-docs diff <proposal-id>
 
 ## Caveats
 
-- The store lives in `$XDG_DATA_HOME/qsm-docs` (`~/.local/share/qsm-docs`): one directory per
-  project, a read-only file per snapshot and an append-only `ledger.jsonl`.
+- The store lives in `$XDG_DATA_HOME/qsm-docs` (`~/.local/share/qsm-docs`): `projects/<project>/`
+  holds a read-only file per snapshot and an append-only `ledger.jsonl`, `kinds/<kind>/` each
+  installed kind. The agent is denied any Bash write there (`rm`, `mv`, `cp` onto it, `truncate`,
+  a `>` redirect, `chmod`, `sed -i`); a read runs.
 - Two creates in one millisecond get one id; the second is refused `blocked` and is run again.
 - An open proposal is named at the start of every session of its project until the agent applies
   it with `--parent <proposal>` or the owner deletes it.

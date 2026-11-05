@@ -8,7 +8,7 @@ import { dataDir, type Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { docsIn } from "./layout.ts";
 
-/** `<data>/qsm-docs`: a directory per project, and `.kinds` for the installed kinds. */
+/** `<data>/qsm-docs`: `projects/<project>/` and `kinds/<kind>/`. */
 export function docsDir(env: Env): string {
   return docsIn(dataDir(env));
 }

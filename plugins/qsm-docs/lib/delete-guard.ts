@@ -1,8 +1,11 @@
-// The delete guard's whole decision, as a function of the command line alone: no engine, no Node,
-// no filesystem. Only the owner deletes a snapshot, and the owner's `!` command never reaches it.
+// The delete guard's whole decision, as a function of the command line and where the store lies:
+// no engine, no Node, no filesystem. Only the owner deletes a snapshot or changes a file of the
+// store, and the owner's `!` command never reaches it.
 // The line is split into commands and words the way the shell would, quotes removed, so a quoted
 // binary or verb is still seen and a quoted mention in an argument is not; the text a shell runs
 // again (`bash -c`, `eval`, a `$(...)` inside double quotes) is read as a line of its own.
+
+import { docsIn } from "./store/layout.ts";
 
 /** The commands of a line, each its words with quotes removed, and the double-quoted texts that
  * hold a command substitution, which the shell runs. */
@@ -125,50 +128,128 @@ function scriptOf(words: readonly string[], i: number): string | null {
   return flag < 0 ? null : (words[flag + 1] ?? null);
 }
 
-/** The id a command's words delete, or null: the binary itself, a shell's `-c` script, `eval`. */
-function deletedIn(words: readonly string[], depth: number): string | null {
+/** What a command does to the store: deletes a snapshot through the verb, or writes a file of it. */
+type Hit = { readonly delete: string } | { readonly write: true };
+
+/** The store's directory in each form a line may write it: absolute, with `~`, `$HOME` or
+ * `$XDG_DATA_HOME`. */
+export interface Homes {
+  readonly home: string | undefined;
+  readonly xdg: string | undefined;
+}
+
+/** The store under a home's `.local/share`. */
+const shareOf = (root: string): string => docsIn(`${root}/.local/share`);
+
+function storePrefixes({ home, xdg }: Homes): string[] {
+  return [
+    shareOf("~"),
+    shareOf("$HOME"),
+    shareOf("${HOME}"),
+    docsIn("$XDG_DATA_HOME"),
+    docsIn("${XDG_DATA_HOME}"),
+    ...(home === undefined ? [] : [shareOf(home)]),
+    ...(xdg === undefined ? [] : [docsIn(xdg)]),
+  ];
+}
+
+/** Whether `path` is the store's directory or lies under it. */
+const underStore = (path: string, stores: readonly string[]): boolean =>
+  stores.some((store) => path === store || path.startsWith(`${store}/`));
+
+/** Commands that change every file they name: remove, move, empty, change the mode. */
+const WRITERS = new Set(["rm", "mv", "truncate", "chmod"]);
+
+/** sed's in-place flag: `-i`, `-i.bak`, a cluster such as `-Ei`, or `--in-place`. */
+const inPlace = (word: string): boolean =>
+  word.startsWith("--in-place") ||
+  (word.startsWith("-") && !word.startsWith("--") && word.includes("i"));
+
+/** The files a command at `i` writes: every argument of a writer, the last one of `cp`, every one
+ * of `sed -i`. */
+function writtenBy(words: readonly string[], i: number): readonly string[] {
+  const name = nameOf(words[i] ?? "");
+  const args = words.slice(i + 1).filter((w) => !w.startsWith("-"));
+  if (WRITERS.has(name)) {
+    return args;
+  }
+  if (name === "cp") {
+    return args.slice(-1);
+  }
+  return name === "sed" && words.slice(i + 1).some(inPlace) ? args : [];
+}
+
+/** The file a `>` or `>>` redirect writes, glued (`>file`, `2>>file`) or the next word. */
+function redirectedTo(words: readonly string[], i: number): string | null {
+  const word = words[i] ?? "";
+  const at = word.lastIndexOf(">");
+  if (at < 0) {
+    return null;
+  }
+  const glued = word.slice(at + 1);
+  return glued === "" ? (words[i + 1] ?? null) : glued;
+}
+
+/** What a command's words do to the store, or null: the binary's delete, a write under the store,
+ * a shell's `-c` script, `eval`. */
+function hitIn(words: readonly string[], depth: number, stores: readonly string[]): Hit | null {
   for (let i = 0; i < words.length; i += 1) {
     const word = words[i] ?? "";
+    const id = isBinary(word) ? deletedBy(words, i) : null;
+    if (id !== null) {
+      return { delete: id };
+    }
+    const target = redirectedTo(words, i);
+    if (
+      writtenBy(words, i).some((path) => underStore(path, stores)) ||
+      (target !== null && underStore(target, stores))
+    ) {
+      return { write: true };
+    }
     const script = SHELLS.has(nameOf(word)) ? scriptOf(words, i) : null;
-    const id = isBinary(word)
-      ? deletedBy(words, i)
-      : word === "eval"
-        ? deletedInLine(words.slice(i + 1).join(" "), depth + 1)
+    const inner =
+      word === "eval"
+        ? hitInLine(words.slice(i + 1).join(" "), depth + 1, stores)
         : script === null
           ? null
-          : deletedInLine(script, depth + 1);
-    if (id !== null) {
-      return id;
+          : hitInLine(script, depth + 1, stores);
+    if (inner !== null) {
+      return inner;
     }
   }
   return null;
 }
 
-/** The id `line` deletes, or null; a line run again more than four levels deep is not read. */
-function deletedInLine(line: string, depth: number): string | null {
+/** What `line` does to the store, or null; a line run again more than four levels deep is not
+ * read. */
+function hitInLine(line: string, depth: number, stores: readonly string[]): Hit | null {
   if (depth > 4) {
     return null;
   }
   const { commands, substituted } = new Splitter(line).run();
   for (const words of commands) {
-    const id = deletedIn(words, depth);
-    if (id !== null) {
-      return id;
+    const hit = hitIn(words, depth, stores);
+    if (hit !== null) {
+      return hit;
     }
   }
   for (const text of substituted) {
-    const id = deletedInLine(text, depth + 1);
-    if (id !== null) {
-      return id;
+    const hit = hitInLine(text, depth + 1, stores);
+    if (hit !== null) {
+      return hit;
     }
   }
   return null;
 }
 
-/** The refusal for a Bash line that deletes a snapshot, or null when it may run. */
-export function deleteRefusal(line: string): string | null {
-  const id = deletedInLine(line, 0);
-  return id === null
-    ? null
-    : `qsm-docs: only the owner deletes a snapshot. Ask the owner whether it should go; if so, they run \`! qsm-docs delete ${id}\` themselves.`;
+/** The refusal for a Bash line that deletes a snapshot or writes a file of the store, or null when
+ * it may run; a read of the store runs. */
+export function deleteRefusal(line: string, homes: Homes): string | null {
+  const hit = hitInLine(line, 0, storePrefixes(homes));
+  if (hit === null) {
+    return null;
+  }
+  return "delete" in hit
+    ? `qsm-docs: only the owner deletes a snapshot. Ask the owner whether it should go; if so, they run \`! qsm-docs delete ${hit.delete}\` themselves.`
+    : `qsm-docs: only the owner changes the files of the qsm-docs store. Ask the owner; if they agree, they run \`! ${line.trim()}\` themselves.`;
 }

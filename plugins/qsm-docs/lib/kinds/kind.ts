@@ -16,6 +16,7 @@ import { dirname, join, resolve } from "node:path";
 import { isRecord, messageOf, UsageError } from "../../../../lib/outcome.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
+import { kindsIn } from "../store/layout.ts";
 import { docsDir } from "../store/where.ts";
 import { convertJson, diffJson } from "./json.ts";
 
@@ -60,7 +61,7 @@ const JSON_KIND: Kind = {
   diff: (a, b) => diffJson(readFileSync(a, "utf8"), readFileSync(b, "utf8")),
 };
 
-const kindsDir = (env: Env): string => join(docsDir(env), ".kinds");
+const kindsDir = (env: Env): string => kindsIn(docsDir(env));
 
 /** One of a kind's commands, with its placeholders filled; its stdout, or a throw naming it. */
 function run(kind: string, argv: readonly string[], fill: Record<string, string>): string {

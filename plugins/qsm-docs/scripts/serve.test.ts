@@ -30,7 +30,8 @@ function checkout() {
     }
     return data.id;
   };
-  const file = (id: string) => join(root, "home", "data", "qsm-docs", "demo", `${id}.json`);
+  const file = (id: string) =>
+    join(root, "home", "data", "qsm-docs", "projects", "demo", `${id}.json`);
   return { root, repo, env, run, create, file };
 }
 
@@ -188,13 +189,13 @@ describe("serve", () => {
         "400 self usage: %E0 is not a valid part of an address",
       );
     }
-    await using dotted = await start(c.repo, c.env, ["--project", ".hidden", "--branch", "main"]);
+    await using dotted = await start(c.repo, c.env, ["--project", "..", "--branch", "main"]);
     expect(await contract(await fetch(`${dotted.url}json`))).toBe(
-      '400 self usage: ".hidden" is not a project name',
+      '400 self usage: ".." is not a project name',
     );
-    const ledger = join(c.root, "home", "data", "qsm-docs", "demo", "ledger.jsonl");
+    const ledger = join(c.root, "home", "data", "qsm-docs", "projects", "demo", "ledger.jsonl");
     writeIn(
-      join(c.root, "home", "data", "qsm-docs", "demo"),
+      join(c.root, "home", "data", "qsm-docs", "projects", "demo"),
       "ledger.jsonl",
       `${readFileSync(ledger, "utf8")}{"op":"cre`,
     );

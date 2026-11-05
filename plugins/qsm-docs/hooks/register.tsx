@@ -1,9 +1,10 @@
 // qsm-docs' function-hooks module: the noun, `$.docs`; the line that tells the agent of a proposal
-// the owner saved in the browser; and the guard that denies `qsm-docs delete` to the agent. The
+// the owner saved in the browser; and the guard that denies the agent `qsm-docs delete` and any
+// write to the store's files. The
 // open proposals are the `list --open` verb's; the guard's decision is deleteRefusal in lib/.
 
 import type { EngineInterface, On } from "claude-code";
-import { deleteRefusal } from "../lib/delete-guard.ts";
+import { deleteRefusal, type Homes } from "../lib/delete-guard.ts";
 import { docsIn, ledgerIn } from "../lib/store/layout.ts";
 import { failure, registerNoun } from "./noun.generated.ts";
 
@@ -27,14 +28,18 @@ function seenOf(value: unknown): Seen | undefined {
     : undefined;
 }
 
+/** The two variables the store's place is read from, as the session sees them. */
+async function homesOf($: EngineInterface): Promise<Homes> {
+  return { home: await $.env.get("HOME"), xdg: await $.env.get("XDG_DATA_HOME") };
+}
+
 /** The project's ledger as `<mtime>:<size>`, or `none` before its first snapshot: what changes
  * whenever a snapshot is created or deleted, so an unchanged one needs no `list`. The layout below
  * the data directory is the binary's own (lib/store/layout.ts); the data directory itself is root
  * lib's dataDir, which the sandbox cannot import, so its one rule is written here: `$XDG_DATA_HOME`,
  * else `~/.local/share`. */
 async function ledgerMark($: EngineInterface, project: string): Promise<string> {
-  const xdg = await $.env.get("XDG_DATA_HOME");
-  const home = await $.env.get("HOME");
+  const { xdg, home } = await homesOf($);
   if (xdg === undefined && home === undefined) {
     throw new Error("neither XDG_DATA_HOME nor HOME is set, so the store cannot be found");
   }
@@ -111,8 +116,8 @@ export function register(on: On): void {
     return next(e);
   });
 
-  on("tool.call", { tool: "Bash" }, ($, e, next) => {
-    const refusal = deleteRefusal(e.command);
+  on("tool.call", { tool: "Bash" }, async ($, e, next) => {
+    const refusal = deleteRefusal(e.command, await homesOf($));
     return refusal === null ? next(e) : { deny: refusal };
   }).catch(($, _e, next) => {
     const reason = failure($, "tool.call", next.error);

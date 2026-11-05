@@ -47,7 +47,7 @@ const sha = (path: string): string => createHash("sha256").update(readFileSync(p
 
 /** Every snapshot file of the project with the sha256 it holds now. */
 function hashes(s: Store, project: string): Record<string, string> {
-  const dir = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", project);
+  const dir = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "projects", project);
   const ledger = readFileSync(join(dir, "ledger.jsonl"), "utf8").trim().split("\n");
   const out: Record<string, string> = {};
   for (const line of ledger) {
@@ -128,7 +128,7 @@ describe("the store", () => {
     const s = store();
     writeIn(s.repo, "a.json", "{}");
     const id = s.create(["json", "a.json"]);
-    const file = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "demo", `${id}.json`);
+    const file = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "projects", "demo", `${id}.json`);
     chmodSync(file, 0o644);
     writeFileSync(file, '{"edited": true}');
     const r = s.run(["get", id]);
@@ -165,11 +165,22 @@ describe("the store", () => {
     expect(ids(s.run(["list", "demo", "--json"]).stdout)).toEqual([kept]);
     expect(envelopeOf(s.run(["get", gone, "--json"]).stdout).code).toBe("missing");
     const ledger = readFileSync(
-      join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "demo", "ledger.jsonl"),
+      join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "projects", "demo", "ledger.jsonl"),
       "utf8",
     );
     expect(ledger).toContain(`"op":"delete","id":"${gone}"`);
     expect(s.run(["get", kept]).stdout).toBe("{}");
+  });
+
+  it("keeps a project whose name starts with a dot under projects/, apart from the kinds", () => {
+    const s = store();
+    writeIn(s.repo, "a.json", "{}");
+    const id = s.create(["json", "a.json", "--project", ".dotted", "--branch", "main"]);
+    const docs = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs");
+    expect(readFileSync(join(docs, "projects", ".dotted", `${id}.json`), "utf8")).toBe("{}");
+    expect(s.run(["get", id]).stdout).toBe("{}");
+    expect(dataOf(s.run(["list", ".dotted", "--json"]).stdout)).toHaveLength(1);
+    expect(s.run(["list", "..", "--json"]).exit).toBe(2);
   });
 
   it("names a torn ledger line by file and line, and a torn project leaves the others readable", () => {
@@ -179,7 +190,7 @@ describe("the store", () => {
     const a = s.create(["json", "a.json"]);
     const b = s.create(["json", "b.json", "--parent", a]);
     s.create(["json", "a.json", "--project", "aaa", "--branch", "main"]);
-    const torn = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "aaa", "ledger.jsonl");
+    const torn = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "projects", "aaa", "ledger.jsonl");
     writeFileSync(torn, `${readFileSync(torn, "utf8")}{"op":"cre`);
     expect(s.run(["get", a]).stdout).toBe("{}");
     expect(s.run(["diff", b]).stdout).toBe("added b\n");

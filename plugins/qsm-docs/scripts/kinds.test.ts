@@ -1,6 +1,7 @@
 // The kind registry through the real entry: a kind whose converter and diff are fake executables,
 // added, listed, used by create and diff, and removed while its snapshots stay.
 import { describe, expect, it } from "bun:test";
+import { readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { dataOf, envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
@@ -54,6 +55,8 @@ describe("the kind registry", () => {
     expect(listed.stdout).toBe(
       "json  application/json  json  qsm-docs\nfake  application/x-fake  fake  qsm-fake\n",
     );
+    const kept = join(k.home, "data", "qsm-docs", "kinds", "fake");
+    expect(readdirSync(kept).toSorted()).toEqual(["manifest.json", "pages"]);
   });
 
   it("refuses a create its converter fails, naming the converter's message, and stores nothing", () => {
@@ -71,7 +74,7 @@ describe("the kind registry", () => {
     k.run(["kind", "add", k.file]);
     const parent = k.create("json", "p.json", "{}");
     const child = k.create("fake", "c.fake", "good", ["--parent", parent]);
-    const store = join(k.home, "data", "qsm-docs", "demo");
+    const store = join(k.home, "data", "qsm-docs", "projects", "demo");
     const r = k.run(["diff", child]);
     expect(r.stdout).toBe(
       `changed ${join(store, `${parent}.json`)} ${join(store, `${child}.fake`)}\n`,

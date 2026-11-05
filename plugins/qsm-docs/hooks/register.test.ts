@@ -14,7 +14,7 @@ interface Row {
 }
 
 /** The host: a checkout of `demo`, session `s1`, an in-memory store, the project's ledger at
- * `/data/qsm-docs/demo/ledger.jsonl` with the size in `ledger` (none at 0), and `qsm-docs list`
+ * `/data/qsm-docs/projects/demo/ledger.jsonl` with the size in `ledger` (none at 0), and `qsm-docs list`
  * answering whatever `open` holds when it runs, or failing when `fails`. */
 function host(on: On, open: Row[], { inRepo = true, fails = false } = {}) {
   const store = new Map<string, unknown>();
@@ -26,7 +26,7 @@ function host(on: On, open: Row[], { inRepo = true, fails = false } = {}) {
   );
   on("env.get", (_$, e) => ({ value: e.name === "XDG_DATA_HOME" ? "/data" : undefined }));
   on("fs.exists", (_$, e) => ({
-    value: e.path === "/data/qsm-docs/demo/ledger.jsonl" && seen.ledger.size > 0,
+    value: e.path === "/data/qsm-docs/projects/demo/ledger.jsonl" && seen.ledger.size > 0,
   }));
   on("fs.stat", () => ({
     value: { kind: "file", size: seen.ledger.size, mtimeMs: seen.ledger.size, isLink: false },
@@ -144,5 +144,17 @@ test("a delete over Bash is denied before it runs, an rtk prefix included, and n
 
   expect(denied.deny).toContain(`! qsm-docs delete ${A.id}`);
   expect(listed.result).toBe("ran");
+  expect(seen.tools).toBe(1);
+});
+
+test("a write under the session's store is denied naming the same command; a read runs", async ($, on) => {
+  const seen = host(on, []);
+  const rm = "rm -rf /data/qsm-docs/projects/demo";
+
+  const denied = await $.tool.call({ tool: "Bash", command: rm });
+  const read = await $.tool.call({ tool: "Bash", command: "cat /data/qsm-docs/projects/demo/x" });
+
+  expect(denied.deny).toContain(`! ${rm}`);
+  expect(read.result).toBe("ran");
   expect(seen.tools).toBe(1);
 });
