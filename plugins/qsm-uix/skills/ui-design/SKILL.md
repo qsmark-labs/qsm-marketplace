@@ -12,7 +12,7 @@ font pairings or frameworks; the maintainer picks the hues. It does not audit a 
 
 ## Decide in this order
 
-Work top-down, because a late concern costs a rebuild and an early one costs a sentence.
+Work top-down: a late concern costs a rebuild, an early one a sentence.
 
 1. **Accessibility floor.** What every user must be able to do (keyboard only, screen reader,
    reduced motion, larger text, no reliance on colour). It goes into `## Requirements` first, so
@@ -24,10 +24,10 @@ Work top-down, because a late concern costs a rebuild and an early one costs a s
 
 ## Detect before you ask
 
-Find the existing design folder, theme, tokens or screenshot before assuming a stack. Read and
-extend an existing design source, never regenerate it. Ask only what changes it: surfaces,
-audience, fixed brand colours. Keep the source stack-neutral and mark assumptions in the draft,
-so the person can correct concrete tokens, pairs and ratios rather than a questionnaire.
+Find the existing design folder, theme, tokens or screenshot before assuming a stack. Extend an
+existing design source, never regenerate it. Ask only what changes it: surfaces, audience, fixed
+brand colours. Keep the source stack-neutral and mark assumptions in the draft, so the person
+corrects concrete tokens and ratios rather than a questionnaire.
 
 ## The design source
 
@@ -40,14 +40,27 @@ Use these headings, because the audits and the stack skills look for them:
 
 | Heading | Holds |
 | --- | --- |
-| `## Tokens` | name, light, dark, role. Roles, not hues: `surface`, `primary`, `danger`, `border` |
+| `## Tokens` | the palette (a neutral ladder and named hues, light and dark), then roles: name, meaning, light, dark, each a palette name. Roles, not hues: `surface`, `primary`, `danger` |
 | `## Pairs` | fill, on-fill, ratio in light, ratio in dark |
 | `## Scales` | space, type, radius, elevation, layer, icon size, motion, density |
-| `## Style` | constraints, the requirements it brings, do not use for |
+| `## Style` | the one container separation, constraints, the requirements it brings, do not use for |
 | `## Requirements` | the accessibility floor the source commits to |
 
 ## Rules
 
+- **A role gets its sentence before its value.** Each role in `## Tokens` says what it is for
+  ("accent: what is current now, the active tab or selected row, nothing else"), and its value is
+  chosen after. Why: a hue with no job gets reused for whatever
+  looks good.
+- **Neutrals carry structure, hues carry meaning.** Neutrals are a ladder of low-chroma steps; when
+  lightness is the separation, a container sits at least 1.3:1 (default, WCAG formula, computed) on
+  its parent. The named hues share one lightness per theme (default: dark OKLCH L 0.80, light 0.55)
+  at the largest chroma every hue holds in sRGB (about C 0.10 and 0.09). A role's hue sits more
+  than 15 degrees (OKLCH, chroma above 0.02) from the neutral tint, status roles at least 30 from
+  each other and from `accent` (defaults). Why: a hue within 15 degrees of its ground differs only
+  by lightness and marks nothing.
+- **Palette, roles, components, surfaces.** A component reads roles only; a surface overrides a
+  role only in its page file, with the reason, because a value a surface sets for itself drifts.
 - **Every colour is a token, and a fill token never travels alone.** Define `primary` with
   `on-primary` and record the ratio per theme: 4.5 for text, 3 for large text, icons, control
   borders and focus indicators (WCAG 1.4.3, 1.4.11). Why: contrast belongs to a pair, so a colour
@@ -69,34 +82,28 @@ Use these headings, because the audits and the stack skills look for them:
   the element to 0.95 to 0.98 of its size at once, as a transform on the pressed state that does
   not change layout bounds (animate owns it); hover, focus and disabled change colour, opacity or
   elevation and keep the box. The focus indicator reaches 3:1 against its neighbours. Why: a
-  press with no response feels like the UI did not hear the person, and a scaled press leaves
-  layout alone.
-- **Hover is for a fine hovering pointer.** A hover effect applies only where the device has one
-  (animate and review-animations point here), because a touch screen fires hover on tap and shows
-  it as a false positive.
-- **A tooltip delays once, then follows at once.** The first waits so a passing pointer does not
-  trigger it; while one is open its neighbours show instantly, which makes the whole row feel
-  faster without losing the delay's purpose.
-- **A popover grows from its trigger, a modal from the centre.** Anchored content that appears
-  from nowhere loses the link to what opened it. Curves, durations and springs are `animate`'s,
-  checking them is `review-animations`.
+  press with no response feels like the UI did not hear the person.
 - **Defaults carry the design; options are for the few.** Most people never change a setting, so
-  the default look, spacing and timing must already be the best the design has.
+  the defaults must already be the best the design has.
 - **A component's character is one personality.** A professional dashboard is crisp and dense, a
   playful tool may be looser; a rule right in isolation reads wrong beside another character.
-- **A raised surface separates by a soft shadow, not a solid border.** A semi-transparent shadow
-  reads as depth; an opaque border reads as a box drawn around the content (emilkowalski/skills
-  README.md names a solid border over a shadow as an agent mistake). In a dark theme an overlay
-  also gets a 1 px low-alpha light edge, because a shadow vanishes on a dark surface, and the edge
-  is never opaque. A low-alpha separator on a card is decorative: WCAG 1.4.11 applies to the
-  boundaries of controls and inputs, so the 3:1 rule is for those.
+- **One separation mechanism for containers.** Panels, cards and sections separate by a lightness
+  step, a border (3:1) or a shadow; `## Style` names the one and every container edge uses only it.
+  A control whose edge identifies it keeps its 3:1 border; a row rule, a focus ring and an
+  overlay's edge (next rule) are not container edges. Why: two marks on one edge read as
+  two products.
+- **A raised surface (overlay, popover) separates by a soft shadow, not a solid border.** A
+  semi-transparent shadow reads as depth; an opaque border reads as a box drawn around the content
+  (emilkowalski/skills README.md names a solid border over a shadow as an agent mistake). In a dark
+  theme an overlay also gets a 1 px low-alpha light edge, because a shadow vanishes on a dark
+  surface, and the edge is never opaque. A low-alpha separator on a card is decorative: WCAG 1.4.11
+  applies to the boundaries of controls and inputs, so the 3:1 rule is for those.
 - **A wait shows feedback by its length.** No busy indicator under 150 to 300 ms, because a
   flash reads as a glitch (Vercel guidelines README: 150 to 300 ms, and once shown 300 to 500 ms);
   over 1 s always feedback; a progress bar with a count past about 10 s when the length is known.
   The 1 s and 10 s limits are the owner's decision. The families write the form.
 - **Handle edge cases where nobody looks.** A hover that must survive the gap between stacked
   items, a timer that pauses when the view is hidden, a drag that continues outside its box.
-  These are details nobody notices, and that is what correct looks like.
 - **Targets carry a floor.** 44 px on touch (Vercel web-interface-guidelines README); 24 px is
   the WCAG 2.5.8 floor, labelled as such. The source records any override per project with its
   reason, because a threshold silently changed is a regression nobody can find.
@@ -120,8 +127,11 @@ Use these headings, because the audits and the stack skills look for them:
   differ at rest.
 - **A token or colour pass changes values only.** List every visible element (separators,
   handles, glass edge, readouts, layout) before and after and confirm each survives.
-- **The owner's chat ruling beats an older source line.** Edit the line in place in the same
-  change and quote the owner; an overruled line is out of date, not authority.
+- **The owner's chat ruling beats an older source line, and the source changes by principle.**
+  Edit the line in place in the same change and quote the owner; an overruled line is out of date,
+  not authority. Trace a complaint to the principle it broke and change the token that carries it
+  ("the sidebar warning is too loud" breaks "a status colour marks a state, never a region", so
+  `warning` changes, not a sidebar exception), because a line per complaint stacks.
 - **Prefer the platform's control to a custom one**, unless the source says why not. The system
   one brings keyboard, focus, scaling and screen reader behaviour for free.
 - **A style is a constraint set, never a name.** Write what the look requires (for example "raised
@@ -138,35 +148,19 @@ with the stack skill, then run ui-audit against this file, which is the expected
 
 ## Red flags
 
-- When a colour appears in the draft with no `on-` partner, add the pair and compute its ratio,
-  because an unpaired colour will be placed on something unmeasured.
-- When the dark column equals the light one inverted, redesign it against dark surfaces, because
-  inversion keeps light's mistakes and adds new ones.
 - When you reach for a hex literal in a component description, name a token instead, because the
   literal is invisible to the audit and to the next theme.
 - When the draft names a framework, a stack's property or component type, move it to the stack
   skill, because the source must survive a change of stack.
 - When you are about to list palettes, font pairings, or "styles for SaaS", stop and write the
   token roles and constraints, because the person picks the look and the source holds its rules.
-- When a surface's page file contradicts the master, keep the page file and note the override
-  and its reason, because the page wins by design.
-- With no stated accessibility requirement, write the floor above and name the assumption.
 
 ## Say it in the reply
 
-- The path of the design source written, and which parts are defaults versus the person's
-  choices.
+- The path of the design source written, and which parts are defaults versus the person's choices.
 - The contrast ratio per pair and theme, computed, with the tool or formula used.
-- What was assumed and what was asked, and the open decisions left for the person.
-- What is not covered: no running UI was measured, so nothing here is verified until ui-audit
-  runs against it.
+- What was assumed, what was asked, and the open decisions left for the person.
+- What is not covered: no running UI was measured, so nothing is verified until ui-audit runs.
 
 How each rule is built and exposed on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).
-
-Sources: polish follows Emil Kowalski's emil-design-eng and README
-(github.com/emilkowalski/skills, MIT); waits and touch targets follow
-vercel-labs/web-interface-guidelines (MIT). Scale examples:
-[Carbon spacing](https://carbondesignsystem.com/elements/spacing/overview/),
-[Modular Scale ratios](https://github.com/modularscale/modularscale-sass/blob/3.x/stylesheets/modularscale/_vars.scss),
-[USWDS type tokens](https://designsystem.digital.gov/design-tokens/typesetting/font-size/).

@@ -6,5 +6,8 @@ Flow:
 | Finding | Number | What it means |
 | --- | --- | --- |
 | One hue across band, card and accent pill | 301.4, 294.6 and 302.1 deg, a 7.5 deg spread inside the 15 deg limit, neutral chroma 0.040 and 0.045 | Measured. The accent differs from its ground only by lightness, so it marks nothing by colour. |
+| Card against the panel surface too close in lightness | 1.08:1, expected 1.3:1 for a container on its parent | Measured. The two surfaces read as fog. |
+| Three separation mechanisms in one UI: 2 px light hairline, 1 px card borders, drop shadow on the volume popup | three mechanisms | Separation is done three ways at once, so the eye reads two products. One finding. |
 
-Next step: move the accent's hue away from the neutral tint, then measure the three roles again.
+Next step: move the accent's hue away from the neutral tint, keep one separation mechanism, check
+the 1.3:1 floor on each container, then measure again.

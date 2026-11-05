@@ -77,13 +77,21 @@ design source is the expected column), measuring the result (ui-audit), criteria
     compound control open while focus is inside.
 14. **A dark overlay follows ui-design's overlay rule.** In CSS: a layered `box-shadow`, and in the
     dark block a `1px` border whose colour token carries alpha.
+15. **Palette values, roles point at them, components read roles.** The palette is rule 3's named
+    values (`--mauve`); a role points at one
+    (`--primary: var(--mauve); --on-primary: var(--crust)`), repointed in the dark block where
+    ui-design's dark column names another value and redeclared in any subtree that switches
+    appearance itself, because a `var()` resolves where it is declared. A component reads roles
+    only; a brand theme is a block under its own selector that repoints roles with their `--on-`
+    partners. Reason: a component naming `--mauve` stays mauve in a teal theme. Check: grep
+    component styles for palette names, zero hits.
 
 ## Libraries
 
-Platform first: `dialog`, `popover`, `details`, `:has`, container queries and `color-scheme` need no
-package. Tailwind v4 carries tokens as utilities (below); the library picks are pick-ui-library's.
-No CSS-in-JS runtime for a static page. Touch and phone fixes (tap highlight, `dvh`, safe areas,
-input zoom) are mobile-native; motion is animate and review-animations.
+Platform first: `dialog`, `popover`, `details`, `:has` and container queries need no package.
+Tailwind v4 carries tokens as utilities (below); the library picks are pick-ui-library's. No
+CSS-in-JS runtime for a static page. Touch and phone fixes (tap highlight, `dvh`, safe areas, input
+zoom) are mobile-native; motion is animate and review-animations.
 
 ## Conventions
 
@@ -147,29 +155,19 @@ Tailwind is the same tokens in another syntax; it adds nothing to the discipline
 
 ## Red flags
 
-- A hex, `rgb()`, `ms`, or `z-index` number in a component rule: replace with a token, because
-  the next theme or density change will miss it.
-- `outline: none` or `outline: 0` with no `:focus-visible` rule: add the ring, because the
-  keyboard user loses their place.
-- A dark block that only swaps `#fff` and `#000`: design the values on their own, because
-  inverted greys wash out and borders vanish.
 - `transition: all`: name the properties, because layout properties will animate and shift.
 - `100vh`, or a `position: fixed` header with no `scroll-padding`: fix per mobile-native and
   rule 10, because the mobile address bar and the sticky header both hide content.
 - A hover that sets `width`, `border-width`, `margin`, `padding`, or `font-weight`: move to a
   non-layout property, because the target moves under the pointer.
-- `<div onclick>` or `<span role="button">`: use `button`, because role, name and keyboard
-  are then free.
 
 ## Say it in the reply
 
-Start with which tokens exist and which were added, then the two themes and the pair
-ratios you checked or could not measure (a measured number, or "not measured: no browser here";
-ui-audit measures it). List the states and what bounds they hold. Say which rules from the
-design source you could not apply because it was absent, and which you assumed. Never claim a
-contrast ratio you did not compute.
+Start with which tokens exist and which were added, then the two themes and the pair ratios you
+checked or could not measure ("not measured: no browser here"; ui-audit measures it). List the
+states and what bounds they hold. Say which rules from the design source you could not apply because
+it was absent, and which you assumed. Never claim a contrast ratio you did not compute.
 
-Sources: vercel-labs/web-interface-guidelines (MIT); emilkowalski/skills (MIT).
-Tailwind syntax: [theme variables](https://tailwindcss.com/docs/theme) and
+Sources: see the README. Tailwind syntax: [theme variables](https://tailwindcss.com/docs/theme) and
 [class detection](https://tailwindcss.com/docs/detecting-classes-in-source-files).
 The token-only policy is ui-design's, not a Tailwind restriction.

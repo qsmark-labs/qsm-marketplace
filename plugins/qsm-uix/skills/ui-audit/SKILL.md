@@ -66,7 +66,12 @@ resting frame is not an audit.
    neutrals carry chroma above 0.02 and the accent sits within 15 degrees of them in hue, file the
    palette once, because an accent that differs from its ground only by lightness marks nothing.
    The 0.02 and the 15 degrees are this repo's own thresholds, not from a standard, and the design
-   source's own values win.
+   source's own values win. Two more smells, each a finding with its number. Fog: with lightness as
+   the source's separation, a container under 1.3:1 on its parent (`contrast`, one point in each; a
+   parent that is an image is Not examined); a repeated group (table rows) is filed once with the
+   count. Two products: more than one separation mechanism on container edges (a lightness step, a
+   border, a shadow; `pixel-sample` across each edge), filed once with the mechanisms and the tree
+   ids; a control's own 3:1 border, a row rule, a focus ring and an overlay's edge do not count.
 5. **Type and icons.** Inventory every text item with family, rendered size, weight. Sizes form a
    scale defined in the design source, not an imposed ratio. Rank items by size, weight, and
    contrast; the most glance-critical readouts belong at the top. Text in a row shares a baseline
