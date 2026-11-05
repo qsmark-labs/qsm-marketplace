@@ -3,6 +3,9 @@
 import { BpmnModdle } from "bpmn-moddle";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 
+/** The namespace of this plugin's link attributes, `qsm:c4` and `qsm:decision`. */
+const QSM_NS = "https://github.com/qsmark-labs/qsm-marketplace/schema/qsm-models";
+
 export interface ModdleElement {
   readonly $type: string;
   $parent?: ModdleElement;
@@ -149,4 +152,39 @@ export function newLabel(): Label {
     throw new Error("bpmn-moddle created no BPMNLabel");
   }
   return label;
+}
+
+/** The value of a `qsm:` link attribute on an element, whatever prefix the file gives the
+ * namespace. */
+export function qsmAttr(e: ModdleElement, name: string, defs: Definitions): string | undefined {
+  const prefixes = Object.entries(defs.$attrs ?? {})
+    .filter(([k, v]) => k.startsWith("xmlns:") && v === QSM_NS)
+    .map(([k]) => k.slice("xmlns:".length));
+  return prefixes.map((p) => e.$attrs?.[`${p}:${name}`]).find((v) => v !== undefined);
+}
+
+/** A property that points at an element owned elsewhere, so a walk does not enter it. */
+const REFERENCE = /Ref$|^bpmnElement$|^(incoming|outgoing)$/;
+
+/** Every element of a graph, each once, walked through the properties that own it. */
+export function everyElement(defs: Definitions): ModdleElement[] {
+  const out: ModdleElement[] = [];
+  const seen = new Set<ModdleElement>();
+  const stack: unknown[] = [defs];
+  for (let v = stack.pop(); v !== undefined || stack.length > 0; v = stack.pop()) {
+    if (Array.isArray(v)) {
+      for (const x of v as unknown[]) {
+        stack.push(x);
+      }
+    } else if (isModdle(v) && !seen.has(v)) {
+      seen.add(v);
+      out.push(v);
+      for (const [k, child] of Object.entries(v)) {
+        if (!k.startsWith("$") && !REFERENCE.test(k)) {
+          stack.push(child);
+        }
+      }
+    }
+  }
+  return out;
 }

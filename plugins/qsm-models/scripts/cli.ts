@@ -8,6 +8,7 @@ import { doctorVerdict, fail } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { MODELS_DIR, oneGraph } from "../lib/graphs.ts";
 import { layoutFile } from "../lib/bpmn/layout.ts";
+import { checkProject, repoRoot } from "../lib/conform.ts";
 import { lintPath } from "../lib/lint.ts";
 import { pathsOf } from "../lib/paths.ts";
 import { renderPath } from "../lib/render.ts";
@@ -32,7 +33,7 @@ if (import.meta.main) {
           all: flagArg(call, "all"),
           specs: optionalString(call, "specs"),
         }),
-      check: notBuilt("check"),
+      check: () => checkProject(repoRoot()),
       pages: notBuilt("pages"),
     }),
   );

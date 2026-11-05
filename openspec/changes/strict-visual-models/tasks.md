@@ -29,12 +29,12 @@ open and its first-build part says `(done)` once it is built.
   cover of every migrated process equals the measured one. Blocked by 3.
   **First build (done):** `paths` without `--compare`. **Waits:** `--compare`.
 - [ ] 7. `check`: model files outside `models/`, the code check, the links, the verified commit,
-  another project through `qsm-docs list`. Files: `lib/conform.ts`, `lib/links.ts`. Proof: design
-  Verify 1 and the moddle half of Verify 6, then one fixture per broken link kind. Blocked by 4, 6.
-  **First build:** model files outside `models/`, and the links that exist in it: a task to a C4
-  element, a node to a design decision (`design:<repo path>#<n>`, a numbered item) or a commit.
-  **Waits:** the verified commit, the code check against dependencies and its generated import
-  rules, links to other projects.
+      another project through `qsm-docs list`. Files: `lib/conform.ts`, `lib/links.ts`. Proof:
+      design Verify 1 and the moddle half of Verify 6, then one fixture per broken link kind.
+      Blocked by 4, 6. **First build (done):** model files outside `models/`, and the links that
+      exist in it: a task to a C4 element, a node to a design decision (`design:<repo path>#<n>`, a
+      numbered item) or a commit. **Waits:** the verified commit, the code check against
+      dependencies and its generated import rules, links to other projects.
 - [ ] 8. The migration of the marketplace's models into `models/marketplace.bpmn` and
       `models/marketplace.c4`: the fourteen BPMN files named in design decision 20 and the C4
       source, the scenarios re-cited, the proposals' links rewritten, the old files deleted. Files:
