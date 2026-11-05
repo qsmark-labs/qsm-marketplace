@@ -55,11 +55,7 @@ edge treatments at once.
 ## In a stack
 
 The rules above do not change; the stack skill holds the syntax. CSS and Tailwind: css-tokens.
-QML: a component binds `Theme.accent`, never a named value (`Theme.palette.mauve`), where the
-singleton keeps a `palette` block a role points at one entry, a wallpaper theme fills
-`palette.accent` from the image, and when the derivation finds no hue the singleton fails loud
-with the image path rather than mapping `accent` to a neutral. Check: `grep -rn 'palette\.'
-components/` prints nothing.
+Quickshell: qml-ui.
 
 ## Red flags
 
