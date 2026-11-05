@@ -64,6 +64,31 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   index in a path (`RailEntry[5]`) exists because the tree's nodes carry no names, and the sixth
   rail cell is otherwise unreachable.
 
+- **Labels live in the canvas, not on the screen.** The first board kept names and badges at their
+  screen size while the frames scaled, so a frame narrower than its label clipped it (`FAI`), and
+  the labels slid against their frames while zooming and vanished below a zoom threshold. Now every
+  label is sized in canvas px and scales with its frame like one image: nothing slides, nothing
+  pops. The builder knows every label, so it gives each frame a cell as wide as the longer of the
+  frame and its label (a width estimated from the character count), and a badge row wraps instead
+  of clipping. At the fit of the whole board the names are too small to read and the coloured ring
+  of a changed or failing frame carries its state; a section title is large enough to read there,
+  and a click on it fits the section. The wheel stops at that fit, because a board smaller than the
+  window shows nothing more.
+- **A changed area is named by the tree.** The builder maps each changed area (device px, divided
+  by the shot's scale) to the deepest node of the shot's tree with a size whose rectangle holds the
+  area's centre, and the badge names the run it was compared with by date (`changed vs 1 Nov
+  05:02`). The cursor, the wallpaper and a client window are in no tree, so an area there says so
+  instead of borrowing the name of whatever item lies beneath.
+- **A recording is a separate kind of frame.** `record NAME [@Type]` starts wf-recorder on the
+  slot's output in the background and `stop` ends it with SIGINT, the way `drive record` does, so
+  the frames keep their capture timestamps. After `stop` the run reads the tree (for the crop),
+  transcodes to WebM (VP9, passthrough timing, since the browser plays no Matroska H.264
+  reliably) and writes the cadence `drive cadence` prints into `recordings.tsv` (journey, name,
+  surface, cadence). Recordings are never compared by pixels: an animation lands on another phase
+  every run. The board compares the cadence numbers with the previous run's recording of the same
+  name and plays both side by side. The canvas frame is a muted looping `<video>` cropped like an
+  image; only the focused frame and its neighbours play, so a board of many recordings decodes few.
+
 ## Risks / Trade-offs
 
 - An index names a position: a rail that gains a cell before the network one masks the wrong glyph.

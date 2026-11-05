@@ -17,6 +17,10 @@ import { tryFlock, writeAtomic } from "../../../lib/fs.ts";
 import { isRecord, messageOf } from "../../../lib/outcome.ts";
 
 type Rect = { x: number; y: number; w: number; h: number };
+// A changed area (device px) and the item of the shot's tree that holds it, "" when none of the
+// shell's items does (the cursor, the wallpaper, a client window).
+type Area = Rect & { item: string };
+type Badge = { kind: string; text: string; title?: string };
 type Change = { key: string; before: string; after: string };
 type Frame = {
   name: string;
@@ -34,7 +38,9 @@ type Frame = {
   failing: Rect[];
   // Items that animate by design (device px): the run neither waits for nor compares them.
   masks: Rect[];
-  changed: { areas: Rect[]; changes: Change[] } | null;
+  changed: { areas: Area[]; changes: Change[] } | null;
+  // The labels the builder sized the frame's cell by; the page adds only the notes badge.
+  badges: Badge[];
 };
 type Section = { title: string; at: { x: number; y: number }; w: number; frames: Frame[] };
 type NewComment = { shot: string; x: number; y: number; text: string; run: string };
@@ -53,12 +59,19 @@ type Comment = {
 // (a popout's title sits above its content item) stay in the frame.
 const PAD = 32;
 // The canvas grid: frames left to right, a row wraps after PER_ROW; sections flow in rows ROW_W wide.
+// Every label is sized in canvas px and scales with its frame, as atlas-board.html draws it: a
+// strip of STRIP_PX type above each frame, a title of TITLE_PX type with its count below it.
 const PER_ROW = 6;
 const ROW_W = 9000;
 const GAP_X = 80;
-const GAP_Y = 120;
-const TITLE_H = 140;
-const TITLE_CHAR = 26;
+const GAP_Y = 140;
+const STRIP_PX = 28;
+const TITLE_PX = 96;
+// Room above a section's first row: the title and its count (1.4 lines each, the count at 0.4 of
+// the title) stand on the first row's strips (1.4 lines plus their padding).
+const TITLE_H = Math.ceil(TITLE_PX * 1.4 * 1.4 + STRIP_PX * 1.8 + 24);
+// A character of the UI sans is at most this share of its size wide, digits and capitals included.
+const CHAR_EM = 0.62;
 const SECTION_GAP = 240;
 // An empty frame for a state no journey shoots yet, when its section has no shot to size it by.
 const TODO_SIZE = { w: 320, h: 240 };
@@ -212,6 +225,7 @@ function changedOf(entry: Record<string, unknown>): Frame["changed"] {
     y: num(a.y),
     w: num(a.w),
     h: num(a.h),
+    item: "",
   }));
   const changes = records(entry.changes).map((c) => ({
     key: str(c.key),
@@ -251,6 +265,7 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   failing: [],
   masks: [],
   changed: null,
+  badges: [],
 });
 
 // The frame's crop: its surface padded by PAD and clipped to the screen, else the whole screen.
@@ -271,6 +286,99 @@ function cropOf(
   };
 }
 
+// Qt's own types say how an item is drawn, never which part of the shell it is.
+const GENERIC = new Set([
+  "Item",
+  "Rectangle",
+  "Row",
+  "Column",
+  "RowLayout",
+  "ColumnLayout",
+  "GridLayout",
+  "Flickable",
+  "Loader",
+  "MouseArea",
+  "FocusScope",
+  "Text",
+  "Image",
+  "MultiEffect",
+  "ShaderEffect",
+  "QGfxSourceProxyME",
+  "ProxyWindowContentItem",
+]);
+
+const holdsPoint = (r: Rect, px: number, py: number): boolean =>
+  r.w > 0 && r.h > 0 && px >= r.x && py >= r.y && px <= r.x + r.w && py <= r.y + r.h;
+
+// An item named by the nearest shell component above it (OWNER), its own type unless Qt's, and
+// the first words of its text: PopoutRow › Prose "Wi-Fi".
+function itemName(at: Record<string, unknown>, owner: string): string {
+  const type = str(at.type);
+  const name =
+    owner === "" || owner === type ? type : GENERIC.has(type) ? owner : `${owner} › ${type}`;
+  const text = str(at.text).replaceAll(/\s+/gu, " ").trim();
+  if (text === "") return name;
+  return `${name} "${text.length > 28 ? `${text.slice(0, 27)}…` : text}"`;
+}
+
+// The deepest item smaller than the screen that holds the point (logical px), by itemName. The
+// shell's layers each span the whole screen, so they hold every point and name none. A child may
+// stand outside its parent (QML does not clip), so every branch is walked.
+function itemAt(tree: unknown, screen: { w: number; h: number }, px: number, py: number): string {
+  let best = { item: "", depth: -1 };
+  const walk = (at: unknown, owner: string, depth: number): void => {
+    if (!isRecord(at)) return;
+    const r = rectOf(at);
+    if (holdsPoint(r, px, py) && (r.w < screen.w || r.h < screen.h) && depth > best.depth)
+      best = { item: itemName(at, owner), depth };
+    const type = str(at.type);
+    const next = GENERIC.has(type) ? owner : type;
+    if (Array.isArray(at.children)) for (const child of at.children) walk(child, next, depth + 1);
+  };
+  walk(tree, "", 0);
+  return best.item;
+}
+
+// "20261101-050202-7ad8" reads "1 Nov 05:02".
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function runLabel(run: string): string {
+  const m = /^\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})/u.exec(run);
+  return m ? `${Number(m[2])} ${MONTHS[Number(m[1]) - 1]} ${m[3]}:${m[4]}` : run;
+}
+
+function badgesOf(frame: Frame, prev: string): Badge[] {
+  const badges: Badge[] = [];
+  if (frame.todo) badges.push({ kind: "todo", text: "todo" });
+  if (frame.changed)
+    badges.push({
+      kind: "changed",
+      text: `changed vs ${runLabel(prev)}`,
+      title: `${frame.changed.areas.length} pixel areas and ${frame.changed.changes.length} tree measures changed against run ${prev}`,
+    });
+  if (frame.checks.length > 0) badges.push({ kind: "fail", text: `FAIL · ${frame.checks.length}` });
+  if (frame.checkError) badges.push({ kind: "fail", text: "check did not run" });
+  if (frame.still === "moving") badges.push({ kind: "moving", text: "never still" });
+  if (frame.masks.length > 0)
+    badges.push({
+      kind: "animates",
+      text: "animates",
+      title: "an item animates by design: the run neither waits for it nor compares it",
+    });
+  return badges;
+}
+
+// The strip's width in canvas px: the state, the journey and the badges on one line, each badge
+// 0.85 of the strip's type with its padding (1.1 em) and the gap before it (0.45 em).
+function labelWidth(frame: Frame): number {
+  const words =
+    frame.state.length + (frame.journey && frame.surface ? frame.journey.length + 2 : 0);
+  const badges = frame.badges.reduce(
+    (sum, b) => sum + b.text.length * CHAR_EM * 0.85 + 1.1 * 0.85 + 0.45,
+    0,
+  );
+  return Math.ceil((words * CHAR_EM + badges) * STRIP_PX);
+}
+
 function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]>): Frame {
   const [journey = "", state = "", , still = "", fails = "", surface = "", masks = ""] = row;
   const name = `${journey}--${state}`;
@@ -279,6 +387,10 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
   const screen = { w: num(tree.width), h: num(tree.height) };
   const image = pngSize(join(run, "shots", `${name}.png`));
   const crop = cropOf(tree, screen, surface);
+  const scale = screen.w > 0 ? image.w / screen.w : 1;
+  const changed = diffs.get(name) ?? null;
+  for (const a of changed?.areas ?? [])
+    a.item = itemAt(tree.tree, screen, (a.x + a.w / 2) / scale, (a.y + a.h / 2) / scale);
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
@@ -290,14 +402,14 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
     journey,
     still,
     screen,
-    scale: screen.w > 0 ? image.w / screen.w : 1,
+    scale,
     crop,
     checks,
     // drive writes "error" when the check itself could not run.
     checkError: fails === "error",
     failing: failingOf(checks),
     masks: masksOf(masks),
-    changed: diffs.get(name) ?? null,
+    changed,
   };
 }
 
@@ -346,7 +458,7 @@ function placeFrames(section: Section): { w: number; h: number } {
     let x = 0;
     for (const frame of row) {
       frame.at = { x, y: rowY };
-      x += frame.crop.w + GAP_X;
+      x += Math.max(frame.crop.w, labelWidth(frame)) + GAP_X;
     }
     w = Math.max(w, x - GAP_X);
     rowY += Math.max(...row.map((f) => f.crop.h)) + GAP_Y;
@@ -362,8 +474,7 @@ function layout(sections: Section[]): void {
   let rowH = 0;
   for (const section of sections) {
     const size = placeFrames(section);
-    // The title is 40 px at rest, about 26 px a character: a narrow section keeps room for it.
-    size.w = Math.max(size.w, section.title.length * TITLE_CHAR);
+    size.w = Math.max(size.w, Math.ceil(section.title.length * CHAR_EM * TITLE_PX));
     if (x > 0 && x + size.w > ROW_W) {
       x = 0;
       y += rowH + SECTION_GAP;
@@ -387,12 +498,16 @@ function build(run: string, prev: string): void {
     .map((l) => l.split("\t"));
   const frames = rows.map((row) => frameOf(run, row, diffs));
   const sections = sectionsOf(frames, todosOf(join(run, "scenario")));
+  for (const frame of sections.flatMap((section) => section.frames))
+    frame.badges = badgesOf(frame, prev);
   layout(sections);
   const scenarioDir = dirname(run);
   const board = {
     scenario: basename(scenarioDir),
     run: basename(run),
     prev,
+    prevLabel: prev === "" ? "" : runLabel(prev),
+    runLabel: runLabel(basename(run)),
     desktop: readFileSync(join(run, "desktop-version"), "utf8").trim(),
     sections,
     comments: readComments(scenarioDir).filter((c) => !c.resolved),

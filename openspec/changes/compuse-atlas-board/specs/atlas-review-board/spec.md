@@ -32,6 +32,35 @@ not hold SHALL stop the run naming the shot.
 - **THEN** both shots are still, the second run shows no changed frame, and the frame carries
   `animates` with the glyph's rect drawn in focus
 
+### Requirement: A journey records what moves
+
+A scenario's `record NAME [@Type]` SHALL start a real-frame recording of the slot's screen, and
+`stop` SHALL end it; the steps between them run as usual. The run SHALL keep the recording as WebM
+with the frame timestamps as captured, plus its cadence: frames, span, effective fps, max gap and
+the gaps over 1.5 periods of 60 fps. A `record` without its `stop`, or a `stop` with no `record`,
+SHALL stop the run.
+
+#### Scenario: Typing into the launcher is recorded
+
+- **WHEN** a journey runs `record typing @LauncherSurface`, `type foot`, `stop`
+- **THEN** the run holds `recordings/<journey>--typing.webm` and its cadence
+
+#### Scenario: A recording left open stops the run
+
+- **WHEN** a journey runs `record typing` and ends without `stop`
+- **THEN** `drive atlas run` exits non-zero naming the journey and the recording
+
+### Requirement: The board plays recordings beside the previous run's
+
+The board SHALL show a recording as a looping frame in the Type's section, cropped to the Type's
+rectangle in the tree read at `stop`. Focus SHALL play it beside the previous run's recording of the
+same name with both cadences. A recording SHALL NOT be compared by pixels.
+
+#### Scenario: The owner compares two runs of a typing recording
+
+- **WHEN** two runs recorded `typing` in the launcher and the owner focuses the frame
+- **THEN** both recordings play side by side, each with its frames, effective fps and max gap
+
 ### Requirement: The inventory shows its holes
 
 A scenario's `todo @Type STATE` SHALL put an empty frame titled STATE in the Type's section of the
@@ -54,6 +83,24 @@ when the board cannot be built. The page SHALL open from disk with no server and
 - **THEN** every shot of the run is a frame on a canvas that pans by drag, zooms by wheel about the
   pointer, and fits all frames on `F`
 
+### Requirement: The board reads the same at every zoom
+
+Every name, badge and section title SHALL scale with the canvas like the frames it labels, SHALL
+show whole, never clipped, and SHALL keep its place against its frame at every zoom. The builder
+SHALL give each frame a cell at least as wide as its label, and wheel zoom SHALL stop where the
+whole board fills the window.
+
+#### Scenario: A narrow frame keeps its whole label
+
+- **WHEN** a rail cell's frame is 60 px wide and carries `FAIL · 1` and `changed · 1`
+- **THEN** both badges and the state name show whole at every zoom, and no label covers another
+  frame's label
+
+#### Scenario: Zooming out stops at the whole board
+
+- **WHEN** the owner keeps turning the wheel out
+- **THEN** the zoom stops at the fit of the whole board, which `F` also gives
+
 ### Requirement: A frame carries what the run measured
 
 A frame SHALL show a badge when the shot changed against the previous run, when its check failed,
@@ -72,6 +119,18 @@ and overlay switch for a changed shot, the changed tree measures, and the neighb
 - **WHEN** the run's `diff-<prev>/diff.json` lists changed areas for a shot
 - **THEN** the frame carries a changed badge, and its focus switches between the previous run's
   image, this run's image and an overlay with the areas boxed
+
+### Requirement: A change says what changed and against what
+
+A changed frame's badge SHALL name the run it was compared with by its date and time. Its focus
+SHALL list each changed area with its size, its place and the deepest item of the shot's tree that
+holds it, or say that no item of the shell holds it (the cursor, the wallpaper, a client window).
+
+#### Scenario: A cursor change is named as outside the shell
+
+- **WHEN** only the cursor's shape changed in `rest--rest` against the run of 1 Nov 05:02
+- **THEN** the badge reads `changed vs 1 Nov 05:02`, and focus lists one area with its size and
+  place, held by no item of the shell
 
 ### Requirement: Comments land where the agent reads them
 
