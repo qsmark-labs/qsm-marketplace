@@ -36,8 +36,9 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   report, and `drive atlas diff` after its report.
 - **Pan and zoom is one transform.** The canvas is one absolutely placed layer moved by
   `translate()` and `scale()`: drag pans, the wheel zooms about the pointer, `F` fits everything,
-  a section title fits that section, `0` resets. Frames are laid out by the builder (sections top
-  to bottom, frames left to right, wrapping at 6), so the page does no layout work of its own.
+  a section title fits that section, `0` resets. The page lays the frames out (sections flowing
+  like blocks of text, frames left to right, wrapping at 6), because only the page can measure a
+  label as drawn; the builder hands it each frame's crop and nothing about position.
 - **Focus is the frame, the screen and its record.** A click opens one frame: the crop and the
   full screen side by side, the check lines with the failing rectangles drawn on both, the changed
   areas, a before / after / overlay switch when the frame changed, the changed measures, and the
@@ -68,9 +69,10 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   screen size while the frames scaled, so a frame narrower than its label clipped it (`FAI`), and
   the labels slid against their frames while zooming and vanished below a zoom threshold. Now every
   label is sized in canvas px and scales with its frame like one image: nothing slides, nothing
-  pops. The builder knows every label, so it gives each frame a cell as wide as the longer of the
-  frame and its label (a width estimated from the character count), and a badge row wraps instead
-  of clipping. At the fit of the whole board the names are too small to read and the coloured ring
+  pops. The page draws every label, measures it (a transform changes no `offsetWidth`, so the
+  reading is canvas px at any zoom), and gives each frame a cell as wide as the longer of the frame
+  and its label; a notes badge added while the page is open widens its cell on the next draw. At
+  the fit of the whole board the names are too small to read and the coloured ring
   of a changed or failing frame carries its state; a section title is large enough to read there,
   and a click on it fits the section. The wheel stops at that fit, because a board smaller than the
   window shows nothing more.
@@ -78,7 +80,10 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   by the shot's scale) to the deepest node of the shot's tree with a size whose rectangle holds the
   area's centre, and the badge names the run it was compared with by date (`changed vs 1 Nov
   05:02`). The cursor, the wallpaper and a client window are in no tree, so an area there says so
-  instead of borrowing the name of whatever item lies beneath.
+  instead of borrowing the name of whatever item lies beneath. A component is named by the nearest
+  type that is not one of Qt's own (`Item`, `Rectangle`, the layouts, the effects): the tree carries
+  no flag for a shell type, and a Qt type missing from that list only names the area less
+  precisely.
 - **A recording is a separate kind of frame.** `record NAME [@Type]` starts wf-recorder on the
   slot's output in the background and `stop` ends it with SIGINT, the way `drive record` does, so
   the frames keep their capture timestamps. After `stop` the run reads the tree (for the crop),

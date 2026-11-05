@@ -20,7 +20,8 @@ type Rect = { x: number; y: number; w: number; h: number };
 // A changed area (device px) and the item of the shot's tree that holds it, "" when none of the
 // shell's items does (the cursor, the wallpaper, a client window).
 type Area = Rect & { item: string };
-type Badge = { kind: string; text: string; title?: string };
+// One shot of diff.json, before its areas are named.
+type Diff = { areas: Rect[]; changes: Change[] };
 type Change = { key: string; before: string; after: string };
 type Frame = {
   name: string;
@@ -32,17 +33,14 @@ type Frame = {
   screen: { w: number; h: number };
   scale: number;
   crop: Rect;
-  at: { x: number; y: number };
   checks: string[];
   checkError: boolean;
   failing: Rect[];
   // Items that animate by design (device px): the run neither waits for nor compares them.
   masks: Rect[];
   changed: { areas: Area[]; changes: Change[] } | null;
-  // The labels the builder sized the frame's cell by; the page adds only the notes badge.
-  badges: Badge[];
 };
-type Section = { title: string; at: { x: number; y: number }; w: number; frames: Frame[] };
+type Section = { title: string; frames: Frame[] };
 type NewComment = { shot: string; x: number; y: number; text: string; run: string };
 type Comment = {
   id: string;
@@ -58,21 +56,6 @@ type Comment = {
 // Logical px around a surface: its edge, its focus ring and the chrome its holder draws around it
 // (a popout's title sits above its content item) stay in the frame.
 const PAD = 32;
-// The canvas grid: frames left to right, a row wraps after PER_ROW; sections flow in rows ROW_W wide.
-// Every label is sized in canvas px and scales with its frame, as atlas-board.html draws it: a
-// strip of STRIP_PX type above each frame, a title of TITLE_PX type with its count below it.
-const PER_ROW = 6;
-const ROW_W = 9000;
-const GAP_X = 80;
-const GAP_Y = 140;
-const STRIP_PX = 28;
-const TITLE_PX = 96;
-// Room above a section's first row: the title and its count (1.4 lines each, the count at 0.4 of
-// the title) stand on the first row's strips (1.4 lines plus their padding).
-const TITLE_H = Math.ceil(TITLE_PX * 1.4 * 1.4 + STRIP_PX * 1.8 + 24);
-// A character of the UI sans is at most this share of its size wide, digits and capitals included.
-const CHAR_EM = 0.62;
-const SECTION_GAP = 240;
 // An empty frame for a state no journey shoots yet, when its section has no shot to size it by.
 const TODO_SIZE = { w: 320, h: 240 };
 
@@ -219,13 +202,12 @@ const records = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
 // One shot of diff.json: its changed areas (device px) and its changed tree measures.
-function changedOf(entry: Record<string, unknown>): Frame["changed"] {
+function changedOf(entry: Record<string, unknown>): Diff | null {
   const areas = records(entry.areas).map((a) => ({
     x: num(a.x),
     y: num(a.y),
     w: num(a.w),
     h: num(a.h),
-    item: "",
   }));
   const changes = records(entry.changes).map((c) => ({
     key: str(c.key),
@@ -235,8 +217,8 @@ function changedOf(entry: Record<string, unknown>): Frame["changed"] {
   return areas.length === 0 && changes.length === 0 ? null : { areas, changes };
 }
 
-function diffOf(run: string, prev: string): Map<string, Frame["changed"]> {
-  const diffs = new Map<string, Frame["changed"]>();
+function diffOf(run: string, prev: string): Map<string, Diff> {
+  const diffs = new Map<string, Diff>();
   const path = join(run, `diff-${prev}`, "diff.json");
   if (prev === "" || !existsSync(path)) return diffs;
   const value = readJson(path);
@@ -259,13 +241,11 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   screen: { w: 0, h: 0 },
   scale: 1,
   crop: { x: 0, y: 0, w: 0, h: 0 },
-  at: { x: 0, y: 0 },
   checks: [],
   checkError: false,
   failing: [],
   masks: [],
   changed: null,
-  badges: [],
 });
 
 // The frame's crop: its surface padded by PAD and clipped to the screen, else the whole screen.
@@ -339,47 +319,7 @@ function itemAt(tree: unknown, screen: { w: number; h: number }, px: number, py:
   return best.item;
 }
 
-// "20261101-050202-7ad8" reads "1 Nov 05:02".
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function runLabel(run: string): string {
-  const m = /^\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})/u.exec(run);
-  return m ? `${Number(m[2])} ${MONTHS[Number(m[1]) - 1]} ${m[3]}:${m[4]}` : run;
-}
-
-function badgesOf(frame: Frame, prev: string): Badge[] {
-  const badges: Badge[] = [];
-  if (frame.todo) badges.push({ kind: "todo", text: "todo" });
-  if (frame.changed)
-    badges.push({
-      kind: "changed",
-      text: `changed vs ${runLabel(prev)}`,
-      title: `${frame.changed.areas.length} pixel areas and ${frame.changed.changes.length} tree measures changed against run ${prev}`,
-    });
-  if (frame.checks.length > 0) badges.push({ kind: "fail", text: `FAIL · ${frame.checks.length}` });
-  if (frame.checkError) badges.push({ kind: "fail", text: "check did not run" });
-  if (frame.still === "moving") badges.push({ kind: "moving", text: "never still" });
-  if (frame.masks.length > 0)
-    badges.push({
-      kind: "animates",
-      text: "animates",
-      title: "an item animates by design: the run neither waits for it nor compares it",
-    });
-  return badges;
-}
-
-// The strip's width in canvas px: the state, the journey and the badges on one line, each badge
-// 0.85 of the strip's type with its padding (1.1 em) and the gap before it (0.45 em).
-function labelWidth(frame: Frame): number {
-  const words =
-    frame.state.length + (frame.journey && frame.surface ? frame.journey.length + 2 : 0);
-  const badges = frame.badges.reduce(
-    (sum, b) => sum + b.text.length * CHAR_EM * 0.85 + 1.1 * 0.85 + 0.45,
-    0,
-  );
-  return Math.ceil((words * CHAR_EM + badges) * STRIP_PX);
-}
-
-function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]>): Frame {
+function frameOf(run: string, row: string[], diffs: Map<string, Diff>): Frame {
   const [journey = "", state = "", , still = "", fails = "", surface = "", masks = ""] = row;
   const name = `${journey}--${state}`;
   const tree = readJson(join(run, "trees", `${name}.json`));
@@ -388,9 +328,16 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
   const image = pngSize(join(run, "shots", `${name}.png`));
   const crop = cropOf(tree, screen, surface);
   const scale = screen.w > 0 ? image.w / screen.w : 1;
-  const changed = diffs.get(name) ?? null;
-  for (const a of changed?.areas ?? [])
-    a.item = itemAt(tree.tree, screen, (a.x + a.w / 2) / scale, (a.y + a.h / 2) / scale);
+  const diff = diffs.get(name);
+  const changed = diff
+    ? {
+        ...diff,
+        areas: diff.areas.map((a) => ({
+          ...a,
+          item: itemAt(tree.tree, screen, (a.x + a.w / 2) / scale, (a.y + a.h / 2) / scale),
+        })),
+      }
+    : null;
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
@@ -429,7 +376,7 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   const sectionFor = (title: string): Section => {
     const found = sections.get(title);
     if (found) return found;
-    const made: Section = { title, at: { x: 0, y: 0 }, w: 0, frames: [] };
+    const made: Section = { title, frames: [] };
     sections.set(title, made);
     return made;
   };
@@ -448,46 +395,6 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   return [...sections.values()];
 }
 
-// One section's frames from its own corner: left to right, a row wraps after PER_ROW. Returns the
-// section's size.
-function placeFrames(section: Section): { w: number; h: number } {
-  let rowY = TITLE_H;
-  let w = 0;
-  for (let i = 0; i < section.frames.length; i += PER_ROW) {
-    const row = section.frames.slice(i, i + PER_ROW);
-    let x = 0;
-    for (const frame of row) {
-      frame.at = { x, y: rowY };
-      x += Math.max(frame.crop.w, labelWidth(frame)) + GAP_X;
-    }
-    w = Math.max(w, x - GAP_X);
-    rowY += Math.max(...row.map((f) => f.crop.h)) + GAP_Y;
-  }
-  return { w, h: rowY - GAP_Y };
-}
-
-// The builder places every frame, so the page draws and never lays out. Sections flow left to
-// right like blocks of text, a row of sections wrapping past ROW_W, so the canvas stays near square.
-function layout(sections: Section[]): void {
-  let x = 0;
-  let y = 0;
-  let rowH = 0;
-  for (const section of sections) {
-    const size = placeFrames(section);
-    size.w = Math.max(size.w, Math.ceil(section.title.length * CHAR_EM * TITLE_PX));
-    if (x > 0 && x + size.w > ROW_W) {
-      x = 0;
-      y += rowH + SECTION_GAP;
-      rowH = 0;
-    }
-    section.at = { x, y };
-    section.w = size.w;
-    for (const frame of section.frames) frame.at = { x: frame.at.x + x, y: frame.at.y + y };
-    x += size.w + SECTION_GAP;
-    rowH = Math.max(rowH, size.h);
-  }
-}
-
 function build(run: string, prev: string): void {
   const tsv = join(run, "shots.tsv");
   if (!existsSync(tsv)) fail(`${run} is not an atlas run (no shots.tsv)`);
@@ -498,16 +405,11 @@ function build(run: string, prev: string): void {
     .map((l) => l.split("\t"));
   const frames = rows.map((row) => frameOf(run, row, diffs));
   const sections = sectionsOf(frames, todosOf(join(run, "scenario")));
-  for (const frame of sections.flatMap((section) => section.frames))
-    frame.badges = badgesOf(frame, prev);
-  layout(sections);
   const scenarioDir = dirname(run);
   const board = {
     scenario: basename(scenarioDir),
     run: basename(run),
     prev,
-    prevLabel: prev === "" ? "" : runLabel(prev),
-    runLabel: runLabel(basename(run)),
     desktop: readFileSync(join(run, "desktop-version"), "utf8").trim(),
     sections,
     comments: readComments(scenarioDir).filter((c) => !c.resolved),

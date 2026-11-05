@@ -86,9 +86,9 @@ when the board cannot be built. The page SHALL open from disk with no server and
 ### Requirement: The board reads the same at every zoom
 
 Every name, badge and section title SHALL scale with the canvas like the frames it labels, SHALL
-show whole, never clipped, and SHALL keep its place against its frame at every zoom. The builder
-SHALL give each frame a cell at least as wide as its label, and wheel zoom SHALL stop where the
-whole board fills the window.
+show whole, never clipped, and SHALL keep its place against its frame at every zoom. The board
+SHALL give each frame a cell at least as wide as its label as drawn, and wheel zoom SHALL stop
+where the whole board fills the window.
 
 #### Scenario: A narrow frame keeps its whole label
 
