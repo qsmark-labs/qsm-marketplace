@@ -91,7 +91,7 @@ models.
    projects, the commit gate, the spec-propose and archive change, the simplifier.
 8. **No link between Gherkin and tests** (2026-11-05): the owner writes Gherkin scenarios in a
    task's `documentation` on its details page and `qsm-models gherkin` prints them; no tags, no
-   results, no generation. The change `models-scenarios` is removed (`models-pages` holds the rest).
+   results, no generation. `models-pages` holds the notes.
 
 ## Critiques
 

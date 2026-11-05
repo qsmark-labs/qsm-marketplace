@@ -46,8 +46,8 @@ results, no generation in either direction), the PR pictures (`models-pr-picture
 3. **bpmn-js and bpmn-js-differ 3.2.0** (2026-11-04): the libraries to start from.
 4. **Gherkin notes, nothing more** (2026-11-05): the owner writes scenarios on a business task's
    details page; they live in the task's `documentation` and `qsm-models gherkin` prints them. "No
-   Gherkin-to-tests link at all": no tags, no results, no generation. This replaces the change
-   `models-scenarios`, which is removed.
+   Gherkin-to-tests link at all": no tags, no results, no generation. There is no change for
+   scenario results.
 5. **The first build comes before these pages** (2026-11-05): `strict-visual-models` writes static
    pages first; these pages replace them as kinds of qsm-docs, with edit mode.
 
