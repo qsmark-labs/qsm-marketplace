@@ -1,5 +1,5 @@
 // qsm-docs' function-hooks module: the noun, `$.docs`; the line that tells the agent of a proposal
-// the owner saved in the browser; and the guard that denies `qsm-docs delete` to the agent. The
+// the owner saved in the browser; and the guard that denies the agent a snapshot delete. The
 // open proposals are the `list --open` verb's; the guard's decision is deleteRefusal in lib/.
 
 import type { On } from "claude-code";
