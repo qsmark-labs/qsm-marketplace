@@ -3,9 +3,11 @@
 // qsm-models: lint, lay out, render, walk and check the project's BPMN and C4 graphs, and write
 // the pages that show them.
 
-import { runCli } from "../../../lib/cli-base.ts";
+import { optionalString, runCli } from "../../../lib/cli-base.ts";
 import { doctorVerdict, fail } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
+import { MODELS_DIR } from "../lib/graphs.ts";
+import { lintPath } from "../lib/lint.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 
 const manifest = parseManifest(manifestJson, "qsm-models/qsm.json");
@@ -16,7 +18,7 @@ if (import.meta.main) {
   process.exit(
     await runCli(manifest, "qsm-models", {
       doctor: () => doctorVerdict("qsm-models", []),
-      lint: notBuilt("lint"),
+      lint: (call) => lintPath(optionalString(call, "path") ?? MODELS_DIR),
       layout: notBuilt("layout"),
       render: notBuilt("render"),
       paths: notBuilt("paths"),

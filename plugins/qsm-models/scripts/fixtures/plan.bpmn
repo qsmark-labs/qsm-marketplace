@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="plan_defs" targetNamespace="https://github.com/qsmark-labs/qsm-marketplace">
+  <bpmn:collaboration id="plan_collab">
+    <bpmn:participant id="plan_pool" name="2 Plan the feature" processRef="plan_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="plan_process" name="2 Plan the feature" isExecutable="false">
+    <bpmn:laneSet id="laneset">
+      <bpmn:lane id="lane_0" name="Owner">
+        <bpmn:flowNodeRef>answer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>verdict</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="lane_1" name="Agent">
+        <bpmn:flowNodeRef>filed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>context</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>intent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>askJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ask</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>models</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>specs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>commit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>close</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>dropped</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="filed" name="Feature request filed">
+      <bpmn:outgoing>f_filed_context</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="context" name="2.1 Gather the context">
+      <bpmn:incoming>f_filed_context</bpmn:incoming>
+      <bpmn:outgoing>f_context_intent</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="intent" name="2.2 Write the intent">
+      <bpmn:incoming>f_context_intent</bpmn:incoming>
+      <bpmn:outgoing>f_intent_askJoin</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="askJoin">
+      <bpmn:incoming>f_intent_askJoin</bpmn:incoming>
+      <bpmn:incoming>f_verdict_askJoin</bpmn:incoming>
+      <bpmn:outgoing>f_askJoin_ask</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="ask" name="2.3 Ask the open questions">
+      <bpmn:incoming>f_askJoin_ask</bpmn:incoming>
+      <bpmn:outgoing>f_ask_answer</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="answer" name="2.4 Answer the questions">
+      <bpmn:incoming>f_ask_answer</bpmn:incoming>
+      <bpmn:outgoing>f_answer_models</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:callActivity id="models" name="2.5 Draw the models" calledElement="model_gate_process">
+      <bpmn:incoming>f_answer_models</bpmn:incoming>
+      <bpmn:outgoing>f_models_specs</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:task id="specs" name="2.6 Write the specs">
+      <bpmn:incoming>f_models_specs</bpmn:incoming>
+      <bpmn:outgoing>f_specs_read</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="read" name="2.7 Read the plan">
+      <bpmn:incoming>f_specs_read</bpmn:incoming>
+      <bpmn:outgoing>f_read_verdict</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="verdict" name="Plan approved?">
+      <bpmn:incoming>f_read_verdict</bpmn:incoming>
+      <bpmn:outgoing>f_verdict_commit</bpmn:outgoing>
+      <bpmn:outgoing>f_verdict_askJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_verdict_close</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="commit" name="2.8 Commit the change">
+      <bpmn:incoming>f_verdict_commit</bpmn:incoming>
+      <bpmn:outgoing>f_commit_update</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="update" name="2.9 Update the feature issue">
+      <bpmn:incoming>f_commit_update</bpmn:incoming>
+      <bpmn:outgoing>f_update_approved</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="approved" name="Plan approved">
+      <bpmn:incoming>f_update_approved</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="close" name="2.10 Close the feature as not planned">
+      <bpmn:incoming>f_verdict_close</bpmn:incoming>
+      <bpmn:outgoing>f_close_dropped</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="dropped" name="Feature not planned">
+      <bpmn:incoming>f_close_dropped</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_filed_context" sourceRef="filed" targetRef="context" />
+    <bpmn:sequenceFlow id="f_context_intent" sourceRef="context" targetRef="intent" />
+    <bpmn:sequenceFlow id="f_intent_askJoin" sourceRef="intent" targetRef="askJoin" />
+    <bpmn:sequenceFlow id="f_askJoin_ask" sourceRef="askJoin" targetRef="ask" />
+    <bpmn:sequenceFlow id="f_ask_answer" sourceRef="ask" targetRef="answer" />
+    <bpmn:sequenceFlow id="f_answer_models" sourceRef="answer" targetRef="models" />
+    <bpmn:sequenceFlow id="f_models_specs" sourceRef="models" targetRef="specs" />
+    <bpmn:sequenceFlow id="f_specs_read" sourceRef="specs" targetRef="read" />
+    <bpmn:sequenceFlow id="f_read_verdict" sourceRef="read" targetRef="verdict" />
+    <bpmn:sequenceFlow id="f_verdict_commit" name="yes" sourceRef="verdict" targetRef="commit" />
+    <bpmn:sequenceFlow id="f_commit_update" sourceRef="commit" targetRef="update" />
+    <bpmn:sequenceFlow id="f_update_approved" sourceRef="update" targetRef="approved" />
+    <bpmn:sequenceFlow id="f_verdict_askJoin" name="changes" sourceRef="verdict" targetRef="askJoin" />
+    <bpmn:sequenceFlow id="f_verdict_close" name="dropped" sourceRef="verdict" targetRef="close" />
+    <bpmn:sequenceFlow id="f_close_dropped" sourceRef="close" targetRef="dropped" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_plan_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_plan_collab" bpmnElement="plan_collab">
+      <bpmndi:BPMNShape id="BPMNShape_plan_pool" bpmnElement="plan_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="3215.7000000000003" height="832" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_0" bpmnElement="lane_0" bioc:stroke="#08427b" bioc:fill="#c3d4e7" color:border-color="#08427b" color:background-color="#c3d4e7" isHorizontal="true">
+        <dc:Bounds x="110" y="80" width="3185.7000000000003" height="312" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_1" bpmnElement="lane_1" bioc:stroke="#6b4fbb" bioc:fill="#dcd3f2" color:border-color="#6b4fbb" color:background-color="#dcd3f2" isHorizontal="true">
+        <dc:Bounds x="110" y="392" width="3185.7000000000003" height="520" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_filed" bpmnElement="filed" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:border-color="#6b4fbb" color:background-color="#ffffff">
+        <dc:Bounds x="180.8" y="530" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="171.97500000000002" y="584.2" width="55" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_context" bpmnElement="context" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="375.6" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_intent" bpmnElement="intent" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="645.6" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_askJoin" bpmnElement="askJoin" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:border-color="#6b4fbb" color:background-color="#ffffff" isMarkerVisible="true">
+        <dc:Bounds x="906.85" y="523" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_ask" bpmnElement="ask" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="1118.1000000000001" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_answer" bpmnElement="answer" bioc:stroke="#05284a" bioc:fill="#08427b" color:border-color="#05284a" color:background-color="#08427b">
+        <dc:Bounds x="1388.1000000000001" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_models" bpmnElement="models" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="1658.1000000000001" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_specs" bpmnElement="specs" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="1928.1000000000001" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_read" bpmnElement="read" bioc:stroke="#05284a" bioc:fill="#08427b" color:border-color="#05284a" color:background-color="#08427b">
+        <dc:Bounds x="2198.1000000000004" y="196" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_verdict" bpmnElement="verdict" bioc:stroke="#08427b" bioc:fill="#ffffff" color:border-color="#08427b" color:background-color="#ffffff" isMarkerVisible="true">
+        <dc:Bounds x="2459.3500000000004" y="211" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2377.275" y="168.7" width="67" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_commit" bpmnElement="commit" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="2670.6000000000004" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_update" bpmnElement="update" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="2940.6000000000004" y="508" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_approved" bpmnElement="approved" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:border-color="#6b4fbb" color:background-color="#ffffff">
+        <dc:Bounds x="3199.4" y="530" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3187.4" y="582.1" width="60" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_close" bpmnElement="close" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:border-color="#402f70" color:background-color="#6b4fbb">
+        <dc:Bounds x="2670.6000000000004" y="716" width="100" height="80" /><bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_dropped" bpmnElement="dropped" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:border-color="#6b4fbb" color:background-color="#ffffff">
+        <dc:Bounds x="2972.6000000000004" y="738" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2950.6000000000004" y="790.1" width="80" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_filed_context" bpmnElement="f_filed_context" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="216.8" y="548" /><di:waypoint x="375.6" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_context_intent" bpmnElement="f_context_intent" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="475.6" y="548" /><di:waypoint x="645.6" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_intent_askJoin" bpmnElement="f_intent_askJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="745.6" y="548" /><di:waypoint x="906.85" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_askJoin_ask" bpmnElement="f_askJoin_ask" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="956.85" y="548" /><di:waypoint x="1118.1000000000001" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_answer" bpmnElement="f_ask_answer" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1218.1000000000001" y="548" /><di:waypoint x="1438.1000000000001" y="548" /><di:waypoint x="1438.1000000000001" y="276" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_answer_models" bpmnElement="f_answer_models" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="1488.1000000000001" y="236" /><di:waypoint x="1708.1000000000001" y="236" /><di:waypoint x="1708.1000000000001" y="508" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_models_specs" bpmnElement="f_models_specs" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="1758.1000000000001" y="548" /><di:waypoint x="1928.1000000000001" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_specs_read" bpmnElement="f_specs_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2028.1000000000001" y="548" /><di:waypoint x="2248.1000000000004" y="548" /><di:waypoint x="2248.1000000000004" y="276" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_read_verdict" bpmnElement="f_read_verdict" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2298.1000000000004" y="236" /><di:waypoint x="2459.3500000000004" y="236" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_commit" bpmnElement="f_verdict_commit" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2509.3500000000004" y="236" /><di:waypoint x="2720.6000000000004" y="236" /><di:waypoint x="2720.6000000000004" y="508" /><bpmndi:BPMNLabel><dc:Bounds x="2607.525" y="209.5" width="25" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_update" bpmnElement="f_commit_update" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2770.6000000000004" y="548" /><di:waypoint x="2940.6000000000004" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_update_approved" bpmnElement="f_update_approved" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="3040.6000000000004" y="548" /><di:waypoint x="3199.4" y="548" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_close" bpmnElement="f_verdict_close" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2484.3500000000004" y="261" /><di:waypoint x="2484.3500000000004" y="756" /><di:waypoint x="2670.6000000000004" y="756" /><bpmndi:BPMNLabel><dc:Bounds x="2500.375" y="674.9" width="53" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_close_dropped" bpmnElement="f_close_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb"><di:waypoint x="2770.6000000000004" y="756" /><di:waypoint x="2972.6000000000004" y="756" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_askJoin" bpmnElement="f_verdict_askJoin" bioc:stroke="#08427b" color:border-color="#08427b"><di:waypoint x="2484.3500000000004" y="261" /><di:waypoint x="2484.3500000000004" y="606.5" /><di:waypoint x="931.85" y="606.5" /><di:waypoint x="931.85" y="573" /><bpmndi:BPMNLabel><dc:Bounds x="1682.275" y="619" width="53" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
