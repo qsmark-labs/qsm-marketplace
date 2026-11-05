@@ -39,8 +39,9 @@ task list into the change.
 
 ### Requirement: The flow runs from business request to a closed epic
 
-**Reason**: The flow is now the feature process of `models/flow.bpmn`, from a form to the owner's
-merge of the feature pull request; there is no epic and no per-task spec change.
+**Reason**: The flow is now the feature process of `feature_flow_process` of
+`models/marketplace.bpmn`, from a form to the owner's merge of the feature pull request; there is no
+epic and no per-task spec change.
 
 **Migration**: "Planning turns a feature request into a planned feature" and "Splitting a feature
 is a session with the owner" here, and the qsm-marketplace requirement "A feature moves from

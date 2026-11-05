@@ -1,10 +1,10 @@
 ## Context
 
 The structure is the qsm-models container of the marketplace's one C4 model,
-`../feature-flow/models/marketplace.c4`; the behaviour `models/qsm-models/model-gate.bpmn`,
-`simplify.bpmn` and the process it calls, `try-rewrite.bpmn`, which move into the one graph with the
-rest (decision 7). Every number below was measured on 2026-11-01 (node 26.11, bun 1.4.3) with a
-prototype of each piece, none of it in the tree, unless it says 2026-11-04.
+`models/marketplace.c4`; the behaviour `model_gate_process`, `simplify_process` and the process it
+calls, `try_rewrite_process`, of the one graph `models/marketplace.bpmn` (decision 7). Every number
+below was measured on 2026-11-01 (node 26.11, bun 1.4.3) with a prototype of each piece, none of it
+in the tree, unless it says 2026-11-04.
 
 ## Decisions
 
@@ -147,7 +147,10 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 
     The C4 source `feature-flow/models/marketplace.c4` becomes `models/marketplace.c4`. A path's
     signature is what QA observes (decision 15), so `paths --compare` proves the behaviour kept, and
-    every scenario that cites a changed id is rewritten in the same commit.
+    every scenario that cites a changed id is rewritten in the same commit. Of an id two files
+    share, the file later in this list keeps it and the earlier one prefixes its own with its
+    process id (2026-11-05): prefixing the later one changed the ids of edit-graph's paths, so its
+    greedy cover picked two other paths than the two its scenarios cite, and `paths --specs` failed.
 21. **The owner's style departs from the standard in one place.** Small arrows in the middle of long
     flows are not BPMN notation, which has one arrowhead at the target (notebook, Trisotech,
     Silver); the owner keeps them because the picture reads better, and they change no meaning.

@@ -1,11 +1,11 @@
-![An edit on a page becomes a proposal, BPMN](models/qsm-docs/proposal.svg)
+![An edit on a page becomes a proposal, BPMN](../../../models/marketplace.docs_proposal_process.svg)
 
-![A snapshot is deleted by the owner only, BPMN](models/qsm-docs/delete.svg)
+![A snapshot is deleted by the owner only, BPMN](../../../models/marketplace.docs_delete_process.svg)
 
-![qsm-docs, C4 components](../feature-flow/models/marketplace.components-docs.drawio.svg)
+![qsm-docs, C4 components](../../../models/marketplace.components-docs.drawio.svg)
 
 qsm-docs is one container of the marketplace's one C4 model, in
-`../feature-flow/models/marketplace.c4`.
+`models/marketplace.c4`.
 
 ## Why
 

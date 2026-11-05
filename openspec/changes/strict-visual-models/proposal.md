@@ -1,17 +1,17 @@
-![A change to a graph is checked, BPMN](models/qsm-models/model-gate.svg)
+![A change to a graph is checked, BPMN](../../../models/marketplace.model_gate_process.svg)
 
-![A model simplified on request, BPMN](models/qsm-models/simplify.svg)
+![A model simplified on request, BPMN](../../../models/marketplace.simplify_process.svg)
 
-![One try of the simplify pass, BPMN](models/qsm-models/try-rewrite.svg)
+![One try of the simplify pass, BPMN](../../../models/marketplace.try_rewrite_process.svg)
 
-![qsm-models, C4 components, who uses what](../feature-flow/models/marketplace.components-models-uses.drawio.svg)
+![qsm-models, C4 components, who uses what](../../../models/marketplace.components-models-uses.drawio.svg)
 
-![qsm-models, C4 components, what depends on what](../feature-flow/models/marketplace.components-models-depends.drawio.svg)
+![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
 
 qsm-models is one container of the marketplace's one C4 model; its context and container views are
-`../feature-flow/models/marketplace.context.drawio.svg` and the two `containers` views. Each
-`.drawio.svg` opens editable in draw.io. These pictures are still per change, because the one graph
-this change brings does not exist yet; they move into it with the rest.
+`../../../models/marketplace.context.drawio.svg` and the two `containers` views. Each `.drawio.svg`
+opens editable in draw.io. The pictures are the ones `render` writes beside the one graph under the
+root `models/`.
 
 ## Why
 

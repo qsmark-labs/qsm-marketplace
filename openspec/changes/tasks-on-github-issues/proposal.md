@@ -1,5 +1,5 @@
 ![The plugins of the marketplace and what they depend on: only qsm-tasks talks to the task store
-on GitHub](../feature-flow/models/marketplace.containers-depends.drawio.svg)
+on GitHub](../../../models/marketplace.containers-depends.drawio.svg)
 
 ## Why
 

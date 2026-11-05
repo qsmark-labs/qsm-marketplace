@@ -6,14 +6,13 @@ import { join, resolve } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { git, repoWith } from "../../../lib/fixtures/git.ts";
 import { writeIn } from "../../../lib/fixtures/sandbox.ts";
-import { CLI, PLAN } from "./fixtures/plan.ts";
+import { C4, CLI, GRAPH, PLAN } from "./fixtures/plan.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
-const C4 = readFileSync(join(ROOT, "openspec/changes/feature-flow/models/marketplace.c4"), "utf8");
 const DESIGN_PATH = "openspec/changes/strict-visual-models/design.md";
 const DESIGN = readFileSync(join(ROOT, DESIGN_PATH), "utf8");
 const NS = 'xmlns:qsm="https://github.com/qsmark-labs/qsm-marketplace/schema/qsm-models" ';
-const TASK = '<bpmn:task id="context" name="2.1 Gather the context">';
+const TASK = '<bpmn:task id="plan_process_context" name="2.1 Gather the context">';
 /** The planning process alone: its call activity calls a process this file lacks, so it calls
  * itself here. */
 const ALONE = PLAN.replace('calledElement="model_gate_process"', 'calledElement="plan_process"');
@@ -37,6 +36,10 @@ function check(
 }
 
 describe("check", () => {
+  it("passes the marketplace's one graph of each kind", () => {
+    expect(check(GRAPH).exit).toBe(0);
+  });
+
   it("passes a process with no links", () => {
     expect(check(ALONE).exit).toBe(0);
   });
@@ -57,14 +60,14 @@ describe("check", () => {
   it("names the task, the link and the missing C4 element", () => {
     const r = check(linked('qsm:c4="mp.taskz"'));
     expect(r.exit).toBe(3);
-    expect(r.message).toContain('context: qsm:c4="mp.taskz" names no element of');
+    expect(r.message).toContain('plan_process_context: qsm:c4="mp.taskz" names no element of');
   });
 
   it("names the node, the file and a number the design lacks", () => {
     const r = check(linked(`qsm:decision="design:${DESIGN_PATH}#99"`));
     expect(r.exit).toBe(3);
     expect(r.message).toContain(
-      `context: qsm:decision="design:${DESIGN_PATH}#99": ${DESIGN_PATH} has no numbered item 99`,
+      `plan_process_context: qsm:decision="design:${DESIGN_PATH}#99": ${DESIGN_PATH} has no numbered item 99`,
     );
   });
 

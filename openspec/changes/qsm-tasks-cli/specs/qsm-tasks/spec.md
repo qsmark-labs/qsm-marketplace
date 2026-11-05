@@ -268,8 +268,8 @@ An open issue labelled `feedback` with the same title SHALL get the body as a co
 ### Requirement: One Status field and the flow table are data the verbs read
 
 `lib/flow.ts` SHALL hold the Status and Priority options, their definitions per kind, each verb's
-guard and the derivation of the model `models/qsm-tasks/feature-status.bpmn`; no other copy of a
-name SHALL exist in the binary except the Action's file, which `doctor` checks.
+guard and the derivation of the model `feature_status_process` of `models/marketplace.bpmn`; no
+other copy of a name SHALL exist in the binary except the Action's file, which `doctor` checks.
 
 #### Scenario: The Action's copy of a name drifts
 
@@ -354,9 +354,9 @@ name SHALL exist in the binary except the Action's file, which `doctor` checks.
 ### Requirement: A feature's Status is derived, and the Action is its only writer
 
 Apart from `plan` and `qa`, a feature's Status SHALL change only by the rule of
-`models/qsm-tasks/feature-status.bpmn`, applied by `.github/workflows/qsm-tasks.yml` when a
-sub-issue of a Feature opens, closes or reopens. It SHALL use `gh` and the secret `PROJECT_TOKEN`,
-and serialise two events under one parent.
+`feature_status_process` of `models/marketplace.bpmn`, applied by `.github/workflows/qsm-tasks.yml`
+when a sub-issue of a Feature opens, closes or reopens. It SHALL use `gh` and the secret
+`PROJECT_TOKEN`, and serialise two events under one parent.
 
 #### Scenario: The split starts development (path p-e4f7c4)
 

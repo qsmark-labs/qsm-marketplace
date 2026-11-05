@@ -156,14 +156,14 @@ The page shell SHALL offer edit mode on every kind. Saving SHALL create a new sn
 kind, or of the kind the kind's page names, whose parent is the snapshot that was open, marked as
 made by a page. The snapshot that was open SHALL not change.
 
-#### Scenario: The owner saves an edit (path p-07f983)
+#### Scenario: The owner saves an edit (path p-9186ca)
 
 - **WHEN** the owner opens a document, edits it in edit mode and saves, and the agent, told of the
   proposal, reads it and its diff and finds it does not apply cleanly
 - **THEN** the proposal is a new snapshot whose parent is the one he opened, the agent tells him
   what blocks it, and the proposal stays open in `qsm-docs list --open`
 
-#### Scenario: The agent applies a proposal (path p-7413b6)
+#### Scenario: The agent applies a proposal (path p-3247dd)
 
 - **WHEN** the agent reads a proposal and its diff and it applies cleanly
 - **THEN** the agent creates the applied snapshot with `--parent <proposal>`, and the proposal
@@ -176,13 +176,13 @@ and on each prompt, one line per proposal created since the last line of this se
 nothing when there is none. It SHALL keep what it already named in the state directory per session
 and remove that file at session end.
 
-#### Scenario: Saved in the browser, named on the next prompt (path p-7413b6)
+#### Scenario: Saved in the browser, named on the next prompt (path p-3247dd)
 
 - **WHEN** the owner saves a proposal in the browser while a session of that project is open
 - **THEN** the agent's next prompt carries one line naming the proposal's id and kind, and the
   prompt after it carries none
 
-#### Scenario: A session starts with an open proposal (path p-07f983)
+#### Scenario: A session starts with an open proposal (path p-9186ca)
 
 - **WHEN** a proposal is open and a new session of that project starts
 - **THEN** the session's start carries one line naming it

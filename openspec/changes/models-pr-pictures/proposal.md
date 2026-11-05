@@ -1,8 +1,8 @@
-![A PR shows what its change does to the graphs, BPMN](models/qsm-models/pr-pictures.svg)
+![A PR shows what its change does to the graphs, BPMN](../../../models/marketplace.pr_pictures_process.svg)
 
-![qsm-models, C4 components, what depends on what](../feature-flow/models/marketplace.components-models-depends.drawio.svg)
+![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
 
-The Subgraph component of qsm-models in `../feature-flow/models/marketplace.c4` is this change.
+The Subgraph component of qsm-models in `models/marketplace.c4` is this change.
 
 ## Why
 

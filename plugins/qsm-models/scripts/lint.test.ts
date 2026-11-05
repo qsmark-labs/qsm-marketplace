@@ -1,12 +1,11 @@
 // qsm-models lint through its real surface: a graph on disk in, one envelope out. Each BPMN fixture
 // is the real planning process with one change that breaks one rule.
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { isRecord } from "../../../lib/outcome.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
-import { CLI, PLAN } from "./fixtures/plan.ts";
+import { C4, CLI, GRAPH, PLAN } from "./fixtures/plan.ts";
 
 interface Found {
   id: string;
@@ -47,7 +46,22 @@ const rulesOf = (fs: Found[], id: string): string[] =>
   fs.filter((f) => f.id === id).map((f) => f.rule);
 
 describe("lint on BPMN", () => {
-  it("passes the real planning process", () => {
+  it("passes the marketplace's one graph", () => {
+    expect(lint(GRAPH, "marketplace.bpmn")).toEqual({ exit: 0, findings: [] });
+  });
+
+  it("refuses a split after a call activity whose answer is no end of the called process", () => {
+    const graph = GRAPH.replace(
+      '<bpmn:endEvent id="plan_process_dropped" name="Feature not planned">',
+      '<bpmn:endEvent id="plan_process_dropped" name="Feature dropped">',
+    );
+    expect(graph).not.toBe(GRAPH);
+    const r = lint(graph, "marketplace.bpmn");
+    expect(r.exit).toBe(3);
+    expect(rulesOf(r.findings, "f_planned_dropped")).toEqual(["split-after-call"]);
+  });
+
+  it("passes the planning process of the marketplace graph", () => {
     expect(lint(PLAN)).toEqual({ exit: 0, findings: [] });
   });
 
@@ -61,22 +75,22 @@ describe("lint on BPMN", () => {
     const r = lint(
       plan(
         [
-          '<bpmn:exclusiveGateway id="verdict" name="Plan approved?">',
-          '<bpmn:complexGateway id="verdict" name="Plan approved?">',
+          '<bpmn:exclusiveGateway id="plan_process_verdict" name="Plan approved?">',
+          '<bpmn:complexGateway id="plan_process_verdict" name="Plan approved?">',
         ],
         [
-          '</bpmn:exclusiveGateway>\n    <bpmn:serviceTask id="commit"',
-          '</bpmn:complexGateway>\n    <bpmn:serviceTask id="commit"',
+          '</bpmn:exclusiveGateway>\n    <bpmn:serviceTask id="plan_process_commit"',
+          '</bpmn:complexGateway>\n    <bpmn:serviceTask id="plan_process_commit"',
         ],
       ),
     );
     expect(r.exit).toBe(3);
-    expect(rulesOf(r.findings, "verdict")).toContain("analytic-only");
+    expect(rulesOf(r.findings, "plan_process_verdict")).toContain("analytic-only");
   });
 
   it("refuses a step in no lane", () => {
-    const r = lint(plan(["        <bpmn:flowNodeRef>close</bpmn:flowNodeRef>\n", ""]));
-    expect(rulesOf(r.findings, "close")).toContain("lanes-hold-every-node");
+    const r = lint(plan(["        <bpmn:flowNodeRef>plan_process_close</bpmn:flowNodeRef>\n", ""]));
+    expect(rulesOf(r.findings, "plan_process_close")).toContain("lanes-hold-every-node");
   });
 
   it("passes a lane that names a business role no C4 element has", () => {
@@ -106,11 +120,11 @@ describe("lint on BPMN", () => {
         ],
         [
           '<bpmn:sequenceFlow id="f_filed_context"',
-          '<bpmn:sequenceFlow id="f_x" sourceRef="context" targetRef="intent" />\n    <bpmn:sequenceFlow id="f_filed_context"',
+          '<bpmn:sequenceFlow id="f_x" sourceRef="plan_process_context" targetRef="intent" />\n    <bpmn:sequenceFlow id="f_filed_context"',
         ],
       ),
     );
-    expect(rulesOf(r.findings, "context")).toContain("one-flow-out");
+    expect(rulesOf(r.findings, "plan_process_context")).toContain("one-flow-out");
     expect(rulesOf(r.findings, "intent")).toContain("one-flow-in");
     // bpmnlint's fake-join is a warning in its recommended set, and an error here
     expect(rulesOf(r.findings, "intent")).toContain("fake-join");
@@ -119,11 +133,11 @@ describe("lint on BPMN", () => {
   it("refuses an end event without a name beside another end", () => {
     const r = lint(
       plan([
-        '<bpmn:endEvent id="dropped" name="Feature not planned">',
-        '<bpmn:endEvent id="dropped">',
+        '<bpmn:endEvent id="plan_process_dropped" name="Feature not planned">',
+        '<bpmn:endEvent id="plan_process_dropped">',
       ]),
     );
-    expect(rulesOf(r.findings, "dropped")).toContain("end-events-named");
+    expect(rulesOf(r.findings, "plan_process_dropped")).toContain("end-events-named");
   });
 
   it("refuses a level of eleven activities, saying to move steps into a call activity", () => {
@@ -135,7 +149,7 @@ describe("lint on BPMN", () => {
         ],
         [
           '<bpmn:sequenceFlow id="f_filed_context"',
-          '<bpmn:sequenceFlow id="f_extra" sourceRef="filed" targetRef="extra" /><bpmn:sequenceFlow id="f_extra2" sourceRef="extra" targetRef="intent" />\n    <bpmn:sequenceFlow id="f_filed_context"',
+          '<bpmn:sequenceFlow id="f_extra" sourceRef="plan_process_filed" targetRef="extra" /><bpmn:sequenceFlow id="f_extra2" sourceRef="extra" targetRef="intent" />\n    <bpmn:sequenceFlow id="f_filed_context"',
         ],
       ),
     );
@@ -147,31 +161,29 @@ describe("lint on BPMN", () => {
   it("refuses a step with no way to an end", () => {
     const r = lint(
       plan([
-        '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="close" targetRef="dropped" />',
-        '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="close" targetRef="close" />',
+        '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="plan_process_close" targetRef="plan_process_dropped" />',
+        '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="plan_process_close" targetRef="plan_process_close" />',
       ]),
     );
-    expect(rulesOf(r.findings, "close")).toContain("no-dead-end");
+    expect(rulesOf(r.findings, "plan_process_close")).toContain("no-dead-end");
   });
 
   it("refuses a step named after a command", () => {
     const r = lint(plan(['name="2.1 Gather the context"', 'name="Run `qsm-tasks close`"']));
-    expect(rulesOf(r.findings, "context")).toContain("no-code-in-name");
+    expect(rulesOf(r.findings, "plan_process_context")).toContain("no-code-in-name");
   });
 
   it("keeps bpmnlint's recommended rules: a step without a name", () => {
     const r = lint(
-      plan(['<bpmn:task id="context" name="2.1 Gather the context">', '<bpmn:task id="context">']),
+      plan([
+        '<bpmn:task id="plan_process_context" name="2.1 Gather the context">',
+        '<bpmn:task id="plan_process_context">',
+      ]),
     );
     expect(r.exit).toBe(3);
-    expect(rulesOf(r.findings, "context")).toContain("label-required");
+    expect(rulesOf(r.findings, "plan_process_context")).toContain("label-required");
   });
 });
-
-const C4 = readFileSync(
-  resolve(import.meta.dir, "../../../openspec/changes/feature-flow/models/marketplace.c4"),
-  "utf8",
-);
 
 /** The marketplace's C4 source with `from` replaced by `to`, which must be there. */
 function c4(from: string, to: string): string {

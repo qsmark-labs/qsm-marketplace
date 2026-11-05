@@ -1,8 +1,9 @@
 ## Context
 
-The behaviour is `models/flow.bpmn` and the spec, the structure `models/marketplace.c4`; this file
-holds the decisions. Reused as they are: grilling, the worker agents, received-findings,
-review-threads, `/simplify`, the review skill. Nothing in `.github/` but `ci.yml` exists.
+The behaviour is `feature_flow_process` of `models/marketplace.bpmn` and the spec, the structure
+`models/marketplace.c4`; this file holds the decisions. Reused as they are: grilling, the worker
+agents, received-findings, review-threads, `/simplify`, the review skill. Nothing in `.github/` but
+`ci.yml` exists.
 
 ## Decisions
 

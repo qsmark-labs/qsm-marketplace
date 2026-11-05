@@ -2,19 +2,19 @@
 
 ### Requirement: A feature moves from request to main along one process
 
-A feature SHALL move along `models/flow.bpmn`, the agreed steps 1 to 9: request, planning, the
-split, every open task built, main merged into `feature/<n>`, QA, and landing on main. An activity
-SHALL carry its step number, and N.k when step N has several activities in one diagram. A step of
-several actions SHALL be a call activity with its own diagram. Every cover path of every diagram
-SHALL have a scenario here.
+A feature SHALL move along `feature_flow_process` of `models/marketplace.bpmn`, the agreed steps 1
+to 9: request, planning, the split, every open task built, main merged into `feature/<n>`, QA, and
+landing on main. An activity SHALL carry its step number, and N.k when step N has several activities
+in one diagram. A step of several actions SHALL be a call activity with its own diagram. Every cover
+path of every diagram SHALL have a scenario here.
 
-#### Scenario: Main moved and the update conflicts (path p-5b3d94)
+#### Scenario: Main moved and the update conflicts (path p-b4b42a)
 
 - **WHEN** every open task is built and merging main into `feature/<n>` conflicts
 - **THEN** a conflict task is filed under the feature and built like any task, main is merged
   again, and QA starts only after a clean merge
 
-#### Scenario: QA finds a contract bug, then passes (path p-ca848b)
+#### Scenario: QA finds a contract bug, then passes (path p-c73391)
 
 - **WHEN** QA finds that a cover scenario of the feature does not hold
 - **THEN** a fix task is filed per finding and built like any task; after the next clean merge of
@@ -25,7 +25,7 @@ SHALL have a scenario here.
 - **WHEN** the owner answers "Plan approved?" with no
 - **THEN** the feature ends as not planned and no branch reaches GitHub
 
-#### Scenario: The owner asks for changes on the feature PR (path p-a0b9b1)
+#### Scenario: The owner asks for changes on the feature PR (path p-52253d)
 
 - **WHEN** QA passed and the owner does not accept the feature pull request
 - **THEN** the changes asked become fix tasks, built like any task, then main is merged, QA runs,
@@ -33,27 +33,27 @@ SHALL have a scenario here.
 
 ### Requirement: Planning ends in the owner's yes
 
-Step 2 SHALL follow `models/plan.bpmn`: the agent gathers the context, writes the intent, asks the
-open questions, draws the models and writes the specs; the owner reads the plan. The session works
-in its own worktree on the local branch `feature/<n>`, and the change is committed there only after
-the owner's yes. No pull request is opened in this step.
+Step 2 SHALL follow `plan_process` of `models/marketplace.bpmn`: the agent gathers the context,
+writes the intent, asks the open questions, draws the models and writes the specs; the owner reads
+the plan. The session works in its own worktree on the local branch `feature/<n>`, and the change is
+committed there only after the owner's yes. No pull request is opened in this step.
 
-#### Scenario: The owner asks for changes, then approves (path p-60dd67)
+#### Scenario: The owner asks for changes, then approves (path p-3e8866)
 
 - **WHEN** the owner reads the plan and asks for changes
 - **THEN** the agent asks the open questions again and revises; after the owner's yes the change is
   committed onto `feature/<n>` and the feature issue is updated
 
-#### Scenario: The owner drops the feature (path p-3f29e4)
+#### Scenario: The owner drops the feature (path p-3ddc2c)
 
 - **WHEN** the owner reads the plan and drops it
 - **THEN** the agent closes the feature as not planned and nothing is committed
 
 ### Requirement: The split pushes the branch and files the tasks
 
-Step 3 SHALL follow `models/split.bpmn`: the agent pushes `feature/<n>`, cuts the feature into
-tasks a person can review, with fakes and mocks so each task leaves working code, and files them
-under the feature once the owner agrees.
+Step 3 SHALL follow `split_process` of `models/marketplace.bpmn`: the agent pushes `feature/<n>`,
+cuts the feature into tasks a person can review, with fakes and mocks so each task leaves working
+code, and files them under the feature once the owner agrees.
 
 #### Scenario: The owner asks for a different cut (path p-dd7cc5)
 
@@ -62,18 +62,19 @@ under the feature once the owner agrees.
 
 ### Requirement: Every open task is built, reviewed and merged
 
-Steps 4 to 6 SHALL follow `models/build-task.bpmn` once per open task, and step 4 SHALL follow
-`models/consume-task.bpmn`: claim, gather the context, draw the whiteboard, write the code,
-simplify, review the change, open the pull request into `feature/<n>`. The review agent reviews the
-pull request, the owner reads and merges it, and the Action closes the task it names.
+Steps 4 to 6 SHALL follow `build_task_process` of `models/marketplace.bpmn` once per open task, and
+step 4 SHALL follow `consume_task_process` of `models/marketplace.bpmn`: claim, gather the context,
+draw the whiteboard, write the code, simplify, review the change, open the pull request into
+`feature/<n>`. The review agent reviews the pull request, the owner reads and merges it, and the
+Action closes the task it names.
 
-#### Scenario: One review finding (path p-0a25f2)
+#### Scenario: One review finding (path p-6578c1)
 
 - **WHEN** the review agent finds something in the task pull request
 - **THEN** the agent fixes it, the review runs again and finds nothing, the owner reads and merges,
   and the task is closed
 
-#### Scenario: The owner asks for changes on a task PR (path p-8e0eff)
+#### Scenario: The owner asks for changes on a task PR (path p-68713a)
 
 - **WHEN** the review finds nothing and the owner does not accept the task pull request
 - **THEN** the agent fixes the owner's comments, the review agent reviews again, and the owner reads
@@ -87,8 +88,9 @@ pull request, the owner reads and merges it, and the Action closes the task it n
 
 ### Requirement: The owner lands the feature on main
 
-Step 9 SHALL follow `models/land.bpmn`: the agent opens the feature pull request, the owner reads
-it, and only after the owner accepts does the agent archive the change and the owner merge.
+Step 9 SHALL follow `land_process` of `models/marketplace.bpmn`: the agent opens the feature pull
+request, the owner reads it, and only after the owner accepts does the agent archive the change and
+the owner merge.
 
 #### Scenario: The owner accepts (path p-de66ab)
 

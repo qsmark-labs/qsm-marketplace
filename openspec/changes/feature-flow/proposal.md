@@ -1,20 +1,20 @@
-![The feature flow, BPMN level 1](models/flow.svg)
+![The feature flow, BPMN level 1](../../../models/marketplace.feature_flow_process.svg)
 
-![Step 2, planning, BPMN level 2](models/plan.svg)
+![Step 2, planning, BPMN level 2](../../../models/marketplace.plan_process.svg)
 
-![Step 3, the split, BPMN level 2](models/split.svg)
+![Step 3, the split, BPMN level 2](../../../models/marketplace.split_process.svg)
 
-![Steps 4 to 6, every open task built, BPMN level 2](models/build-task.svg)
+![Steps 4 to 6, every open task built, BPMN level 2](../../../models/marketplace.build_task_process.svg)
 
-![Step 4, one task becomes a pull request, BPMN level 3](models/consume-task.svg)
+![Step 4, one task becomes a pull request, BPMN level 3](../../../models/marketplace.consume_task_process.svg)
 
-![Step 9, the feature lands on main, BPMN level 2](models/land.svg)
+![Step 9, the feature lands on main, BPMN level 2](../../../models/marketplace.land_process.svg)
 
-![C4 context](models/marketplace.context.drawio.svg)
+![C4 context](../../../models/marketplace.context.drawio.svg)
 
-![C4 containers, who uses what](models/marketplace.containers-uses.drawio.svg)
+![C4 containers, who uses what](../../../models/marketplace.containers-uses.drawio.svg)
 
-![C4 containers, what depends on what](models/marketplace.containers-depends.drawio.svg)
+![C4 containers, what depends on what](../../../models/marketplace.containers-depends.drawio.svg)
 
 Each `.bpmn` opens in bpmn.io; each `.drawio.svg` opens editable in draw.io.
 

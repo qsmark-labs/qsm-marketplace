@@ -1,7 +1,7 @@
 ## Context
 
 The structure is the Kinds and Pages components of qsm-models in
-`../feature-flow/models/marketplace.c4`; the behaviour is `models/qsm-models/edit-graph.bpmn`. It
+`models/marketplace.c4`; the behaviour is `edit_graph_process` of `models/marketplace.bpmn`. It
 stands on the store, the kind manifest and the page shell of change `qsm-docs`, and on the one graph
 and the layout hints of `strict-visual-models`.
 

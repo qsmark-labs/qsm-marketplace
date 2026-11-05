@@ -1,8 +1,8 @@
-![The owner changes a graph on its page, BPMN](models/qsm-models/edit-graph.svg)
+![The owner changes a graph on its page, BPMN](../../../models/marketplace.edit_graph_process.svg)
 
-![qsm-models, C4 components, what depends on what](../feature-flow/models/marketplace.components-models-depends.drawio.svg)
+![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
 
-The Kinds and Pages components of qsm-models in `../feature-flow/models/marketplace.c4` are this
+The Kinds and Pages components of qsm-models in `models/marketplace.c4` are this
 change; the store and page shell are `qsm-docs`.
 
 ## Why

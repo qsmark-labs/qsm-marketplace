@@ -1,9 +1,10 @@
 ## Context
 
-The structure is the qsm-docs container of `../feature-flow/models/marketplace.c4`; the behaviour is
-`models/qsm-docs/proposal.bpmn` and `delete.bpmn`. The lens of qsm-builder already serves one page
-on 127.0.0.1 (`plugins/qsm-builder/lib/lens/serve.ts`) and turns a saved edit into a task; qsm-docs
-takes that server's shape for every kind, and the lens moves onto it as the next piece.
+The structure is the qsm-docs container of `models/marketplace.c4`; the behaviour is
+`docs_proposal_process` of `models/marketplace.bpmn` and `delete.bpmn`. The lens of qsm-builder
+already serves one page on 127.0.0.1 (`plugins/qsm-builder/lib/lens/serve.ts`) and turns a saved
+edit into a task; qsm-docs takes that server's shape for every kind, and the lens moves onto it as
+the next piece.
 
 ## Decisions
 

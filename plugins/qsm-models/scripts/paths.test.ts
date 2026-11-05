@@ -19,20 +19,20 @@ describe("paths", () => {
   it("prints the cover of each process, the same ids on every run", () => {
     const first = paths(PLAN);
     expect(first.exit).toBe(0);
-    expect(ids(first.message)).toEqual(["p-60dd67", "p-3f29e4"]);
-    expect(ids(paths(PLAN).message)).toEqual(["p-60dd67", "p-3f29e4"]);
+    expect(ids(first.message)).toEqual(["p-3e8866", "p-3ddc2c"]);
+    expect(ids(paths(PLAN).message)).toEqual(["p-3e8866", "p-3ddc2c"]);
   });
 
   it("prints every path under --all, each with its signature", () => {
     const run = paths(PLAN, "--all", "--process", "plan");
-    expect(ids(run.message)).toEqual(["p-6b62bb", "p-60dd67", "p-347235", "p-3f29e4"]);
-    expect(run.message).toContain("p-3f29e4  Plan approved? dropped; -> Feature not planned");
+    expect(ids(run.message)).toEqual(["p-9a622c", "p-3e8866", "p-ef7fe5", "p-3ddc2c"]);
+    expect(run.message).toContain("p-3ddc2c  Plan approved? dropped; -> Feature not planned");
   });
 
   it("refuses a step that has no way out and is no end event", () => {
     const xml = PLAN.replace(
-      '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="close" targetRef="dropped" />',
-      '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="dropped" targetRef="dropped" />',
+      '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="plan_process_close" targetRef="plan_process_dropped" />',
+      '<bpmn:sequenceFlow id="f_close_dropped" sourceRef="plan_process_dropped" targetRef="plan_process_dropped" />',
     );
     const run = paths(xml);
     expect(run.exit).toBe(3);
@@ -44,12 +44,12 @@ describe("paths", () => {
     writeIn(
       dir,
       "x/spec.md",
-      "#### Scenario: approved (path p-60dd67)\n#### Scenario: gone (path p-000000)\n",
+      "#### Scenario: approved (path p-3e8866)\n#### Scenario: gone (path p-000000)\n",
     );
     const run = paths(PLAN, "--specs", dir);
     expect(run.exit).toBe(3);
-    expect(run.message).toContain("p-3f29e4 of plan_process");
+    expect(run.message).toContain("p-3ddc2c of plan_process");
     expect(run.message).toContain("p-000000, cited in");
-    expect(run.message).not.toContain("p-60dd67 of plan_process");
+    expect(run.message).not.toContain("p-3e8866 of plan_process");
   });
 });

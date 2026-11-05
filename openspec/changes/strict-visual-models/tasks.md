@@ -14,10 +14,10 @@ open and its first-build part says `(done)` once it is built.
       `plugins/qsm-models/**`. Proof: `bun run validate`. **First build (done):** repo mode only,
       `plugin.json` with no dependency, so no wait on qsm-docs line 1. **Waits:** the dependency on
       qsm-docs, line 13.
-- [ ] 3. `lint` for BPMN: bpmnlint recommended and our rules as a bpmnlint plugin, Method and
+- [x] 3. `lint` for BPMN: bpmnlint recommended and our rules as a bpmnlint plugin, Method and
   Style, the backtick rule. Files: `plugins/qsm-models/lib/bpmn/`. Proof: a `runBin` test on the
   migrated graph and one fixture per rule. Blocked by 1, 2. **First build.**
-- [ ] 4. `lint` for C4: `likec4 validate`, the vocabulary, the level rules, level 3 optional.
+- [x] 4. `lint` for C4: `likec4 validate`, the vocabulary, the level rules, level 3 optional.
   Files: `plugins/qsm-models/lib/c4/`. Proof: a test on `marketplace.c4` and the container-in-a-
   container fixture. Blocked by 1, 2. **First build.**
 - [ ] 5. `layout`, `render` and `render --check` on the one graph, the colour rule, the layout
@@ -35,7 +35,7 @@ open and its first-build part says `(done)` once it is built.
       exist in it: a task to a C4 element, a node to a design decision (`design:<repo path>#<n>`, a
       numbered item) or a commit. **Waits:** the verified commit, the code check against
       dependencies and its generated import rules, links to other projects.
-- [ ] 8. The migration of the marketplace's models into `models/marketplace.bpmn` and
+- [x] 8. The migration of the marketplace's models into `models/marketplace.bpmn` and
       `models/marketplace.c4`: the fourteen BPMN files named in design decision 20 and the C4
       source, the scenarios re-cited, the proposals' links rewritten, the old files deleted. Files:
       `models/`, `openspec/changes/*/models/`, the cited specs. Proof: the signatures of each old

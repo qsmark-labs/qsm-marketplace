@@ -1,9 +1,9 @@
 ## Context
 
-The behaviour is the spec and `models/feature-status.bpmn`; this file holds the decisions. Measured
-on this repository: the default issue types Feature, Task and Bug, a Status field, the built-in
-column Sub-issues progress, eight built-in workflows on, and `gh` 2.102.1 JSON with `parent`,
-`subIssues`, `blockedBy`, `blocking` and `issueType`.
+The behaviour is the spec and `feature_status_process` of `models/marketplace.bpmn`; this file holds
+the decisions. Measured on this repository: the default issue types Feature, Task and Bug, a Status
+field, the built-in column Sub-issues progress, eight built-in workflows on, and `gh` 2.102.1 JSON
+with `parent`, `subIssues`, `blockedBy`, `blocking` and `issueType`.
 
 ## Decisions
 
