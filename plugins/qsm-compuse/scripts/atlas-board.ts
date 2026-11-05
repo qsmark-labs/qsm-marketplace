@@ -567,9 +567,23 @@ function serve(scenarioDir: string): void {
   // be lost. The kernel drops the lock when this process exits.
   if (!tryFlock(openSync(join(scenarioDir, "comments.lock"), "a")))
     fail(`another drive atlas review already serves ${scenarioDir}`);
-  const server = Bun.serve({
+  const server = listen(scenarioDir, 40400);
+  process.stdout.write(`http://127.0.0.1:${server.port}/\n`);
+}
+
+// A fixed port, so the board's address survives a restart of the server.
+function listen(scenarioDir: string, port: number) {
+  try {
+    return boardServer(scenarioDir, port);
+  } catch {
+    return fail(`port ${port} is taken: stop whatever listens there (ss -ltnp 'sport = :${port}')`);
+  }
+}
+
+function boardServer(scenarioDir: string, port: number) {
+  return Bun.serve({
     hostname: "127.0.0.1",
-    port: 0,
+    port,
     routes: {
       "/": () => Response.redirect(`/${latestRun(scenarioDir)}/board.html`, 302),
       "/comments": {
@@ -590,7 +604,6 @@ function serve(scenarioDir: string): void {
     },
     fetch: (request) => fileRoute(scenarioDir, new URL(request.url).pathname),
   });
-  process.stdout.write(`http://127.0.0.1:${server.port}/\n`);
 }
 
 const [verb = "", target = "", prev = "", ...rest] = process.argv.slice(2);
