@@ -159,7 +159,7 @@ model {
     models = container 'qsm-models' 'Lints, lays out, renders and walks BPMN and C4 models' {
       technology 'Bun binary, skill'
       metadata { group 'Features' path 'plugins/qsm-models' }
-      cli = component 'Verbs' 'lint, layout, render, paths, check' {
+      cli = component 'Verbs' 'The verbs described in qsm.json' {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/scripts/cli.ts' }
       }
@@ -187,7 +187,7 @@ model {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/kinds' }
       }
-      pages = component 'Pages' 'The BPMN page in the bpmn-js modeler and the C4 page, each with edit mode' {
+      pages = component 'Pages' 'The BPMN page (bpmn-js) and the C4 page: static files at first, kinds of qsm-docs with edit mode later' {
         technology 'JavaScript, bpmn-js'
         metadata { path 'plugins/qsm-models/pages' }
       }
@@ -195,9 +195,9 @@ model {
         technology 'TypeScript'
         metadata { path 'plugins/qsm-models/lib/subgraph.ts' }
       }
-      scenarios = component 'Scenario link' 'Gherkin tags on cover paths, results from the Cucumber JSON' {
+      gherkin = component 'Gherkin notes' 'The scenarios a task holds in its documentation, printed as .feature text' {
         technology 'TypeScript'
-        metadata { path 'plugins/qsm-models/lib/scenarios.ts' }
+        metadata { path 'plugins/qsm-models/lib/gherkin.ts' }
       }
       skill = component 'model' 'How to draw a task or a codebase in BPMN and C4' {
         #artifact
@@ -366,6 +366,7 @@ model {
   mp.builder -> mp.tasks 'saves a pen edit with' { technology 'exec, stdio' }
   mp.cockpit -> mp.tasks 'reads the open tasks with' { technology 'exec, stdio' }
   mp.knowledge -> mp.essentials 'builds on the method of' { technology 'skill reference' }
+  mp.langdev -> mp.models 'checks staged models with' { technology 'exec, stdio' }
   mp.langdotnet -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
   mp.langfish -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
   mp.langpy -> mp.langdev 'writes code checked by the gate of' { technology 'skill reference' }
@@ -444,8 +445,9 @@ model {
   mp.models.skill -> mp.models.cli 'has the agent run' { technology 'instruction' }
   mp.models.cli -> mp.models.kinds 'converts and diffs snapshots with' { technology 'function call' }
   mp.models.cli -> mp.models.subgraph 'draws the PR pictures with' { technology 'function call' }
-  mp.models.cli -> mp.models.scenarios 'links scenarios to paths with' { technology 'function call' }
-  mp.models.scenarios -> mp.models.walk 'reads the cover paths from' { technology 'function call' }
+  mp.models.cli -> mp.models.gherkin 'prints the Gherkin notes with' { technology 'function call' }
+  mp.models.cli -> mp.models.pages 'writes the pages with' { technology 'function call' }
+  mp.models.gherkin -> mp.models.bpmn 'reads the task documentation from' { technology 'function call' }
   mp.models.subgraph -> mp.models.kinds 'diffs base and branch with' { technology 'function call' }
   mp.models.kinds -> bpmnio 'diffs BPMN with' { technology 'npm import' }
   mp.models.pages -> bpmnio 'edits BPMN in the browser with' { technology 'bundled script' }
