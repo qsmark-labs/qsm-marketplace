@@ -4,16 +4,7 @@ import type { Finding } from "../bpmn/lint.ts";
 import { type C4Element, type C4Model, type C4Read, readC4 } from "./model.ts";
 import { hasTag, PALETTE } from "./style.ts";
 
-const METADATA = new Set([
-  "colour",
-  "group",
-  "path",
-  "project",
-  "verified",
-  "decision",
-  "layer",
-  "order",
-]);
+const METADATA = new Set(["colour", "group", "path", "project", "decision", "layer", "order"]);
 /** Where each kind may sit: its parent's kind, or the top. */
 const PARENT: Readonly<Record<C4Element["kind"], C4Element["kind"] | null>> = {
   person: null,
@@ -80,7 +71,10 @@ function metadataProblems(e: C4Element): Problem[] {
     .map((k) => ({
       id: e.id,
       rule: "metadata",
-      message: `metadata ${k} is none of ${[...METADATA].join(", ")}`,
+      message:
+        k === "verified"
+          ? "metadata verified is refused: the verified-commit check is not built yet, so nothing would check it"
+          : `metadata ${k} is none of ${[...METADATA].join(", ")}`,
     }));
 }
 

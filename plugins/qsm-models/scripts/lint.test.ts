@@ -270,4 +270,14 @@ describe("lint on C4", () => {
       "owner -> agent relation-technology",
     ]);
   });
+
+  it("refuses the verified key until the verified-commit check is built", () => {
+    const r = lint(
+      c4("metadata { colour 'green' }", "metadata { colour 'green' verified 'deadbee' }"),
+      "marketplace.c4",
+    );
+    expect(r.exit).toBe(3);
+    expect(r.findings).toMatchObject([{ rule: "metadata" }]);
+    expect(r.findings[0]?.message).toContain("verified-commit check is not built yet");
+  });
 });
