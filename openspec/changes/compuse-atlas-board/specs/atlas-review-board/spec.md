@@ -133,6 +133,12 @@ no item of the shell holds it (the cursor, the wallpaper, a client window).
 - **THEN** the badge reads `changed vs 1 Nov 05:02`, and focus lists one area with its size and
   place, held by no item of the shell
 
+#### Scenario: A small change is shown up close
+
+- **WHEN** the owner opens a frame whose only change is a 16x21 px cursor
+- **THEN** focus opens on Diff with the region around the cursor from both runs side by side,
+  scaled up until it fills the pane, the area boxed on both, and the whole screens below
+
 ### Requirement: Comments land where the agent reads them
 
 `drive atlas review [SCENARIO]` SHALL serve the latest run's board on 127.0.0.1 and print its
