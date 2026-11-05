@@ -22,6 +22,16 @@ test("names the file and line of a skill, an agent or a hook that deletes a snap
   ]);
 });
 
+test("leaves a comment of code and the owner's own command alone, never a skill's markdown", () => {
+  const plugins = sandboxDir("gate-no-docs-delete-");
+  const hook = [`// the guard that denies \`${CALL}\``, ` * ${CALL}`, `# ${CALL}`].join("\n");
+  writeIn(plugins, "qsm-docs/hooks/register.tsx", `${hook}\n`);
+  writeIn(plugins, "qsm-a/skills/ask/SKILL.md", `The owner runs \`! ${CALL}\`.\n# ${CALL}\n`);
+  expect(deleteCalls(plugins).map((f) => f.slice(plugins.length + 1))).toEqual([
+    "qsm-a/skills/ask/SKILL.md:2",
+  ]);
+});
+
 test("leaves a hook's test, the plugin's lib and its docs alone", () => {
   const plugins = sandboxDir("gate-no-docs-delete-");
   writeIn(plugins, "qsm-docs/hooks/register.test.ts", `command: "${CALL}"\n`);
