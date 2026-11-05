@@ -1,6 +1,7 @@
 // The page shell: the snapshot's project, branch, id, parent and time, the snapshots of its branch,
 // and the kind's page in a same-origin frame. Its script and styles, and the json kind's page, are
 // compiled into the binary, so the server reads no file of this repository.
+import { escapeHtml as esc } from "../../../../lib/html.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import shellCss from "../../pages/shell/shell.css.txt" with { type: "text" };
 import shellJs from "../../pages/shell/shell.js.txt" with { type: "text" };
@@ -28,17 +29,8 @@ export const JSON_PAGE: Readonly<Record<string, Asset>> = {
   "page.js": { body: jsonJs, type: JS },
 };
 
-const ESCAPES: Readonly<Record<string, string>> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-const esc = (text: string): string => text.replaceAll(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
-
-const href = (e: Entry): string => `/${encodeURIComponent(e.kind)}/${encodeURIComponent(e.id)}`;
+const href = (kind: string, id: string): string =>
+  `/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`;
 
 function document(title: string, body: string): string {
   return `<!doctype html>
@@ -61,11 +53,11 @@ export function shellPage(entry: Entry, siblings: readonly Entry[]): string {
   const parent =
     entry.parent === null
       ? "none"
-      : `<a href="/${encodeURIComponent(entry.kind)}/${encodeURIComponent(entry.parent)}">${esc(entry.parent)}</a>`;
+      : `<a href="${href(entry.kind, entry.parent)}">${esc(entry.parent)}</a>`;
   const rows = siblings
     .map(
       (e) =>
-        `<li${e.id === entry.id ? ' aria-current="page"' : ""}><a href="${href(e)}">${esc(e.id)}</a> <span class="meta">${esc(e.kind)}, ${esc(e.by)}</span></li>`,
+        `<li${e.id === entry.id ? ' aria-current="page"' : ""}><a href="${href(e.kind, e.id)}">${esc(e.id)}</a> <span class="meta">${esc(e.kind)}, ${esc(e.by)}</span></li>`,
     )
     .join("\n");
   const frame = `/kinds/${encodeURIComponent(entry.kind)}/index.html#id=${encodeURIComponent(entry.id)}`;

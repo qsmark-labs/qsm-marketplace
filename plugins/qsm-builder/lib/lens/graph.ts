@@ -1,6 +1,8 @@
 // Inline SVG graphs, laid out by plain code: one column per layer, rows in order, edges as curves.
 // The same input gives the same SVG byte for byte; there is no layout library.
 
+import { escapeHtml as esc } from "../../../../lib/html.ts";
+
 export interface Vertex {
   readonly id: string;
   readonly label: string;
@@ -27,13 +29,6 @@ const ROW_GAP = 14;
 const COL_GAP = 90;
 const PAD = 10;
 const CHAR = 8;
-
-export const esc = (s: string): string =>
-  s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 
 const clip = (s: string): string => (s.length > 28 ? `${s.slice(0, 27)}…` : s);
 

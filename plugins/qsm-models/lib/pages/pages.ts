@@ -16,7 +16,7 @@ import { type C4Model, modelOrThrow, readC4 } from "../c4/model.ts";
 import { renderC4 } from "../c4/render.ts";
 import { type Finding, formatFinding } from "../bpmn/lint.ts";
 import { MODELS_DIR, projectGraphs, projectOf } from "../graphs.ts";
-import { esc } from "../svg.ts";
+import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { lintFile } from "../lint.ts";
 
 /** Fills each `marker` of a template once, the value taken literally. */

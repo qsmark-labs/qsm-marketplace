@@ -1,7 +1,8 @@
 // render for BPMN: one SVG per process, drawn by bpmn-js from the graph's own geometry, with links
 // between the processes, lines that read at a glance, and a legend.
 import { QsmError } from "../../../../lib/qsm-error.ts";
-import { esc, type Picture } from "../svg.ts";
+import { escapeHtml as esc } from "../../../../lib/html.ts";
+import type { Picture } from "../svg.ts";
 import { domContainer } from "./dom.ts";
 import {
   type Definitions,
