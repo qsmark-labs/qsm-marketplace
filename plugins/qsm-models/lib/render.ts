@@ -1,6 +1,6 @@
 // The render verb: every picture of the graphs of a path, written beside each graph, or compared
 // with what is there under --check.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { writeAtomic } from "../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
@@ -20,27 +20,62 @@ async function picturesOf(file: string): Promise<Picture[]> {
   return renderC4(await readC4OrThrow(file), projectOf(file));
 }
 
-export async function renderPath(
-  path: string,
-  check: boolean,
-): Promise<Outcome<{ written: string[]; stale: string[] }>> {
-  const written: string[] = [];
-  const stale: string[] = [];
-  for (const file of graphFiles(path)) {
-    for (const p of await picturesOf(file)) {
-      const out = join(dirname(file), p.name);
-      if (check) {
-        if (!existsSync(out) || readFileSync(out, "utf8") !== p.svg) {
-          stale.push(out);
-        }
-      } else {
-        writeAtomic(out, p.svg);
-        written.push(out);
-      }
+/** The pictures beside a graph that carry its project's name and kind but that no render writes:
+ * `<project>.*.svg` for a BPMN graph, `<project>.*.drawio.svg` for a C4 graph. */
+function orphansOf(file: string, pictures: readonly Picture[]): string[] {
+  const dir = dirname(file);
+  const prefix = `${projectOf(file)}.`;
+  const drawio = file.endsWith(".c4");
+  const current = new Set(pictures.map((p) => p.name));
+  return readdirSync(dir)
+    .filter(
+      (f) =>
+        f.startsWith(prefix) &&
+        f.endsWith(".svg") &&
+        f.endsWith(".drawio.svg") === drawio &&
+        !current.has(f),
+    )
+    .toSorted()
+    .map((f) => join(dir, f));
+}
+
+interface Result {
+  written: string[];
+  stale: string[];
+  deleted: string[];
+}
+
+/** One graph's pictures settled: under `check` each wrong or orphan file is named stale; otherwise
+ * every picture is written and every orphan deleted. */
+function settle(file: string, pictures: readonly Picture[], check: boolean, into: Result): void {
+  for (const orphan of orphansOf(file, pictures)) {
+    if (check) {
+      into.stale.push(orphan);
+    } else {
+      rmSync(orphan);
+      into.deleted.push(orphan);
     }
   }
-  if (stale.length > 0) {
-    return fail("worse", `stale, run qsm-models render: ${stale.join(", ")}`, { written, stale });
+  for (const p of pictures) {
+    const out = join(dirname(file), p.name);
+    if (!check) {
+      writeAtomic(out, p.svg);
+      into.written.push(out);
+    } else if (!existsSync(out) || readFileSync(out, "utf8") !== p.svg) {
+      into.stale.push(out);
+    }
   }
-  return ok({ written, stale }, check ? "every picture is current" : `wrote ${written.join(", ")}`);
+}
+
+export async function renderPath(path: string, check: boolean): Promise<Outcome<Result>> {
+  const result: Result = { written: [], stale: [], deleted: [] };
+  for (const file of graphFiles(path)) {
+    settle(file, await picturesOf(file), check, result);
+  }
+  const { written, stale, deleted } = result;
+  if (stale.length > 0) {
+    return fail("worse", `stale, run qsm-models render: ${stale.join(", ")}`, result);
+  }
+  const gone = deleted.length > 0 ? `; deleted ${deleted.join(", ")}` : "";
+  return ok(result, check ? "every picture is current" : `wrote ${written.join(", ")}${gone}`);
 }

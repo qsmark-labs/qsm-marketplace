@@ -1,6 +1,6 @@
 // layout and render through the real binary entry: a graph on disk in, files and one envelope out.
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
@@ -75,5 +75,23 @@ describe("render --check", () => {
     expect(run.exit).toBe(3);
     expect(envelopeOf(run.stdout).message).toContain("shop.plan_process.svg");
     expect(readFileSync(picture, "utf8")).toBe(before);
+  });
+
+  it("names a picture no render would write as stale, and render deletes it and says so", () => {
+    const dir = sandboxDir("qsm-models-orphan-");
+    writeIn(dir, "shop.bpmn", PLAN);
+    expect(runBin(CLI, ["render", dir]).exit).toBe(0);
+    writeIn(dir, "shop.gone_process.svg", "<svg/>");
+    writeIn(dir, "other.keep.svg", "<svg/>");
+    const stale = runBin(CLI, ["render", dir, "--check", "--json"]);
+    expect(stale.exit).toBe(3);
+    expect(envelopeOf(stale.stdout).message).toContain("shop.gone_process.svg");
+    const run = runBin(CLI, ["render", dir, "--json"]);
+    expect(run.exit).toBe(0);
+    expect(envelopeOf(run.stdout).message).toContain("deleted");
+    expect(envelopeOf(run.stdout).message).toContain("shop.gone_process.svg");
+    expect(existsSync(join(dir, "shop.gone_process.svg"))).toBe(false);
+    expect(existsSync(join(dir, "other.keep.svg"))).toBe(true);
+    expect(runBin(CLI, ["render", dir, "--check"]).exit).toBe(0);
   });
 });
