@@ -7,7 +7,7 @@ import { need, readJsonObject } from "./read.ts";
 
 const [rootArg, ...argv] = process.argv.slice(2);
 const root = need(rootArg, "its fixture root");
-const KEEP = /^(ANTHROPIC_|CLAUDE_CODE_|CUSTOM_ROUTER_PATH$|XDG_STATE_HOME$)/;
+const KEEP = /^(ANTHROPIC_|CLAUDE_CODE_|CLAUDE_CONFIG_DIR$|CUSTOM_ROUTER_PATH$|XDG_STATE_HOME$)/;
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => KEEP.test(k)));
 writeFileSync(
   join(root, "out", `claude-${Date.now()}-${process.pid}.json`),

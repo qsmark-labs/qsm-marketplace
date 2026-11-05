@@ -14,6 +14,8 @@ cheaper steps could not read, and it is never a session to act through.
 - `qsm-web browserbox start` prints a name and a live-view address. Reuse it with `--in <name>` and
   stop it when done (`qsm-web browserbox stop <name>`), because an instance nobody stops keeps a
   browser resident. `qsm-web browserbox ls` lists what is running.
+- `qsm-web browserbox view <name>` or `takeover` opens the live view in the person's own browser,
+  password included; you never read `/run/bbox.token` or build a `?password=` address yourself.
 - `qsm-web browserbox fetch <url> [--in <name>] [--html] [--screenshot] [--settle <ms>]` opens one
   address and reports the page.
 - `qsm-web browserbox script <name> --file <steps.json>` runs steps in order and stops at the first
@@ -23,10 +25,11 @@ cheaper steps could not read, and it is never a session to act through.
 ## A captcha
 
 1. Solve it once yourself: a `screenshot` step, read where the challenge is, then `mouse` steps that
-   move and click there (`{"action": "mouse", "x": 412, "y": 288, "click": true}`), then a
+   move and click there (`{"action": "mouse", "x": 412, "y": 288, "click": true}`; the path is a
+   human one by itself), then a
    `screenshot` to check. One attempt, because a second against the same wall gets the address
    blocked.
-2. When it is still there, hand it to the person: `qsm-web browserbox takeover <name> <tab> --open
+2. When it is still there, hand it to the person: `qsm-web browserbox takeover <name> <tab>
    --reason "<what to clear>"` opens the live view on the desktop, and `notify-send "qsm-web" "<what
    to clear>"` tells the person, when `notify-send` is on PATH. The wait reports `resumed`; the tab
    and cookies are the ones you were using. The default wait is five minutes.

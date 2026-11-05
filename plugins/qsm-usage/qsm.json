@@ -90,11 +90,6 @@
             "type": "string",
             "required": true,
             "description": "the Bash command about to run"
-          },
-          {
-            "name": "subagent",
-            "type": "boolean",
-            "description": "a subagent asked: its git commands are never routed through the filter"
           }
         ]
       },
@@ -124,10 +119,7 @@
           {
             "name": "mode",
             "type": "string",
-            "choices": [
-              "estimate",
-              "exact"
-            ],
+            "choices": ["estimate", "exact"],
             "description": "estimate offline (default), or exact through the provider's tokenizer"
           },
           {

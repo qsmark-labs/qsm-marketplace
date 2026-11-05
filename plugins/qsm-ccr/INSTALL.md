@@ -21,7 +21,7 @@ Then, once, with `-- --dry-run` first to read what it would change:
 qsm-setup activate qsm-ccr
 ```
 
-Activation changes files you own, in six steps, each named in its output:
+Activation changes files you own, in five steps, each named in its output:
 
 1. `ccr profile guard`: every CCR profile gets scope `ccr` and disabled; on a machine with no CCR
    config, CCR creates one in a throwaway `HOME` first.
@@ -30,8 +30,9 @@ Activation changes files you own, in six steps, each named in its output:
 3. `custom router`: writes `custom-router.js` into the state directory.
 4. `codex native config`: removes what CCR wrote into `~/.codex/config.toml` after copying it to
    `config.toml.qsm-ccr.bak`.
-5. `teammate command`: writes `CLAUDE_CODE_TEAMMATE_COMMAND` into `env` of
-   `~/.claude/settings.json`, every other key kept.
-6. `first sync`: runs `qsm-ccr sync`, unless an earlier step did not complete.
+5. `first sync`: runs `qsm-ccr sync`, unless an earlier step did not complete.
+
+Activation does not change Claude settings. Set `CLAUDE_CODE_TEAMMATE_COMMAND` in the lead's
+environment when starting a session, as shown in the README.
 
 A second run answers `already` for each step and writes nothing.

@@ -82,9 +82,6 @@ export interface LanguageInfo {
   /** What people type for the language; `languages add` and `--lang` both
    * resolve through this list. */
   aliases?: readonly string[];
-  /** adapters/claude/modules/<module> carrying this language's dev skill.
-   * null = deliberately module-less. */
-  module: string | null;
   /** A tracked file with one of these extensions means the tree holds this
    * language, so `init` scaffolds its configs. Source extensions only. */
   detects?: readonly string[];
@@ -109,19 +106,18 @@ export type Language = (typeof LANGUAGE_NAMES)[number];
 export const LANGUAGES: readonly Language[] = LANGUAGE_NAMES;
 
 export const LANGUAGE_TABLE = {
-  docs: { alwaysOn: true, module: null },
-  multi: { alwaysOn: true, module: null },
+  docs: { alwaysOn: true },
+  multi: { alwaysOn: true },
   ts: {
     aliases: ["typescript", "javascript", "js"],
-    module: "qsm-langdev-ts",
     detects: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
   },
-  py: { aliases: ["python"], module: "qsm-langdev-py", detects: [".py", ".pyi"] },
-  dotnet: { aliases: ["csharp", "cs"], module: "qsm-langdev-dotnet", detects: [".cs"] },
-  shell: { aliases: ["sh", "bash"], module: "qsm-langdev-shell", detects: [".sh", ".bash"] },
-  zsh: { module: "qsm-langdev-zsh", detects: [".zsh"] },
-  fish: { configless: true, module: "qsm-langdev-fish", detects: [".fish"] },
-  rust: { module: null, detects: [".rs"] },
+  py: { aliases: ["python"], detects: [".py", ".pyi"] },
+  dotnet: { aliases: ["csharp", "cs"], detects: [".cs"] },
+  shell: { aliases: ["sh", "bash"], detects: [".sh", ".bash"] },
+  zsh: { detects: [".zsh"] },
+  fish: { configless: true, detects: [".fish"] },
+  rust: { detects: [".rs"] },
 } as const satisfies Record<Language, LanguageInfo>;
 
 export function isLanguage(name: unknown): name is Language {
@@ -148,79 +144,57 @@ export function resolveLanguage(name: string): Language | null {
   return null;
 }
 
-/** When a checker runs. Every checker runs at pre-push; the pre-commit set
- * is the subset whose question a single file can answer. */
-export type EnforcementPoint = "pre-commit" | "pre-push";
-export const ENFORCEMENT_POINTS: readonly EnforcementPoint[] = ["pre-commit", "pre-push"];
+/** Where a checker runs: the edit hook, the two git hooks, and CI. */
+export type Point = "edit" | "pre-commit" | "pre-push" | "ci";
+export const POINT_NAMES: readonly Point[] = ["edit", "pre-commit", "pre-push", "ci"];
 
 /**
- * How a checker's binary gets onto a machine: `run` executes a portable
- * install command itself; `suggest` prints one that needs sudo or an SDK and
- * never runs it; `bundled` means nothing to do, it arrives with something
- * already required.
+ * Per point, the time one checker is meant to finish under (a run over it is reported slow and
+ * goes on) and the time after which a run is taken for stuck. The edit hook is a function hook, and
+ * the engine gives every hook 10 s that no plugin can raise, so the edit checkers share what is left
+ * of 7.5 s from the binary's start, the rest going to the start and the fixers.
  */
-export type Install =
-  | {
-      readonly run: {
-        readonly command: string;
-        readonly args: readonly string[];
-        /** Probed before running; its absence is missing-prereq. */
-        readonly prereq?: string;
-      };
-    }
-  | {
-      readonly suggest: string;
-      readonly pms?: readonly { readonly pm: string; readonly command: string }[];
-    }
-  | { readonly bundled: string };
+export const POINTS = {
+  // At edit the timeout is a deadline from the binary's start that every checker shares, not a
+  // limit per process: the engine's 10 s is for the whole hook.
+  edit: { targetMs: 5_000, timeoutMs: 7_500 },
+  "pre-commit": { targetMs: 30_000, timeoutMs: 300_000 },
+  "pre-push": { targetMs: 60_000, timeoutMs: 300_000 },
+  ci: { targetMs: 600_000, timeoutMs: 1_200_000 },
+} as const satisfies Record<Point, { targetMs: number; timeoutMs: number }>;
 
-/**
- * The one line a human can act on: what doctor prints and what a failing checker prints when its
- * binary is absent.
- */
-export function installLine(install: Install): string {
-  if ("run" in install) {
-    const argv = [install.run.command, ...install.run.args.map(shellQuote)];
-    return argv.join(" ");
-  }
-  return "suggest" in install ? install.suggest : install.bundled;
-}
+/** How long a process outside any point may run before it counts as stuck: doctor's and install's
+ * probes. The commit's timeout, the same five minutes. */
+export const PROBE_MS = POINTS["pre-commit"].timeoutMs;
 
-function shellQuote(arg: string): string {
-  if (!/[\s"'$`\\]/.test(arg)) {
-    return arg;
-  }
-  return `'${arg.replaceAll("'", `'\\''`)}'`;
-}
+/** A point that compares two trees and stores results; the edit point checks in place. */
+export type ComparedPoint = Exclude<Point, "edit">;
 
-const bunGlobal = (...pkgs: string[]): Install => ({
-  run: { command: "bun", args: ["add", "-g", ...pkgs], prereq: "bun" },
-});
-const uvTool = (pkg: string): Install => ({
-  run: { command: "uv", args: ["tool", "install", pkg], prereq: "uv" },
-});
-const goInstall = (url: string): Install => ({
-  run: { command: "go", args: ["install", url], prereq: "go" },
-});
-const rustupComponent = (component: string): Install => ({
-  run: { command: "rustup", args: ["component", "add", component], prereq: "rustup" },
-});
-const dotnetTool = (pkg: string): Install => ({
-  run: { command: "dotnet", args: ["tool", "install", "-g", pkg], prereq: "dotnet" },
-});
+/** The git hooks langdev installs and runs gates at. */
+export type HookPoint = Exclude<ComparedPoint, "ci">;
+export const HOOK_POINTS: readonly HookPoint[] = ["pre-commit", "pre-push"];
+
+/** The gates a hook point may name in gates.json. */
+export const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
+export type GateName = (typeof KNOWN_GATES)[number];
+
+const FROM_COMMIT: readonly Point[] = ["pre-commit", "pre-push", "ci"];
+const FROM_PUSH: readonly Point[] = ["pre-push", "ci"];
+
+/** The one line a human can act on: what doctor prints and what a failing checker prints when its
+ * binary is absent. Nothing runs it. */
+type Install = string;
+
+const bunGlobal = (...pkgs: string[]): Install => `bun add -g ${pkgs.join(" ")}`;
+const uvTool = (pkg: string): Install => `uv tool install ${pkg}`;
+const goInstall = (url: string): Install => `go install ${url}`;
+const rustupComponent = (component: string): Install => `rustup component add ${component}`;
+const dotnetTool = (pkg: string): Install => `dotnet tool install -g ${pkg}`;
 /** shellmetrics ships nowhere packaged; upstream's own install is this curl. */
-const SHELLMETRICS_INSTALL: Install = {
-  run: {
-    command: "sh",
-    args: [
-      "-c",
-      "curl -fsSL https://github.com/shellspec/shellmetrics/raw/master/shellmetrics -o ~/.local/bin/shellmetrics && chmod +x ~/.local/bin/shellmetrics",
-    ],
-    prereq: "curl",
-  },
-};
-const systemPackage = (pkg: string): Install => ({ suggest: `your package manager: ${pkg}` });
-const shipsWith = (what: string): Install => ({ bundled: `ships with ${what}` });
+const SHELLMETRICS_INSTALL: Install =
+  "curl -fsSL https://github.com/shellspec/shellmetrics/raw/master/shellmetrics -o ~/.local/bin/shellmetrics && chmod +x ~/.local/bin/shellmetrics";
+const systemPackage = (pkg: string): Install => `your package manager: ${pkg}`;
+const shipsWith = (what: string): Install => `ships with ${what}`;
 
 /** A shell's own parser as a checker: run the interpreter over each file and
  * count the ones it refused. */
@@ -232,7 +206,6 @@ const syntaxProbe = (flags: readonly string[]): Scoring => ({
 
 const RUFF = {
   language: "py",
-  runsAt: "pre-commit",
   extensions: [".py", ".pyi"],
   binary: "ruff",
   install: uvTool("ruff"),
@@ -325,10 +298,8 @@ interface Scoring {
 
 /** The files a checker is handed, computed once per run (lib/compare.ts):
  * `changed` for a tool that judges each file on its own, `given` for one
- * that needs the whole project (the caller's paths, the root by default),
- * `changedPlus` for one whose finding in a file can come from a file within
- * that many import edges of it. */
-export type FileSet = "changed" | "given" | { changedPlus: number };
+ * that needs the whole project (the caller's paths, the root by default). */
+type FileSet = "changed" | "given";
 
 /** What a check's number is a count of. Beside the parser that produces it,
  * so it cannot drift from the code: `list --json` is the audit table. */
@@ -345,7 +316,8 @@ export type CheckSpec = {
   name: string;
   measures: Measures;
   language: Language;
-  runsAt: EnforcementPoint;
+  /** Required, so no checker runs at a point nobody chose for it. */
+  points: readonly Point[];
   extensions: readonly string[];
   /** Base names it covers besides its extensions, for a file type named by
    * convention rather than by suffix: `Dockerfile.prod`. */
@@ -363,54 +335,45 @@ export type CheckSpec = {
   thresholds?: Record<string, number>;
   /** Globs over repository-relative paths naming the files the tool reads for its configuration. */
   configFiles?: readonly string[];
+  /** A config file the tool is passed by name and never runs without: its absence is a missing
+   * config, because scoring both sides at the tool's defaults would let nothing regress. */
+  ownConfig?: string;
   /** The tool resolves imports through the installed dependencies, so what is installed is part of
    * what it scored: a result scored before `bun install` is not the result after it. */
   resolvesInstalled?: true;
   /** Why this checker's results are never stored: its answer depends on
    * something no key can hold, such as rules fetched over the network. */
   notStored?: string;
-  /** How the checker runs at pre-push where that differs from pre-commit.
-   * Absent: the same way at both points. */
+  /** How the checker runs at pre-push and ci where that differs from pre-commit.
+   * Absent: the same way at every point. */
   prePush?: PrePush;
-  /** The limit one run of the checker gets, where the run's default is too
-   * short; set from `prePush` for a pre-push run. */
-  timeoutMs?: number;
 } & Scoring;
 
-/**
- * A checker's pre-push run: the set it scores, and a longer limit when that run is known to need one.
- */
+/** A checker's pre-push run: the set it scores. Its limit is the point's (POINTS). */
 interface PrePush {
   fileSet: FileSet;
-  timeoutMs?: number;
 }
 
-/** `spec` as it runs at `point`: at pre-commit itself; at pre-push its `prePush` declaration. */
-export function asRunAt(spec: CheckSpec, point: EnforcementPoint): CheckSpec {
+/** `spec` as it runs at `point`: at pre-push and ci its `prePush` declaration, elsewhere itself. */
+export function asRunAt(spec: CheckSpec, point: ComparedPoint): CheckSpec {
   const push = spec.prePush;
   if (point === "pre-commit" || push === undefined) {
     return spec;
   }
-  return {
-    ...spec,
-    fileSet: push.fileSet,
-    ...(push.timeoutMs === undefined ? {} : { timeoutMs: push.timeoutMs }),
-  };
+  return { ...spec, fileSet: push.fileSet };
 }
 
-/** Whether a checker belongs to the set an enforcement point runs:
- * everything at pre-push, the pre-commit declarers at pre-commit. */
-export function selectedAt(spec: CheckSpec, point: EnforcementPoint): boolean {
-  return point === "pre-push" || spec.runsAt === "pre-commit";
+/** Whether a checker belongs to the set a point runs: the points it declares. */
+export function selectedAt(spec: CheckSpec, point: Point): boolean {
+  return spec.points.includes(point);
 }
 
-/** One line per language with no non-empty checker set at some enforcement
- * point. Empty when the registry is whole. */
+/** One line per language with no checker at some point. Empty when the registry is whole. */
 export function registryGaps(specs: readonly CheckSpec[] = REGISTRY): string[] {
   const gaps: string[] = [];
   for (const language of LANGUAGES) {
     const own = specs.filter((spec) => spec.language === language);
-    for (const point of ENFORCEMENT_POINTS) {
+    for (const point of POINT_NAMES) {
       if (!own.some((spec) => selectedAt(spec, point))) {
         gaps.push(`${language}: no ${point} checker`);
       }
@@ -430,7 +393,7 @@ export const RUSTFMT = { edition: 2021 };
 export const SHFMT_STYLE = ["-i", "2", "-ci", "-bn"];
 
 const SHELLMETRICS_SPEC = {
-  runsAt: "pre-commit",
+  points: POINT_NAMES,
   binary: "shellmetrics",
   install: SHELLMETRICS_INSTALL,
   fileSet: "changed",
@@ -449,7 +412,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "yamllint",
     measures: { counts: "yamllint rule violations, one per `file:line:col` diagnostic on stdout" },
     language: "docs",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".yml", ".yaml"],
     binary: "yamllint",
     install: systemPackage("yamllint"),
@@ -462,7 +425,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "taplo",
     measures: { counts: "TOML lint errors, one per `error:` line taplo prints on stderr" },
     language: "docs",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".toml"],
     binary: "taplo",
     install: systemPackage("taplo-cli"),
@@ -478,7 +441,7 @@ const SPECS: readonly CheckSpec[] = [
         "markdown rule violations, the number in markdownlint's own `Summary: N issues` (or `N error(s)`) line",
     },
     language: "docs",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".md", ".markdown"],
     binary: "markdownlint-cli2",
     install: bunGlobal("markdownlint-cli2"),
@@ -493,7 +456,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "oxlint diagnostics about the code, type-aware rules included, one per diagnostic",
     },
     language: "ts",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
     binary: "oxlint",
     // tsgolint runs the type-aware rules; oxlint finds it beside itself.
@@ -507,7 +470,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "oxfmt",
     measures: { counts: "files whose formatting differs from oxfmt's, one per file" },
     language: "ts",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".jsonc"],
     binary: "oxfmt",
     install: bunGlobal("oxfmt"),
@@ -521,12 +484,12 @@ const SPECS: readonly CheckSpec[] = [
     name: "bun-check",
     measures: { counts: "type errors, one per `error TSxxxx` diagnostic" },
     language: "ts",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".ts", ".tsx"],
     binary: "bun",
     // `bun check` reports the same errors as tsc, about 2.5 times faster
     // (measured on qsm-marketplace with Bun 1.4.3; older Bun has no `check`).
-    install: { suggest: "bun upgrade" },
+    install: "bun upgrade",
     fileSet: "given",
     configFiles: TS_PROJECT,
     resolvesInstalled: true,
@@ -541,7 +504,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "knip",
     measures: { counts: "unused files, exports, types and dependencies, one per reported item" },
     language: "ts",
-    runsAt: "pre-push",
+    points: FROM_COMMIT,
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     binary: "knip",
     install: bunGlobal("knip"),
@@ -558,7 +521,7 @@ const SPECS: readonly CheckSpec[] = [
         "dependency rule breaches at error or warn severity, from the repository's own .dependency-cruiser config",
     },
     language: "ts",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     binary: "depcruise",
     install: bunGlobal("dependency-cruiser"),
@@ -581,7 +544,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "clone pairs, the number in jscpd's own report at statistics.total.clones",
     },
     language: "ts",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     binary: "jscpd",
     install: bunGlobal("jscpd"),
@@ -605,7 +568,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "rule matches from p/typescript and p/nodejsscan",
     },
     language: "ts",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     binary: "semgrep",
     install: uvTool("semgrep"),
@@ -620,6 +583,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "ruff",
     measures: { counts: "ruff lint rule violations, one per JSON diagnostic" },
     ...RUFF,
+    points: POINT_NAMES,
     args: (files) => ["check", "--output-format=json", "--exit-zero", ...files],
     count: (stdout) => countRuff(stdout),
   },
@@ -627,6 +591,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "ruff-format",
     measures: { counts: "files whose formatting differs from ruff's, one per file" },
     ...RUFF,
+    points: FROM_COMMIT,
     args: (files) => ["format", "--check", ...files],
     count: countRuffFormat,
   },
@@ -636,7 +601,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "unused names at or above the confidence threshold, one per reported name",
     },
     language: "py",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".py"],
     binary: "vulture",
     install: uvTool("vulture"),
@@ -650,7 +615,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "pyright",
     measures: { counts: "type diagnostics, one per generalDiagnostics entry" },
     language: "py",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".py", ".pyi"],
     binary: "pyright",
     install: uvTool("pyright"),
@@ -664,16 +629,14 @@ const SPECS: readonly CheckSpec[] = [
     guardsSafety: true,
     measures: { counts: "security issues, one per result" },
     language: "py",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".py"],
     binary: "bandit",
     install: uvTool("bandit"),
     fileSet: "changed",
     configFiles: ["bandit.yaml"],
-    args: (files, root) =>
-      existsSync(join(root, "bandit.yaml"))
-        ? ["-c", "bandit.yaml", "-f", "json", "-q", ...files]
-        : ["-f", "json", "-q", ...files],
+    ownConfig: "bandit.yaml",
+    args: (files) => ["-c", "bandit.yaml", "-f", "json", "-q", ...files],
     count: countBanditJson,
   },
   {
@@ -682,7 +645,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "rule matches from p/python",
     },
     language: "py",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".py"],
     binary: "semgrep",
     install: uvTool("semgrep"),
@@ -699,7 +662,7 @@ const SPECS: readonly CheckSpec[] = [
       // separate bashism checker runs
     },
     language: "shell",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".sh", ".bash"],
     binary: "shellcheck",
     install: systemPackage("shellcheck"),
@@ -722,7 +685,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "bash-syntax",
     measures: { counts: "files bash's own parser refuses, one per file", overlaps: ["shellcheck"] },
     language: "shell",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".sh", ".bash"],
     binary: "bash",
     install: shipsWith("the OS"),
@@ -733,7 +696,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "shfmt",
     measures: { counts: "files whose formatting differs from shfmt's, one per file" },
     language: "shell",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".sh", ".bash"],
     binary: "shfmt",
     install: systemPackage("shfmt"),
@@ -748,7 +711,7 @@ const SPECS: readonly CheckSpec[] = [
         "rule matches from semgrep's three bash rules (curl-eval, curl-pipe-bash, ifs-tampering) and the registry's own qsm/bash rules; semgrep publishes no bash pack",
     },
     language: "shell",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".sh", ".bash"],
     binary: "semgrep",
     install: uvTool("semgrep"),
@@ -769,7 +732,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "functions whose cyclomatic complexity exceeds the threshold, one per function",
     },
     language: "multi",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".ts", ".tsx", ".js", ".py", ".cs", ".rs", ".go"],
     binary: "lizard",
     install: uvTool("lizard"),
@@ -784,7 +747,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "semgrep-dockerfile",
     measures: { counts: "rule matches from p/dockerfile" },
     language: "multi",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [],
     names: DOCKERFILE_NAMES,
     binary: "semgrep",
@@ -797,7 +760,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "zsh-syntax",
     measures: { counts: "files zsh's own parser refuses, one per file" },
     language: "zsh",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".zsh"],
     binary: "zsh",
     install: systemPackage("zsh"),
@@ -808,7 +771,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "zsh-lint",
     measures: { counts: "zsh-lint diagnostics, one per `path:line` line" },
     language: "zsh",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".zsh"],
     binary: "zsh-lint",
     install: goInstall("github.com/z-shell/zsh-lint/cmd/zsh-lint@latest"),
@@ -821,7 +784,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "zshellcheck",
     measures: { counts: "zshellcheck rule matches, one per SARIF result" },
     language: "zsh",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".zsh"],
     binary: "zshellcheck",
     install: goInstall("github.com/afadesigns/zshellcheck/cmd/zshellcheck@latest"),
@@ -844,7 +807,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "shfmt-zsh",
     measures: { counts: "files whose zsh formatting differs from shfmt's, one per file" },
     language: "zsh",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".zsh"],
     binary: "shfmt",
     install: systemPackage("shfmt"),
@@ -856,7 +819,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "fish-syntax",
     measures: { counts: "files fish's own parser refuses, one per file" },
     language: "fish",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".fish"],
     binary: "fish",
     install: systemPackage("fish"),
@@ -868,7 +831,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "fish-indent",
     measures: { counts: "files whose formatting differs from fish_indent's, one per file" },
     language: "fish",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".fish"],
     binary: "fish_indent",
     install: shipsWith("fish"),
@@ -884,7 +847,7 @@ const SPECS: readonly CheckSpec[] = [
         "clippy and rustc warnings plus clippy-coded errors, one per compiler message; an E-coded compile error is a broken build rather than a finding",
     },
     language: "rust",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".rs"],
     binary: "cargo",
     install: rustupComponent("clippy"),
@@ -909,7 +872,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "rustfmt",
     measures: { counts: "files whose formatting differs from rustfmt's, one per file" },
     language: "rust",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".rs"],
     binary: "rustfmt",
     install: rustupComponent("rustfmt"),
@@ -926,7 +889,7 @@ const SPECS: readonly CheckSpec[] = [
     name: "semgrep-rust",
     measures: { counts: "rule matches from p/rust" },
     language: "rust",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".rs"],
     binary: "semgrep",
     install: uvTool("semgrep"),
@@ -938,10 +901,10 @@ const SPECS: readonly CheckSpec[] = [
     name: "dotnet",
     measures: { counts: "MSBuild build warnings, deduplicated across target frameworks" },
     language: "dotnet",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".cs"],
     binary: "dotnet",
-    install: { suggest: "install the dotnet SDK for your distro" },
+    install: "install the dotnet SDK for your distro",
     fileSet: "given",
     configFiles: DOTNET_PROJECT,
     args: () => ["build", "-tl:off", "--nologo", "-v", "minimal", "-p:TreatWarningsAsErrors=false"],
@@ -960,7 +923,7 @@ const SPECS: readonly CheckSpec[] = [
         "whitespace and style drift, one per reported FileChange, or one per drifted file that reports none",
     },
     language: "dotnet",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".cs"],
     binary: "dotnet",
     install: shipsWith("the dotnet SDK"),
@@ -971,9 +934,6 @@ const SPECS: readonly CheckSpec[] = [
     // the solution at the root costs four times a project and a file list costs nothing more. The
     // restore is the build's; a format that restored would write obj/ on both sides.
     groupBy: nearestProject,
-    // One project load is 24 s quiet and 56 s at a load of 6, and the two sides load at once; the
-    // limit is a last line of defence, never the budget.
-    timeoutMs: 300_000,
     args: (files, root, reportDir) => [
       "format",
       nearestProject(root, files[0] ?? ""),
@@ -994,7 +954,7 @@ const SPECS: readonly CheckSpec[] = [
         "known vulnerabilities over direct and transitive packages; a vulnerability belongs to a package rather than a file, so this is a bare total",
     },
     language: "dotnet",
-    runsAt: "pre-push",
+    points: FROM_PUSH,
     extensions: [".cs"],
     binary: "dotnet",
     install: shipsWith("the dotnet SDK (JSON output needs SDK 9+)"),
@@ -1011,7 +971,7 @@ const SPECS: readonly CheckSpec[] = [
         "devskim findings, one per SARIF result or, on versions printing a bare array, one per entry as a bare total",
     },
     language: "dotnet",
-    runsAt: "pre-commit",
+    points: POINT_NAMES,
     extensions: [".cs"],
     binary: "devskim",
     install: dotnetTool("Microsoft.CST.DevSkim.CLI"),
@@ -1046,7 +1006,7 @@ const SPECS: readonly CheckSpec[] = [
       counts: "rule matches from p/csharp",
     },
     language: "dotnet",
-    runsAt: "pre-commit",
+    points: FROM_COMMIT,
     extensions: [".cs"],
     binary: "semgrep",
     install: uvTool("semgrep"),
@@ -1058,7 +1018,7 @@ const SPECS: readonly CheckSpec[] = [
 
 /** A file with no extension at all: `bin/deploy`, `Makefile`. A dotfile
  * counts as having one; nobody puts a program there. */
-function hasNoExtension(file: string): boolean {
+export function hasNoExtension(file: string): boolean {
   return !basename(file).includes(".");
 }
 

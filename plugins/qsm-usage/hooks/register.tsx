@@ -321,10 +321,7 @@ function carryOn<E, R>($: EngineInterface, e: E, next: ((e: E) => R) & Caught): 
 /** The command output filter may rewrite a Bash command or refuse it; the verb holds the rules. */
 function registerFilter(on: On): void {
   on("tool.call", { tool: "Bash" }, async ($, e, next) => {
-    const answer = await $.usage.filter({
-      command: e.command,
-      subagent: e.agentId !== undefined,
-    });
+    const answer = await $.usage.filter({ command: e.command });
     if (!isFilterAnswer(answer)) {
       throw new TypeError("qsm-usage filter answered with something other than { command, deny }");
     }

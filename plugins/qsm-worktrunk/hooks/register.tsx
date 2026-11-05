@@ -4,7 +4,12 @@
 import type { EngineInterface, On } from "claude-code";
 import { doctor } from "../lib/doctor.ts";
 import { denialFor } from "../lib/git-worktree-block.ts";
-import { gitReader, readWorkspace, workspaceContext } from "../lib/workspace.ts";
+import {
+  gitReader,
+  MAIN_CHECKOUT_CONTEXT,
+  readWorkspace,
+  workspaceContext,
+} from "../lib/workspace.ts";
 import type { Runner } from "../lib/wt.ts";
 import { setMarker } from "../lib/wt.ts";
 import { registerNoun } from "./noun.generated.ts";
@@ -39,8 +44,14 @@ function registerBlock(on: On): void {
 /** The workspace the prompt runs in, as the hidden context line the agent reads; null in the main
  * checkout and outside a repository. */
 async function workspaceLine($: Engine): Promise<string | null> {
-  const workspace = await readWorkspace(gitReader(runner($), await $.session.cwd()));
-  return workspace === null ? null : workspaceContext(workspace, await $.env.get("HOME"));
+  const git = gitReader(runner($), await $.session.cwd());
+  const workspace = await readWorkspace(git);
+  if (workspace !== null) {
+    return workspaceContext(workspace, await $.env.get("HOME"));
+  }
+  return (await git(["rev-parse", "--is-inside-work-tree"])) === "true"
+    ? MAIN_CHECKOUT_CONTEXT
+    : null;
 }
 
 function registerMarker(on: On): void {
@@ -58,18 +69,11 @@ function registerMarker(on: On): void {
 
   on("session.end", async ($, e, next) => {
     await setMarker(runner($), "cleared");
-    // The branches the working branch has not absorbed are finished work it does not have.
-    const ahead: unknown = await $.worktrunk.ahead();
-    if (Array.isArray(ahead) && ahead.length > 0) {
-      const names = ahead.join(", ");
-      $.ui.toast(`qsm-worktrunk: branches ahead of the working branch: ${names}`.slice(0, 200));
-      $.ui.log(`branches ahead of the working branch: ${names}`);
-    }
     return next(e);
   }).catch(($, e, next) => {
     const reason = failure(next.error);
     $.ui.toast(`qsm-worktrunk ERROR: session.end: ${reason}`);
-    $.ui.log(`clearing the marker or listing the branches ahead failed (${next.error.kind})`);
+    $.ui.log(`clearing the marker failed (${next.error.kind})`);
     return next(e);
   });
 }

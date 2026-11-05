@@ -11,12 +11,18 @@ import {
   type Step,
 } from "../../../lib/install-contract.ts";
 import { claudeSettingsPath } from "../../../lib/paths.ts";
-import { KEEP_DAYS, keepsTranscripts, retentionDays } from "../lib/retention.ts";
+import type { Database } from "bun:sqlite";
+import { getState, openArchive, resolveDbPath, setState } from "../lib/store.ts";
+import {
+  KEEP_DAYS,
+  keepsTranscripts,
+  MEMORY_CHOICES,
+  type MemoryChoice,
+  recordedChoice,
+  retentionDays,
+} from "../lib/retention.ts";
 
 const NAME = "harness-memory";
-
-const MEMORY_CHOICES = ["qsm", "skip"] as const;
-export type MemoryChoice = (typeof MEMORY_CHOICES)[number];
 
 /** The settings object in `text`; JSON that is not an object is as unusable as JSON that does not
  * parse. */
@@ -48,47 +54,103 @@ export function withHarnessMemoryOff(existing: string | null): string | null {
 
 const KEYS = `autoMemoryEnabled: false, cleanupPeriodDays: ${KEEP_DAYS}`;
 
-/** The one write, taken or not taken. A settings.json that does not parse is
- * an error naming the file: rewriting it would lose what the user has there. */
+/** The archive when it exists, else null: reading the choice must not create it. */
+function existingArchive(env: ActivationContext["env"]): Database | null {
+  return existsSync(resolveDbPath(env)) ? openArchive(env) : null;
+}
+
+/** The settings.json text qsm writes, or null when it needs no write or the choice is claude.
+ * Throws when settings.json does not parse. */
+function settingsToWrite(choice: MemoryChoice, path: string): string | null {
+  return choice === "qsm"
+    ? withHarnessMemoryOff(existsSync(path) ? readFileSync(path, "utf8") : null)
+    : null;
+}
+
+/** Records the choice, and under qsm the day of activation unless one is recorded. */
+function recordChoice(db: Database, choice: MemoryChoice): void {
+  setState(db, "retention", choice);
+  if (choice === "qsm" && getState(db, "activated_at") === null) {
+    setState(db, "activated_at", new Date().toISOString());
+  }
+}
+
+/** Whether the choice, or under qsm the day of activation, is yet to be recorded. */
+function choiceIsNew(db: Database | null, choice: MemoryChoice): boolean {
+  return (
+    db === null ||
+    recordedChoice(db) !== choice ||
+    (choice === "qsm" && getState(db, "activated_at") === null)
+  );
+}
+
+/** Why nothing is written: under claude the settings are not ours, so no key is claimed. */
+function alreadyDetail(choice: MemoryChoice, path: string): string {
+  return choice === "claude"
+    ? `retention claude already recorded; ${path} left alone`
+    : `${KEYS} already set in ${path}`;
+}
+
+/** What a step writes, in words. */
+function describeWrite(choice: MemoryChoice, path: string, settings: boolean, record: boolean) {
+  return [
+    ...(settings ? [`${KEYS} into ${path}`] : []),
+    ...(record ? [`retention ${choice} into the archive`] : []),
+    ...(choice === "claude" ? [`${path} left alone`] : []),
+  ].join("; ");
+}
+
+/** The one write, taken or not taken: the choice into the archive, and under qsm the settings.
+ * A settings.json that does not parse is an error naming the file: rewriting it would lose what the
+ * user has there. */
 export function harnessMemoryStep(ctx: ActivationContext): Step {
   const choice = MEMORY_CHOICES.find((c) => c === ctx.choices.memory);
   const path = claudeSettingsPath(ctx.env);
   if (choice === undefined) {
     return { name: NAME, status: "error", detail: `unknown memory choice '${ctx.choices.memory}'` };
   }
-  if (choice === "skip") {
-    return { name: NAME, status: "skipped", detail: `${path} left alone` };
-  }
-  const existing = existsSync(path) ? readFileSync(path, "utf8") : null;
   let next: string | null;
   try {
-    next = withHarnessMemoryOff(existing);
+    next = settingsToWrite(choice, path);
   } catch {
     return { name: NAME, status: "error", detail: `${path} does not parse as JSON; fix it first` };
   }
-  if (next === null) {
-    return { name: NAME, status: "already", detail: `${KEYS} already set in ${path}` };
+  const db = ctx.dryRun ? existingArchive(ctx.env) : openArchive(ctx.env);
+  const record = choiceIsNew(db, choice);
+  if (next === null && !record) {
+    return { name: NAME, status: "already", detail: alreadyDetail(choice, path) };
   }
-  if (ctx.dryRun) {
-    return { name: NAME, status: "skipped", detail: `would write ${KEYS} into ${path}` };
+  const what = describeWrite(choice, path, next !== null, record);
+  if (ctx.dryRun || db === null) {
+    return { name: NAME, status: "skipped", detail: `would write ${what}` };
   }
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, next);
-  return { name: NAME, status: "installed", detail: `wrote ${KEYS} into ${path}` };
+  if (next !== null) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, next);
+  }
+  if (record) {
+    recordChoice(db, choice);
+  }
+  return { name: NAME, status: "installed", detail: `wrote ${what}` };
 }
 
 export const activation: Activation = {
   status: (env) => {
+    const db = existingArchive(env);
+    const retention = db === null ? null : recordedChoice(db);
+    if (retention === "claude") {
+      return "activated";
+    }
     const path = claudeSettingsPath(env);
     const existing = existsSync(path) ? readFileSync(path, "utf8") : null;
-    return withHarnessMemoryOff(existing) === null ? "activated" : "absent";
+    return retention === "qsm" && withHarnessMemoryOff(existing) === null ? "activated" : "absent";
   },
   options: [
     {
       name: "memory",
       values: [...MEMORY_CHOICES],
       description:
-        "qsm turns Claude Code's own memory off (autoMemoryEnabled: false) and stops it deleting transcripts (cleanupPeriodDays 36500, its default deletes after 30 days) so this archive and the transcripts are the one memory; skip leaves settings.json alone",
+        "qsm turns Claude Code's own memory off (autoMemoryEnabled: false) and stops it deleting transcripts (cleanupPeriodDays 36500, its default deletes after 30 days) so this archive and the transcripts are the one memory, and packs the idle ones monthly; claude leaves settings.json alone, so Claude Code's own retention applies and nothing is packed",
     },
   ],
   activate: (ctx): InstallResult => {

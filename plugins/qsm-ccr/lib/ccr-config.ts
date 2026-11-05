@@ -1,6 +1,7 @@
 // CCR's config: one JSON value in its sqlite (app_config, key default, column value_json). CCR
 // owns the schema; qsm-ccr reads it and changes only the fields a requirement names: the
-// allowlist, the codex-api token copies, the profiles' scope and enabled.
+// allowlist, the codex-api token copies, the profiles' scope and enabled. The local gateway key
+// is read from CCR's api_keys table and never printed.
 import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -90,14 +91,29 @@ function bracketed(host: string): string {
 /** The gateway of the CCR config in `dbPath`; undefined when there is none or it names none. */
 export function gatewayIn(dbPath: string): Gateway | undefined {
   const config = readCcrConfig(dbPath);
-  return config === null ? undefined : gatewayOf(config);
+  if (config === null) return undefined;
+  const db = openDb(dbPath, true);
+  try {
+    const row = db
+      .query<{ encrypted_key: string; encryption: string; expires_at: string | null }, [string]>(
+        "SELECT encrypted_key, encryption, expires_at FROM api_keys WHERE id = ?",
+      )
+      .get("local-gateway");
+    if (row === null || row.encryption !== "plain") return undefined;
+    if (row.expires_at !== null && row.expires_at !== "") {
+      const expires = Date.parse(row.expires_at);
+      if (!Number.isFinite(expires) || expires <= Date.now()) return undefined;
+    }
+    return gatewayOf(config, row.encrypted_key);
+  } finally {
+    db.close();
+  }
 }
 
-export function gatewayOf(c: Json): Gateway | undefined {
+export function gatewayOf(c: Json, key: string): Gateway | undefined {
   // a PORT saved as text is still the port
   const port =
     typeof c.PORT === "string" || typeof c.PORT === "number" ? Number(c.PORT) : Number.NaN;
-  const key = c.APIKEY;
   if (!Number.isInteger(port) || port <= 0 || typeof key !== "string" || key === "") {
     return undefined;
   }

@@ -27,7 +27,7 @@
         "description": "Report each web bin's health, and whether the Tavily CLI, the Tavily skills and the Context7 skill are present, naming the fix for each that is not"
       },
       "qsm-web searxng search": {
-        "description": "Search the instance named by --instance or QSM_SEARXNG_INSTANCE and print the results as one JSON array",
+        "description": "Search the configured SearXNG instance and print the results as one JSON array",
         "args": [
           {
             "name": "query",
@@ -85,7 +85,7 @@
           {
             "name": "instance",
             "type": "string",
-            "description": "the instance to query (default $QSM_SEARXNG_INSTANCE)"
+            "description": "the instance to query (default: environment or local config)"
           },
           {
             "name": "timeout",
@@ -207,8 +207,25 @@
           }
         ]
       },
+      "qsm-web browserbox view": {
+        "description": "Open one instance's live view, with its password, in the desktop browser",
+        "args": [
+          {
+            "name": "name",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the instance to look into"
+          },
+          {
+            "name": "dryRun",
+            "type": "boolean",
+            "description": "report the commands instead of running them"
+          }
+        ]
+      },
       "qsm-web browserbox takeover": {
-        "description": "Hand one tab to a human and wait until the wall is cleared or the timeout passes",
+        "description": "Open the live view for a human and wait until the tab's wall is cleared or the timeout passes",
         "args": [
           {
             "name": "name",
@@ -233,11 +250,6 @@
             "name": "timeout",
             "type": "number",
             "description": "milliseconds to wait for the wall to be cleared"
-          },
-          {
-            "name": "open",
-            "type": "boolean",
-            "description": "open the live view in the desktop browser"
           },
           {
             "name": "dryRun",

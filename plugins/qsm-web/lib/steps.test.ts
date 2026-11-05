@@ -49,6 +49,16 @@ describe("readScript", () => {
     expect(() => readScript({ steps: [{ action: "wait" }] })).toThrow(ScriptError);
   });
 
+  test("a mouse step names its whole point, and a click is true or false", () => {
+    const ok = readScript({ steps: [{ action: "mouse", x: 412, y: 288, click: true }] });
+    expect(ok.steps[0]).toEqual({ action: "mouse", x: 412, y: 288, click: true });
+    for (const bad of [{ x: 1 }, { y: 2 }, {}, { x: 1, y: 2, click: "true" }]) {
+      expect(scriptErrorOf(() => readScript({ steps: [{ action: "mouse", ...bad }] })).index).toBe(
+        0,
+      );
+    }
+  });
+
   test("an empty script and a non-object are refused before anything runs", () => {
     expect(() => readScript({ steps: [] })).toThrow(ScriptError);
     expect(() => readScript("navigate")).toThrow(ScriptError);

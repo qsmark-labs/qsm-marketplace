@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# The desktop slot's nmcli: NetworkManager as the state's `nm` record holds it, for the reads a
+# desktop asks, in terse mode (-t): `device`, `device wifi list`, `connection show` and `radio` are
+# rows of fields (`nm.device`, `nm.wifi`, `nm.connection`, `nm.radio`), chosen and
+# ordered by -f; `networking connectivity` is `nm.connectivity`. `device wifi rescan` succeeds and
+# changes nothing. Anything else, a write included, fails loud, because the fake machine does not
+# model it. `nm.running: false` is a stopped NetworkManager: every command exits 8, the code the
+# nmcli man page gives it. `monitor` runs until killed, as the real one does, and prints a line
+# in nmcli's own words each time the record changes, a stopped NetworkManager included. A state
+# without the record means the slot shows the real nmcli.
+state="${DRIVE_STATE:?the nmcli shim runs only inside a desktop slot}"
+jq -e 'has("nm")' "$state" >/dev/null || exec /usr/bin/nmcli "$@"
+
+# The state file is looked at every half second and read when it changed; a read that lands on a
+# half-written file waits for the next.
+monitor() {
+  local last now stamp seen
+  last="$(jq -c .nm "$state")" seen="$(stat -c %y "$state")"
+  while sleep 0.5; do
+    stamp="$(stat -c %y "$state")"
+    [[ "$stamp" != "$seen" ]] || continue
+    now="$(jq -c .nm "$state")" || continue
+    seen="$stamp"
+    [[ "$now" != "$last" ]] || continue
+    jq -nr --argjson a "$last" --argjson b "$now" --arg q "'" 'if $a.running != $b.running
+      then "NetworkManager is \(if $b.running == false then "stopped" else "running" end)"
+      elif $a.connectivity != $b.connectivity then "Connectivity is now \($q)\($b.connectivity)\($q)"
+      else "Networkmanager is now in the \($q)connected\($q) state" end'
+    last="$now"
+  done
+}
+[[ "$*" == monitor ]] && monitor
+
+if jq -e '.nm.running == false' "$state" >/dev/null; then
+  printf 'Error: NetworkManager is not running.\n' >&2
+  exit 8
+fi
+terse="" fields="" words=()
+while (($#)); do
+  case "$1" in
+    -t | --terse) terse=1 ;;
+    -f | --fields) fields="$2" && shift ;;
+    -w | --wait | --rescan) shift ;;
+    *) words+=("$1") ;;
+  esac
+  shift
+done
+command="${words[*]}"
+declare -A records=([device]=.nm.device ["device wifi list"]=.nm.wifi
+  ["connection show"]=.nm.connection [radio]=.nm.radio)
+[[ "$command" == "networking connectivity" ]] && exec jq -er .nm.connectivity "$state"
+[[ "$command" == "device wifi rescan" ]] && exit 0
+rows="${records[$command]:-}"
+[[ -n "$rows" ]] || {
+  printf 'Error: the slot'"'"'s nmcli does not model "nmcli %s"\n' "$command" >&2
+  exit 1
+}
+[[ -n "$terse" && -n "$fields" ]] || {
+  printf 'Error: the slot'"'"'s nmcli answers rows only as -t -f FIELDS (got: nmcli %s)\n' "$command" >&2
+  exit 2
+}
+# Terse mode escapes a backslash and a colon inside a value, as the real nmcli does.
+jq -r --arg fields "$fields" "$rows"' | .[] as $row
+  | [$fields | split(",")[] | $row[.] // error("Error: the nm record has no field \(.)")]
+  | map(gsub("\\\\"; "\\\\") | gsub(":"; "\\:")) | join(":")' "$state"

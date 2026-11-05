@@ -1,10 +1,10 @@
-// The classic SubagentStop gate hook, spawned the way the harness spawns it:
+// The classic Stop and SubagentStop gate hook, spawned the way the harness spawns it:
 // a process fed the event JSON on stdin, judged on its stdout, its stderr and
 // its exit. `bun test` ignores plugins/*/hooks/**, so this lives beside the
 // CLI test and spawns the hook's own source, never dist/, which may be stale.
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
@@ -39,7 +39,12 @@ function runHook(hook: string, stateDir: string, stdin: string, env: Record<stri
   const home = sandboxDir("qsm-langdev-gate-hook-home-");
   return runBin(hook, [], {
     input: stdin,
-    env: isolatedEnv(home, { ...env, QSM_LANGDEV_STATE_DIR: stateDir }),
+    // semgrep makes its own semgrep-mcp directory in its temp root: a sandbox, so none is left behind
+    env: isolatedEnv(home, {
+      ...env,
+      QSM_LANGDEV_STATE_DIR: stateDir,
+      TMPDIR: sandboxDir("qsm-langdev-gate-hook-tmp-"),
+    }),
   });
 }
 
@@ -56,8 +61,23 @@ function runEditHook(stateDir: string, sessionId: string, agentId: string, fileP
   }
 }
 
-function runGateHook(stateDir: string, sessionId: string, agentId: string) {
+function runGateHook(stateDir: string, sessionId: string, agentId?: string) {
   return runHook(GATE_HOOK, stateDir, JSON.stringify({ session_id: sessionId, agent_id: agentId }));
+}
+
+/** Agent a1 of session s1 writes a fish syntax regression (`if` with no `end`) into a.fish, then
+ * stops: the stop gate's run. */
+function stopAfterFishRegression(
+  stateDir: string,
+  root: string,
+  { staged = false, env }: { staged?: boolean; env?: Record<string, string> } = {},
+) {
+  writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+  if (staged) {
+    git(root, "add", "-u");
+  }
+  runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+  return runHook(GATE_HOOK, stateDir, JSON.stringify({ session_id: "s1", agent_id: "a1" }), env);
 }
 
 describe("qsm-langdev gate hook", () => {
@@ -75,16 +95,93 @@ describe("qsm-langdev gate hook", () => {
     const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
     const root = repoWithFile("a.fish", "echo alpha\n");
 
-    // A genuine fish syntax regression — `if` with no matching `end` — but
-    // this repository has no .qsm-langdev/gates.json, so nothing here is
-    // ours to judge.
+    // A genuine fish syntax regression, but this repository has no .qsm-langdev/gates.json, so
+    // nothing here is ours to judge.
+    const r = stopAfterFishRegression(stateDir, root);
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  test("The main agent stops with a worse staged tree", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+
+    // The main agent's events carry no agent_id: the Stop payload names the session only.
     writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+    runEditHook(stateDir, "s1", "main", join(root, "a.fish"));
+    git(root, "add", "a.fish");
+
+    for (const n of [1, 2]) {
+      const blocked = runGateHook(stateDir, "s1");
+      expect(blocked.stdout).toContain('"decision":"block"');
+      expect(blocked.stdout).toContain(`block ${n}/3`);
+    }
+    // The cap: the third identical stop is let through, with the halt on record.
+    const halted = runGateHook(stateDir, "s1");
+    expect(halted.exit).toBe(0);
+    expect(halted.stdout).not.toContain('"decision":"block"');
+    expect(halted.stderr).toContain("HALT after 3 blocks");
+  });
+
+  test("A gates config that cannot be read holds the stop and names the cause", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    writeFileSync(join(root, "a.fish"), "echo alpha\necho beta\n");
     runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    writeFileSync(join(root, ".qsm-langdev", "gates.json"), "{bad");
 
     const r = runGateHook(stateDir, "s1", "a1");
 
     expect(r.exit).toBe(0);
-    expect(r.stdout).toBe("");
+    expect(r.stdout).toContain('"decision":"block"');
+    expect(r.stdout).toContain("gates.json");
+  });
+
+  test("A tree the stop hook has no time left for is named, never judged in silence", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+
+    // Three times a 400 s point timeout is past the hook's 950 s, so not even one tree fits.
+    const r = stopAfterFishRegression(stateDir, root, {
+      staged: true,
+      env: { QSM_LANGDEV_GATE_BUDGET_MS: "400000" },
+    });
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).not.toContain('"decision":"block"');
+    expect(r.stderr).toContain("not judged: the stop hook's time would run out first");
+  });
+
+  test("An edit the agent did not stage", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+
+    // The agent never stages the regression: it is on no way out, so it is named, not judged.
+    const r = stopAfterFishRegression(stateDir, root);
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).not.toContain('"decision":"block"');
+    expect(r.stderr).toContain("unstaged changes not scored: a.fish");
+  });
+
+  test("A new file the agent never added", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    writeFileSync(join(root, "b.fish"), "if true\necho beta\n");
+
+    const r = runGateHook(stateDir, "s1", "a1");
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).not.toContain('"decision":"block"');
+    expect(r.stderr).toContain("untracked not scored: ");
+    expect(r.stderr).toContain("b.fish");
   });
 
   test("a tree back to its start commit never blocks the stop", () => {
@@ -106,6 +203,60 @@ describe("qsm-langdev gate hook", () => {
     expect(r.exit).toBe(0);
     expect(r.stdout).not.toContain('"decision":"block"');
   });
+});
+
+const CLI = resolve(import.meta.dir, "cli.ts");
+
+/** The commit gate the way git runs it: `qsm-langdev hook pre-commit` in `root`, with only
+ * `langdev` gating the commit. */
+function runCommitGate(root: string) {
+  const config = join(root, ".qsm-langdev", "gates.json");
+  writeFileSync(
+    config,
+    readFileSync(config, "utf8").replace('"pre-commit":[]', '"pre-commit":["langdev"]'),
+  );
+  const home = sandboxDir("qsm-langdev-gate-hook-home-");
+  const env = isolatedEnv(home, { TMPDIR: sandboxDir("qsm-langdev-gate-hook-tmp-") });
+  return runBin(CLI, ["hook", "pre-commit"], { env, cwd: root });
+}
+
+describe("qsm-langdev: the commit gate and the stop gate judge with one rule", () => {
+  test("A missing config blocks the commit and only warns at the stop", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.sh", "#!/bin/sh\necho hi\n");
+    initGates(root, ["shell"]);
+    writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho hi\necho there\n");
+    git(root, "add", "-u");
+    runEditHook(stateDir, "s1", "a1", join(root, "a.sh"));
+    const missing = "shell: no profile-scaffolded config in this repository";
+
+    const commitGate = runCommitGate(root);
+    const stopGate = runGateHook(stateDir, "s1", "a1");
+
+    expect(commitGate.exit).toBe(1);
+    expect(commitGate.stderr).toContain(missing);
+    expect(stopGate.exit).toBe(0);
+    expect(stopGate.stdout).not.toContain('"decision":"block"');
+    expect(stopGate.stderr).toContain(missing);
+  }, 60_000);
+
+  test("A worse checker blocks the commit and the stop with the same description", () => {
+    const stateDir = sandboxDir("qsm-langdev-gate-hook-state-");
+    const root = repoWithFile("a.fish", "echo alpha\n");
+    initGates(root, ["fish"]);
+    writeFileSync(join(root, "a.fish"), "if true\necho alpha\n");
+    git(root, "add", "-u");
+    runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
+    const worse = "WORSE fish-syntax: 0 -> 1";
+
+    const commitGate = runCommitGate(root);
+    const stopGate = runGateHook(stateDir, "s1", "a1");
+
+    expect(commitGate.exit).toBe(1);
+    expect(commitGate.stderr).toContain(worse);
+    expect(stopGate.stdout).toContain('"decision":"block"');
+    expect(stopGate.stdout).toContain(worse);
+  }, 60_000);
 });
 
 /** `fish` and `fish_indent` stand-ins in a fresh bin directory: each names
@@ -133,6 +284,7 @@ describe("qsm-langdev gate hook and a checker past its time", () => {
       QSM_LANGDEV_GATE_BUDGET_MS: "500",
     };
     writeFileSync(join(root, "a.fish"), "echo alpha\necho beta\n");
+    git(root, "add", "-u");
     runEditHook(stateDir, "s1", "a1", join(root, "a.fish"));
 
     const r = runHook(

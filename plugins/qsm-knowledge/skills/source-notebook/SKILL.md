@@ -24,8 +24,8 @@ single answer. A notebook with three sources answers confidently and reads like 
 - Prefer the primary source (paper, spec, maintainer) over a post about it, because the notebook
   cannot tell a wrong source from a right one.
 - Add one source that disagrees, because a corpus of agreement manufactures confidence.
-- Run `nlm sources <notebook>` before relying on a source, because ingestion finishes after the add
-  returns and a login page ingests as a login page.
+- Run `nlm source list <notebook>` before relying on a source, because ingestion finishes after the
+  add returns and a login page ingests as a login page.
 
 ## Asking
 
@@ -39,8 +39,9 @@ single answer. A notebook with three sources answers confidently and reads like 
 
 ## Current
 
-Run `nlm check-source` then `nlm refresh-source` before the notebook decides something, because a
-changed source still answers from the version ingested.
+Run `nlm source check` then `nlm source refresh` before the notebook decides something, because a
+changed source still answers from the version ingested. `source check` knows only Google Drive
+sources, so refresh any other source that may have changed.
 
 ## When a query fails
 
@@ -50,6 +51,7 @@ Never fill the gap from memory.
 | --- | --- |
 | Service unavailable for that query type | retry with `generate-chat` |
 | Authentication failure | `nlm refresh`, then `nlm auth`, then retry |
+| `nlm auth` shows `✗ No notebook.google.com cookies` | the person signs in once: `chromium --user-data-dir=$HOME/.config/google-chrome https://notebook.google.com/`, closes it, then `nlm auth` |
 | Nothing answers | `qsm-knowledge doctor` |
 
 ## Red flags

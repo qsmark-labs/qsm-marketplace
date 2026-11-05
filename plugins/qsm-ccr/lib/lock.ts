@@ -4,27 +4,13 @@
 // pid check, no unlink race between two takers and no reused pid that blocks every taker. Rename or
 // unlink takeovers only narrow that race; "the holder is dead, so replace its file" cannot be one
 // atomic step. The file is never removed: a taker that locked a removed file would hold nothing.
-import { dlopen, FFIType } from "bun:ffi";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { sleep } from "bun";
+import { tryFlock } from "../../../lib/fs.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 
 const POLL_MS = 10;
-/** LOCK_EX (2) with LOCK_NB (4): exclusive, and an answer at once instead of a wait */
-const LOCK_EX_NB = 6;
-
-let flock: ((fd: number, op: number) => number) | undefined;
-
-function tryFlock(fd: number): boolean {
-  if (flock === undefined) {
-    const libc = dlopen(process.platform === "darwin" ? "libc.dylib" : "libc.so.6", {
-      flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-    });
-    flock = (f, op) => libc.symbols.flock(f, op);
-  }
-  return flock(fd, LOCK_EX_NB) === 0;
-}
 
 function lockFile(stateDir: string): number {
   mkdirSync(stateDir, { recursive: true, mode: 0o700 });

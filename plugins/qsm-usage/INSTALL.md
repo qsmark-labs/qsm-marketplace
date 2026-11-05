@@ -14,7 +14,7 @@ nothing fails). The installer builds it when missing. Never `cargo install rtk` 
 that name is a different package. Use:
 
 ```bash
-cargo install --git https://github.com/rtk-ai/rtk --rev 5d32d0736f686b69d1e8b9dc45c007d4eb77a0a2 --locked
+cargo install --git https://github.com/rtk-ai/rtk --rev 753a3b0e939f2e4490fc24e3a1984010f40a103c --locked rtk
 ```
 
 Add `~/.cargo/bin` to `PATH`. `QSM_FILTER_BIN` names another filter.

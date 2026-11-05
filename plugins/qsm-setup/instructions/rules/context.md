@@ -64,7 +64,13 @@ already said.
 7. An operation that may run over about 60 seconds shows progress (the monitor tool, or a script
    that prints each iteration) and has an iteration cap and a wall-clock timeout, because a
    silent long run looks like a hang.
-8. After two failed attempts at debugging below the application (kernel, drivers, filesystem,
+8. A run that loads the person's machine on purpose (CPU burners, a stress test, a load to
+   measure under) is asked for first, because it is their machine while they work on it. The
+   person in their words: "nedosuj mi PC".
+9. When the person asked to clean up and prepare work, not to finish it, a review's findings
+   become task lines with their decisions, never code in the same round. The person: "zase to
+   neprehanej s tou implementaci ted".
+10. After two failed attempts at debugging below the application (kernel, drivers, filesystem,
    boot), stop and search the exact error message, because someone has hit it and blind
    iteration costs boot cycles.
 
@@ -112,20 +118,25 @@ keeps its context, so it reads no file twice, but pays the write again. The one-
 minutes. The person said: "prefer less agents, that have more
 work, so that we dont burn the cache".
 
-The main agent makes a subagent's worktree before dispatch, reviews the branch there (the
-subagents skill says how), merges by merge commit or cherry-pick, then deletes worktree and
+A subagent that edits works in its own worktree, cut through wt from the main agent's branch at
+dispatch (the implementer declares `isolation: worktree`). The main agent reviews the branch there
+(the subagents skill says how), merges by merge commit or cherry-pick, then deletes worktree and
 branch. A worker never merges, rebases, pushes, or deletes; a leftover worktree is a defect. Any
 branch an agent opens, the main agent's own included, is merged into the working branch or deleted
 before the turn that finished its work ends, because an unmerged branch is finished work the
-working tree does not have; the session-end hook names every branch still ahead.
+working tree does not have; `qsm-worktrunk ahead` names every branch still ahead.
 
 ## Workflows
 
-More than three subagents for one piece of work is a Workflow, not a chain of dispatches. Find the
-work list yourself, then hand it to the workflow, and use `parallel()` only when a stage needs all
-results at once. A workflow mixes the tiers side by side, each step on the
-tier the table above gives its work: haiku by default, sonnet for a review or a step that needs
-thinking, opus for an end-to-end step. Never fable inside a workflow.
+The shape of the work decides, not the count of agents. A chain whose stages feed each other (check,
+implement, review) is a Workflow. Independent work, such as four unrelated tasks or the parallel
+agents a skill asks for, goes out as plain subagents in one message, as many as the work has. The
+person in their words: "workflow je based on the agent, if its 4 unrelated things, or if its a
+dirrect skill, than run it normally as subagents. If its a check - implement - review, than its a
+workflow." For a Workflow, find the work list yourself, then hand it to the workflow, and use
+`parallel()` only when a stage needs all results at once. A workflow mixes the tiers side by side,
+each step on the tier the table above gives its work: haiku by default, sonnet for a review or a
+step that needs thinking, opus for an end-to-end step. Never fable inside a workflow.
 
 Review and fix stages are a quarter of the build stage: one reviewer for four builders, reading
 their results together and judging the integration, the flow, and the end-to-end business

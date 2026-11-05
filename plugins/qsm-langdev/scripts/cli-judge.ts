@@ -6,19 +6,21 @@ import { fail, ok } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { editFindings } from "../lib/edit-findings.ts";
 import { resolveRef } from "../lib/gitref.ts";
-import { type Editor, editedTrees, MAIN_AGENT, readStartPoint } from "../lib/state.ts";
+import { POINTS } from "../lib/registry.ts";
 import {
-  compareWorktreeSince,
+  type EditedTree,
+  type Editor,
+  editedTrees,
+  MAIN_AGENT,
+  readStartPoint,
+} from "../lib/state.ts";
+import {
+  compareStructure,
   type StructureResult,
   type StructureVerdict,
   verdict,
 } from "../lib/structure.ts";
 import { err, requireRepo } from "./call.ts";
-
-interface StructureTree {
-  root: string;
-  start: string;
-}
 
 /**
  * The commit `structure` compares against with no `--against`: the agent's own start point in this
@@ -53,7 +55,7 @@ function namedCommit(
 function structureTreesToJudge(
   target: string | undefined,
   values: { against?: string; session?: string; agent?: string },
-): StructureTree[] {
+): EditedTree[] {
   if (target !== undefined || values.agent === undefined) {
     const root = requireRepo(target ?? ".");
     const named = namedCommit(root, values.against, values.session, values.agent);
@@ -69,24 +71,30 @@ function structureTreesToJudge(
   return editedTrees({ sessionId: values.session, agentId: values.agent });
 }
 
-/** The first failing tree's verdict, else the last tree's, else the
- * report of an agent that edited nothing. */
-async function structureJudgeAll(trees: StructureTree[]): Promise<
+const unmeasured = (judged: { result: StructureResult }): boolean =>
+  judged.result.status === "not-measured";
+
+/** Every tree judged: the first worse tree's verdict, else the first not-measured tree's, else the
+ * last tree's, else the report of an agent that edited nothing. A worse tree is never hidden by
+ * one that could not be measured. */
+export async function structureJudgeAll(
+  trees: EditedTree[],
+  timeoutMs: number,
+): Promise<
   StructureVerdict & {
-    tree: StructureTree | null;
+    tree: EditedTree | null;
     result: StructureResult | null;
   }
 > {
-  let last: (StructureVerdict & { tree: StructureTree; result: StructureResult }) | null = null;
+  const judged: (StructureVerdict & { tree: EditedTree; result: StructureResult })[] = [];
   for (const tree of trees) {
-    const result = await compareWorktreeSince(tree.root, tree.start);
-    last = { tree, result, ...verdict(result) };
-    if (!last.pass) {
-      return last;
-    }
+    const result = await compareStructure(tree.root, tree.start, { kind: "index" }, timeoutMs);
+    judged.push({ tree, result, ...verdict(result) });
   }
   return (
-    last ?? {
+    judged.find((j) => !j.pass && !unmeasured(j)) ??
+    judged.find(unmeasured) ??
+    judged.at(-1) ?? {
       tree: null,
       result: null,
       pass: true,
@@ -111,7 +119,7 @@ const structure: Handler = async (call) => {
     ...(session === undefined ? {} : { session }),
     ...(agent === undefined ? {} : { agent }),
   });
-  const report = await structureJudgeAll(trees);
+  const report = await structureJudgeAll(trees, POINTS["pre-commit"].timeoutMs);
   err(`  ${report.summary}`);
   for (const line of report.detail) {
     err(`  ${line}`);
@@ -124,7 +132,10 @@ const structure: Handler = async (call) => {
     detail: report.detail,
     result: report.result,
   };
-  return report.pass ? ok(data) : fail("worse", report.summary, data);
+  if (report.pass) {
+    return ok(data);
+  }
+  return fail(report.result?.status === "not-measured" ? "blocked" : "worse", report.summary, data);
 };
 
 const edited: Handler = async (call) => {
@@ -132,8 +143,8 @@ const edited: Handler = async (call) => {
     sessionId: requiredString(call, "session"),
     agentId: optionalString(call, "agent") ?? MAIN_AGENT,
   };
-  const text = await editFindings(editor, requiredString(call, "file"));
-  return ok({ text }, text ?? "");
+  const report = await editFindings(editor, requiredString(call, "file"));
+  return ok(report, report.text ?? "");
 };
 
 export const handlers: Readonly<Record<string, Handler>> = { structure, edited };

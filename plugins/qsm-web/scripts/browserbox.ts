@@ -1,6 +1,7 @@
 // qsm-web browserbox: the last rung.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { spawnDetached } from "../../../lib/detach.ts";
 import { home } from "../../../lib/paths.ts";
 import { join } from "node:path";
 import {
@@ -23,14 +24,17 @@ import {
   type Instance,
   instanceName,
   listDefinition,
+  liveViewLink,
   liveViewUrl,
   outDir,
+  pinnedBrowser,
   parseInstances,
   pickPort,
   type Runtime,
   renderCommand,
   runDefinition,
   stopDefinition,
+  tokenDefinition,
 } from "../lib/browserbox.ts";
 import { NO_ROOT, pluginRoot } from "../lib/doctor.ts";
 import { readScript, type Script, ScriptError, secretSteps, withSecrets } from "../lib/steps.ts";
@@ -129,6 +133,48 @@ function redact(job: Record<string, unknown>): Record<string, unknown> {
   return { ...job, steps: shown };
 }
 
+/**
+ * Open one instance's live view, password included, in the person's own browser. The password is
+ * read from the instance at this moment and goes only to the opener's argument vector, never to
+ * the answer, so nothing that reads the CLI's output ever holds it. With nothing to open it, the
+ * failure names the address without the password and how to get the password by hand.
+ */
+function openLiveView(box: Box, name: string): string {
+  const port = Number(name.replace(/^bbox-/, ""));
+  const address = liveViewUrl(port);
+  if (box.dryRun) {
+    box.run(tokenDefinition(name));
+    box.commands.push(`xdg-open ${liveViewLink(port, "<token>")}`);
+    return address;
+  }
+  if (!instances(box).some((i) => i.name === name)) {
+    throw new QsmError(
+      "missing",
+      `no instance named ${name}; browserbox ls lists the running ones`,
+    );
+  }
+  const { status, stdout } = box.run(tokenDefinition(name));
+  const token = stdout.trim();
+  if (status !== 0 || token.length === 0) {
+    throw new QsmError("failed", `${name} has no live-view password (exit ${status})`);
+  }
+  // Detached, because a cold browser keeps xdg-open in the foreground until it exits.
+  const opened = spawnDetached(
+    "xdg-open",
+    [liveViewLink(port, token)],
+    { file: "/dev/null", append: true },
+    process.env,
+  );
+  if (!opened.ok) {
+    throw new QsmError(
+      "failed",
+      `could not open a browser for ${address} (${opened.reason}); the person can read the ` +
+        `password with: docker exec ${name} cat /run/bbox.token, and add it as ?password=`,
+    );
+  }
+  return address;
+}
+
 function instances(box: Box): Instance[] {
   const { status, stdout } = box.run(listDefinition());
   if (status !== 0) {
@@ -149,14 +195,23 @@ function ensureImage(box: Box): void {
     throw new QsmError("missing", NO_ROOT);
   }
   const context = join(root, "docker");
-  const source = contextHash(context);
+  const pins = join(root, "mise.toml");
+  const browser = existsSync(pins) ? pinnedBrowser(readFileSync(pins, "utf8")) : null;
+  if (browser === null) {
+    throw new QsmError("missing", `${pins} pins no Camoufox browser build`, {
+      next: 'add "github:daijro/camoufox" = "v<full release>" under [tools] of a valid mise.toml',
+    });
+  }
+  // The pin is part of what the image was built from, so a new pin rebuilds it.
+  const source = `${contextHash(context)}-${browser}`;
   const image = box.run(imageSourceDefinition());
   if (image.status === 0 && image.stdout.trim() === source && !box.dryRun) {
     return;
   }
-  const why = image.status === 0 ? "its docker context changed" : "there is none yet";
+  const why =
+    image.status === 0 ? "its docker context or browser pin changed" : "there is none yet";
   process.stderr.write(`qsm-web browserbox: building the image from ${context}, ${why}\n`);
-  const built = box.run(buildDefinition(context, source), false);
+  const built = box.run(buildDefinition(context, source, browser), false);
   if (built.status !== 0) {
     throw new QsmError("failed", `the image build failed (exit ${built.status})`);
   }
@@ -366,7 +421,7 @@ function takeover(call: Call, box: Box): Outcome {
   const name = requiredString(call, "name");
   const tab = requiredNumber(call, "tab");
   const timeoutMs = optionalNumber(call, "timeout") ?? DEFAULT_WAIT_MS;
-  const view = liveViewUrl(Number(name.replace(/^bbox-/, "")));
+  const view = openLiveView(box, name);
   const armed = box.send(name, {
     cmd: "wait_for_human",
     tab,
@@ -376,12 +431,9 @@ function takeover(call: Call, box: Box): Outcome {
   if (armed.ok !== true) {
     return fail("failed", `${name} would not arm the wait`, armed);
   }
-  process.stderr.write(`qsm-web browserbox: open ${view} and clear the wall\n`);
+  process.stderr.write(`qsm-web browserbox: opened ${view}; clear the wall there\n`);
   if (box.dryRun) {
     return ok({ liveView: view }, view);
-  }
-  if (flagArg(call, "open")) {
-    spawnSync("xdg-open", [view], { stdio: "ignore" });
   }
   if (cleared(box, name, tab, timeoutMs)) {
     return ok({ resumed: true, liveView: view }, `${name} tab ${tab} was cleared`);
@@ -390,6 +442,11 @@ function takeover(call: Call, box: Box): Outcome {
     resumed: false,
     liveView: view,
   });
+}
+
+function viewVerb(call: Call, box: Box): Outcome {
+  const address = openLiveView(box, requiredString(call, "name"));
+  return ok({ liveView: address }, `opened ${address}`);
 }
 
 type BoxHandler = (call: Call, box: Box) => Outcome;
@@ -416,4 +473,5 @@ export const handlers: Readonly<Record<string, Handler>> = {
   "browserbox fetch": handler(fetchOne),
   "browserbox script": handler(runScript),
   "browserbox takeover": handler(takeover),
+  "browserbox view": handler(viewVerb),
 };

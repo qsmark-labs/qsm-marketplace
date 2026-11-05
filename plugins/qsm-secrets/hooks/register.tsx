@@ -4,11 +4,14 @@
 // binary, because this sandbox cannot load it), a Read or Grep of the files that hold credentials, and the capture of a pasted secret
 // before the prompt enters the session (the decision is `qsm-secrets capture`), and the use of a
 // captured id: replaced in the command by substitute, masked in the result by `qsm-secrets mask`.
+import { atom, read, update } from "claude-code";
 import type { ApiContentBlock, EngineInterface, On, SessionAppendInput } from "claude-code";
+import { type CaptureListing, isListing, rowId } from "../lib/capture-row.ts";
 import { type PathEnv, protectedRoots, reaches } from "../lib/protected.ts";
 import { MIN_MASKED, mapStrings } from "../lib/masking.ts";
-import { substitute } from "../lib/substitute.ts";
+import { CAPTURE_NAMESPACE, locate, substitute } from "../lib/substitute.ts";
 import { argvOf, failure, registerNoun, unwrap, type VerbRow, verbs } from "./noun.generated.ts";
+import type { ReviewRow } from "./review.tsx";
 
 // The guard runs before every Bash call, so a parse that hangs must not hold the call for long.
 const GUARD_TIMEOUT_MS = 5000;
@@ -47,7 +50,7 @@ interface MaskData {
 
 interface CaptureData {
   readonly text: string;
-  readonly captured: readonly { readonly id: string }[];
+  readonly captured: readonly { readonly id: string; readonly kind: string }[];
   readonly taken: string[];
 }
 
@@ -57,7 +60,10 @@ const isCaptureData = (value: unknown): value is CaptureData =>
   isRecord(value) &&
   typeof value.text === "string" &&
   Array.isArray(value.captured) &&
-  value.captured.every((item: unknown) => isRecord(item) && typeof item.id === "string") &&
+  value.captured.every(
+    (item: unknown) =>
+      isRecord(item) && typeof item.id === "string" && typeof item.kind === "string",
+  ) &&
   isStrings(value.taken);
 
 interface Envelope {
@@ -404,6 +410,192 @@ function registerScrub(on: On): void {
   });
 }
 
+const REVIEW_PANE = "qsm-secrets-review";
+
+/** The rows `captures` last listed for the pane (null until the first load), and the outcome code
+ * of each delete that failed; kept in the session, so a render reads it and spawns nothing. */
+const review = atom(
+  { plugin: "qsm-secrets", key: "review" } as const,
+  { listed: null, failed: {} },
+  { shape: "review-1" },
+);
+
+type ReviewCache = {
+  readonly listed: CaptureListing[] | null;
+  readonly failed: Record<string, string>;
+};
+
+const isCapturesData = (value: unknown): value is { rows: CaptureListing[] } =>
+  isRecord(value) && Array.isArray(value.rows) && value.rows.every(isListing);
+
+/** `31 Oct, 14:02` in the local time this sandbox knows; the stored text when it is no date. */
+function localTime(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime())
+    ? iso
+    : at.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
+
+/** A capture id the capture made up (`cap_<hex>`), as opposed to a name the person gave or
+ * renamed it to. */
+const GENERATED_ID = /^cap_/;
+
+/** The rows the review list shows: kind, local time, the cwd's last segment, the session's first
+ * eight characters, and the id when it is a name (`qsm/deploy-key`), so a key the person named
+ * reads differently from generated junk; never a value. */
+function reviewRows({ listed, failed }: ReviewCache): ReviewRow[] {
+  const rows = listed ?? [];
+  const width = Math.max(0, ...rows.map((row) => row.kind.length));
+  return rows.map((row) => {
+    const id = rowId(row.namespace, row.key);
+    const project =
+      row.cwd === null ? "-" : (row.cwd.split("/").findLast((part) => part !== "") ?? "/");
+    const label = [
+      row.kind.padEnd(width),
+      localTime(row.capturedAt).padEnd(13),
+      project,
+      row.session === null ? "-" : row.session.slice(0, 8),
+      ...(row.namespace === CAPTURE_NAMESPACE && GENERATED_ID.test(row.key) ? [] : [id]),
+    ].join("  ");
+    return { id, label, failed: failed[id] ?? null };
+  });
+}
+
+/** What `qsm-secrets captures`, the one reader of the index, lists now. */
+async function listCaptures($: EngineInterface): Promise<ReviewCache> {
+  const argv = argvOf(verbOf("captures"));
+  const ran = await $.process.run(argv, { timeoutMs: CAPTURE_TIMEOUT_MS, cwd: RUN_DIR });
+  return { listed: dataOf(argv, ran, isCapturesData).rows, failed: {} };
+}
+
+/** `qsm-secrets rm` for one capture; its outcome code, `ok` when the entry is gone. A run that
+ * timed out or printed no envelope is `failed`, its cause in the log. */
+async function removeCapture($: EngineInterface, id: string): Promise<string> {
+  const { namespace, key } = locate(id);
+  const argv = argvOf(verbOf("rm"), { key, folder: namespace });
+  let ran: { exitCode: number; stdout: string; stderr: string };
+  try {
+    ran = await $.process.run(argv, { timeoutMs: CAPTURE_TIMEOUT_MS, cwd: RUN_DIR });
+  } catch (error) {
+    // differs: hooks sandbox, root lib's messageOf
+    $.ui.log(
+      `qsm-secrets rm ${id} did not finish: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return "failed";
+  }
+  const envelope = envelopeOf(ran.stdout);
+  if (envelope === undefined) {
+    $.ui.log(
+      `qsm-secrets rm ${id} printed no outcome envelope (exit ${ran.exitCode}): ${ran.stderr.trim().slice(0, 200)}`,
+    );
+    return "failed";
+  }
+  return envelope.code;
+}
+
+/** The ids a cache lists. */
+const listedIds = ({ listed }: ReviewCache): string[] =>
+  (listed ?? []).map((row) => rowId(row.namespace, row.key));
+
+/** The id a review list's post asks to delete, or undefined when the post is not that shape. */
+const deleteRequestOf = (data: unknown): string | undefined =>
+  isRecord(data) && typeof data.delete === "string" ? data.delete : undefined;
+
+/** The cache after a delete answered `code`: the row leaves on `ok`, else it stays with the code. */
+function afterDelete({ listed, failed }: ReviewCache, id: string, code: string): ReviewCache {
+  const rows = listed ?? [];
+  if (code !== "ok") {
+    return { listed: rows, failed: { ...failed, [id]: code } };
+  }
+  const { [id]: _cleared, ...left } = failed;
+  return { listed: rows.filter((row) => rowId(row.namespace, row.key) !== id), failed: left };
+}
+
+/**
+ * `/qsm-secrets-review`: a pane listing what the capture stored, where `d` or DEL then `y` deletes
+ * one from the vault. The list is a `Client` (review.tsx); this module reads `qsm-secrets captures`
+ * when the pane opens and deletes through `qsm-secrets rm`, so a shell and the pane run the same verbs.
+ */
+function registerReview(on: On): void {
+  on("session.start", async ($, e, next) => {
+    await $.command.register({
+      name: "qsm-secrets-review",
+      description: "Review what the capture stored and delete an entry",
+    });
+    return next(e);
+  }).catch(($, e, next) => {
+    failure($, "session.start", next.error);
+    return next(e);
+  });
+
+  on("command.run", { command: "qsm-secrets-review" }, async ($, e) => {
+    if (e.args.trim() !== "") {
+      return { text: "qsm-secrets: /qsm-secrets-review takes no arguments" };
+    }
+    const listed = await listCaptures($);
+    await update($, review, () => listed);
+    await $.ui.open({ id: REVIEW_PANE, title: "qsm-secrets review", focus: true });
+    return {};
+  }).catch(($, _e, next) => {
+    const reason = failure($, "command.run", next.error);
+    return { text: `qsm-secrets: the review pane did not open (${reason.slice(0, 200)})` };
+  });
+
+  on("ui.render", { component: "Pane", requestId: REVIEW_PANE }, async ($, e) => {
+    const elements = $.ui.resolve(e);
+    const cached = await read($, review);
+    // A pane drawn before /qsm-secrets-review ran lists them itself; a render cannot write
+    // the cache, so it does until the command runs.
+    const rows = reviewRows(cached.listed === null ? await listCaptures($) : cached);
+    if (!("Client" in elements)) {
+      const { Text } = elements;
+      return <Text>The review list needs the terminal or the desktop app.</Text>;
+    }
+    const { Client } = elements;
+    return (
+      <Client
+        key="review"
+        module="./review.tsx"
+        props={{ rows }}
+        height={e.props.scroll.bodyRows}
+      />
+    );
+  }).catch(($, e, next) => {
+    const reason = failure($, "ui.render", next.error);
+    const { Text } = $.ui.resolve(e);
+    return <Text>{`qsm-secrets: the captures could not be listed (${reason.slice(0, 300)})`}</Text>;
+  });
+
+  on("ui.message", { requestId: REVIEW_PANE }, async ($, e) => {
+    const id = deleteRequestOf(e.data);
+    const stored = await read($, review);
+    // A pane drawn before /qsm-secrets-review ran has no cache: list now, as its render did.
+    const cached = stored.listed === null ? await listCaptures($) : stored;
+    // The post is code's word, not a fact: only an id the list holds is deleted.
+    if (id === undefined || !listedIds(cached).includes(id)) {
+      $.ui.toast("qsm-secrets: nothing was deleted: the list asked for no listed capture");
+      return { props: { rows: reviewRows(cached) } };
+    }
+    const code = await removeCapture($, id);
+    if (code !== "ok") {
+      $.ui.toast(`qsm-secrets: could not delete ${id}: ${code}`);
+    }
+    // Applied to the cache as it is now, so a delete that finished meanwhile is not undone.
+    const next = await update($, review, (now) =>
+      afterDelete(now.listed === null ? cached : now, id, code),
+    );
+    return { props: { rows: reviewRows(next) } };
+  }).catch(($, _e, next) => {
+    failure($, "ui.message", next.error);
+    return {};
+  });
+}
+
 export function register(on: On): void {
   // Adds $.secrets: one method per qsm-secrets verb, generated by lib/generate-noun.ts. Never
   // hand-edit noun.generated.ts or types/index.d.ts.
@@ -414,6 +606,7 @@ export function register(on: On): void {
   registerResultMask(on);
   registerMask(on);
   registerScrub(on);
+  registerReview(on);
 
   on("prompt.submit", async ($, e, next) => {
     if (!PERSON_ORIGINS.has(e.origin.kind)) {
@@ -422,7 +615,8 @@ export function register(on: On): void {
       });
       return next(e);
     }
-    const argv = argvOf(verbOf("capture"));
+    const [session, cwd] = await Promise.all([$.session.id(), $.session.cwd()]);
+    const argv = argvOf(verbOf("capture"), { session, cwd });
     const ran = await $.process.run(argv, {
       stdin: e.text,
       timeoutMs: CAPTURE_TIMEOUT_MS,
@@ -432,7 +626,7 @@ export function register(on: On): void {
     if (done.captured.length === 0) {
       return next(e);
     }
-    const ids = done.captured.map((c) => c.id).join(", ");
+    const ids = done.captured.map((c) => `${c.id} (${c.kind})`).join(", ");
     const why = done.taken.map((name) => `; ${name} is already stored, so it got a generated id`);
     $.ui.toast(`qsm-secrets: captured ${done.captured.length} secret(s) as ${ids}${why.join("")}`);
     return next({ ...e, text: done.text });

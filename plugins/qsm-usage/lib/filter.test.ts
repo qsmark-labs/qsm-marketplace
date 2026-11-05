@@ -37,19 +37,14 @@ describe("redirectsToFile", () => {
 });
 
 describe("filterChangesMeaning", () => {
-  test("git log, grep and find keep their own output", () => {
-    for (const c of [
-      "git log --oneline -5",
-      "grep -n 'a\\|b' f",
-      "find . -name x",
-      "cd p && git log",
-    ]) {
+  test("grep and find keep their own output", () => {
+    for (const c of ["grep -n 'a\\|b' f", "find . -name x", "cd p && grep x f"]) {
       expect(filterChangesMeaning(c)).toBe(true);
     }
   });
 
   test("other commands still go through the filter", () => {
-    for (const c of ["git status", "git diff", "bun test", "echo grep", "ls"]) {
+    for (const c of ["bun test", "echo grep", "ls"]) {
       expect(filterChangesMeaning(c)).toBe(false);
     }
   });

@@ -170,6 +170,8 @@ describe("install-base plugin dependencies", () => {
       cwd: root,
       env: isolatedEnv(sandboxDir("qsm-bun-install-")),
     });
+    // Only the lockfile is kept: the install under test starts with nothing installed.
+    rmSync(join(root, "node_modules"), { recursive: true, force: true });
     if (stale) {
       writeFileSync(
         join(root, "package.json"),

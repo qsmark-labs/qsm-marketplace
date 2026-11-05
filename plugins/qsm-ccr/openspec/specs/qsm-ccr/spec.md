@@ -12,7 +12,7 @@ settings against CCR, and launches.
 Terms used below. **User settings** is `settings.json` in the Claude home (`CLAUDE_CONFIG_DIR`,
 else `.claude` in the home directory). **CCR config** is the JSON value CCR keeps in its sqlite
 database (table `app_config`, key `default`, column `value_json`) in CCR's home
-(`CCR_INTERNAL_HOME_DIR`, else `.claude-code-router` in `HOME`). **Codex home** is `CODEX_HOME`,
+(`.claude-code-router` in `CCR_INTERNAL_HOME_DIR`, else in `HOME`). **Codex home** is `CODEX_HOME`,
 else `.codex` in the home directory; it holds `auth.json`, `models_cache.json` and `config.toml`.
 **Catalog** is the `models` list of `models_cache.json`. **Allowlist** is the `models` list of the
 `codex-api` provider in CCR config; CCR refuses an id not in it. **Router environment** is the set
@@ -166,16 +166,19 @@ ships no shell function and edits no shell rc file.
 - **WHEN** `claude` exits 4 under `qsm-ccr lead`
 - **THEN** the lead answers `failed`, exits 1, and its message names `claude exited 4`
 
-### Requirement: A lead never writes its model into user settings
+### Requirement: A routed session uses an isolated Claude home
 
-A lead started by `qsm-ccr lead` SHALL leave the `model` key of user settings as it found it, so a
-subscription session started afterwards keeps its default model. Which action of a routed lead
-writes `model` (startup with `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`, or a `/model` pick) is
-unverified; the implementation SHALL find it and prevent it, candidates being a per-launch
-`--model` with a separate `--settings` source, or clearing the discovery variable for the lead.
-Until then the lead SHALL compare `model` after `claude` exits and answer `failed` naming the value
-when it changed (worded as "model changed while the lead ran": another session's `/model` lands
-there too), or naming the file when it no longer parses, and SHALL NOT rewrite it.
+Each routed lead and each routed teammate of an ordinary Claude lead SHALL start in a separate
+Claude home with a fresh copy of the current settings. Its settings SHALL never be linked to the
+original settings, and a model pick SHALL not write the original. The home SHALL retain access to
+the current login, user instructions, skills, plugins, MCP configuration and team communication.
+A teammate SHALL share its lead's team and task directories, so all members see the same team.
+A Claude teammate of a routed lead SHALL start from the original settings, not a model the routed
+lead saved in its isolated settings. A home that cannot
+be prepared SHALL stop the launch with the cause. Session data SHALL NOT be deleted automatically.
+Isolated homes SHALL share a CCR-owned project session directory, so a later `qsm-ccr lead --
+--resume` can find sessions started by an earlier routed lead without changing the original Claude
+home's settings or project sessions.
 `qsm-ccr doctor` SHALL answer `failed` when user settings `model` names a router model: a
 `<provider>,<slug>` pair, a gateway id (`anthropic/claude-ccr-...`), or a catalog slug. Doctor
 SHALL name the value and SHALL NOT rewrite it.
@@ -191,6 +194,11 @@ SHALL name the value and SHALL NOT rewrite it.
 - **WHEN** a lead's person picks another model with `/model` and exits
 - **THEN** user settings `model` is byte-identical to before
 
+#### Scenario: Resume a routed session
+
+- **WHEN** a routed lead exits and another routed lead starts with `--resume` for that session
+- **THEN** Claude Code finds the prior session and keeps using the second lead's settings copy
+
 #### Scenario: A router model in user settings is a doctor failure
 
 - **WHEN** user settings holds `"model": "anthropic/claude-ccr-<hex>"`
@@ -198,24 +206,23 @@ SHALL name the value and SHALL NOT rewrite it.
 
 ### Requirement: The teammate command reaches every lead session
 
-Activation SHALL write `CLAUDE_CODE_TEAMMATE_COMMAND`, the absolute path of the `qsm-ccr` binary
-found on `PATH`, into the `env` block of user settings, so every lead session the person starts
-routes teammates by name. That Claude Code applies a settings `env` value to the process
-environment before it spawns a teammate is unverified. When it does not, the requirement SHALL
-change to the fallback: the README names the one-line launch
-`CLAUDE_CODE_TEAMMATE_COMMAND="$(command -v qsm-ccr)" claude`, and activation writes nothing to
-the `env` block.
+Activation SHALL NOT write the teammate command to user settings. A lead receives
+`CLAUDE_CODE_TEAMMATE_COMMAND`, the absolute path of the `qsm-ccr` binary, through its process
+environment. The README names the one-line launch
+`CLAUDE_CODE_TEAMMATE_COMMAND="$(command -v qsm-ccr)" claude`.
+When no teammate command is set, doctor SHALL check that `qsm-ccr` is on PATH and explain that
+`qsm-ccr lead` supplies the command and an ordinary Claude lead needs it in its environment. It
+SHALL NOT report a healthy installation as missing merely because doctor runs outside a session.
 
-#### Scenario: Verification that the settings value reaches the teammate spawn
+#### Scenario: Verification that the environment value reaches the teammate spawn
 
-- **WHEN** activation has run and a plain `claude` lead, started with no such variable in its
-  shell, spawns a tmux teammate
-- **THEN** `launch.log` holds that teammate's line; if it does not, the fallback above applies
+- **WHEN** a `claude` lead started with the variable in its environment spawns a tmux teammate
+- **THEN** `launch.log` holds that teammate's line
 
 #### Scenario: The command points at no executable
 
 - **WHEN** the path in user settings no longer names an executable
-- **THEN** `qsm-ccr doctor` answers `missing` naming the path and the activation to rerun
+- **THEN** `qsm-ccr doctor` answers `missing` naming the path and the session environment to set
 
 ### Requirement: No CCR profile is global before any daemon start
 
@@ -267,9 +274,9 @@ as `HOME` the way CCR reads it, and CCR's default `~/.claude/settings.json`) wit
 before the start, and on any difference SHALL stop the daemon and answer `failed` naming each file
 and changed key. Stopping SHALL be proven: `ccr stop`, then SIGTERM to the start this run spawned
 (its process group) and to the pid in `service.json` only once proven CCR's (alone, never as a
-group), then the port must close; a start whose port does not open within 20 seconds SHALL be
-stopped the same way; and an answer SHALL say the daemon still runs, naming its address, whenever
-the port stayed open.
+group), then the port must close and every process signalled must be gone; a start whose port does
+not open within 20 seconds SHALL be stopped the same way; and an answer SHALL say the daemon still
+runs, naming its address, whenever the port stayed open.
 
 #### Scenario: Two teammates start at once
 
@@ -462,6 +469,12 @@ the daemon runs. A daemon that is not running SHALL be ok, because ensure starts
 Each check SHALL run on its own: a check that throws (a file that does not parse) is its own
 `failed` row naming the file, and every other check still runs.
 
+#### Scenario: A gateway table cannot be read
+
+- **WHEN** the CCR database has a config but its gateway key table is missing or unreadable
+- **THEN** doctor reports the failed gateway check and still reports the other checks; it never
+  reports that router values were fully checked when the key could not be read
+
 #### Scenario: Drift is missing with the name
 
 - **WHEN** the catalog's default model is absent from the allowlist
@@ -485,15 +498,14 @@ Each check SHALL run on its own: a check that throws (a file that does not parse
 it sets the CCR profile guard (bootstrapping CCR config when absent), detects the `codex-api`
 provider with its OAuth plugin in CCR config and, when it is missing, answers `missing` naming
 CCR's own Codex import (it never copies CCR's internals to create one), wires the custom router
-when needed, returns codex to its native configuration, writes the teammate command into user
-settings `env`, and runs a first `sync` unless an earlier step did not complete. Every file of the
-person's it writes (codex's `config.toml` and its backup, user settings, the CCR config it creates)
+when needed, returns codex to its native configuration, and runs a first `sync` unless an earlier
+step did not complete. It never writes user settings. Every file of the
+person's it writes (codex's `config.toml` and its backup, the CCR config it creates)
 SHALL be replaced whole or not at all: written to a temp file in the same directory, fsynced and
 renamed, with the file's own mode kept (a new file is `0600`), and no temp file left when the write
 fails. `--dry-run` SHALL name each change and write nothing; `--status` SHALL answer `activated`
-when every step holds, `absent` when none does, `differs` otherwise. A settings file that does not
-parse SHALL be an `error` naming the file, left as it was. Every other key of user settings SHALL
-be left as it was. Install SHALL never run it.
+when every step holds, `absent` when none does, `differs` otherwise. User settings SHALL be left
+byte-identical. Install SHALL never run it.
 
 #### Scenario: Dry run writes nothing
 

@@ -2,13 +2,15 @@
 // language checker in compare.ts applies, scored by `sentrux check --json` instead of a
 // per-language linter.
 
-import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Glob, TOML } from "bun";
+import { TOML } from "bun";
 import { generatedPaths, gitPaths } from "./config.ts";
+import { git, scratchEnv, type Sha, type TreeSide } from "./gitref.ts";
 import { arrayOf, num, recordOf, recordsOf, str, type Rec } from "./json.ts";
-import { type Kept, leaveOut, withCommitTree, withWorktreeTree } from "./tree.ts";
+import { spawnAsync, timedOut } from "./process.ts";
+import { isTestFile } from "./test-files.ts";
+import { type Kept, leaveOut, withCommitTree, withIndexTree } from "./tree.ts";
 
 const RULES_REL = join(".sentrux", "rules.toml");
 const INSTALL_LINE = "install a qsm-patched sentrux: qsm-langdev doctor names the command";
@@ -16,65 +18,43 @@ const INSTALL_LINE = "install a qsm-patched sentrux: qsm-langdev doctor names th
 /** How far the aggregate quality may fall before the verdict fails. */
 const QUALITY_TOLERANCE = 20;
 
-/**
- * What the structure score leaves out of both trees: test files and test fixtures, by each
- * language's own convention.
- */
-const TEST_FILES = [
-  // bun test, vitest, jest
-  "**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
-  "**/__tests__/**",
-  "**/fixtures/**",
-  // pytest and unittest; `tests/` is also where cargo keeps integration tests
-  "**/test_*.py",
-  "**/*_test.py",
-  "**/conftest.py",
-  "**/tests/**",
-  // a .NET test project
-  "**/*.Tests/**",
-  // go test
-  "**/*_test.go",
-  "**/testdata/**",
-].map((pattern) => new Glob(pattern));
-
-/** Whether a repository-relative path is a test file or a test fixture. */
-export function isTestFile(path: string): boolean {
-  return TEST_FILES.some((glob) => glob.match(path));
-}
-
 /** The materialized tree without its test files and its generated files, the latter by the
  * repository's own `.gitattributes` marker, the definition the language checkers use. */
 function leaveOutNonProduct(dir: string): Kept {
-  const generated = generatedPaths(dir, gitPaths(dir, ["ls-files", "-z"]) ?? []);
+  const env = scratchEnv();
+  const generated = generatedPaths(dir, gitPaths(dir, ["ls-files", "-z"], { env }) ?? [], env);
   return leaveOut(dir, (path) => isTestFile(path) || generated.has(path));
 }
 
-/** Overlays the working tree's `.sentrux/rules.toml` onto a materialized
- * commit, so a past commit is judged under the rules being shipped, not its
- * own past ones — the same rule compare.ts applies to profile configs. */
+/** Overlays the staged `.sentrux/rules.toml` onto a materialized commit, so a
+ * past commit is judged under the rules being shipped, not its own past ones,
+ * and an unstaged edit of the rules moves neither side. */
 function overlayRules(root: string, dir: string): void {
-  const rulesSrc = join(root, RULES_REL);
-  if (!existsSync(rulesSrc)) {
+  if ((gitPaths(root, ["ls-files", "-z", "--cached", "--", RULES_REL]) ?? []).length === 0) {
     return;
   }
+  const staged = git(root, ["show", `:${RULES_REL}`]);
+  if (staged.status !== 0) {
+    throw new Error(`git show :${RULES_REL} failed: ${staged.stderr.trim()}`);
+  }
   mkdirSync(join(dir, ".sentrux"), { recursive: true });
-  copyFileSync(rulesSrc, join(dir, RULES_REL));
+  writeFileSync(join(dir, RULES_REL), staged.stdout);
 }
 
-/** The tree at `ref` as an on-disk directory with its test files left out:
- * a scratch materialization of the working tree (never the live directory
+/** The tree of `side` as an on-disk directory with its test files left out:
+ * a scratch materialization of the index (never the live directory
  * itself — see lib/tree.ts), or a materialized commit with today's rules
  * overlaid on top of it. Both sides go through here, so both are filtered
  * by the one `isTestFile`. */
 async function withTree<T>(
   root: string,
-  ref: string,
+  side: TreeSide,
   fn: (dir: string, kept: Kept) => T,
 ): Promise<T> {
-  if (ref === "worktree") {
-    return withWorktreeTree(root, (dir) => fn(dir, leaveOutNonProduct(dir)));
+  if (side.kind === "index") {
+    return withIndexTree(root, (dir) => fn(dir, leaveOutNonProduct(dir)));
   }
-  return withCommitTree(root, ref, (dir) => {
+  return withCommitTree(root, side.sha, (dir) => {
     overlayRules(root, dir);
     return fn(dir, leaveOutNonProduct(dir));
   });
@@ -206,27 +186,36 @@ interface DirReport {
   edges: string[];
   violations: string[];
 }
-type ScoreDir = DirReport | { reason: string };
+type ScoreDir = DirReport | { reason: string; timedOut: boolean };
+
+const unreadable = (reason: string): ScoreDir => ({ reason, timedOut: false });
 
 /**
  * sentrux's report for a directory: the shape numbers, the cross-module edges, and the rule
  * violations.
  */
-function scoreDir(dir: string): ScoreDir {
-  // `env` named: Bun resolves the binary against the PATH the process
-  // started with unless it is handed one, and a test puts a fake first.
-  const result = spawnSync("sentrux", ["check", "--json", dir], {
-    encoding: "utf8",
-    env: process.env,
-  });
+async function scoreDir(dir: string, timeoutMs: number): Promise<ScoreDir> {
+  const result = await spawnAsync(
+    dir,
+    "sentrux",
+    ["check", "--json", dir],
+    timeoutMs,
+    scratchEnv(),
+  );
+  if (timedOut(result)) {
+    return {
+      reason: `sentrux did not finish within ${(timeoutMs / 1000).toFixed(1)}s`,
+      timedOut: true,
+    };
+  }
   if (result.error) {
-    return { reason: `sentrux could not run: ${result.error.message}` };
+    return unreadable(`sentrux could not run: ${result.error.message}`);
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(result.stdout ?? "");
   } catch {
-    return { reason: "sentrux printed no JSON — this needs the qsm-patched build" };
+    return unreadable("sentrux printed no JSON — this needs the qsm-patched build");
   }
   return readReport(recordOf(parsed) ?? {}, dir);
 }
@@ -235,11 +224,11 @@ function scoreDir(dir: string): ScoreDir {
 function readReport(report: Rec, dir: string): ScoreDir {
   const edgeList = recordsOf(report.cross_module_edges);
   if (typeof report.quality !== "number" || edgeList === null) {
-    return { reason: "sentrux's JSON carries no quality or edge list" };
+    return unreadable("sentrux's JSON carries no quality or edge list");
   }
   const causes = readCauses(recordOf(report.root_causes));
   if (causes === null) {
-    return { reason: "sentrux's JSON carries no root-cause breakdown" };
+    return unreadable("sentrux's JSON carries no root-cause breakdown");
   }
   const violations = arrayOf(recordOf(report.rules)?.violations) ?? [];
   const layers = readLayers(readFileSync(join(dir, RULES_REL), "utf8"));
@@ -263,36 +252,44 @@ export type StructureResult =
       /** How many test files the shipped tree left out of the score. */
       testFiles: number;
     }
-  | { status: "not-scored"; reason: string; install?: string };
+  | { status: "not-scored"; reason: string; install?: string }
+  /** sentrux ran out of its limit: nothing proves the tree no worse, so a retry is asked for. */
+  | { status: "not-measured"; reason: string };
 
 function added(before: string[], after: string[]): string[] {
   const had = new Set(before);
   return after.filter((entry) => !had.has(entry)).toSorted((a, b) => a.localeCompare(b));
 }
 
+/** The result for a side sentrux gave no score for: not measured when it ran out of time, else a
+ * tool to install. */
+function unscored(side: string, failure: { reason: string; timedOut: boolean }): StructureResult {
+  const reason = `${side}: ${failure.reason}`;
+  return failure.timedOut
+    ? { status: "not-measured", reason }
+    : { status: "not-scored", reason, install: INSTALL_LINE };
+}
+
 /** Scores two already-on-disk directory trees against each other: never touches git. */
-function score(referenceTree: string, shippedTree: string, testFiles: number): StructureResult {
+async function score(
+  referenceTree: string,
+  shippedTree: string,
+  testFiles: number,
+  timeoutMs: number,
+): Promise<StructureResult> {
   if (!(existsSync(join(referenceTree, RULES_REL)) && existsSync(join(shippedTree, RULES_REL)))) {
     return {
       status: "not-scored",
       reason: `${RULES_REL} is absent, so sentrux has no ruleset to score under`,
     };
   }
-  const reference = scoreDir(referenceTree);
+  const reference = await scoreDir(referenceTree, timeoutMs);
   if ("reason" in reference) {
-    return {
-      status: "not-scored",
-      reason: `reference tree: ${reference.reason}`,
-      install: INSTALL_LINE,
-    };
+    return unscored("reference tree", reference);
   }
-  const shipped = scoreDir(shippedTree);
+  const shipped = await scoreDir(shippedTree, timeoutMs);
   if ("reason" in shipped) {
-    return {
-      status: "not-scored",
-      reason: `shipped tree: ${shipped.reason}`,
-      install: INSTALL_LINE,
-    };
+    return unscored("shipped tree", shipped);
   }
   return {
     status: "scored",
@@ -369,6 +366,9 @@ function faultsOf(violations: number, edges: number, qualityDrop: number): strin
  * three cannot drift apart.
  */
 export function verdict(result: StructureResult): StructureVerdict {
+  if (result.status === "not-measured") {
+    return { pass: false, summary: `structure: not measured: ${result.reason}; retry`, detail: [] };
+  }
   if (result.status === "not-scored") {
     return notScoredVerdict(result);
   }
@@ -399,31 +399,26 @@ export function verdict(result: StructureResult): StructureVerdict {
 }
 
 /** The tree at `before` (a commit) against the tree at `after` (a commit, or
- * the working tree): materializes whichever side needs it, under the rules
+ * the index): materializes whichever side needs it, under the rules
  * being shipped and with test files left out, and scores them with `score`.
  * When what is left is the same on both sides, the change touched tests
  * only (or nothing), and that is said rather than scored: sentrux would
  * compare a tree with itself. */
 export async function compareStructure(
   root: string,
-  before: string,
-  after: string,
+  before: Sha,
+  after: TreeSide,
+  timeoutMs: number,
 ): Promise<StructureResult> {
-  return withTree(root, before, (referenceTree, referenceKept) =>
-    withTree(root, after, (shippedTree, shippedKept): StructureResult => {
+  return withTree(root, { kind: "commit", sha: before }, (referenceTree, referenceKept) =>
+    withTree(root, after, (shippedTree, shippedKept): Promise<StructureResult> => {
       if (referenceKept.listing === shippedKept.listing) {
-        return {
+        return Promise.resolve({
           status: "not-scored",
           reason: `no product file changed (${shippedKept.leftOut} test file(s) left out of the score)`,
-        };
+        });
       }
-      return score(referenceTree, shippedTree, shippedKept.leftOut);
+      return score(referenceTree, shippedTree, shippedKept.leftOut, timeoutMs);
     }),
   );
-}
-
-/** The working tree against the commit at `before` — what a stop gate or
- * `structure` with no `--against` compares. */
-export function compareWorktreeSince(root: string, before: string): Promise<StructureResult> {
-  return compareStructure(root, before, "worktree");
 }

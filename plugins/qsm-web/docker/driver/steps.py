@@ -6,18 +6,22 @@ names the step's index and the reason, and the steps after it do not run.
 
 A fill carrying `redact` reports its value as redacted. That is how a
 password reaches a page without reaching a transcript.
+
+The browser is launched with humanize on, so every mouse move, a click's
+included, follows a recorded human path inside the browser.
 """
 
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.sync_api import Page, Position
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +66,80 @@ def _fill(page: Page, step: Step) -> Outcome:
     return {"selector": selector, "value": shown}
 
 
+def _number(step: Step, key: str) -> float | None:
+    value = step.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+_rng = random.SystemRandom()
+
+
+def _near_centre(size: float) -> float:
+    """Pick a point along one side of a box, where a hand lands.
+
+    Most often near the middle, never the same twice, never the outer tenth.
+    """
+    return min(max(_rng.gauss(size / 2, size / 6), size * 0.1), size * 0.9)
+
+
 def _click(page: Page, step: Step) -> Outcome:
+    """Click the first match at a random point near the middle of its box.
+
+    The cursor is left at that point.
+    """
     selector = _text(step, "selector")
-    page.click(selector, timeout=_timeout(step))
-    return {"selector": selector, "url": page.url}
+    target = page.locator(selector).first
+    target.wait_for(state="visible", timeout=_timeout(step))
+    target.scroll_into_view_if_needed(timeout=_timeout(step))
+    # The point is drawn in the element's first box with an area, where a link wrapped
+    # over two lines really is, not in the rectangle around both lines.
+    # Playwright counts a click position from inside the border of that
+    # whole rectangle, so the position is taken from there.
+    geometry: list[float] | None = target.evaluate(
+        "e => { const r = Array.from(e.getClientRects())"
+        ".find(b => b.width > 0 && b.height > 0); if (!r) return null;"
+        " const b = e.getBoundingClientRect(), s = getComputedStyle(e);"
+        " return [b.x + parseFloat(s.borderLeftWidth),"
+        " b.y + parseFloat(s.borderTopWidth), r.x, r.y, r.width, r.height]; }"
+    )
+    if geometry is None:
+        message = f"{selector} is not visible"
+        raise ValueError(message)
+    origin_x, origin_y, box_x, box_y, width, height = geometry
+    x, y = box_x + _near_centre(width), box_y + _near_centre(height)
+    point: Position = {"x": x - origin_x, "y": y - origin_y}
+    target.click(position=point, timeout=_timeout(step))
+    return {"selector": selector, "x": x, "y": y, "url": page.url}
+
+
+def _mouse(page: Page, step: Step) -> Outcome:
+    """Move to a point, and click there on request.
+
+    The browser knows where its cursor is and draws the path from there.
+
+    The point is held inside the page's visible area, scrollbars excluded,
+    because the cursor of a tab cannot leave it.
+    """
+    x, y = _number(step, "x"), _number(step, "y")
+    if x is None or y is None:
+        message = "mouse needs x and y"
+        raise ValueError(message)
+    # The visual viewport leaves the scrollbars out, in quirks mode too,
+    # where the root element's client size is the page's, not the window's.
+    width, height = page.evaluate(
+        "() => [window.visualViewport.width, window.visualViewport.height]"
+    )
+    x = min(max(x, 0.0), float(width) - 1)
+    y = min(max(y, 0.0), float(height) - 1)
+    page.mouse.move(x, y)
+    clicked = step.get("click") is True
+    if clicked:
+        # Down and up only: the cursor is already there.
+        page.mouse.down()
+        page.mouse.up()
+    return {"x": x, "y": y, "clicked": clicked, "url": page.url}
 
 
 def _wait(page: Page, step: Step) -> Outcome:
@@ -101,6 +175,7 @@ _ACTIONS: dict[str, Callable[[Page, Step], Outcome]] = {
     "navigate": _navigate,
     "fill": _fill,
     "click": _click,
+    "mouse": _mouse,
     "wait": _wait,
     "extract": _extract,
     "screenshot": _screenshot,

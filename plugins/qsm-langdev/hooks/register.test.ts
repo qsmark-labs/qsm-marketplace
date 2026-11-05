@@ -6,7 +6,7 @@
 import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
-const FINDINGS = "qsm-langdev on notes.md against HEAD (+ marks what this tree added):\n+ MD018";
+const FINDINGS = "qsm-langdev on notes.md:\nMD018";
 const SKIPPING = "git commit --no-verify -m x";
 
 const created = (filePath: string, content: string) => ({
@@ -19,14 +19,21 @@ type Body = Extract<Parameters<typeof test>[1], (...args: never[]) => unknown>;
 const write = ($: Parameters<Body>[0]) =>
   $.tool.call({ tool: "Write", file_path: "/repo/notes.md", content: "x\n" });
 
+/** How many times a Write reached the bottom of the chain since the last `host` call. */
+let writesRun = 0;
+
 /** The bottom of the chain, and every verb argv the module ran. */
 function host(on: On, answer?: { exit: number; data: unknown }) {
   const reply = answer ?? { exit: 0, data: { text: null } };
   const runs: string[] = [];
+  writesRun = 0;
   on("tool.call", { tool: "Bash" }, () => ({
     result: { stdout: "", stderr: "", interrupted: false, isImage: false },
   }));
-  on("tool.call", { tool: "Write" }, (_$, e) => created(e.file_path, e.content));
+  on("tool.call", { tool: "Write" }, (_$, e) => {
+    writesRun += 1;
+    return created(e.file_path, e.content);
+  });
   on("session.id", () => ({ value: "s1" }));
   on("ui.log", () => ({ value: undefined }));
   on("ui.toast", () => ({ value: undefined }));
@@ -95,4 +102,12 @@ test("a verb that fails leaves the Write's result as it was", async ($, on) => {
 
   expect(r.deny).toBeUndefined();
   expect(r.context).toBeUndefined();
+});
+
+test("a Write whose findings fail after next ran the tool once", async ($, on) => {
+  host(on, { exit: 1, data: null });
+
+  await write($);
+
+  expect(writesRun).toBe(1);
 });

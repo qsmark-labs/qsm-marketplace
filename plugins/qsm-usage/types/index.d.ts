@@ -22,7 +22,6 @@ export type Usage = {
   }): Promise<unknown>;
   filter(options: {
     command: string;
-    subagent?: boolean;
   }): Promise<unknown>;
   doctor(): Promise<unknown>;
   count(options: {

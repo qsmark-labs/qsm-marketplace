@@ -64,12 +64,22 @@ leaves the caller to track the path itself.
 When the working directory sits inside an isolated workspace rather than the
 main checkout, the plugin SHALL attach that workspace's name, path, and current
 branch to the next turn's context, so the agent never has to ask which
-workspace it is in.
+workspace it is in. When it sits in the main checkout, the plugin SHALL attach
+a line saying that the main checkout only follows main and that the agent moves
+into its own worktree with EnterWorktree before any change, because no session
+works in a shared checkout: one session's uncommitted file would otherwise
+reach every other session's gates.
 
 #### Scenario: Working from the main checkout
 
 - **WHEN** the current directory is the repository's main checkout, not an
   isolated workspace
+- **THEN** the next turn's context SHALL tell the agent to move into its own
+  worktree with EnterWorktree before any change
+
+#### Scenario: Working outside a repository
+
+- **WHEN** the current directory is in no git repository
 - **THEN** no workspace context SHALL be attached
 
 ### Requirement: Session activity is signaled through a shared marker
@@ -93,25 +103,23 @@ line reflects the agent's state without polling.
 - **WHEN** the session terminates
 - **THEN** the marker SHALL be cleared
 
-### Requirement: The session end names every branch ahead of the working branch
+### Requirement: `qsm-worktrunk ahead` lists every branch ahead of the working branch
 
-When a session ends, the plugin SHALL list the local branches that hold commits the working
-branch does not, through the `qsm-worktrunk ahead` verb, and SHALL toast and log their names, so
-finished work left on a branch is never forgotten silently. The verb SHALL answer from one git
-call and an empty list outside a git repository. A failure of the verb SHALL toast
-`qsm-worktrunk ERROR: session.end` and SHALL NOT keep the session from ending.
+The `qsm-worktrunk ahead` verb SHALL list the local branches that hold commits the working branch
+does not, one name per line, from one git call, and SHALL answer an empty list outside a git
+repository.
 
 #### Scenario: A branch holds unmerged work
 
-- **WHEN** the session ends while a local branch holds a commit the working branch lacks
-- **THEN** the toast and the log SHALL name that branch, and a branch already merged into the
+- **WHEN** a local branch holds a commit the working branch lacks
+- **THEN** `qsm-worktrunk ahead` SHALL name that branch, and a branch already merged into the
   working branch SHALL NOT be named
 
 #### Scenario: No branch is ahead
 
 - **WHEN** every local branch is merged into the working branch, or the directory is no git
   repository
-- **THEN** `qsm-worktrunk ahead` SHALL print nothing and exit 0, and no toast SHALL be shown
+- **THEN** `qsm-worktrunk ahead` SHALL print nothing and exit 0
 
 ### Requirement: Creating an isolated workspace goes through `wt`
 

@@ -19,7 +19,6 @@ import {
   doctorRows,
   headline,
   printRunLines,
-  runOutcome,
   type StructuralCheckerStatus,
   structuralCheckerStatus,
   type Verdict,
@@ -33,26 +32,20 @@ import {
   readGatesConfig,
   writeGatesConfig,
 } from "../lib/config.ts";
-import { type GateOutcome, gatesCode, runGates, SELF_GATES } from "../lib/gate-runner.ts";
+import { type GateOutcome, gatesCode, judge, runGates, SELF_GATES } from "../lib/gate-runner.ts";
+import { type HookAction, installHooks, uninstallHooks } from "../lib/git-hooks.ts";
+import { resolveRef, type Sha } from "../lib/gitref.ts";
+import { type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
 import {
-  HOOK_LANGS,
-  HOOK_NAMES,
-  type HookAction,
-  type HookName,
-  installHooks,
-  uninstallHooks,
-} from "../lib/git-hooks.ts";
-import { resolveRef } from "../lib/gitref.ts";
-import { profileGaps, type ScaffoldAction, scaffoldProfile } from "../lib/profiles.ts";
-import {
-  ENFORCEMENT_POINTS,
+  HOOK_POINTS,
+  type HookPoint,
   LANGUAGES,
   type Language,
   REGISTRY,
-  registryGaps,
   resolveLanguage,
 } from "../lib/registry.ts";
 import { semgrepLogin, semgrepLoginWarning } from "../lib/semgrep-login.ts";
+import { slowCheckers } from "../lib/timings.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 import { dirOf, err, optOneOf, required, requireRepo } from "./call.ts";
 import { handlers as judgeHandlers } from "./cli-judge.ts";
@@ -93,7 +86,7 @@ function printVerdicts(verdicts: readonly Verdict[], changedCount: number): void
  * `against` resolved to a commit id, or null when the tree has no previous commit yet — the
  * caller's own default, "HEAD".
  */
-function resolveAgainst(root: string, against: string, explicit: boolean): string | null {
+function resolveAgainst(root: string, against: string, explicit: boolean): Sha | null {
   const beforeRef = resolveRef(root, against);
   if (beforeRef === null && explicit) {
     throw new QsmError("usage", `unknown commit '${against}'`);
@@ -102,7 +95,7 @@ function resolveAgainst(root: string, against: string, explicit: boolean): strin
 }
 
 const check: Handler = async (call) => {
-  const at = optOneOf(call, "at", ENFORCEMENT_POINTS) ?? "pre-commit";
+  const at = optOneOf(call, "at", HOOK_POINTS) ?? "pre-commit";
   const root = requireRepo(dirOf(call));
   if (!isLangdevRepo(root)) {
     throw new QsmError("missing", `qsm-langdev is not set up in ${root}: run qsm-langdev init`);
@@ -116,7 +109,7 @@ const check: Handler = async (call) => {
   const { changed, sets, verdicts, store, warnings } = await compareTrees(
     root,
     beforeRef,
-    "worktree",
+    { kind: "index" },
     {
       at,
       languages: lang === undefined ? config.languages : parseLanguages(lang),
@@ -138,8 +131,13 @@ const check: Handler = async (call) => {
     verdicts,
     warnings,
   };
-  const { code, deciding } = runOutcome(verdicts, beforeRef !== null);
-  return code === "ok" ? ok(data) : fail(code, deciding.map((v) => v.summary).join("; "), data);
+  const { failed, blocked } = judge(verdicts, beforeRef !== null, "commit");
+  if (failed.length > 0) {
+    return fail("worse", failed.map((v) => v.summary).join("; "), data);
+  }
+  return blocked.length > 0
+    ? fail("blocked", blocked.map((v) => v.summary).join("; "), data)
+    : ok(data);
 };
 
 const list: Handler = () => {
@@ -147,7 +145,7 @@ const list: Handler = () => {
     name: spec.name,
     measures: spec.measures,
     language: spec.language,
-    runsAt: spec.runsAt,
+    points: spec.points,
     extensions: spec.extensions,
     ...(spec.names ? { names: spec.names.source } : {}),
     binary: spec.binary,
@@ -157,7 +155,7 @@ const list: Handler = () => {
   const covers = (row: (typeof rows)[number]) =>
     [...row.extensions, ...(row.names === undefined ? [] : [row.names])].join(",");
   const text = rows
-    .map((row) => [row.name, row.language, row.runsAt, covers(row)].join("\t"))
+    .map((row) => [row.name, row.language, row.points.join(","), covers(row)].join("\t"))
     .join("\n");
   return ok(rows, text);
 };
@@ -178,12 +176,12 @@ function describeStructuralCheck(structural: StructuralCheckerStatus): string {
   if (structural.present) {
     return (
       "MISSING  structural checker (sentrux on PATH is unpatched upstream, not ready) — install: " +
-      "bun plugins/qsm-langdev/scripts/install.ts"
+      "qsm-setup install qsm-langdev"
     );
   }
   return (
     "MISSING  structural checker (sentrux not on PATH) — install: " +
-    "bun plugins/qsm-langdev/scripts/install.ts"
+    "qsm-setup install qsm-langdev"
   );
 }
 
@@ -193,17 +191,17 @@ const doctor: Handler = async (call) => {
   const config = readGatesConfig(root);
   const specs = REGISTRY.filter((spec) => languageEnabled(spec.language, config.languages));
   const rows = await doctorRows(specs);
-  const gaps = [...registryGaps(), ...profileGaps()];
   const structural = await structuralCheckerStatus();
   const text = [...rows.map(describeCheckRow), describeStructuralCheck(structural)].join("\n");
-  const warnings = gaps.map((gap) => `registry or profile gap: ${gap}`);
+  const warnings: string[] = [];
   // an absent semgrep is its MISSING row above, never a login question
   const semgrep = rows.some((row) => row.binary === "semgrep" && row.present);
-  const login = semgrep ? semgrepLoginWarning(semgrepLogin()) : null;
+  const login = semgrep ? semgrepLoginWarning(await semgrepLogin()) : null;
   if (login !== null) {
     warnings.push(login);
   }
-  const data = { checks: rows, gaps, structural };
+  warnings.push(...slowCheckers(root));
+  const data = { checks: rows, structural };
   // a gate binary that is absent fails the hook, so it is the verdict, not a row
   const gone = rows.some((row) => !row.present && !row.timedOut) || !structural.patched;
   // a probe that only ran out of time proves nothing absent: the run is blocked until a retry
@@ -251,7 +249,7 @@ const languages: Handler = (call) => {
   const selected = applyLanguagesEdit(root, config, action, optionalString(call, "name"));
   const text =
     selected.length === 0
-      ? "(none — tree-derived mode: every language with matching files runs)"
+      ? "(none — only docs and the multi gate run; `qsm-langdev languages add <name>` selects a language)"
       : selected.join("\n");
   return ok({ languages: selected }, text);
 };
@@ -368,17 +366,18 @@ function describeInstallAction(action: HookAction): string | null {
 }
 
 const installGitHooks: Handler = (call) => {
-  const lang = optOneOf(call, "lang", HOOK_LANGS) ?? "sh";
   const root = requireRepo(dirOf(call));
-  const actions = installHooks(root, HOOK_NAMES, lang);
+  const actions = installHooks(root);
   const config = readGatesConfig(root);
   const lines = [
     ...actions.map(describeInstallAction).filter((line): line is string => line !== null),
-    ...HOOK_NAMES.map((name) => `${name}: ${config.hooks[name].join(", ") || "(none configured)"}`),
+    ...HOOK_POINTS.map(
+      (name) => `${name}: ${config.hooks[name].join(", ") || "(none configured)"}`,
+    ),
     "A missing gate binary or config fails the hook. Change the selection in " +
       `${root}/.qsm-langdev/gates.json`,
   ];
-  return ok({ root, lang, actions, hooks: config.hooks }, lines.join("\n"));
+  return ok({ root, actions, hooks: config.hooks }, lines.join("\n"));
 };
 
 function describeUninstallAction(action: HookAction): string {
@@ -403,7 +402,7 @@ const uninstallGitHooks: Handler = (call) => {
   return ok({ root, actions }, actions.map(describeUninstallAction).join("\n"));
 };
 
-function reportGateOutcomes(name: HookName, outcomes: readonly GateOutcome[]): void {
+function reportGateOutcomes(name: HookPoint, outcomes: readonly GateOutcome[]): void {
   for (const outcome of outcomes) {
     if (outcome.status === "pass") {
       err(`[${name}] ${outcome.gate}: ${outcome.note ?? "ok"}`);
@@ -428,7 +427,7 @@ function reportGateOutcomes(name: HookName, outcomes: readonly GateOutcome[]): v
 }
 
 const hook: Handler = async (call) => {
-  const name = required(optOneOf(call, "name", HOOK_NAMES), "name");
+  const name = required(optOneOf(call, "name", HOOK_POINTS), "name");
   const root = requireRepo(".");
   if (!isLangdevRepo(root)) {
     return ok({ hook: name, root, outcomes: [] });

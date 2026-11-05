@@ -8,10 +8,13 @@ qsm-web owns web research: one loop, a skill for each tool it uses, and the CLI 
 
 ### Requirement: qsm-web searxng queries the configured instance
 
-The `search` verb SHALL select its instance from `--instance`, then `QSM_SEARXNG_INSTANCE`, and
-SHALL NOT read or write a client config file. It SHALL return one result array as its outcome
-data, retaining URL, title, content, engine, engines, category, score and published date, with
-optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
+The `search` verb SHALL select its instance from `--instance`, then `QSM_SEARXNG_INSTANCE`, then the
+`instance` field of the machine-local `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default
+`~/.config/qsm-searxng/config.json`). It SHALL NOT write that file or read search-policy defaults
+from it. An unreadable, invalid or malformed selected config SHALL fail without echoing its
+contents. Explicit inputs SHALL not read the local file. It SHALL return one result array as its
+outcome data, retaining URL, title, content, engine, engines, category, score and published date,
+with optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
 
 #### Scenario: Server defaults are used without overrides
 
@@ -22,8 +25,8 @@ optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
 
 #### Scenario: Missing or invalid address
 
-- **WHEN** neither address input is present
-- **THEN** the verb SHALL return `missing` naming the two supported inputs
+- **WHEN** no address input or local config is present
+- **THEN** the verb SHALL return `missing` naming the supported inputs
 - **WHEN** an explicit address is not absolute HTTP(S) or contains credentials, query or fragment
 - **THEN** the verb SHALL return `usage` without making a request or exposing those values
 
@@ -334,10 +337,33 @@ artifacts. An erroring fetch SHALL report the error kind and message as
 ### Requirement: qsm-web browserbox runs a script against a page
 
 qsm-web browserbox SHALL run one ordered script of page actions (at minimum:
-navigate, fill, click, wait, extract, screenshot) against one tab,
+navigate, fill, click, mouse, wait, extract, screenshot) against one tab,
 returning per-step outcomes and a final result. On a step's failure it
 SHALL stop there and report which step failed and why, rather than
 continue on a page in an unknown state.
+
+Every mouse movement, a click's included, SHALL follow a recorded human path
+inside the browser (Camoufox `humanize`), never move the desktop's cursor,
+and never jump. A mouse step SHALL name a point in the window (`x`, `y`), with
+an optional `click` there; the browser draws the path from wherever its
+cursor is. A target outside the page's
+visible area, scrollbars excluded, SHALL be held at its edge. A click step SHALL
+click the first element its selector matches at a random point of its first
+box (the first line of a wrapped link),
+most often near the middle and never on its outer tenth, and report that point.
+
+#### Scenario: A mouse move travels a human path to its point
+
+- **WHEN** a script clicks an element, then runs a mouse step with `x` and `y`
+- **THEN** the cursor SHALL travel from the point the click landed on to that
+  point, along a path of many points, and the step SHALL report where it ended
+
+#### Scenario: A mouse step without its whole point is refused
+
+- **WHEN** a mouse step lacks `x` or `y`, or has a `click` that is not true or
+  false
+- **THEN** qsm-web browserbox SHALL refuse the script before any step runs,
+  naming the step's index
 
 #### Scenario: Script completes
 
@@ -357,6 +383,29 @@ qsm-web browserbox SHALL let an agent pause a tab on a wall until a human
 clears it through the live view, or a caller-set timeout elapses. While
 one tab waits, other tabs and instances SHALL stay usable.
 
+#### Scenario: The live view opens with its password, and nothing prints it
+
+- **WHEN** an agent runs takeover, or a person runs view, on a running instance
+- **THEN** qsm-web browserbox SHALL open the live view, password included, in the
+  desktop browser, and SHALL print only the address without the password;
+  with no browser to open, it SHALL fail naming that address and how to read
+  the password
+
+#### Scenario: The browser fills the live view
+
+- **WHEN** a script opens the instance's first page, and later when the live
+  view's tab is resized
+- **THEN** every browser window SHALL fill the instance's display, which follows
+  the size of the live view's tab, so the person sees the whole page and not
+  a part of a larger window
+
+#### Scenario: A word typed in the address bar is searched
+
+- **WHEN** the person types words that are not an address into the address bar
+  of the live view
+- **THEN** the browser SHALL search them with DuckDuckGo, not fail on a search
+  engine that posts nowhere
+
 #### Scenario: Human clears the wall
 
 - **WHEN** an agent arms takeover on a blocked tab and a human solves the
@@ -372,9 +421,16 @@ one tab waits, other tabs and instances SHALL stay usable.
 ### Requirement: The browser image follows its source
 
 qsm-web browserbox SHALL label the image it builds with a hash of every file under the plugin's
-`docker/` context, and before it starts an instance it SHALL build the image again when no image
-exists or the label differs from the current hash, because an image built from older sources runs
-an older driver that never answers the current one.
+`docker/` context and the Camoufox browser build the plugin's `mise.toml` pins, and before it
+starts an instance it SHALL build the image again when no image exists or the label differs from
+the current one, because an image built from older sources runs an older driver that never answers
+the current one. The image SHALL hold exactly the pinned browser build, never whatever is newest on
+the day of the build, and a `mise.toml` with no pin SHALL fail the start as `missing`.
+
+#### Scenario: The browser pin moved
+
+- **WHEN** the `github:daijro/camoufox` row in the plugin's `mise.toml` names another release
+- **THEN** `qsm-web browserbox start` SHALL build the image again with that browser build
 
 #### Scenario: The docker context changed
 

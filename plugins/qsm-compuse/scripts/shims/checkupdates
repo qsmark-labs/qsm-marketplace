@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# The desktop slot's checkupdates: the pending updates of the state's `updates` record, one
+# `name old -> new` line each, and exit 2 when there are none, checkupdates' own "no updates". A
+# state without the record means the slot shows the real checkupdates.
+state="${DRIVE_STATE:?the checkupdates shim runs only inside a desktop slot}"
+jq -e 'has("updates")' "$state" >/dev/null || exec /usr/bin/checkupdates "$@"
+(($# == 0)) || {
+  printf 'the slot'"'"'s checkupdates answers only a bare call (got: %s)\n' "$*" >&2
+  exit 1
+}
+jq -e '.updates | length > 0' "$state" >/dev/null || exit 2
+jq -r '.updates[]' "$state"

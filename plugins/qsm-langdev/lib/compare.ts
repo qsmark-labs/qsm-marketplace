@@ -1,7 +1,6 @@
 // Every checker compares a reference tree against the tree being shipped, and passes only when the
 // second is no worse.
 
-import { type SpawnSyncReturns, spawn as spawnChild } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,18 +12,23 @@ import {
   pathsWithAttr,
   trackedFiles,
 } from "./config.ts";
-import { changedPlusSet, describeSets, givenSet, type SetSize, setName } from "./file-sets.ts";
+import { describeSets, givenSet, type SetSize } from "./file-sets.ts";
 import type { Finding, Tally } from "./findings.ts";
 import { isErrno } from "./errors.ts";
+import { type Sha, scratchEnv, type TreeSide } from "./gitref.ts";
 import { hasScaffoldedConfig } from "./profiles.ts";
+import { type Spawned, spawnAsync, timedOut } from "./process.ts";
+import { recordRun, type Timing } from "./timings.ts";
 import {
   asRunAt,
   type CheckSpec,
-  type EnforcementPoint,
-  installLine,
   JOBS,
   type Language,
   type LocalRules,
+  type ComparedPoint,
+  type Point,
+  POINTS,
+  PROBE_MS,
   REGISTRY,
   selectedAt,
 } from "./registry.ts";
@@ -46,18 +50,14 @@ import {
   type ResolvedPack,
   resolvePacks,
 } from "./rule-packs.ts";
-import { withCommitTree, withScratchDir, withWorktreeTree } from "./tree.ts";
+import { isIgnored, withCommitTree, withIndexTree, withScratchDir } from "./tree.ts";
 
 const REPORT_SCRATCH_PREFIX = "qsm-langdev-report-";
 
-/** Every tracked file the working tree holds, minus anything deleted on disk. An untracked
- * file is not on its way into a commit, so it is not measured. Empty when git could not answer. */
-function worktreePaths(root: string): string[] {
-  const paths = gitPaths(root, ["ls-files", "-z", "--cached"]);
-  if (paths === null) {
-    return [];
-  }
-  return paths.filter((path) => existsSync(join(root, path)));
+/** Every file the index holds: only what is staged is on its way into a commit. Empty when git
+ * could not answer. */
+function indexPaths(root: string): string[] {
+  return gitPaths(root, ["ls-files", "-z", "--cached"]) ?? [];
 }
 
 /** What a checker is handed to score: a directory holding a whole tree and
@@ -67,75 +67,34 @@ interface Side {
   files: readonly string[];
 }
 
-/** Hands `fn` the tree at `ref`: a scratch materialization of the working
- * tree (never the live directory itself — an ignored path such as
+/** Hands `fn` the tree of `side`: a scratch materialization of the index
+ * (never the live directory itself — an ignored path such as
  * node_modules/ or dist/ must never enter a score just because it sits on
  * disk), or a scratch copy of a commit. Either way removed once `fn`
  * settles. */
-function withSide<T>(root: string, ref: string, fn: (side: Side) => Promise<T>): Promise<T> {
-  const files = sidePaths(root, ref);
+function withSide<T>(root: string, side: TreeSide, fn: (side: Side) => Promise<T>): Promise<T> {
+  const files = sidePaths(root, side);
   if (files === null) {
-    throw new Error(`git could not list the tree at ${ref}`);
+    throw new Error(
+      `git could not list the tree at ${side.kind === "index" ? "the index" : side.sha}`,
+    );
   }
-  if (ref === "worktree") {
-    return withWorktreeTree(root, (dir) => fn({ root: dir, files }));
+  if (side.kind === "index") {
+    return withIndexTree(root, (dir) => fn({ root: dir, files }));
   }
-  return withCommitTree(root, ref, (dir) => fn({ root: dir, files }));
+  return withCommitTree(root, side.sha, (dir) => fn({ root: dir, files }));
 }
 
-/** Every path the tree at `ref` holds, or null when git could not list it. */
-function sidePaths(root: string, ref: string): string[] | null {
-  return ref === "worktree"
-    ? worktreePaths(root)
-    : gitPaths(root, ["ls-tree", "-r", "-z", "--name-only", ref]);
+/** Every path the tree of `side` holds, or null when git could not list it. */
+function sidePaths(root: string, side: TreeSide): string[] | null {
+  return side.kind === "index"
+    ? indexPaths(root)
+    : gitPaths(root, ["ls-tree", "-r", "-z", "--name-only", side.sha]);
 }
 
-type Spawned = Pick<SpawnSyncReturns<string>, "status" | "signal" | "error" | "stdout" | "stderr">;
-
-/** How long any process the gate starts may run before it counts as stuck: a probe, a checker, a
- * version check. A busy machine or a cold cache is slow, not broken, so the gate fails only on a
- * finding or on a process stuck this long (the owner: "failing only on a gate or after rly bad
- * 5min stuck process"). */
-const STUCK_MS = 300_000;
-
-function spawnAsync(
-  cwd: string,
-  command: string,
-  args: string[],
-  timeoutMs: number,
-): Promise<Spawned> {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawnChild(command, args, { cwd, detached: true });
-    let stdout = "";
-    let stderr = "";
-    let error: NodeJS.ErrnoException | undefined;
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
-      stdout += chunk;
-    });
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
-      stderr += chunk;
-    });
-    const timer = setTimeout(() => {
-      error = Object.assign(new Error(`${command} timed out`), { code: "ETIMEDOUT" });
-      // The launcher can exit while its engine keeps scanning. This group belongs to this run.
-      if (child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch (cause) {
-          if (!isErrno(cause) || cause.code !== "ESRCH") {
-            rejectPromise(new Error(`could not stop ${command}'s process group`, { cause }));
-          }
-        }
-      }
-    }, timeoutMs);
-    child.on("error", (err: NodeJS.ErrnoException) => {
-      error = err;
-    });
-    child.on("close", (status, signal) => {
-      clearTimeout(timer);
-      resolvePromise({ status, signal, stdout, stderr, ...(error === undefined ? {} : { error }) });
-    });
-  });
+/** The `git diff` arguments naming the commit and the side shipped after it. */
+function diffRange(before: Sha, after: TreeSide): string[] {
+  return after.kind === "index" ? ["--cached", before] : [before, after.sha];
 }
 
 /** `fn` over `items` with at most `limit` in flight, results in item order. */
@@ -156,14 +115,10 @@ async function mapLimit<T, R>(
 }
 
 /** Why a run gave no output to read. */
-interface SpawnFailure {
-  reason: string;
-  timedOut?: true;
-  failedRun?: true;
-}
+type SpawnFailure = Extract<Score, { reason: string }>;
 
 function noStatus(binary: string): SpawnFailure {
-  return { reason: `${binary} exited with no status`, failedRun: true };
+  return { kind: "failed-run", reason: `${binary} exited with no status` };
 }
 
 /** The exit status of a run that finished normally, else why it did not. */
@@ -171,15 +126,18 @@ function spawnStatus(result: Spawned, binary: string): number | SpawnFailure {
   if (result.error) {
     const code = isErrno(result.error) ? result.error.code : undefined;
     if (code === "ENOENT") {
-      return { reason: `${binary} not on PATH` };
+      return { kind: "missing", reason: `${binary} not on PATH` };
     }
-    if (code === "ETIMEDOUT") {
-      return { reason: `${binary} timed out`, timedOut: true };
+    if (timedOut(result)) {
+      return { kind: "timed-out", reason: `${binary} timed out` };
     }
-    return { reason: `${binary} could not run (${code ?? result.error.message})`, failedRun: true };
+    return {
+      kind: "failed-run",
+      reason: `${binary} could not run (${code ?? result.error.message})`,
+    };
   }
   if (result.signal) {
-    return { reason: `${binary} killed by ${result.signal}`, failedRun: true };
+    return { kind: "failed-run", reason: `${binary} killed by ${result.signal}` };
   }
   if (result.status === null) {
     return noStatus(binary);
@@ -257,7 +215,7 @@ async function readOne(run: OneRun): Promise<Score> {
   const { spec, root, args, timeoutMs, readReport } = run;
   const { binary } = spec;
   const where = run.where ?? "";
-  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs);
+  const result = await spawnAsync(root, resolveBinary(root, binary), args, timeoutMs, scratchEnv());
   const exitCode = spawnStatus(result, binary);
   if (typeof exitCode !== "number") {
     return { ...exitCode, reason: `${where}${exitCode.reason}` };
@@ -267,7 +225,7 @@ async function readOne(run: OneRun): Promise<Score> {
   const value = spec.count(stdout, stderr, exitCode);
   if (value === null) {
     const cause = failureCause(spec, stdout, stderr, exitCode);
-    return { reason: `${where}${repoRelative(cause, root)}`, failedRun: true };
+    return { kind: "failed-run", reason: `${where}${repoRelative(cause, root)}` };
   }
   return { tally: normalise(value, root), output: repoRelative(`${stdout}\n${stderr}`, root) };
 }
@@ -297,7 +255,7 @@ function failureCause(spec: CheckSpec, stdout: string, stderr: string, exitCode:
 function scoreWithReport(
   spec: CheckSpec,
   reportFile: string,
-  side: KeptSide,
+  side: RuledSide,
   files: readonly string[],
   timeoutMs: number,
 ): Promise<Score> {
@@ -315,7 +273,7 @@ function scoreWithReport(
 }
 
 /** How a checker's run is cut: by the spec's key, one file at a time, or the whole side at once. */
-function groupsOf(spec: CheckSpec, side: KeptSide): readonly (readonly string[])[] {
+function groupsOf(spec: CheckSpec, side: Side): readonly (readonly string[])[] {
   if (spec.groupBy === undefined) {
     return spec.eachFile === true ? side.files.map((file) => [file]) : [side.files];
   }
@@ -368,17 +326,19 @@ interface SideStore {
   use: SideUse;
 }
 
-/**
- * The tool's number for one side: one spawn, one per file summed, or one that writes a report
- * file, each answered from the store when it already holds that content.
- */
-async function score(spec: CheckSpec, side: KeptSide, timeoutMs: number): Promise<Score> {
+/** How one group of files gets its score: computed, or answered from a store that holds it. */
+type Through = (files: readonly string[], compute: () => Promise<Score>) => Promise<Score>;
+
+/** The tool's number for `side`: one spawn, one per file summed, or one that writes a report file. */
+async function scoreFiles(
+  spec: CheckSpec,
+  side: RuledSide,
+  timeoutMs: number,
+  through: Through,
+): Promise<Score> {
   if (side.files.length === 0) {
     return { tally: { total: 0, byPath: {}, findings: [] }, output: "" };
   }
-  const { store, keying, use } = side.kept;
-  const through = (files: readonly string[], compute: () => Promise<Score>): Promise<Score> =>
-    store.through(keying, contentHash(side.root, files), compute, use);
   const argsFor = (files: readonly string[]) => spec.args(files, side.root, undefined, side.rules);
   const { reportFile } = spec;
   const perFile = spec.eachFile === true && spec.groupBy === undefined;
@@ -395,6 +355,14 @@ async function score(spec: CheckSpec, side: KeptSide, timeoutMs: number): Promis
   const groups = groupsOf(spec, side);
   const scores = await mapLimit(groups, JOBS, (files) => through(files, () => scoreOf(files)));
   return merged(groups, scores, perFile);
+}
+
+/** One side of a comparison, each group answered from the store when it holds that content. */
+function score(spec: CheckSpec, side: KeptSide, timeoutMs: number): Promise<Score> {
+  const { store, keying, use } = side.kept;
+  return scoreFiles(spec, side, timeoutMs, (files, compute) =>
+    store.through(keying, contentHash(side.root, files), compute, use),
+  );
 }
 
 /** After-path -> before-path, for files git sees moved between two trees. */
@@ -515,42 +483,10 @@ function linesNaming(output: string, paths: readonly string[]): string[] {
 }
 
 /** One checker's answer. */
-export interface Verdict {
-  check: string;
-  pass: boolean;
-  summary: string;
-  lines?: string[];
-  missing?: true;
-  missingConfig?: true;
-  skipped?: true;
-  notMeasured?: true;
-}
-
-export type RunCode = "ok" | "worse" | "blocked";
-
-/** What a run's verdicts come to, and the verdicts that decide it: `worse`
- * when a measured checker fails, or a binary or a config is missing; else
- * `blocked` when a checker was not measured, since nothing can say the tree
- * is no worse; else `ok`. A tree with no reference is new, so a measured
- * count is a starting point and never worse. */
-export function runOutcome(
-  verdicts: readonly Verdict[],
-  hasReference: boolean,
-): { code: RunCode; deciding: Verdict[] } {
-  const worse = verdicts.filter(
-    (v) =>
-      !v.pass &&
-      v.notMeasured !== true &&
-      (hasReference || v.missing === true || v.missingConfig === true),
-  );
-  if (worse.length > 0) {
-    return { code: "worse", deciding: worse };
-  }
-  const unmeasured = verdicts.filter((v) => v.notMeasured === true);
-  return unmeasured.length > 0
-    ? { code: "blocked", deciding: unmeasured }
-    : { code: "ok", deciding: [] };
-}
+export type Verdict = { check: string; summary: string; lines?: string[] } & (
+  | { kind: "measured"; pass: boolean }
+  | { kind: "skipped" | "missing-binary" | "missing-config" | "not-measured" }
+);
 
 function warn(line: string): void {
   process.stderr.write(`${line}\n`);
@@ -575,7 +511,7 @@ export function printRunLines(
 /** A verdict's first line as every report prints it: its summary, marked
  * `WORSE` when it failed on a measurement. */
 export function headline(verdict: Verdict): string {
-  const worse = !verdict.pass && verdict.notMeasured !== true;
+  const worse = verdict.kind === "measured" && !verdict.pass;
   return `${worse ? "WORSE " : ""}${verdict.summary}`;
 }
 
@@ -585,16 +521,13 @@ function narrow(side: Side, spec: CheckSpec, set: ReadonlySet<string>): Side {
   return { root: side.root, files: matchingFiles(side.root, scoped, spec.extensions, spec.names) };
 }
 
-interface CheckerResult {
-  pass: boolean;
+/** One checker's comparison: measured with its verdict, or not measured with the cause. */
+type CheckerResult = {
   summary: string;
-  notMeasured?: true;
-  /** The cause, when not measured because a run failed. */
-  failedRun?: string;
   output?: string;
   lines?: string[];
   tally?: Tally;
-}
+} & ({ kind: "measured"; pass: boolean } | { kind: "not-measured" });
 
 /** The lines a verdict carries under its summary: the checker's own parsed
  * findings when it gave us any, else the raw output reduced to the lines
@@ -605,10 +538,11 @@ function verdictLines(
   changed: readonly string[],
   all: boolean,
 ): string[] | undefined {
-  if (result.lines !== undefined && (!result.pass || all)) {
+  const passed = result.kind === "measured" && result.pass;
+  if (result.lines !== undefined && (!passed || all)) {
     return capped(occurrenceLines(result.lines, result.tally, all));
   }
-  if (!result.pass && result.output !== undefined && !looksLikeJson(result.output)) {
+  if (!passed && result.output !== undefined && !looksLikeJson(result.output)) {
     return capped(linesNaming(result.output, changed));
   }
   return undefined;
@@ -624,24 +558,24 @@ interface Evaluation {
   renames: Renames;
 }
 
-/** A side narrowed to one checker, with where its results are kept and the
- * local copy of each rule pack the checker names that the run fetched. */
-interface KeptSide extends Side {
+/** A side and the local copy of each rule pack its checker names. */
+type RuledSide = Side & { rules: LocalRules };
+
+interface KeptSide extends RuledSide {
   kept: SideStore;
-  rules: LocalRules;
 }
 
 type Scored = Extract<Score, { tally: Tally }>;
 
 const failedCause = (one: Score): string | undefined =>
-  "reason" in one && one.failedRun === true ? one.reason : undefined;
+  "kind" in one && one.kind === "failed-run" ? one.reason : undefined;
 
 /** A side that could not be scored: past the time limit, or a run whose
  * output could not be read, is not measured; any other reason fails. */
 function unscored(name: string, current: Score, previous: Score, timeoutMs: number): CheckerResult {
-  if ([current, previous].some((one) => "reason" in one && one.timedOut === true)) {
+  if ([current, previous].some((one) => "kind" in one && one.kind === "timed-out")) {
     const summary = `${name}: not measured: timed out after ${(timeoutMs / 1000).toFixed(1)}s; retry`;
-    return { pass: false, notMeasured: true, summary };
+    return { kind: "not-measured", summary };
   }
   const previousCause = failedCause(previous);
   const failed =
@@ -649,13 +583,13 @@ function unscored(name: string, current: Score, previous: Score, timeoutMs: numb
     (previousCause === undefined ? undefined : `previous version: ${previousCause}`);
   if (failed !== undefined) {
     const summary = `${name}: not measured: ${failed}; retry`;
-    return { pass: false, notMeasured: true, failedRun: failed, summary };
+    return { kind: "not-measured", summary };
   }
   if ("reason" in current) {
-    return { pass: false, summary: `${name}: ${current.reason}` };
+    return { kind: "measured", pass: false, summary: `${name}: ${current.reason}` };
   }
   const reason = "reason" in previous ? previous.reason : "no score";
-  return { pass: false, summary: `${name}: previous version: ${reason}` };
+  return { kind: "measured", pass: false, summary: `${name}: previous version: ${reason}` };
 }
 
 async function evalChecker({
@@ -692,6 +626,7 @@ function compared(
     ...(gained ? [`${fresh.gained} new`] : []),
   ];
   return {
+    kind: "measured",
     pass: current.tally.total <= previous.tally.total && worse.length === 0 && !gained,
     summary: notes.length === 0 ? totals : `${totals}; ${notes.join("; ")}`,
     output: current.output,
@@ -712,11 +647,16 @@ function scoredPaths(root: string, paths: readonly string[]): string[] {
   return paths.filter((path) => !ignored.has(path));
 }
 
-function changedBetween(root: string, beforeRef: string, after: string): string[] | null {
-  const range = after === "worktree" ? [beforeRef] : [beforeRef, after];
+/** Whether a commit would ever score `file`: git does not ignore it and it is not export-ignore. */
+export function scoredAtCommit(root: string, file: string): boolean {
+  return !isIgnored(root, file) && scoredPaths(root, [file]).length === 1;
+}
+
+function changedBetween(root: string, beforeRef: Sha, after: TreeSide): string[] | null {
+  const range = diffRange(beforeRef, after);
   // --no-renames: a moved file is in the set under both names.
-  // Against the working tree, git diff lists every tracked file that differs from the commit,
-  // a file added to the index included; an untracked file is not measured.
+  // Against the index, git diff lists every staged file that differs from the commit; an unstaged
+  // change and an untracked file are not measured.
   const changed = gitPaths(root, ["diff", "--name-only", "-z", "--no-renames", ...range]);
   if (changed === null) {
     return null;
@@ -724,8 +664,8 @@ function changedBetween(root: string, beforeRef: string, after: string): string[
   return scoredPaths(root, [...new Set(changed)].toSorted());
 }
 
-function renamedBetween(root: string, beforeRef: string, after: string): Renames {
-  const range = after === "worktree" ? [beforeRef] : [beforeRef, after];
+function renamedBetween(root: string, beforeRef: Sha, after: TreeSide): Renames {
+  const range = diffRange(beforeRef, after);
   const fields = gitPaths(root, ["diff", "--name-status", "-z", "-M", ...range]);
   const renames = new Map<string, string>();
   if (fields === null) {
@@ -749,18 +689,18 @@ function renamedBetween(root: string, beforeRef: string, after: string): Renames
 
 export interface CompareOptions {
   /** Enforcement point whose checker set runs. Default pre-commit. */
-  at?: EnforcementPoint;
+  at?: ComparedPoint;
   /** Language selection, opt-in; empty/omitted enables no language checker
    * (the always-on languages run regardless). */
   languages?: readonly Language[];
   /** Test seam; production uses REGISTRY. */
   registry?: readonly CheckSpec[];
   timeoutMs?: number;
-  /** Test seam; production gives a binary's `--version` probe STUCK_MS. */
+  /** Test seam; production reports a run slow over the point's target. */
+  targetMs?: number;
+  /** Test seam; production gives a binary's `--version` probe the point's timeout. */
   probeTimeoutMs?: number;
   jobs?: number;
-  /** Score only these paths (relative to root) on both sides — the edit hook's one file. */
-  only?: readonly string[];
   /** The files and directories (relative to root) the caller names: the
    * `given` set. Empty or omitted = the repository root. */
   given?: readonly string[];
@@ -777,16 +717,16 @@ function applicability(
   root: string,
   spec: CheckSpec,
   changed: readonly string[],
-  options: CompareOptions,
+  scope: { at: Point; languages: readonly Language[] | undefined },
 ): Applicable | null {
   const covered = matchingFiles(root, changed, spec.extensions, spec.names).length;
   if (covered === 0) {
     return null;
   }
-  if (!selectedAt(spec, options.at ?? "pre-commit")) {
+  if (!selectedAt(spec, scope.at)) {
     return null;
   }
-  if (!languageEnabled(spec.language, options.languages ?? [])) {
+  if (!languageEnabled(spec.language, scope.languages ?? [])) {
     return {
       spec,
       skip: `${spec.name} covers ${covered} changed file(s) but language '${spec.language}' is off in .qsm-langdev/gates.json`,
@@ -814,11 +754,10 @@ interface Probe {
 async function probeBinary(binary: string, timeoutMs: number): Promise<Probe> {
   const r = await spawnAsync(tmpdir(), binary, ["--version"], timeoutMs);
   const said = `${r.stdout ?? ""}${r.stderr ?? ""}`.trim();
-  const timedOut = isErrno(r.error) && r.error.code === "ETIMEDOUT";
   const present = !r.error;
   return {
     present,
-    timedOut,
+    timedOut: timedOut(r),
     timeoutMs,
     version: present && r.status === 0 && said !== "" ? said : null,
   };
@@ -841,18 +780,10 @@ async function probeAll(
 }
 
 /**
- * The paths a comparison scores: `options.only` verbatim, every path the tree holds when there is
- * no previous commit to diff against, or else whatever changed between the two sides.
+ * The paths a comparison scores: every path the tree holds when there is no previous commit to diff
+ * against, or else whatever changed between the two sides.
  */
-function resolveChanged(
-  root: string,
-  beforeRef: string | null,
-  after: string,
-  options: CompareOptions,
-): string[] {
-  if (options.only !== undefined) {
-    return [...options.only];
-  }
+function resolveChanged(root: string, beforeRef: Sha | null, after: TreeSide): string[] {
   if (beforeRef === null) {
     return trackedFiles(root) ?? [];
   }
@@ -872,9 +803,9 @@ function selectApplicable(
   root: string,
   registry: readonly CheckSpec[],
   changed: readonly string[],
-  options: CompareOptions,
+  scope: { at: Point; languages: readonly Language[] | undefined },
 ): Selection {
-  const applicable = registry.map((spec) => applicability(root, spec, changed, options));
+  const applicable = registry.map((spec) => applicability(root, spec, changed, scope));
   const skipped = applicable.filter(
     (a): a is { spec: CheckSpec; skip: string } => a !== null && "skip" in a,
   );
@@ -883,8 +814,7 @@ function selectApplicable(
     .map((a) => a.spec);
   const skipVerdicts: Verdict[] = skipped.map(({ spec, skip }) => ({
     check: spec.name,
-    pass: true,
-    skipped: true as const,
+    kind: "skipped" as const,
     summary: `${skip} — not run`,
   }));
   return { selected, skipVerdicts };
@@ -909,32 +839,51 @@ function missingPrerequisiteVerdicts(
         const seconds = (probe.timeoutMs / 1000).toFixed(1);
         return {
           check: spec.name,
-          pass: false,
-          notMeasured: true,
+          kind: "not-measured",
           summary: `${spec.name}: not measured: '${spec.binary} --version' timed out after ${seconds}s; retry`,
         };
       }
       return {
         check: spec.name,
-        pass: false,
-        missing: true,
-        summary: `${spec.binary} is not installed — install: ${installLine(spec.install)}`,
+        kind: "missing-binary",
+        summary: `${spec.binary} is not installed — install: ${spec.install}`,
       };
     });
 
-  const languagesInPlay = [...new Set(selected.map((spec) => spec.language))];
-  const missingConfigVerdicts: Verdict[] = languagesInPlay
+  return [...missingBinaryVerdicts, ...missingConfigVerdicts(selected, root)];
+}
+
+/** Whether a checker has the config it reads: neither its language's nor its own file is named
+ * by a missing-config verdict among `verdicts`. */
+function hasConfig(verdicts: readonly Verdict[]): (spec: CheckSpec) => boolean {
+  const missing = new Set(verdicts.filter((v) => v.kind === "missing-config").map((v) => v.check));
+  return (spec) => !missing.has(`${spec.language} config`) && !missing.has(`${spec.name} config`);
+}
+
+/**
+ * One verdict per language of `selected` that has no profile-scaffolded config here, and one per
+ * selected checker whose own config file is absent.
+ */
+function missingConfigVerdicts(selected: readonly CheckSpec[], root: string): Verdict[] {
+  const languages = [...new Set(selected.map((spec) => spec.language))]
     .filter((language) => !hasScaffoldedConfig(root, language))
     .map((language) => ({
       check: `${language} config`,
-      pass: false,
-      missingConfig: true as const,
+      kind: "missing-config" as const,
       summary:
         `${language}: no profile-scaffolded config in this repository — run ` +
         `'qsm-langdev init', or remove '${language}' from .qsm-langdev/gates.json`,
     }));
-
-  return [...missingBinaryVerdicts, ...missingConfigVerdicts];
+  const own = selected
+    .filter((spec) => spec.ownConfig !== undefined && !existsSync(join(root, spec.ownConfig)))
+    .map((spec) => ({
+      check: `${spec.name} config`,
+      kind: "missing-config" as const,
+      summary:
+        `${spec.name}: ${spec.ownConfig} is missing — create it ('qsm-langdev init'), ` +
+        `or remove ${spec.name} from the selection`,
+    }));
+  return [...languages, ...own];
 }
 
 /**
@@ -943,17 +892,15 @@ function missingPrerequisiteVerdicts(
  */
 function resolveGiven(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   options: CompareOptions,
 ): string[] {
   const listed = [
-    ...(beforeRef === null ? [] : (sidePaths(root, beforeRef) ?? [])),
+    ...(beforeRef === null ? [] : (sidePaths(root, { kind: "commit", sha: beforeRef }) ?? [])),
     ...(sidePaths(root, after) ?? []),
   ];
-  const given = scoredPaths(root, givenSet(listed, options.given ?? []));
-  const { only } = options;
-  return only === undefined ? given : given.filter((path) => only.includes(path));
+  return scoredPaths(root, givenSet(listed, options.given ?? []));
 }
 
 /** The selected checkers as they run at the run's enforcement point. */
@@ -962,44 +909,10 @@ function engage(selected: readonly CheckSpec[], options: CompareOptions): CheckS
   return selected.map((spec) => asRunAt(spec, point));
 }
 
-/** Every set a selected checker declares, by name, each computed once:
- * `changed` and `given` are handed in; every `changed+N` is built here from
- * the import graph of both sides and narrowed to `only` when it is set.
- * The sizes of the `changed+N` sets are pushed onto `sizes`. */
-async function setsFor(
-  base: {
-    root: string;
-    changed: readonly string[];
-    given: readonly string[];
-    only?: readonly string[];
-  },
-  selected: readonly CheckSpec[],
-  trees: readonly Side[],
-  sizes: SetSize[],
-): Promise<Map<string, ReadonlySet<string>>> {
-  const sets = new Map<string, ReadonlySet<string>>([
-    ["changed", new Set(base.changed)],
-    ["given", new Set(base.given)],
-  ]);
-  const depths = new Set(
-    selected.flatMap((spec) =>
-      typeof spec.fileSet === "string" ? [] : [spec.fileSet.changedPlus],
-    ),
-  );
-  for (const n of [...depths].toSorted((a, b) => a - b)) {
-    const plus = await changedPlusSet(base.root, trees, base.changed, n);
-    const { only } = base;
-    const files = only === undefined ? plus.files : plus.files.filter((f) => only.includes(f));
-    const name = setName({ changedPlus: n });
-    sets.set(name, new Set(files));
-    sizes.push({ set: name, files: files.length, noExtractor: plus.noExtractor });
-  }
-  return sets;
-}
-
 /** What every checker of a run shares: the store, each binary's version,
  * and where each checker's use of the store is recorded. */
 interface RunContext {
+  /** The limit a checker gets, read when it starts: at the edit point what is left of the shared deadline. */
   timeoutMs: number;
   renames: Renames;
   changed: readonly string[];
@@ -1015,6 +928,8 @@ interface RunContext {
   packs: ReadonlyMap<string, ResolvedPack>;
   /** What the run says once about how it ran, added to as checkers run. */
   warnings: string[];
+  /** How long each checker that scored a side took; a store hit is not a run. */
+  timed: Timing[];
 }
 
 /** Stands for the report directory in a stored key: it is new every run. */
@@ -1129,10 +1044,9 @@ function keptSides(
   return { before, after: keep(trees.after, narrowed.after, use.shipped) };
 }
 
-/** A verdict, and the cause when it is not measured because a run failed. */
-interface Judged {
-  verdict: Verdict;
-  failedRun?: string;
+/** Whether the checker ran on either side, rather than answering both from the store. */
+function scoredASide(use: StoreUse | undefined): boolean {
+  return (use?.shipped.scored ?? 0) + (use?.reference?.scored ?? 0) > 0;
 }
 
 /** One selected checker over its declared set on both sides; a set holding
@@ -1142,31 +1056,32 @@ async function verdictFor(
   sides: Sides<Side>,
   set: ReadonlySet<string>,
   context: RunContext,
-): Promise<Judged> {
+): Promise<Verdict> {
   const narrowed = {
     before: sides.before === null ? null : narrow(sides.before, spec, set),
     after: narrow(sides.after, spec, set),
   };
   if (narrowed.after.files.length === 0 && (narrowed.before?.files.length ?? 0) === 0) {
-    const name = setName(spec.fileSet);
+    const name = spec.fileSet;
     const summary = `${spec.name}: its ${name} set holds no file it covers — not run`;
-    return { verdict: { check: spec.name, pass: true, skipped: true, summary } };
+    return { check: spec.name, kind: "skipped", summary };
   }
   const { before, after } = keptSides(spec, sides, narrowed, context);
-  const { renames } = context;
-  const timeoutMs = spec.timeoutMs ?? context.timeoutMs;
+  const { renames, timeoutMs } = context;
+  const started = performance.now();
   const result = await evalChecker({ spec, before, after, timeoutMs, renames });
-  const verdict: Verdict = {
-    check: spec.name,
-    pass: result.pass,
-    summary: result.summary,
-    ...(result.notMeasured === true ? { notMeasured: true as const } : {}),
-  };
+  if (scoredASide(context.uses.get(spec.name))) {
+    context.timed.push({ checker: spec.name, ms: performance.now() - started });
+  }
+  const verdict: Verdict =
+    result.kind === "not-measured"
+      ? { check: spec.name, kind: "not-measured", summary: result.summary }
+      : { check: spec.name, kind: "measured", pass: result.pass, summary: result.summary };
   const lines = verdictLines(result, context.changed, context.all);
   if (lines !== undefined) {
     verdict.lines = lines;
   }
-  return { verdict, ...(result.failedRun === undefined ? {} : { failedRun: result.failedRun }) };
+  return verdict;
 }
 
 /** One checker's verdict over the set it declares. */
@@ -1177,22 +1092,39 @@ async function verdictOnEngine(
   context: RunContext,
 ): Promise<Verdict> {
   const setOf = (one: CheckSpec): ReadonlySet<string> => {
-    const set = bySet.get(setName(one.fileSet)) ?? new Set<string>();
+    const set = bySet.get(one.fileSet) ?? new Set<string>();
     return one.guardsSafety === true
       ? set
       : new Set([...set].filter((f) => !context.generated.has(f)));
   };
-  return (await verdictFor(spec, sides, setOf(spec), context)).verdict;
+  return verdictFor(spec, sides, setOf(spec), context);
+}
+
+/** The point a run is at, its target and the limits it applies: the point's, unless a test sets one. */
+function runLimits(options: CompareOptions): {
+  at: ComparedPoint;
+  targetMs: number;
+  timeoutMs: number;
+  probeTimeoutMs: number;
+} {
+  const at = options.at ?? "pre-commit";
+  const { targetMs, timeoutMs } = POINTS[at];
+  return {
+    at,
+    targetMs: options.targetMs ?? targetMs,
+    timeoutMs: options.timeoutMs ?? timeoutMs,
+    probeTimeoutMs: options.probeTimeoutMs ?? timeoutMs,
+  };
 }
 
 /**
- * Compares the tree at `beforeRef` against `after` (a commit, or the working tree) through every
+ * Compares the tree at commit `beforeRef` against `after` (a commit, or the index) through every
  * checker the change selects, each over the file set it declares.
  */
 export async function compareTrees(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   options: CompareOptions = {},
 ): Promise<{
   changed: string[];
@@ -1201,67 +1133,70 @@ export async function compareTrees(
   store: StoreReport;
   warnings: string[];
 }> {
-  const changed = resolveChanged(root, beforeRef, after, options);
+  const changed = resolveChanged(root, beforeRef, after);
   const given = resolveGiven(root, beforeRef, after, options);
   const sets: SetSize[] = [
     { set: "changed", files: changed.length },
     { set: "given", files: given.length },
   ];
 
+  const { at, targetMs, timeoutMs, probeTimeoutMs } = runLimits(options);
   const { selected: applicable, skipVerdicts } = selectApplicable(
     root,
     options.registry ?? REGISTRY,
     changed,
-    options,
+    { at, languages: options.languages },
   );
   const unused: StoreReport = { checkers: [] };
   if (applicable.length === 0) {
     return { changed, sets, verdicts: skipVerdicts, store: unused, warnings: [] };
   }
 
-  const probes = await probeAll(applicable, root, options.probeTimeoutMs ?? STUCK_MS);
+  const probes = await probeAll(applicable, root, probeTimeoutMs);
   const missingVerdicts = missingPrerequisiteVerdicts(applicable, root, probes);
   // A binary that is missing or slow to answer takes its own checkers out of the run, never the
   // run: the others still measure, and its verdict stands beside theirs. A language without its
   // config has nothing to measure with.
-  const runnable = applicable.filter((spec) => probes.get(spec.binary)?.present === true);
-  if (missingVerdicts.some((verdict) => verdict.missingConfig === true) || runnable.length === 0) {
+  // A missing config takes out only the checkers it belongs to, as a missing binary does.
+  const configured = hasConfig(missingVerdicts);
+  const runnable = applicable.filter(
+    (spec) => probes.get(spec.binary)?.present === true && configured(spec),
+  );
+  if (runnable.length === 0) {
     const verdicts = [...skipVerdicts, ...missingVerdicts];
     return { changed, sets, verdicts, store: unused, warnings: [] };
   }
   const selected = engage(runnable, options);
   const warnings: string[] = [];
 
-  const base = {
-    root,
-    changed,
-    given,
-    ...(options.only === undefined ? {} : { only: options.only }),
-  };
   const fetchPack = options.fetchPack ?? fetchFromRegistry;
-  const { context, verdicts } = await withPacks(selected, fetchPack, async (packs) => {
+  const { context, verdicts } = await withPacks(selected, fetchPack, timeoutMs, async (packs) => {
     const run: RunContext = {
-      timeoutMs: options.timeoutMs ?? STUCK_MS,
+      timeoutMs,
       renames:
         beforeRef === null ? new Map<string, string>() : renamedBetween(root, beforeRef, after),
       changed,
       generated: generatedPaths(root, [...changed, ...given]),
       all: options.allFindings === true,
-      store: new ResultStore(root, options.at ?? "pre-commit"),
+      store: new ResultStore(root, at),
       versions: new Map([...probes].map(([binary, probe]) => [binary, probe.version])),
       uses: new Map(),
       jobs: options.jobs ?? JOBS,
       packs,
       warnings,
+      timed: [],
     };
     const found = await withBeforeAndAfter(root, beforeRef, after, async (before, afterSide) => {
-      const trees = before === null ? [afterSide] : [before, afterSide];
-      const bySet = await setsFor(base, selected, trees, sets);
+      const bySet = new Map<string, ReadonlySet<string>>([
+        ["changed", new Set(changed)],
+        ["given", new Set(given)],
+      ]);
       return runSelected(selected, { before, after: afterSide }, bySet, run);
     });
     return { context: run, verdicts: found };
   });
   const store = prunedStore(selected, context);
+  warnings.push(...recordRun(root, at, context.timed, targetMs));
   return {
     changed,
     sets,
@@ -1269,6 +1204,85 @@ export async function compareTrees(
     store,
     warnings,
   };
+}
+
+/** The least a checker gets under the edit deadline, so a late one still measures something. */
+const DEADLINE_FLOOR_MS = 1000;
+
+/** What is left of `deadlineMs` counted from the binary's start, never under the floor. */
+export const leftOf = (deadlineMs: number) => (): number =>
+  Math.max(DEADLINE_FLOOR_MS, deadlineMs - performance.now());
+
+/** What one file says under the project's rules, checked in place. */
+export interface InPlace {
+  /** Each finding with its rule and line. */
+  findings: string[];
+  /** How the run went, per checker: what it found, or why it found nothing. */
+  log: string[];
+}
+
+/** The lines a checker's score gives the model: its findings, else its output naming the file. */
+function findingLines(spec: CheckSpec, one: Scored, file: string): string[] {
+  const { tally } = one;
+  if (tally.findings !== undefined) {
+    return tally.findings.map(describeFinding);
+  }
+  if (tally.total === 0) {
+    return [];
+  }
+  const named = linesNaming(one.output, [file]);
+  return named.length > 0 ? named : [`${file}: ${spec.name}: ${tally.total} findings`];
+}
+
+/**
+ * The checkers that declare `edit`, over `file` in the live checkout, against nothing but the
+ * project's rules: no reference side, no scratch tree, no store, no version probe. Each gets what is
+ * left of `deadlineMs` when it starts.
+ */
+export async function checkInPlace(
+  root: string,
+  file: string,
+  options: {
+    languages: readonly Language[];
+    deadlineMs: number;
+    registry?: readonly CheckSpec[];
+    fetchPack?: FetchPack;
+  },
+): Promise<InPlace> {
+  const { selected, skipVerdicts } = selectApplicable(root, options.registry ?? REGISTRY, [file], {
+    at: "edit",
+    languages: options.languages,
+  });
+  // A generated file is outside the quality checkers, never the safety ones, as at a commit.
+  const generated = generatedPaths(root, [file]).has(file);
+  const covering = selected.filter((spec) => !generated || spec.guardsSafety === true);
+  const unconfigured = missingConfigVerdicts(covering, root);
+  const log = [...skipVerdicts, ...unconfigured].map(headline);
+  const runnable = covering.filter(hasConfig(unconfigured));
+  const left = leftOf(options.deadlineMs);
+  const runs = await withPacks(runnable, options.fetchPack ?? fetchFromRegistry, left(), (packs) =>
+    mapLimit(runnable, JOBS, async (spec) => {
+      const started = performance.now();
+      const side = { root, files: [file], rules: packsOf(spec, packs).rules };
+      const one = await scoreFiles(spec, side, left(), (_files, compute) => compute());
+      return { spec, one, ms: performance.now() - started };
+    }),
+  );
+  const findings: string[] = [];
+  for (const { spec, one } of runs) {
+    if ("reason" in one) {
+      log.push(`${spec.name}: not measured: ${one.reason}`);
+      continue;
+    }
+    findings.push(...findingLines(spec, one, file));
+    log.push(`${spec.name}: ${one.tally.total} findings`);
+  }
+  // A run that scored, or ran out its time, is a run; a binary that never started is none.
+  const timed = runs
+    .filter(({ one }) => "tally" in one || one.kind === "timed-out")
+    .map(({ spec, ms }) => ({ checker: spec.name, ms }));
+  log.push(...recordRun(root, "edit", timed, POINTS.edit.targetMs));
+  return { findings, log };
 }
 
 /** The run's store pruned to what it used, and each checker's use of it. */
@@ -1297,7 +1311,7 @@ async function runSelected(
     }
     const verdict = await verdictOnEngine(spec, sides, bySet, context);
     // A checker not measured decides nothing, so the rest still run.
-    if (!verdict.pass && verdict.notMeasured !== true) {
+    if (verdict.kind === "measured" && !verdict.pass) {
       failed = true;
     }
     return verdict;
@@ -1310,6 +1324,7 @@ async function runSelected(
 function withPacks<T>(
   selected: readonly CheckSpec[],
   fetchPack: FetchPack,
+  timeoutMs: number,
   fn: (packs: ReadonlyMap<string, ResolvedPack>) => Promise<T>,
 ): Promise<T> {
   const wanted = selected.flatMap((spec) => spec.packs ?? []);
@@ -1317,20 +1332,20 @@ function withPacks<T>(
     return fn(new Map());
   }
   return withScratchDir(PACKS_SCRATCH_PREFIX, async (dir) =>
-    fn(await resolvePacks(wanted, dir, fetchPack)),
+    fn(await resolvePacks(wanted, dir, fetchPack, timeoutMs)),
   );
 }
 
 function withBeforeAndAfter<T>(
   root: string,
-  beforeRef: string | null,
-  after: string,
+  beforeRef: Sha | null,
+  after: TreeSide,
   fn: (before: Side | null, after: Side) => Promise<T>,
 ): Promise<T> {
   if (beforeRef === null) {
     return withSide(root, after, (afterSide) => fn(null, afterSide));
   }
-  return withSide(root, beforeRef, (beforeSide) =>
+  return withSide(root, { kind: "commit", sha: beforeRef }, (beforeSide) =>
     withSide(root, after, (afterSide) => fn(beforeSide, afterSide)),
   );
 }
@@ -1347,7 +1362,7 @@ export interface DoctorRow {
 /** Binary presence per check, every distinct binary probed once. */
 export async function doctorRows(
   specs: readonly CheckSpec[] = REGISTRY,
-  probeTimeoutMs: number = STUCK_MS,
+  probeTimeoutMs: number = PROBE_MS,
 ): Promise<DoctorRow[]> {
   const binaries = [...new Set(specs.map((spec) => spec.binary))];
   const probes = new Map(
@@ -1363,7 +1378,7 @@ export async function doctorRows(
     binary,
     present: probes.get(binary)?.present ?? false,
     timedOut: probes.get(binary)?.timedOut ?? false,
-    install: installLine(install),
+    install,
   }));
 }
 
@@ -1377,7 +1392,7 @@ export interface StructuralCheckerStatus {
  * that from an unpatched upstream `sentrux` and from none present at all.
  */
 export async function structuralCheckerStatus(): Promise<StructuralCheckerStatus> {
-  const result = await spawnAsync(tmpdir(), "sentrux", ["--version"], STUCK_MS);
+  const result = await spawnAsync(tmpdir(), "sentrux", ["--version"], PROBE_MS);
   if (spawnFailure(result, "sentrux") !== null) {
     return { present: false, patched: false };
   }

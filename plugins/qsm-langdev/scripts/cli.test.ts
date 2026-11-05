@@ -55,6 +55,7 @@ function repoWithShellFile(): string {
   writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho hi\n");
   commit(root, "first");
   writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho hi\necho there\n");
+  git(root, "add", "-u");
   return home;
 }
 
@@ -135,7 +136,11 @@ describe("qsm-langdev cli: repository state", () => {
     expect(r.exit).toBe(3);
     const envelope = envelopeOf(r.stdout);
     expect(envelope).toMatchObject({ code: "worse", exit: 3 });
-    expect(recordsOf(recordOf(envelope.data)?.verdicts)?.some((v) => v.pass !== true)).toBe(true);
+    expect(
+      recordsOf(recordOf(envelope.data)?.verdicts)?.some(
+        (v) => v.kind !== "skipped" && v.pass !== true,
+      ),
+    ).toBe(true);
   }, 60_000);
 
   test("check hands the paths it is given to the given set and reports each set's size", () => {
@@ -159,8 +164,9 @@ describe("qsm-langdev cli: gates", () => {
       join(root, ".qsm-langdev", "gates.json"),
       `${JSON.stringify({ hooks: { "pre-commit": ["langdev"], "pre-push": [] } })}\n`,
     );
+    git(root, "add", "-u");
     const r = run(["hook", "pre-commit"], { home });
-    // the edited a.sh and the untracked gates.json
+    // the staged a.sh and gates.json
     expect(r.stderr).toContain("file sets: changed: 2 files, given: 2 files");
   }, 60_000);
 
@@ -175,6 +181,24 @@ describe("qsm-langdev cli: gates", () => {
     const r = run(["hook", "pre-commit"], { home });
     expect(r.exit).toBe(1);
     expect(r.stderr).toContain("unknown gate 'nonsense'");
+  }, 60_000);
+
+  test("The first commit of a repository is reported, never blocked", () => {
+    const home = sandbox();
+    const root = join(home, "work");
+    git(root, "init", "-q");
+    writeFileSync(join(root, "a.sh"), "#!/bin/sh\necho $1\n");
+    expect(run(["init"], { home }).exit).toBe(0);
+    writeFileSync(
+      join(root, ".qsm-langdev", "gates.json"),
+      `${JSON.stringify({ hooks: { "pre-commit": ["langdev"], "pre-push": [] }, languages: ["shell"] })}\n`,
+    );
+    git(root, "add", ".");
+
+    const r = run(["hook", "pre-commit"], { home });
+
+    expect(r.stderr).toContain("langdev: file sets:");
+    expect(r.exit).toBe(0);
   }, 60_000);
 
   test("The installed git hook in an un-init'd repository", () => {
@@ -228,7 +252,14 @@ function repoWithTsAndPy(languages: readonly string[]): string {
   commit(root, "first");
   writeFileSync(join(root, "a.ts"), "const a = 2;\n");
   writeFileSync(join(root, "a.py"), "a = 2\n");
+  git(root, "add", "-u");
   return home;
+}
+
+/** The languages `init` recorded in the repository's gates.json. */
+function recordedLanguages(root: string): unknown {
+  return recordOf(JSON.parse(readFileSync(join(root, ".qsm-langdev", "gates.json"), "utf8")))
+    ?.languages;
 }
 
 describe("qsm-langdev languages: opt-in", () => {
@@ -239,10 +270,34 @@ describe("qsm-langdev languages: opt-in", () => {
     const r = run(["init"], { home });
 
     expect(r.exit).toBe(0);
-    const gates = recordOf(
-      JSON.parse(readFileSync(join(root, ".qsm-langdev", "gates.json"), "utf8")),
-    );
-    expect(gates?.languages).toEqual(["ts"]);
+    expect(recordedLanguages(root)).toEqual(["ts"]);
+  });
+
+  test("`init` leaves a test fixture's language out of what it records", () => {
+    const home = sandbox();
+    const root = join(home, "work");
+    git(root, "init", "-q");
+    mkdirSync(join(root, "src"), { recursive: true });
+    mkdirSync(join(root, "tests", "fixtures", "ts"), { recursive: true });
+    writeFileSync(join(root, "src", "main.rs"), "fn main() {}\n");
+    writeFileSync(join(root, "tests", "fixtures", "ts", "a.ts"), "const a = 1;\n");
+    commit(root, "first");
+
+    const r = run(["init"], { home });
+
+    expect(r.exit).toBe(0);
+    expect(recordedLanguages(root)).toEqual(["rust"]);
+  });
+
+  test("`languages` with no selection names what runs and how to select", () => {
+    const home = repoWithTsAndPy([]);
+
+    const r = run(["languages"], { home });
+
+    expect(r.exit).toBe(0);
+    expect(r.stdout).toContain("only docs and the multi gate run");
+    expect(r.stdout).toContain("qsm-langdev languages add <name>");
+    expect(r.stdout).not.toContain("tree-derived");
   });
 
   test("an explicit languages list gates only the languages it names", () => {

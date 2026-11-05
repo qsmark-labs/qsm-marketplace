@@ -11,7 +11,6 @@
 // A case whose files, and the plugin's skills/agents/instructions, are unchanged since it last met
 // the bar is not run again; `--force` runs everything. `--case` or `--tag` from the caller runs
 // one plain call with the caller's flags and skips nothing.
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -24,8 +23,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { YAML } from "bun";
+import { languageSkills, negativeCase } from "./unrelated-negative.ts";
 import { isRecord, root, walk } from "./walk.ts";
 
 const [name, ...args] = process.argv.slice(2);
@@ -79,20 +79,47 @@ function frontmatter(file: string): Record<string, unknown> {
   return doc;
 }
 
-/** The plugin's case directories: a directory with a case.yaml or a prompt.md. */
-function caseDirs(): Entry[] {
-  if (!existsSync(evals)) {
-    return [];
+/** The generated negative case of a language plugin, written to a temp directory that goes with the
+ * process; empty for a plugin with no `*-dev` skill. */
+function generatedCases(): string {
+  const skillsDir = join(plugin, "skills");
+  const skills = languageSkills(
+    existsSync(skillsDir)
+      ? readdirSync(skillsDir, { withFileTypes: true })
+          .filter((d) => d.isDirectory())
+          .map((d) => d.name)
+      : [],
+  );
+  const dir = mkdtempSync(join(tmpdir(), `eval-generated-${name}-`));
+  process.on("exit", () => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+  if (skills.length > 0) {
+    for (const [file, text] of Object.entries(negativeCase(skills))) {
+      const path = join(dir, "unrelated-negative", file);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, text);
+    }
   }
-  return readdirSync(evals, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && d.name !== "results" && d.name !== "mocks")
-    .map((d) => join(evals, d.name))
+  return dir;
+}
+
+const generated = generatedCases();
+
+/** The plugin's case directories, its own and the generated ones: a directory with a case.yaml or a
+ * prompt.md. */
+function caseDirs(): Entry[] {
+  return [evals, generated]
+    .filter((base) => existsSync(base))
+    .flatMap((base) => readdirSync(base, { withFileTypes: true }).map((d) => ({ base, d })))
+    .filter(({ d }) => d.isDirectory() && d.name !== "results" && d.name !== "mocks")
+    .map(({ base, d }) => join(base, d.name))
     .filter((dir) => existsSync(join(dir, "case.yaml")) || existsSync(join(dir, "prompt.md")))
     .map((dir) => {
       const file = existsSync(join(dir, "case.yaml")) ? "case.yaml" : "prompt.md";
       const meta = frontmatter(join(dir, file));
       const tags = Array.isArray(meta.tags) ? meta.tags.map(String) : [];
-      const label = relative(evals, dir);
+      const label = basename(dir);
       return {
         dir,
         label,
@@ -291,6 +318,23 @@ const todo = all.filter((c) => !skipped.includes(c));
 
 const copy = mkdtempSync(join(tmpdir(), `eval-${name}-`));
 let code = 0;
+// A stopped run removes its copy too. The eval runs as a child the event loop awaits, so a signal
+// reaches this handler instead of killing the process past the `finally` below. The handler only
+// stops the child and marks the run: the main flow wakes when the child has exited (an interrupted
+// eval still writes its partial report into the copy), starts no further call, records nothing,
+// removes the copy and exits 128 plus the signal's number.
+let running: Bun.Subprocess | undefined;
+let stoppedBy = 0;
+function stop(signal: "SIGTERM" | "SIGINT", number: number): void {
+  stoppedBy = 128 + number;
+  running?.kill(signal);
+}
+process.on("SIGTERM", () => {
+  stop("SIGTERM", 15);
+});
+process.on("SIGINT", () => {
+  stop("SIGINT", 2);
+});
 try {
   cpSync(plugin, copy, { recursive: true });
   const manifestPath = join(copy, ".claude-plugin", "plugin.json");
@@ -303,6 +347,7 @@ try {
   // A scaffold script gets a scrubbed env, so it finds the repository root in this file, two
   // levels above itself: `cat "$(dirname "$0")/../../.eval-repo"`.
   writeFileSync(join(copy, ".eval-repo"), root);
+  cpSync(generated, join(copy, "evals"), { recursive: true });
   // A skipped case is removed from the copy, so the eval never sees it.
   for (const c of skipped) {
     rmSync(join(copy, "evals", c.label), { recursive: true, force: true });
@@ -327,10 +372,18 @@ try {
   const results = join(copy, "evals", "results");
   const seen = new Set(existsSync(results) ? readdirSync(results) : []);
   for (const call of calls) {
-    const run = spawnSync("claude", ["plugin", "eval", copy, ...defaults, ...call, ...flags], {
-      stdio: "inherit",
+    if (stoppedBy !== 0) {
+      break;
+    }
+    running = Bun.spawn(["claude", "plugin", "eval", copy, ...defaults, ...call, ...flags], {
+      stdio: ["inherit", "inherit", "inherit"],
     });
-    code = code || (run.status ?? 1);
+    code = code || (await running.exited);
+  }
+  // A stopped run judged nothing: no verdict, no copied results, no hash for the next skip.
+  if (stoppedBy !== 0) {
+    rmSync(copy, { recursive: true, force: true });
+    process.exit(stoppedBy);
   }
   const fresh = (existsSync(results) ? readdirSync(results) : [])
     .filter((d) => !seen.has(d) && existsSync(join(results, d, "aggregate-result.json")))

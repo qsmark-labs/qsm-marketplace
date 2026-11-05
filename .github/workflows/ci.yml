@@ -15,7 +15,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
+      # The root `prepare` script (.gates/plugin-deps.ts) builds the Python venv with uv and fails
+      # loud without it, so uv is on PATH before the root install.
+      - name: Install uv
+        run: |
+          pipx install uv
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: bun install --frozen-lockfile
       # A plugin owns its npm dependencies (plugins/<name>/package.json); typecheck and the tests
       # resolve them from the plugin's own node_modules, as the install base does.
@@ -26,23 +32,54 @@ jobs:
             (cd "$(dirname "$manifest")" && bun install --frozen-lockfile)
           done
       # The tests drive these real binaries and fail loud without them (no skip hides a broken
-      # pipeline): wt, rumdl and markdownlint-cli2 for qsm-langdev's markdown fixers, oxlint
-      # (with oxlint-tsgolint for its type-aware rules) and oxfmt for its TypeScript gate and fixers,
-      # yamllint, taplo, semgrep and lizard because the pre-commit gate marks a checker whose
+      # pipeline): wt, gitleaks (the pre-push secrets gate blocks without it), rumdl and
+      # markdownlint-cli2 for qsm-langdev's markdown fixers, oxlint (with oxlint-tsgolint for its
+      # type-aware rules) and oxfmt for its TypeScript gate and fixers,
+      # yamllint, taplo, semgrep, lizard and jscpd because the pre-commit gate marks a checker whose
       # tool is absent `worse` and blocks the commit (init writes yaml and toml, a.ts is code),
-      # imagemagick 7 for the `magick` of qsm-uix (apt ships 6, which has no `magick`), and the
-      # upstream openspec CLI for qsm-openspec doctor.
+      # fish (with fish_indent), shfmt and shellmetrics for qsm-langdev's fish and shell checkers the
+      # gate tests run, imagemagick 7 for the `magick` of qsm-uix (apt ships 6, which has no
+      # `magick`), openvpn for the key material of qsm-secrets' capture corpus, and the upstream
+      # openspec CLI for qsm-openspec doctor.
       - name: Install the tools the tests run
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install worktrunk rumdl markdownlint-cli2 imagemagick yamllint taplo
+          brew install worktrunk gitleaks rumdl markdownlint-cli2 imagemagick yamllint taplo openvpn fish shfmt
           pipx install semgrep
           pipx install lizard
           bun add -g @fission-ai/openspec
-          bun add -g oxlint@1.88.0 oxlint-tsgolint@7.0.2004 oxfmt@0.73.0
+          bun add -g oxlint@1.88.0 oxlint-tsgolint@7.0.2004 oxfmt@0.73.0 jscpd@5.3.2 knip@6.38.0 dependency-cruiser@18.4.0
+          uv tool install ruff==0.17.3
+          uv tool install vulture==2.16
+          uv tool install pyright==1.1.414
+          uv tool install bandit==1.9.4
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          # openvpn installs into sbin.
+          echo "$(brew --prefix)/sbin" >> "$GITHUB_PATH"
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # shellmetrics ships nowhere packaged: one script, pinned to upstream's last commit.
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/b3bfff2af6880443112cdbf2ea449440b30ab9b0/shellmetrics -o "$HOME/.local/bin/shellmetrics"
+          chmod +x "$HOME/.local/bin/shellmetrics"
+      # One run names every checker binary the tests drive that the runner lacks, so a missing tool
+      # is not found one failed test at a time. doctor reads the registry; a scratch repository
+      # enables the languages the suite exercises (docs and multi are always on).
+      - name: Every checker binary is on PATH
+        shell: bash
+        run: |
+          probe="$(mktemp -d)"
+          git init -q "$probe"
+          mkdir "$probe/.qsm-langdev"
+          echo '{"languages":["ts","py","shell","fish","rust"]}' > "$probe/.qsm-langdev/gates.json"
+          report="$(bun plugins/qsm-langdev/scripts/cli.ts doctor "$probe" --json || true)"
+          rm -rf "$probe"
+          missing="$(jq -r '.data.checks[] | select(.present | not) | "  \(.binary) (checker \(.check)): \(.install)"' <<<"$report")"
+          if [ -n "$missing" ]; then
+            echo "checker binaries missing from PATH:" >&2
+            echo "$missing" >&2
+            exit 1
+          fi
       # qsm-statusline doctor is `missing` unless the compiled bin is on PATH (AGENTS.md, Iron Law 9).
       - name: Compile the qsm-statusline bin onto PATH
         run: |

@@ -6,6 +6,7 @@ import { messageOf } from "../../../lib/outcome.ts";
 import {
   allowlistOf,
   claudeTraffic,
+  gatewayIn,
   gatewayOf,
   globalProfiles,
   guardHolds,
@@ -77,20 +78,33 @@ describe("value_json", () => {
 });
 
 describe("the router's identity", () => {
+  test("the local gateway key comes from CCR's api_keys table even when APIKEY is empty", () => {
+    const path = db();
+    const database = new Database(path);
+    const config = readCcrConfig(path) ?? {};
+    writeCcrConfig(path, config, { ...config, APIKEY: "" });
+    database.query("UPDATE api_keys SET expires_at = ? WHERE id = ?").run("", "local-gateway");
+    database.close();
+    expect(gatewayIn(path)?.key).toBe("gw-test-key-0000");
+  });
   test("address from HOST and PORT, key from APIKEY", () => {
-    expect(gatewayOf(ccrConfig(4567))).toEqual({
+    expect(gatewayOf(ccrConfig(4567), "gw-test-key-0000")).toEqual({
       address: "http://127.0.0.1:4567",
       key: "gw-test-key-0000",
     });
   });
 
   test("a PORT stored as text is still the port; an IPv6 HOST is bracketed", () => {
-    expect(gatewayOf({ ...ccrConfig(1), PORT: "4567" })?.address).toBe("http://127.0.0.1:4567");
-    expect(gatewayOf({ ...ccrConfig(4567), HOST: "::1" })?.address).toBe("http://[::1]:4567");
+    expect(gatewayOf({ ...ccrConfig(1), PORT: "4567" }, "key")?.address).toBe(
+      "http://127.0.0.1:4567",
+    );
+    expect(gatewayOf({ ...ccrConfig(4567), HOST: "::1" }, "key")?.address).toBe(
+      "http://[::1]:4567",
+    );
   });
 
   test("no APIKEY is no gateway", () => {
-    expect(gatewayOf(ccrConfig(4567, { fresh: true }))).toBeUndefined();
+    expect(gatewayOf(ccrConfig(4567, { fresh: true }), "")).toBeUndefined();
   });
 });
 

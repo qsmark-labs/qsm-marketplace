@@ -1,12 +1,19 @@
 // The labelled corpus the capture algorithm is measured on. A case is a prompt and the values a
 // correct capture takes out of it: a positive names one, a negative names none. Positives are built
 // from a seeded generator so no literal token sits in the repository for a scanner to flag, and the
-// same run always yields the same corpus.
+// same run always yields the same corpus. Key material is made at test time by its real producers
+// (`producedCases`), for the same reason.
+
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
 
 export interface Case {
   readonly text: string;
   /** The values that must be captured, exactly; empty for a negative. */
   readonly secrets: readonly string[];
+  /** The kind of each value, in the same order, where the case pins it. */
+  readonly kinds?: readonly string[];
 }
 
 const MODULUS = 2_147_483_647;
@@ -137,11 +144,201 @@ const NAMED_PASSWORDS: Case[] = [
   { text: "MYSQL_PWD=Pa55w0rdX", secrets: ["Pa55w0rdX"] },
 ];
 
+const hex = (length: number): string => random(HEX, length);
+/** The bech32 alphabet: letters and digits without 1, b, i and o. */
+const BECH32 = (UPPER + DIGITS).replaceAll(/[1BIO]/g, "");
+
+/** One token per provider shape, named by the kind the capture must give it. */
+const SHAPED: ReadonlyArray<readonly [string, string]> = [
+  // A random body fails GitHub's CRC32 check with probability 1 - 62^-6: a wrong checksum is still caught.
+  ["github-pat", `ghp_${random(ALNUM, 36)}`],
+  ["github-app-token", `ghs_${random(ALNUM, 36)}`],
+  ["github-refresh-token", `ghr_${random(ALNUM, 36)}`],
+  ["anthropic-admin-api-key", `sk-ant-admin01-${random(BASE64URL, 93)}AA`],
+  ["gitlab-ptt", `glptt-${hex(40)}`],
+  ["gitlab-deploy-token", `gldt-${random(BASE64URL, 20)}`],
+  ["gitlab-runner-authentication-token", `glrt-${random(BASE64URL, 20)}`],
+  ["gitlab-rrt", `GR1348941${random(BASE64URL, 20)}`],
+  ["aws-access-token", `ABIA${random(UPPER_DIGITS, 16)}`],
+  ["slack-app-token", `xapp-1-A${random(UPPER_DIGITS, 10)}-${random(DIGITS, 13)}-${hex(64)}`],
+  [
+    "slack-webhook-url",
+    `https://hooks.slack.com/services/T${random(UPPER_DIGITS, 8)}/B${random(UPPER_DIGITS, 8)}/${random(ALNUM, 24)}`,
+  ],
+  ["stripe-access-token", `rk_prod_${random(ALNUM, 24)}`],
+  ["digitalocean-pat", `dop_v1_${hex(64)}`],
+  ["digitalocean-access-token", `doo_v1_${hex(64)}`],
+  ["digitalocean-refresh-token", `dor_v1_${hex(64)}`],
+  ["vault-service-token", `hvs.${random(BASE64URL, 95)}`],
+  ["vault-batch-token", `hvb.${random(BASE64URL, 140)}`],
+  ["hashicorp-tf-api-token", `${random(LOWER + DIGITS, 14)}.atlasv1.${random(LOWER + DIGITS, 64)}`],
+  ["huggingface-access-token", `hf_${random(LOWER + UPPER, 34)}`],
+  ["pypi-upload-token", `pypi-AgEIcHlwaS5vcmc${random(BASE64URL, 60)}`],
+  ["sendgrid-api-token", `SG.${random(BASE64URL, 22)}.${random(BASE64URL, 43)}`],
+  ["age-secret-key", `AGE-SECRET-KEY-1${random(BECH32, 58)}`],
+  ["1password-service-account-token", `ops_eyJ${random(ALNUM, 260)}`],
+  ["perplexity-api-key", `pplx-${random(ALNUM, 48)}`],
+  ["postman-api-token", `PMAK-${hex(24)}-${hex(34)}`],
+  ["pulumi-api-token", `pul-${hex(40)}`],
+  ["sentry-user-token", `sntryu_${hex(64)}`],
+  ["shopify-access-token", `shpat_${hex(32)}`],
+  ["shopify-shared-secret", `shpss_${hex(32)}`],
+  ["linear-api-key", `lin_api_${random(ALNUM, 40)}`],
+  ["doppler-api-token", `dp.pt.${random(ALNUM, 43)}`],
+  ["grafana-cloud-api-token", `glc_${random(ALNUM, 48)}`],
+  ["grafana-service-account-token", `glsa_${random(ALNUM, 32)}_${hex(8)}`],
+  ["databricks-api-token", `dapi${hex(32)}`],
+  ["flyio-access-token", `fo1_${random(ALNUM, 43)}`],
+  ["heroku-api-key-v2", `HRKU-AA${random(ALNUM, 58)}`],
+  ["rubygems-api-token", `rubygems_${hex(48)}`],
+  ["notion-api-token", `ntn_${random(DIGITS, 11)}${random(ALNUM, 35)}`],
+  ["openshift-user-token", `sha256~${random(ALNUM, 43)}`],
+  ["cloudflare-origin-ca-key", `v1.0-${hex(24)}-${hex(146)}`],
+];
+
+const SHAPED_CASES: Case[] = SHAPED.map(([kind, token], i) => {
+  const wrap = WRAPPERS[i % WRAPPERS.length];
+  return { text: wrap === undefined ? token : wrap(token), secrets: [token], kinds: [kind] };
+});
+
+/** A value after a credential word counts from six characters, in Czech too, whatever its mix. */
+const CREDENTIAL_VALUES: Case[] = [
+  (v: string) => `heslo je ${v}`,
+  (v: string) => `HESLO=${v}`,
+  (v: string) => `klíč: ${v}`,
+  (v: string) => `tajné=${v}`,
+  (v: string) => `the password is ${v}`,
+  (v: string) => `SERVICE_TOKEN=${v}`,
+].map((say, i) => {
+  const value = random(ALNUM, 6 + i);
+  return { text: say(value), secrets: [value], kinds: ["credential-value"] };
+});
+
+/** The credential pass on its own lines (a joiner never crosses a newline), after `pass`, an
+ * UPPER_SNAKE `_KEY`, a netrc `password` and a `--password` flag, with a quoted phrase, a quote
+ * inside the value, and an `@` inside a connection string's password. */
+const PASS = ["pass", "word"].join("");
+const LAYOUTS: ReadonlyArray<(v: string) => string> = [
+  (v) => `database:\n  ${PASS}: ${v}`,
+  (v) => `github:\n  token: ${v}`,
+  (v) => `DB_HOST=\nDB_${PASS.toUpperCase()}=${v}`,
+  (v) => `DB_PASS=${v}`,
+  (v) => `pass: ${v}`,
+  (v) => `STRIPE_KEY=${v}`,
+  (v) => `ENCRYPTION_KEY=${v}`,
+  (v) => `machine api.example.test login me ${PASS} ${v}`,
+  (v) => `psql --${PASS} ${v}`,
+  (v) => `mysql --${PASS}=${v} -u app`,
+];
+const PLACED: Case[] = LAYOUTS.map((say) => {
+  const value = random(ALNUM, 12);
+  return { text: say(value), secrets: [value], kinds: ["credential-value"] };
+});
+
+const phrase = Array.from({ length: 4 }, () => random(LOWER, 6)).join(" ");
+const quoteInside = `ab'cd${random(ALNUM, 12)}`;
+const atInside = `p@ss${random(ALNUM, 12)}`;
+const SPELLED: Case[] = [
+  { text: `{"${PASS}": "${phrase}"}`, secrets: [phrase], kinds: ["credential-value"] },
+  { text: `${PASS}=${quoteInside}`, secrets: [quoteInside], kinds: ["credential-value"] },
+  {
+    text: `postgres://app:${atInside}@db.example.test:5432/app`,
+    secrets: [atInside],
+    kinds: ["connection-string"],
+  },
+];
+
+/** Values with a dot, a bracket or a parenthesis that are no code, a base64 secret that starts with
+ * one slash, and a passphrase slug under a name that says passphrase. */
+const word = (): string => `${random(UPPER, 1)}${random(LOWER, 5)}`;
+const MIXED: Case[] = [
+  (v: string) => `${PASS}=${v}`,
+  (v: string) => `DB_${PASS.toUpperCase()}=${v}`,
+  (v: string) => `${PASS}: ${v}`,
+  (v: string) => `token=${v}`,
+  (v: string) => `secret=${v}`,
+  (v: string) => `aws_secret_access_key = ${v}`,
+  (v: string) => `PASSPHRASE=${v}`,
+  (v: string) => `heslo=${v}`,
+].map((say, i) => {
+  const value =
+    [
+      `${word()}.${random(DIGITS, 4)}`,
+      `${word()}.${word()}${random(DIGITS, 2)}`,
+      `${word()}(${random(DIGITS, 4)})${random(LOWER, 3)}`,
+      `${random(LOWER, 3)}.${random(LOWER, 3)}${random(DIGITS, 3)}${random(LOWER, 3)}${random(DIGITS, 3)}`,
+      `${word()}[${random(LOWER, 2)}]${random(LOWER, 4)}${random(DIGITS, 2)}`,
+      `/${random(ALNUM, 39)}`,
+      Array.from({ length: 5 }, () => random(LOWER, 6)).join("-"),
+      Array.from({ length: 5 }, () => random(LOWER, 5)).join("-"),
+    ][i] ?? "";
+  return { text: say(value), secrets: [value], kinds: ["credential-value"] };
+});
+const netrcValue = random(ALNUM, 16);
+/** Generated passwords shaped like a name in config: a slug, UPPER_SNAKE or a file name with a
+ * segment that mixes letters and digits, or any of these under a password word. */
+const mixedSegment = (): string => `${random(LOWER, 2)}${random(DIGITS, 1)}${random(LOWER, 2)}`;
+const GENERATED: Case[] = [
+  [`DB_${PASS.toUpperCase()}`, [mixedSegment(), mixedSegment(), mixedSegment()].join("-")],
+  [PASS, `${mixedSegment()}-${mixedSegment()}`],
+  [PASS, `${random(LOWER, 4)}_${random(LOWER, 2)}_${random(DIGITS, 4)}${random(LOWER, 1)}`],
+  [PASS, `${random(LOWER, 6)}${random(DIGITS, 1)}.${random(LOWER, 3)}`],
+  [
+    PASS,
+    `${random(UPPER, 1)}${random(DIGITS, 1)}${random(LOWER, 4)}${random(DIGITS, 1)}.${random(LOWER, 3)}`,
+  ],
+  [PASS, `${random(UPPER, 3)}_${random(DIGITS, 3)}_${random(UPPER, 3)}`],
+  [
+    "API_TOKEN",
+    `${random(UPPER, 1)}${random(DIGITS, 1)}${random(UPPER, 2)}_${random(UPPER, 1)}${random(DIGITS, 2)}${random(UPPER, 1)}`,
+  ],
+].map(([name, value]) => ({
+  text: `${name ?? ""}=${value ?? ""}`,
+  secrets: [value ?? ""],
+  kinds: ["credential-value"],
+}));
+
+const NETRC: Case[] = [
+  {
+    text: `machine github.example.test login me ${PASS} ${netrcValue}`,
+    secrets: [netrcValue],
+    kinds: ["credential-value"],
+  },
+];
+
+/** Random runs in one case and a base32 seed: no humps, no words, still random. */
+const SINGLE_CASE: Case[] = [
+  random(LOWER, 40),
+  random(UPPER, 40),
+  random(`${UPPER}234567`, 32),
+].map((value) => ({
+  text: `otpauth seed ${value} now`,
+  secrets: [value],
+  kinds: ["random-token"],
+}));
+
+/** Base64 of a token: a Kubernetes Secret's data holds it encoded. */
+const encodedToken = Buffer.from(`ghp_${random(ALNUM, 36)}`).toString("base64");
+const encodedRandom = Buffer.from(random(BASE64URL, 40)).toString("base64");
+const ENCODED: Case[] = [
+  { text: `data:\n  GITHUB_PAT: ${encodedToken}`, secrets: [encodedToken], kinds: ["github-pat"] },
+  { text: `data:\n  webhook: ${encodedRandom}`, secrets: [encodedRandom], kinds: ["random-token"] },
+];
+
 export const POSITIVES: readonly Case[] = [
   ...wrapped(KNOWN, 0),
   ...wrapped(POSITIVE_BARE, 1),
   ...NAMED_HEX,
   ...NAMED_PASSWORDS,
+  ...SHAPED_CASES,
+  ...CREDENTIAL_VALUES,
+  ...PLACED,
+  ...SPELLED,
+  ...MIXED,
+  ...NETRC,
+  ...GENERATED,
+  ...SINGLE_CASE,
+  ...ENCODED,
 ];
 
 /** A UUID, a hash, a path, an id: what a coding session is full of, and never a credential. */
@@ -269,4 +466,253 @@ const NEGATIVE_TEXTS: readonly string[] = [
   "secret = the-name-of-the-vault-folder-for-this-user",
 ];
 
-export const NEGATIVES: readonly Case[] = NEGATIVE_TEXTS.map((text) => ({ text, secrets: [] }));
+/** A value that is plainly not one: a template, a stopword, a repeated or sequential run. */
+const NOT_VALUES: readonly string[] = [
+  "password=<your-password>",
+  "token=${GITHUB_TOKEN}",
+  "secret=changeme",
+  "api_key={api_key}",
+  "DB_PASSWORD={{db_password}}",
+  "PASSWORD=your-password",
+  "token: example",
+  "password=xxxxxxxx",
+  "secret=abcdefgh",
+  "pin_password=12345678",
+  "password: null",
+  "auth=false",
+];
+
+/** Code, prose, references and paths after a credential word, a public SSH key type, a BEGIN label
+ * named in prose: a capture would mask these words in every file the agent reads afterwards. */
+const BEGIN = ["-----BEGIN", "PUBLIC KEY-----"].join(" ");
+const CODE_AND_PROSE: readonly string[] = [
+  `interface Opts { readonly token: string; ${PASS}: string | null; }`,
+  "const secret = process.env.API_SECRET;",
+  `${PASS} = os.environ['DB_${PASS.toUpperCase()}']`,
+  '{"type":"object","properties":{"token":{"type":"string"}}}',
+  "the token is expired, refresh it",
+  `the ${PASS} is incorrect`,
+  "the secret is stored in the vault",
+  "auth: required",
+  "token je neplatný, heslo je špatně",
+  "klíč je uložený v trezoru",
+  "Bearer authentication is required",
+  "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}",
+  "token: ${{secrets.GITHUB_TOKEN}}",
+  `${PASS}: !vault |`,
+  "auth: { type: 'bearer' }",
+  "pwd: /home/qs_m4rk/Projects",
+  "credentials: ~/.aws/credentials",
+  "token_path=/run/secrets/token",
+  "secret=$(cat /run/secrets/x)",
+  `${PASS.toUpperCase()}=$DB_${PASS.toUpperCase()}`,
+  `${PASS}=%(db_${PASS})s`,
+  `${PASS}: '{{ vault_db_${PASS} }}'`,
+  "ssh_auth: ssh-ed25519 is the key type we use",
+  "auth_url: https://login.example.test/oauth2/authorize",
+  "primary_key: user_id_column",
+  "ssh -p 2222 deploy@host.example.test",
+  `${BEGIN} is a public key header`,
+  "Why does -----BEGIN <label>----- in detect.ts swallow the rest? Please check.",
+  // names in code and config after a credential word, and prose words after a joiner or a flag
+  "return { token: accessToken, secret: clientSecret };",
+  "function login(token: TokenType, secret: Buffer) {}",
+  "readonly auth: AuthConfig;",
+  "apiKey: ApiKeyProvider,",
+  "PARTITION_KEY=userId",
+  "SORT_KEY=createdAt",
+  "secret=SECRETS_BACKEND",
+  "token=qsm-secrets",
+  "secretName: tls-secret",
+  "credentials: creds-2024.json",
+  "token: accessToken",
+  "the token is GITHUB_TOKEN, set it in CI",
+  "the token is `GITHUB_TOKEN`",
+  "heslo je HESLO_DB v .env",
+  "the token is refreshTokenHandler",
+  `docker login --${PASS}-stdin --username qs_m4rk ghcr.io`,
+  "gh auth --auth-type oauth2",
+  // an auth scheme names how, not what
+  "set the auth=oauth2 flow",
+  "token_type: bearer",
+  "auth: negotiate",
+  "auth: oauth2-proxy",
+  "AUTH_MODE=kerberos",
+  `${PASS} managers are great\nand this is another line`,
+  `${PASS}: \${DB_${PASS.toUpperCase()}:-postgres}`,
+  // an @ in a URL path is no password
+  "open http://localhost:5173/@vite/client",
+  "http://localhost:4873/@questi0nm4rk/hook-kit",
+  // base64 of a URL and of JSON
+  Buffer.from("https://github.com/Questi0nM4rk/qsm-marketplace").toString("base64"),
+  Buffer.from('{"sessionId":"87ee6dec","cwd":"/home/qs_m4rk"}').toString("base64url"),
+];
+
+/** Bare hex is a digest, an image id, a request id or an ETag until a credential name says else;
+ * whether bare hex should count is the owner's decision, open. */
+const BARE_HEX: readonly string[] = [
+  `sha256sum: ${hex(64)}  empty.txt`,
+  `md5 ${hex(32)}`,
+  `docker image ${hex(64)}`,
+  `x-request-id: ${hex(32)}`,
+  `Etag: W/"${hex(32)}"`,
+  `use ${hex(48)} for the webhook`,
+];
+
+/** Only the first characters of each shape: the prefix alone is no token. */
+const SHAPE_PREFIXES: readonly string[] = SHAPED.map(
+  ([, token]) => `only the first characters were pasted: ${token.slice(0, 12)}`,
+);
+
+export const NEGATIVES: readonly Case[] = [
+  ...NEGATIVE_TEXTS,
+  ...NOT_VALUES,
+  ...CODE_AND_PROSE,
+  ...BARE_HEX,
+  ...SHAPE_PREFIXES,
+].map((text) => ({ text, secrets: [] }));
+
+/** The producers' own output, read back once each has written it. */
+interface Produced {
+  readonly positives: Case[];
+  readonly negatives: Case[];
+}
+
+/** Runs one producer, failing loud and naming it when it is missing or fails. */
+function produce(tool: string, args: readonly string[], cwd: string, gnupgHome?: string): string {
+  if (Bun.which(tool) === null) {
+    throw new Error(
+      `capture corpus: ${tool} is not installed, and the corpus needs its key material`,
+    );
+  }
+  // HOME is the sandbox, so ssh-keygen and gpg never read or write the person's own files.
+  const env = isolatedEnv(cwd, gnupgHome === undefined ? {} : { GNUPGHOME: gnupgHome });
+  const done = Bun.spawnSync([tool, ...args], { cwd, env, stdout: "pipe", stderr: "pipe" });
+  if (done.exitCode !== 0) {
+    throw new Error(`capture corpus: ${tool} ${args[0] ?? ""} failed: ${done.stderr.toString()}`);
+  }
+  return done.stdout.toString();
+}
+
+/** A case with one secret of one kind. */
+function one(text: string, secret: string, kind: string): Case {
+  return { text, secrets: [secret], kinds: [kind] };
+}
+
+/** The armoured block of a producer's file, without the comment lines some put before it. */
+function block(pem: string): string {
+  return pem.slice(pem.indexOf("-----BEGIN")).trimEnd();
+}
+
+/**
+ * Key material made by the real producers in `dir`: an OpenVPN static key, SSH keys, a certificate
+ * and its request, a PGP key pair, a key cut short and an .ovpn file, as positives; SSH public key
+ * lines as negatives. The gpg agent the key generation starts is stopped before this returns.
+ */
+export function producedCases(dir: string): Produced {
+  const read = (name: string): string => readFileSync(join(dir, name), "utf8");
+  produce("openvpn", ["--genkey", "secret", "ta.key"], dir);
+  for (const [type, extra] of [
+    ["ed25519", ["-N", ""]],
+    ["rsa", ["-N", ""]],
+    ["ecdsa", ["-N", "corpus passphrase", "-a", "1"]],
+  ] as const) {
+    produce("ssh-keygen", ["-q", "-t", type, ...extra, "-C", "corpus", "-f", `id_${type}`], dir);
+  }
+  produce(
+    "openssl",
+    [
+      "req",
+      "-x509",
+      "-newkey",
+      "rsa:2048",
+      "-nodes",
+      "-keyout",
+      "key.pem",
+      "-out",
+      "cert.pem",
+      "-subj",
+      "/CN=corpus.example.test",
+      "-days",
+      "1",
+    ],
+    dir,
+  );
+  produce(
+    "openssl",
+    ["req", "-new", "-key", "key.pem", "-out", "req.csr", "-subj", "/CN=corpus"],
+    dir,
+  );
+  const home = join(dir, "gnupg");
+  mkdirSync(home, { mode: 0o700 });
+  const gpg = ["--batch", "--pinentry-mode", "loopback", "--passphrase", ""];
+  writeFileSync(join(dir, "release.txt"), "release 1.2\n");
+  let pgpPrivate: string;
+  let pgpPublic: string;
+  try {
+    produce(
+      "gpg",
+      [...gpg, "--quick-gen-key", "Corpus <corpus@example.test>", "ed25519", "default", "never"],
+      dir,
+      home,
+    );
+    pgpPrivate = produce("gpg", [...gpg, "--armor", "--export-secret-keys"], dir, home);
+    pgpPublic = produce("gpg", ["--armor", "--export"], dir, home);
+    produce("gpg", [...gpg, "--clearsign", "--output", "release.asc", "release.txt"], dir, home);
+  } finally {
+    // A failed step still stops the agent and removes its socket directory.
+    produce("gpgconf", ["--kill", "all"], dir, home);
+    produce("gpgconf", ["--remove-socketdir"], dir, home);
+  }
+
+  const staticKey = read("ta.key");
+  const ed = read("id_ed25519");
+  const rsa = read("id_rsa");
+  const ecdsa = read("id_ecdsa");
+  const cert = read("cert.pem");
+  const key = read("key.pem");
+  const csr = read("req.csr");
+  const cut = block(ed).split("\n").slice(0, -1).join("\n");
+  const signed = read("release.asc");
+  const signature = block(signed.slice(signed.indexOf("-----BEGIN", 1)));
+  const keyData = Buffer.from(key).toString("base64");
+  const ovpn = [
+    "client\ndev tun\nproto udp\nremote vpn.example.test 1194\n<ca>",
+    block(cert),
+    "</ca>\n<key>",
+    block(key),
+    "</key>\nkey-direction 1\n<tls-auth>",
+    staticKey.trimEnd(),
+    "</tls-auth>\nverb 3\n",
+  ].join("\n");
+  return {
+    positives: [
+      one(`tls-auth key for the vpn:\n${staticKey}`, block(staticKey), "openvpn-key"),
+      one(`the deploy key\n${ed}`, block(ed), "private-key"),
+      one(rsa, block(rsa), "private-key"),
+      one(`${ecdsa}the passphrase is in the vault`, block(ecdsa), "private-key"),
+      one(`key.pem:\n${key}`, block(key), "private-key"),
+      one(`the server certificate:\n${cert}`, block(cert), "pem-block"),
+      one(`csr for the ca:\n${csr}`, block(csr), "pem-block"),
+      one(`my gpg key\n${pgpPrivate}`, block(pgpPrivate), "private-key"),
+      one(`my public gpg key\n${pgpPublic}`, block(pgpPublic), "pem-block"),
+      one(`the key, cut short:\n${cut}`, cut, "private-key"),
+      one(`${cut}\nthat is all I have`, cut, "private-key"),
+      one(`${signed}\nIs this signature valid?`, signature, "pem-block"),
+      one(
+        `users:\n- name: admin\n  user:\n    client-key-data: ${keyData}`,
+        keyData,
+        "private-key",
+      ),
+      {
+        text: ovpn,
+        secrets: [block(cert), block(key), block(staticKey)],
+        kinds: ["pem-block", "private-key", "openvpn-key"],
+      },
+    ],
+    negatives: ["ed25519", "rsa"].map((type) => ({
+      text: `add it to authorized_keys: ${read(`id_${type}.pub`).trim()}`,
+      secrets: [],
+    })),
+  };
+}

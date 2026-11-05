@@ -1,6 +1,6 @@
 // What git tells a pre-push hook, and what to compare each pushed ref against.
 
-import { spawnSync } from "node:child_process";
+import { git } from "./gitref.ts";
 
 export interface PushedRef {
   localRef: string;
@@ -29,20 +29,20 @@ export function parsePushLines(text: string): PushedRef[] {
   return refs;
 }
 
-function git(root: string, ...args: string[]): string | null {
-  const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+function answer(root: string, ...args: string[]): string | null {
+  const result = git(root, args);
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
 /** The default branch of the remote being pushed to, as this clone last saw it, or null when the
  * clone holds no remote-tracking branch of that remote (an empty remote, a path or URL target). */
 function remoteDefaultBranch(root: string, remote: string): string | null {
-  const head = git(root, "symbolic-ref", "--short", `refs/remotes/${remote}/HEAD`);
+  const head = answer(root, "symbolic-ref", "--short", `refs/remotes/${remote}/HEAD`);
   if (head !== null && head !== "") {
     return head;
   }
   for (const name of ["main", "master"]) {
-    if (git(root, "rev-parse", "--verify", "-q", `refs/remotes/${remote}/${name}`) !== null) {
+    if (answer(root, "rev-parse", "--verify", "-q", `refs/remotes/${remote}/${name}`) !== null) {
       return `${remote}/${name}`;
     }
   }
@@ -65,7 +65,7 @@ export function pushReference(root: string, pushed: PushedRef, remote: string): 
   if (base === null) {
     return null;
   }
-  const mergeBase = git(root, "merge-base", base, pushed.localOid);
+  const mergeBase = answer(root, "merge-base", base, pushed.localOid);
   if (mergeBase === null || mergeBase === pushed.localOid) {
     return null;
   }
@@ -81,7 +81,7 @@ export function pushSkipReason(root: string, pushed: PushedRef, remote: string):
   if (isZero(pushed.remoteOid) && base === null) {
     return `${pushed.remoteRef}: this clone knows no default branch of '${remote}' to compare a new branch against`;
   }
-  if (base !== null && git(root, "merge-base", base, pushed.localOid) === null) {
+  if (base !== null && answer(root, "merge-base", base, pushed.localOid) === null) {
     return `${pushed.remoteRef}: shares no history with '${base}', the default branch of '${remote}'`;
   }
   return `${pushed.remoteRef}: adds no commit beyond the default branch of '${remote}'`;
@@ -104,12 +104,12 @@ export function pushedRange(pushed: PushedRef, remote: string): string | null {
 export function remoteTipMissing(root: string, pushed: PushedRef): boolean {
   return (
     !isZero(pushed.remoteOid) &&
-    git(root, "cat-file", "-e", `${pushed.remoteOid}^{commit}`) === null
+    answer(root, "cat-file", "-e", `${pushed.remoteOid}^{commit}`) === null
   );
 }
 
 /** How many commits a `pushedRange` lists, or null when git cannot resolve it. */
 export function commitCount(root: string, range: string): number | null {
-  const out = git(root, "rev-list", "--count", ...range.split(" "));
+  const out = answer(root, "rev-list", "--count", ...range.split(" "));
   return out === null ? null : Number(out);
 }

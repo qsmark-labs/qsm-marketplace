@@ -1,15 +1,16 @@
 // The git-hook gates: what `qsm-langdev hook <name>` runs for one enforcement point.
 
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { contentDenylistPath } from "../../../lib/paths.ts";
-import { compareTrees, headline, runOutcome, type Verdict } from "./compare.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
+import { compareTrees, headline, type Verdict } from "./compare.ts";
 import { gitPaths, readGatesConfig } from "./config.ts";
 import { describeSets } from "./file-sets.ts";
 import { fixFiles, isFixable } from "./fixers.ts";
-import { resolveRef } from "./gitref.ts";
+import { git, resolveRef, type Sha, type TreeSide } from "./gitref.ts";
 import { recordsOf } from "./json.ts";
+import { spawnAsync, timedOut } from "./process.ts";
 import {
   commitCount,
   type PushedRef,
@@ -19,7 +20,7 @@ import {
   pushSkipReason,
   remoteTipMissing,
 } from "./push.ts";
-import type { EnforcementPoint } from "./registry.ts";
+import { type HookPoint, type GateName, POINTS } from "./registry.ts";
 import { describeStore } from "./result-store.ts";
 import { compareStructure, type StructureResult, verdict } from "./structure.ts";
 
@@ -42,35 +43,63 @@ const fail = (gate: string, reason: string, remedy: string[], regression?: true)
     ? { gate, status: "failed", reason, remedy, regression }
     : { gate, status: "failed", reason, remedy };
 
-type Spawned = { status: number; stdout: string; stderr: string } | { missing: true };
-
-function runOrMissing(binary: string, args: string[], cwd: string): Spawned {
-  const result = spawnSync(binary, args, { cwd, encoding: "utf8" });
-  if (result.error) {
-    return { missing: true };
-  }
-  return { status: result.status ?? 1, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+interface ToolRun {
+  status: number;
+  stdout: string;
+  stderr: string;
 }
+
+/** `binary args` at the point's limit: its output, or the outcome that ends the gate when the
+ * binary is not installed (`absent`) or did not finish, which proves nothing either way. */
+async function runTool(
+  gate: string,
+  command: { binary: string; args: string[]; root: string; point: HookPoint },
+  absent: { reason: string; remedy: string[] },
+): Promise<GateOutcome | ToolRun> {
+  const { binary, args, root, point } = command;
+  const { timeoutMs } = POINTS[point];
+  const result = await spawnAsync(root, binary, args, timeoutMs);
+  if (timedOut(result)) {
+    return {
+      gate,
+      status: "blocked",
+      reason: `${binary} did not finish within ${(timeoutMs / 1000).toFixed(1)}s, not measured`,
+      remedy: ["Run it again: nothing proves the staged changes are clean."],
+    };
+  }
+  if (result.error) {
+    return fail(gate, absent.reason, absent.remedy);
+  }
+  return { status: result.status ?? 1, stdout: result.stdout, stderr: result.stderr };
+}
+
+const isOutcome = (result: GateOutcome | ToolRun): result is GateOutcome => "gate" in result;
+
+const GITLEAKS_ABSENT = {
+  reason: "gitleaks is not installed",
+  remedy: ["Install: https://github.com/gitleaks/gitleaks, or your package manager"],
+};
 
 function stagedPaths(root: string): string[] | null {
   return gitPaths(root, ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACM"]);
 }
 
 function isDirty(root: string, file: string): boolean {
-  return spawnSync("git", ["diff", "--quiet", "--", file], { cwd: root }).status === 1;
+  return git(root, ["diff", "--quiet", "--", file]).status === 1;
 }
 
 /** Staged files are fixed and staged again before the check, so what a tool can rewrite never
  * blocks a commit. A file with unstaged changes is left alone: re-staging it would commit them. */
-function fixStaged(root: string): string[] {
+async function fixStaged(root: string): Promise<string[]> {
   const staged = stagedPaths(root) ?? [];
   const dirty = staged.filter((f) => isDirty(root, f));
-  const fixed = fixFiles(
+  const fixed = await fixFiles(
     root,
     staged.filter((f) => !dirty.includes(f)),
+    () => POINTS["pre-commit"].timeoutMs,
   );
   if (fixed.length > 0) {
-    spawnSync("git", ["add", "--", ...fixed], { cwd: root });
+    git(root, ["add", "--", ...fixed]);
   }
   return dirty.filter((f) => isFixable(root, f));
 }
@@ -87,12 +116,12 @@ function withSkipped(outcome: GateOutcome, skipped: readonly string[]): GateOutc
   return { ...outcome, remedy: [...outcome.remedy, ...lines] };
 }
 
-function secretsGate(
+async function secretsGate(
   root: string,
-  point: EnforcementPoint,
+  point: HookPoint,
   pushLines?: string,
   remote?: string,
-): GateOutcome {
+): Promise<GateOutcome> {
   const config = ".gitleaks.toml";
   if (!existsSync(join(root, config))) {
     return fail("secrets", `${config} is not in this repo, so secrets cannot run`, [
@@ -100,24 +129,27 @@ function secretsGate(
     ]);
   }
   if (point === "pre-push") {
-    return pushedSecretsGate(root, config, pushLines, remote);
+    return pushedSecretsGate(root, config, point, pushLines, remote);
   }
-  const result = runOrMissing(
-    "gitleaks",
-    ["git", "--staged", "--config", config, "--no-banner"],
-    root,
+  const result = await runTool(
+    "secrets",
+    {
+      binary: "gitleaks",
+      args: ["git", "--staged", "--config", config, "--no-banner"],
+      root,
+      point,
+    },
+    GITLEAKS_ABSENT,
   );
-  if ("missing" in result) {
-    return fail("secrets", "gitleaks is not installed", [
-      "Install: https://github.com/gitleaks/gitleaks, or your package manager",
-    ]);
+  if (isOutcome(result)) {
+    return result;
   }
   if (result.status !== 0) {
     return fail("secrets", "staged changes carry a secret", [
       "If it is a false positive, add a tighter regex to .gitleaks.toml [allowlist].",
     ]);
   }
-  return denylistGate(root);
+  return denylistGate(root, point);
 }
 
 /** The block for a pushed range gitleaks would scan as nothing and exit 0 over: a remote tip this
@@ -140,12 +172,12 @@ function rangeProblem(root: string, ref: PushedRef, range: string): GateOutcome 
 
 /** The hits gitleaks reports over the commits one pushed ref adds, or the block when the range
  * cannot be scanned. A run that fails without a report is a run that never scanned. */
-function scanPushedRef(
+async function scanPushedRef(
   root: string,
   config: string,
   ref: PushedRef,
   remote: string,
-): GateOutcome | string[] {
+): Promise<GateOutcome | string[]> {
   const range = pushedRange(ref, remote);
   if (range === null) {
     return [];
@@ -157,26 +189,29 @@ function scanPushedRef(
   if (problem !== null) {
     return problem;
   }
-  const result = runOrMissing(
-    "gitleaks",
-    [
-      "git",
-      `--log-opts=${range}`,
-      "--config",
-      config,
-      "--no-banner",
-      "--redact",
-      "--report-format",
-      "json",
-      "--report-path",
-      "-",
-    ],
-    root,
+  const result = await runTool(
+    "secrets",
+    {
+      binary: "gitleaks",
+      args: [
+        "git",
+        `--log-opts=${range}`,
+        "--config",
+        config,
+        "--no-banner",
+        "--redact",
+        "--report-format",
+        "json",
+        "--report-path",
+        "-",
+      ],
+      root,
+      point: "pre-push",
+    },
+    GITLEAKS_ABSENT,
   );
-  if ("missing" in result) {
-    return fail("secrets", "gitleaks is not installed", [
-      "Install: https://github.com/gitleaks/gitleaks, or your package manager",
-    ]);
+  if (isOutcome(result)) {
+    return result;
   }
   const found = findingsOf(result.stdout);
   if (result.status !== 0 && found.length === 0) {
@@ -189,23 +224,20 @@ function scanPushedRef(
 
 /** The commits each pushed ref adds, scanned redacted with the repo config: a hit names rule, file
  * and line, never the value. */
-function pushedSecretsGate(
+async function pushedSecretsGate(
   root: string,
   config: string,
+  point: HookPoint,
   pushLines?: string,
   remote?: string,
-): GateOutcome {
-  if (pushLines === undefined) {
-    return fail("secrets", "this gate needs git's pushed refs and none were handed to it", [
-      "Reached through something other than the installed pre-push hook.",
-    ]);
-  }
-  if (remote === undefined || remote === "") {
-    return noRemote("secrets");
+): Promise<GateOutcome> {
+  const inputs = pushInputs("secrets", pushLines, remote);
+  if (!("refs" in inputs)) {
+    return inputs;
   }
   const hits: string[] = [];
-  for (const ref of parsePushLines(pushLines)) {
-    const scanned = scanPushedRef(root, config, ref, remote);
+  for (const ref of inputs.refs) {
+    const scanned = await scanPushedRef(root, config, ref, inputs.remote);
     if (!Array.isArray(scanned)) {
       return scanned;
     }
@@ -225,31 +257,41 @@ const notSetUp = "content denylist is not set up here (skill: qsm-secrets:conten
 
 /** The machine-local content denylist: a second gitleaks run, redacted, that names the rules
  * hit and never the patterns. Absent file: the gate still passes, with a note. */
-function denylistGate(root: string): GateOutcome {
+async function denylistGate(root: string, point: HookPoint): Promise<GateOutcome> {
   const denylist = contentDenylistPath(process.env);
   if (!existsSync(denylist)) {
     return pass(gateName, notSetUp);
   }
-  const result = runOrMissing(
-    "gitleaks",
-    [
-      "git",
-      "--staged",
-      "--config",
-      denylist,
-      "--no-banner",
-      "--redact",
-      "--report-format",
-      "json",
-      "--report-path",
-      "-",
-    ],
-    root,
+  const couldNotRun = {
+    reason: "the content denylist could not run",
+    remedy: [`Run gitleaks with ${denylist} by hand and fix what it reports.`],
+  };
+  const result = await runTool(
+    "secrets",
+    {
+      binary: "gitleaks",
+      args: [
+        "git",
+        "--staged",
+        "--config",
+        denylist,
+        "--no-banner",
+        "--redact",
+        "--report-format",
+        "json",
+        "--report-path",
+        "-",
+      ],
+      root,
+      point,
+    },
+    couldNotRun,
   );
-  if ("missing" in result || (result.status !== 0 && result.stdout.trim() === "")) {
-    return fail("secrets", "the content denylist could not run", [
-      `Run gitleaks with ${denylist} by hand and fix what it reports.`,
-    ]);
+  if (isOutcome(result)) {
+    return result;
+  }
+  if (result.status !== 0 && result.stdout.trim() === "") {
+    return fail("secrets", couldNotRun.reason, couldNotRun.remedy);
   }
   if (result.status === 0) {
     return pass("secrets");
@@ -274,7 +316,7 @@ function findingsOf(json: string): { rule: string; file: string; line: number }[
   }
 }
 
-function entropyGate(root: string): GateOutcome {
+async function entropyGate(root: string, point: HookPoint): Promise<GateOutcome> {
   const config = ".secrets.baseline";
   if (!existsSync(join(root, config))) {
     return fail("entropy", `${config} is not in this repo, so entropy cannot run`, [
@@ -295,11 +337,13 @@ function entropyGate(root: string): GateOutcome {
   if (staged.length === 0) {
     return skip("entropy", "nothing staged");
   }
-  const result = runOrMissing("detect-secrets-hook", ["--baseline", config, ...staged], root);
-  if ("missing" in result) {
-    return fail("entropy", "detect-secrets-hook is not installed", [
-      "uv tool install detect-secrets",
-    ]);
+  const result = await runTool(
+    "entropy",
+    { binary: "detect-secrets-hook", args: ["--baseline", config, ...staged], root, point },
+    { reason: "detect-secrets-hook is not installed", remedy: ["uv tool install detect-secrets"] },
+  );
+  if (isOutcome(result)) {
+    return result;
   }
   if (result.status !== 0) {
     return fail("entropy", "staged changes carry a new high-entropy string", [
@@ -310,30 +354,99 @@ function entropyGate(root: string): GateOutcome {
   return pass("entropy");
 }
 
-function describeVerdicts(verdicts: readonly Verdict[]): string[] {
+export function describeVerdicts(verdicts: readonly Verdict[]): string[] {
   return verdicts.flatMap((v) => [headline(v), ...(v.lines ?? [])]);
+}
+
+/** Where a run's verdicts are judged: at a commit, a push or a `check`, or at an agent's stop. */
+export type JudgedAt = "commit" | "stop";
+
+/** What a run's verdicts come to: `failed` decides the run is worse, `blocked` that nothing proves
+ * it no worse, `warned` is said and decides nothing. */
+export interface Judgement {
+  failed: Verdict[];
+  blocked: Verdict[];
+  warned: Verdict[];
+}
+
+/** What each verdict that is not a measurement comes to, at a commit and at a stop. */
+const POLICY: Record<
+  Exclude<Verdict["kind"], "measured">,
+  Record<JudgedAt, keyof Judgement | null>
+> = {
+  "missing-binary": { commit: "failed", stop: "warned" },
+  "missing-config": { commit: "failed", stop: "warned" },
+  "not-measured": { commit: "blocked", stop: "warned" },
+  skipped: { commit: null, stop: null },
+};
+
+const measuredSlot = (held: boolean, hasReference: boolean): "failed" | null =>
+  held || !hasReference ? null : "failed";
+
+/**
+ * The one policy over a run's verdicts. A measured checker that is worse fails everywhere, when
+ * there is a reference to be worse than: a tree with none is new, and a measured count is a
+ * starting point. A missing binary or config fails a commit and a push and is a warning at a stop,
+ * which must not hold an agent hostage to an environment gap it cannot fix mid-session. A checker
+ * not measured blocks a commit and a push, and is a warning at a stop. A skipped checker decides
+ * nothing.
+ */
+export function judge(
+  verdicts: readonly Verdict[],
+  hasReference: boolean,
+  at: JudgedAt,
+): Judgement {
+  const judgement: Judgement = { failed: [], blocked: [], warned: [] };
+  for (const v of verdicts) {
+    const slot = v.kind === "measured" ? measuredSlot(v.pass, hasReference) : POLICY[v.kind][at];
+    if (slot !== null) {
+      judgement[slot].push(v);
+    }
+  }
+  return judgement;
+}
+
+/** What a block line says: each count only when it is not zero, so a missing binary or config is
+ * never called worse. */
+function countsLine(failed: readonly Verdict[], blocked: readonly Verdict[]): string {
+  const worse = failed.filter((v) => v.kind === "measured").length;
+  const missing = failed.length - worse;
+  return [
+    worse > 0 ? `${worse} checker(s) worse` : null,
+    missing > 0 ? `${missing} checker(s) missing (binary or config)` : null,
+    blocked.length > 0 ? `${blocked.length} checker(s) not measured` : null,
+  ]
+    .filter((part) => part !== null)
+    .join(", ");
 }
 
 /** The langdev gate over one run's verdicts: failed when a checker is worse,
  * a binary or a config missing included; blocked when a checker was not
  * measured, naming it and the retry; else passed with the set sizes. */
-export function langdevOutcome(verdicts: readonly Verdict[], sizes: string): GateOutcome {
-  const { code, deciding } = runOutcome(verdicts, true);
-  if (code === "ok") {
-    return pass("langdev", sizes);
+export function langdevOutcome(
+  verdicts: readonly Verdict[],
+  sizes: string,
+  hasReference: boolean,
+): GateOutcome {
+  const { failed, blocked } = judge(verdicts, hasReference, "commit");
+  if (failed.length > 0) {
+    const measured = failed.every((v) => v.kind === "measured") ? true : undefined;
+    return fail(
+      "langdev",
+      countsLine(failed, blocked),
+      [sizes, ...describeVerdicts(failed)],
+      measured,
+    );
   }
-  const remedy = [sizes, ...describeVerdicts(deciding)];
-  const measured = deciding.every((v) => v.missing !== true && v.missingConfig !== true)
-    ? true
-    : undefined;
-  return code === "worse"
-    ? fail("langdev", `${deciding.length} checker(s) worse`, remedy, measured)
-    : {
-        gate: "langdev",
-        status: "blocked",
-        reason: `${deciding.length} checker(s) not measured`,
-        remedy,
-      };
+  if (blocked.length > 0) {
+    return {
+      gate: "langdev",
+      status: "blocked",
+      reason: countsLine([], blocked),
+      remedy: [sizes, ...describeVerdicts(blocked)],
+    };
+  }
+  return pass("langdev", sizes);
 }
 
 /** What a hook run comes to: a failed gate over a blocked one over ok. */
@@ -346,9 +459,9 @@ export function gatesCode(outcomes: readonly GateOutcome[]): "ok" | "failed" | "
 
 async function langdevAt(
   root: string,
-  before: string | null,
-  after: string,
-  point: EnforcementPoint,
+  before: Sha | null,
+  after: TreeSide,
+  point: HookPoint,
 ): Promise<GateOutcome> {
   const { languages } = readGatesConfig(root);
   const { sets, verdicts, store, warnings } = await compareTrees(root, before, after, {
@@ -358,7 +471,25 @@ async function langdevAt(
   // The store's total only: the per-checker lines are `qsm-langdev check`'s.
   const total = describeStore(store).at(-1);
   const notes = [total, ...warnings].join("; ");
-  return langdevOutcome(verdicts, `file sets: ${describeSets(sets)}; ${notes}`);
+  return langdevOutcome(verdicts, `file sets: ${describeSets(sets)}; ${notes}`, before !== null);
+}
+
+/** The pushed refs and the remote a pre-push gate needs, or its failure when the hook handed it
+ * neither. */
+function pushInputs(
+  gate: string,
+  pushLines: string | undefined,
+  remote: string | undefined,
+): { refs: PushedRef[]; remote: string } | GateOutcome {
+  if (pushLines === undefined) {
+    return fail(gate, "this gate needs git's pushed refs and none were handed to it", [
+      "Reached through something other than the installed pre-push hook.",
+    ]);
+  }
+  if (remote === undefined || remote === "") {
+    return noRemote(gate);
+  }
+  return { refs: parsePushLines(pushLines), remote };
 }
 
 /** The failure for a pre-push call that carries no remote name. */
@@ -368,7 +499,29 @@ function noRemote(gate: string): GateOutcome {
   ]);
 }
 
-type PushScore = (before: string, after: string) => Promise<GateOutcome>;
+type PushScore = (before: Sha, after: Sha) => Promise<GateOutcome>;
+
+/** One pushed ref scored against what the remote holds, the reason it has nothing to compare, or
+ * the failure when this clone holds neither commit of its range. */
+async function scorePushedRef(
+  gate: string,
+  root: string,
+  ref: PushedRef,
+  remote: string,
+  score: PushScore,
+): Promise<GateOutcome | { skipped: string }> {
+  const before = pushReference(root, ref, remote);
+  if (before === null) {
+    return { skipped: pushSkipReason(root, ref, remote) };
+  }
+  const [from, to] = [resolveRef(root, before), resolveRef(root, ref.localOid)];
+  if (from === null || to === null) {
+    return fail(gate, `${ref.remoteRef} names a commit this clone does not hold`, [
+      "Run git fetch, then push again: the pushed range cannot be scored without both commits.",
+    ]);
+  }
+  return score(from, to);
+}
 
 /** The pre-push half the scoring gates share: each pushed ref is scored against what the remote
  * holds, the first failure returns at once, and a block is kept so every ref is still scored. */
@@ -379,42 +532,55 @@ async function scorePushedRefs(
   remote: string | undefined,
   score: PushScore,
 ): Promise<GateOutcome> {
-  if (pushLines === undefined) {
-    return fail(gate, "this gate needs git's pushed refs and none were handed to it", [
-      "Reached through something other than the installed pre-push hook.",
-    ]);
+  const inputs = pushInputs(gate, pushLines, remote);
+  if (!("refs" in inputs)) {
+    return inputs;
   }
-  if (remote === undefined || remote === "") {
-    return noRemote(gate);
-  }
-  let blocked: GateOutcome | undefined;
-  const skipped: string[] = [];
-  const refs = parsePushLines(pushLines);
-  for (const ref of refs) {
-    const before = pushReference(root, ref, remote);
-    if (before === null) {
-      skipped.push(pushSkipReason(root, ref, remote));
-      continue;
-    }
-    const outcome = await score(before, ref.localOid);
-    if (outcome.status === "failed") {
+  const outcomes: (GateOutcome | { skipped: string })[] = [];
+  for (const ref of inputs.refs) {
+    const outcome = await scorePushedRef(gate, root, ref, inputs.remote, score);
+    if ("status" in outcome && outcome.status === "failed") {
       return outcome;
     }
-    blocked ??= outcome.status === "blocked" ? outcome : undefined;
+    outcomes.push(outcome);
   }
-  if (blocked === undefined && refs.length > 0 && skipped.length === refs.length) {
-    return skip(gate, `every pushed ref was skipped, nothing scored: ${skipped.join("; ")}`);
-  }
-  return blocked ?? pass(gate);
+  return settledPush(gate, outcomes);
 }
 
-async function langdevAtCommit(root: string, point: EnforcementPoint): Promise<GateOutcome> {
-  const skipped = fixStaged(root);
-  return withSkipped(await langdevAt(root, resolveRef(root, "HEAD"), "worktree", point), skipped);
+/** What every pushed ref's outcome comes to once none failed: the first block, else a skip when no
+ * ref had anything to compare, else a pass. */
+function settledPush(
+  gate: string,
+  outcomes: readonly (GateOutcome | { skipped: string })[],
+): GateOutcome {
+  const skipped = outcomes.flatMap((outcome) => ("skipped" in outcome ? [outcome.skipped] : []));
+  const blocked = outcomes.find((o) => "status" in o && o.status === "blocked");
+  if (blocked !== undefined && "status" in blocked) {
+    return blocked;
+  }
+  return skipped.length > 0 && skipped.length === outcomes.length
+    ? skip(gate, `every pushed ref was skipped, nothing scored: ${skipped.join("; ")}`)
+    : pass(gate);
+}
+
+async function langdevAtCommit(root: string, point: HookPoint): Promise<GateOutcome> {
+  const skipped = await fixStaged(root);
+  return withSkipped(
+    await langdevAt(root, resolveRef(root, "HEAD"), { kind: "index" }, point),
+    skipped,
+  );
 }
 
 /** The one verdict from lib/structure.ts, mapped onto a gate outcome. */
 function structureOutcome(result: StructureResult): GateOutcome {
+  if (result.status === "not-measured") {
+    return {
+      gate: "structure",
+      status: "blocked",
+      reason: `not measured: ${result.reason}`,
+      remedy: ["`qsm-langdev structure` re-runs this comparison."],
+    };
+  }
   if (result.status === "not-scored" && result.install === undefined) {
     return skip("structure", `${result.reason} — not scored`);
   }
@@ -426,24 +592,29 @@ function structureOutcome(result: StructureResult): GateOutcome {
   return fail("structure", summary, remedy, result.status === "scored" || undefined);
 }
 
-async function structureAt(root: string, before: string, after: string): Promise<GateOutcome> {
-  return structureOutcome(await compareStructure(root, before, after));
+async function structureAt(
+  root: string,
+  before: Sha,
+  after: TreeSide,
+  point: HookPoint,
+): Promise<GateOutcome> {
+  return structureOutcome(await compareStructure(root, before, after, POINTS[point].timeoutMs));
 }
 
 async function structureAtCommit(root: string): Promise<GateOutcome> {
   const head = resolveRef(root, "HEAD");
-  return head === null ? pass("structure") : structureAt(root, head, "worktree");
+  return head === null
+    ? pass("structure")
+    : structureAt(root, head, { kind: "index" }, "pre-commit");
 }
 
-const KNOWN_GATES = ["secrets", "entropy", "langdev", "structure"] as const;
-
 /** The gates this tool answers for on its own. */
-export const SELF_GATES: readonly string[] = ["langdev", "structure"];
+export const SELF_GATES: readonly GateName[] = ["langdev", "structure"];
 
 async function runGate(
-  name: string,
+  name: GateName,
   root: string,
-  point: EnforcementPoint,
+  point: HookPoint,
   pushLines?: string,
   remote?: string,
 ): Promise<GateOutcome> {
@@ -452,19 +623,21 @@ async function runGate(
     case "secrets":
       return secretsGate(root, point, pushLines, remote);
     case "entropy":
-      return entropyGate(root);
+      return entropyGate(root, point);
     case "langdev":
       return point === "pre-commit"
         ? langdevAtCommit(root, point)
-        : scorePush((before, after) => langdevAt(root, before, after, point));
+        : scorePush((before, after) =>
+            langdevAt(root, before, { kind: "commit", sha: after }, point),
+          );
     case "structure":
       return point === "pre-commit"
         ? structureAtCommit(root)
-        : scorePush((before, after) => structureAt(root, before, after));
+        : scorePush((before, after) =>
+            structureAt(root, before, { kind: "commit", sha: after }, point),
+          );
     default:
-      return fail(name, `unknown gate '${name}' in .qsm-langdev/gates.json`, [
-        `Remove it, or name one of: ${KNOWN_GATES.join(", ")}.`,
-      ]);
+      throw new QsmError("failed", `unknown gate '${String(name satisfies never)}'`);
   }
 }
 
@@ -489,8 +662,8 @@ export function allowed(outcome: GateOutcome, reason?: string): GateOutcome {
 
 export async function runGates(
   root: string,
-  point: EnforcementPoint,
-  names: readonly string[],
+  point: HookPoint,
+  names: readonly GateName[],
   {
     pushLines,
     remote,

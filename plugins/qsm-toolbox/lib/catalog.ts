@@ -203,10 +203,10 @@ export const TOOLS: readonly Tool[] = [
   {
     bin: "scc",
     blurb: "code size",
-    install: "go install github.com/boyter/scc/v3@latest",
+    install: "go install github.com/boyter/scc/v4@latest",
     prereq: GO_PREREQ,
     prereqHint: GO_HINT,
-    run: ["go", "install", "github.com/boyter/scc/v3@latest"],
+    run: ["go", "install", "github.com/boyter/scc/v4@latest"],
     versionArgs: VERSION,
     caveat: null,
   },

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
-// classic: SubagentStop has no function event. Claude Code SubagentStop hook: for every tree the stopping agent edited
+// classic: Stop and SubagentStop have no function event. Claude Code Stop and SubagentStop hook
+// (the main agent's stop has no agent_id): for every tree the stopping agent edited
 // this session, compares it against the commit it started from there — both
 // through the per-language finding comparison (the same rule `check` runs)
 // and through the structural-quality comparison (the same rule `structure`
@@ -23,8 +24,10 @@
 
 import { readHookEvent, runMain } from "../../../lib/hooks-kit.ts";
 import { isRecord } from "../../../lib/outcome.ts";
-import { compareTrees, type Verdict } from "../lib/compare.ts";
-import { isLangdevRepo, readGatesConfig } from "../lib/config.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
+import { compareTrees } from "../lib/compare.ts";
+import { gitPaths, isLangdevRepo, readGatesConfig } from "../lib/config.ts";
+import { describeVerdicts, judge } from "../lib/gate-runner.ts";
 import { editorOf } from "../lib/hookio.ts";
 import {
   clearBlocks,
@@ -34,19 +37,22 @@ import {
   recordBlock,
   writeHalt,
 } from "../lib/state.ts";
+import { POINTS } from "../lib/registry.ts";
 import { compareStructure, verdict } from "../lib/structure.ts";
 
 const GATE = "langdev";
 const MAX_BLOCKS = 3;
-const DEFAULT_CHECK_BUDGET_MS = 55_000;
-
 /**
- * Each checker's time limit: QSM_LANGDEV_GATE_BUDGET_MS when it is a positive whole number of
- * milliseconds, which is how a test reaches the not-measured path without waiting out the default.
+ * A checker's time limit set by a test, QSM_LANGDEV_GATE_BUDGET_MS when it is a positive whole
+ * number of milliseconds, so a test reaches the not-measured path without waiting; otherwise none,
+ * and the run takes the pre-commit timeout from POINTS.
  */
-function checkBudgetMs(): number {
+/** The stop hook's own 960 s in hooks.json, less a margin for writing its answer. */
+const HOOK_BUDGET_MS = 950_000;
+
+function testBudgetMs(): { timeoutMs?: number } {
   const override = Number(process.env.QSM_LANGDEV_GATE_BUDGET_MS);
-  return Number.isInteger(override) && override > 0 ? override : DEFAULT_CHECK_BUDGET_MS;
+  return Number.isInteger(override) && override > 0 ? { timeoutMs: override } : {};
 }
 
 function log(msg: string): void {
@@ -54,16 +60,18 @@ function log(msg: string): void {
 }
 
 interface Regression {
-  comparison: "langdev" | "structure";
+  comparison: "config" | "langdev" | "structure";
   lines: string[];
 }
 
-function describeVerdicts(verdicts: readonly Verdict[]): string[] {
-  return verdicts.flatMap((v) => [v.summary, ...(v.lines ?? [])]);
+/** The warning naming the first five of `files` as not scored, or none when there are none. */
+function notScored(what: string, files: readonly string[]): string[] {
+  if (files.length === 0) {
+    return [];
+  }
+  const more = files.length > 5 ? ` and ${files.length - 5} more` : "";
+  return [`${what} not scored: ${files.slice(0, 5).join(", ")}${more}`];
 }
-
-const gap = (v: Verdict): boolean =>
-  v.missing === true || v.missingConfig === true || v.notMeasured === true;
 
 /**
  * One tree's judgement against its start commit: every regression to block the stop on, plus every
@@ -75,26 +83,51 @@ async function judgeTree(
   const regressions: Regression[] = [];
   const warnings: string[] = [];
 
-  const { languages } = readGatesConfig(tree.root);
-  const { verdicts } = await compareTrees(tree.root, tree.start, "worktree", {
-    at: "pre-commit",
-    languages,
-    timeoutMs: checkBudgetMs(),
-  });
-  const environment = verdicts.filter((v) => !v.pass && gap(v));
-  const worse = verdicts.filter((v) => !(v.pass || gap(v)));
-  if (environment.length > 0) {
-    warnings.push(`langdev: ${describeVerdicts(environment).join("; ")}`);
+  let languages;
+  try {
+    ({ languages } = readGatesConfig(tree.root));
+  } catch (error) {
+    // A config that cannot be read gates nothing; the stop is held until it is fixed, never let
+    // through in silence.
+    if (error instanceof QsmError) {
+      return { regressions: [{ comparison: "config", lines: [error.message] }], warnings };
+    }
+    throw error;
   }
-  if (worse.length > 0) {
-    regressions.push({ comparison: "langdev", lines: describeVerdicts(worse) });
+  const { verdicts } = await compareTrees(
+    tree.root,
+    tree.start,
+    { kind: "index" },
+    {
+      at: "pre-commit",
+      languages,
+      ...testBudgetMs(),
+    },
+  );
+  // Only what is staged is scored; an edit the agent left unstaged, or a file it never added, is
+  // named, never judged in silence.
+  const unstaged = gitPaths(tree.root, ["diff", "--name-only", "-z"]) ?? [];
+  const untracked = gitPaths(tree.root, ["ls-files", "--others", "--exclude-standard", "-z"]) ?? [];
+  warnings.push(...notScored("unstaged changes", unstaged), ...notScored("untracked", untracked));
+  const { failed, warned } = judge(verdicts, true, "stop");
+  if (warned.length > 0) {
+    warnings.push(`langdev: ${describeVerdicts(warned).join("; ")}`);
+  }
+  if (failed.length > 0) {
+    regressions.push({ comparison: "langdev", lines: describeVerdicts(failed) });
   }
 
   // The stop gate compares against the agent's own start point, so a whole session is judged as one
   // aggregate drift rather than commit by commit.
-  const structure = await compareStructure(tree.root, tree.start, "worktree");
+  const structure = await compareStructure(
+    tree.root,
+    tree.start,
+    { kind: "index" },
+    testBudgetMs().timeoutMs ?? POINTS["pre-commit"].timeoutMs,
+  );
   const structureVerdict = verdict(structure);
-  if (structureVerdict.pass) {
+  // Not measured is a warning at a stop, as for a checker: it must not hold an agent hostage.
+  if (structureVerdict.pass || structure.status === "not-measured") {
     // Each summary says what it is — a quality line, or a tree sentrux had no ruleset to score.
     // Both are the orchestrator's to read when it reviews this worktree; neither stops the agent.
     warnings.push(structureVerdict.summary);
@@ -125,7 +158,18 @@ async function main(): Promise<void> {
   // same as the edit hook staying quiet in it.
   const gated = trees.filter((tree) => isLangdevRepo(tree.root));
 
+  // One deadline for the whole hook run: a tree is judged only while its worst case (langdev and
+  // both structure sides, each up to the point's timeout) still fits before the engine kills us.
+  const deadline = performance.now() + HOOK_BUDGET_MS;
+  const treeWorstMs = 3 * (testBudgetMs().timeoutMs ?? POINTS["pre-commit"].timeoutMs);
   for (const tree of gated) {
+    if (deadline - performance.now() < treeWorstMs) {
+      log(
+        `${tree.root}: not judged: the stop hook's time would run out first; ` +
+          "run `qsm-langdev check` there",
+      );
+      continue;
+    }
     const { regressions, warnings } = await judgeTree(tree);
     for (const warning of warnings) {
       log(`${tree.root}: ${warning}`);
@@ -161,7 +205,8 @@ async function main(): Promise<void> {
         reason:
           `[qsm-langdev] ${tree.root} is worse than this agent's start commit ${tree.start.slice(0, 12)} ` +
           `(block ${blocks}/${MAX_BLOCKS}): ${standing}. ` +
-          "Fix the regressed counts or architecture in the files you touched. " +
+          "Fix what is named here: a regressed count or the architecture in the files you touched, " +
+          "or the config that cannot be read. " +
           "Bypassing the gate is orchestrator/user-only, not a worker exit from this loop.",
       }),
     );

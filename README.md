@@ -97,7 +97,7 @@ These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm
 
 | Plugin | Why it exists | Ships |
 | --- | --- | --- |
-| [qsm-langdev](plugins/qsm-langdev/README.md) | An agent cannot see the quality of what it wrote until something outside it measures it, and by then the session is usually over. | CLI, 3 hooks |
+| [qsm-langdev](plugins/qsm-langdev/README.md) | An agent cannot see the quality of what it wrote until something outside it measures it, and by then the session is usually over. | CLI, 4 hooks |
 | [qsm-langdev-dotnet](plugins/qsm-langdev-dotnet/README.md) | A model left alone writes C# from older habits than the SDK in use, and the compiler's analyzers cannot make the choices between records and classes, scoped and singleton, or what C# 14 added. | 1 skill |
 | [qsm-langdev-fish](plugins/qsm-langdev-fish/README.md) | A model left alone writes fish as if it were bash: `set -e`, a `$status` read twice, a bare `set` that leaks scope. | 1 skill |
 | [qsm-langdev-py](plugins/qsm-langdev-py/README.md) | A model left alone writes Python with loose hints and untidy structure. | 1 skill |
@@ -105,7 +105,7 @@ These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm
 | [qsm-langdev-ts](plugins/qsm-langdev-ts/README.md) | A model left alone writes TypeScript that compiles yet leaves meaning in loose strings and numbers. | 2 skills |
 | [qsm-langdev-zsh](plugins/qsm-langdev-zsh/README.md) | A quality gate only checks a language the project says it speaks, and zsh is close enough to bash that a model writes it wrong without noticing. | 1 skill |
 | [qsm-review](plugins/qsm-review/README.md) | A change reviewed by the agent that wrote it is reviewed by the assumptions that wrote it. | 4 skills, 2 agents |
-| [qsm-secrets](plugins/qsm-secrets/README.md) | A token that enters the agent's context is a token in a transcript, a log, and every model call after it. | 2 skills, CLI, 7 hooks |
+| [qsm-secrets](plugins/qsm-secrets/README.md) | A token that enters the agent's context is a token in a transcript, a log, and every model call after it. | 2 skills, CLI, 11 hooks |
 
 ### Knowledge and web
 

@@ -47,11 +47,6 @@ function stubOperations(
     if (argv.includes("--version")) {
       return done("wt v0.68.0\n");
     }
-    if (e.argv[0] === "qsm-worktrunk") {
-      return done(
-        JSON.stringify({ code: "ok", exit: 0, message: "", data: ["agent-x", "agent-y"] }),
-      );
-    }
     if (e.argv[0] === "sh") {
       return done("/usr/bin/wt\n");
     }
@@ -87,6 +82,18 @@ function stubPromptSubmit(on: On) {
     return { text: e.text };
   });
   return () => bottomRan;
+}
+
+/** A prompt.submit bottom that keeps the context the turn reached it with, in a session at `cwd`. */
+function captureContext(on: On, cwd: string) {
+  let seen: readonly string[] = [];
+  on("prompt.submit", (_$, e) => {
+    seen = e.context ?? [];
+    return { text: e.text };
+  });
+  on("session.cwd", () => ({ value: cwd }));
+  on("env.get", () => ({ value: "/home/p" }));
+  return () => seen.join("\n");
 }
 
 /** A ui.toast bottom that keeps what it was told. */
@@ -129,13 +136,7 @@ test("a git call that is not git worktree reaches the tool untouched", async ($,
 });
 
 test("a prompt submitted inside a workspace carries its name, path and branch", async ($, on) => {
-  let seen: readonly string[] = [];
-  on("prompt.submit", (_$, e) => {
-    seen = e.context ?? [];
-    return { text: e.text };
-  });
-  on("session.cwd", () => ({ value: "/home/p/repo.feature" }));
-  on("env.get", () => ({ value: "/home/p" }));
+  const seen = captureContext(on, "/home/p/repo.feature");
   on("process.run", (_$, e) => {
     const git = e.argv.slice(1).join(" ");
     const answers: Record<string, string> = {
@@ -150,26 +151,20 @@ test("a prompt submitted inside a workspace carries its name, path and branch", 
 
   await $.prompt.submit({ text: "hello", wait: false, origin: { kind: "composer" } });
 
-  expect(seen.join("\n")).toContain("branch: feature");
-  expect(seen.join("\n")).toContain("path: ~/repo.feature");
+  expect(seen()).toContain("branch: feature");
+  expect(seen()).toContain("path: ~/repo.feature");
 });
 
-test("a prompt submitted in the main checkout carries no workspace context", async ($, on) => {
-  let seen: readonly string[] | undefined;
-  on("prompt.submit", (_$, e) => {
-    seen = e.context;
-    return { text: e.text };
-  });
-  on("session.cwd", () => ({ value: "/home/p/repo" }));
-  on("env.get", () => ({ value: "/home/p" }));
+test("a prompt submitted in the main checkout tells the agent to move into its own worktree", async ($, on) => {
+  const seen = captureContext(on, "/home/p/repo");
   on("process.run", (_$, e) => {
     const inside = e.argv.includes("--is-inside-work-tree");
-    return done(inside ? "true\n" : "/home/p/repo/.git\n");
+    return done(inside ? "true\n" : "/home/p/repo/.git\n/home/p/repo/.git\n");
   });
 
   await $.prompt.submit({ text: "hello", wait: false, origin: { kind: "composer" } });
 
-  expect(seen).toBeUndefined();
+  expect(seen()).toContain("move into this session's own worktree with EnterWorktree");
 });
 
 test("A new turn starts", async ($, on) => {
@@ -185,14 +180,12 @@ test("A new turn starts", async ($, on) => {
 
 test("The session ends", async ($, on) => {
   const argvs: string[] = [];
-  const toasts = stubToasts(on);
   on("session.end", (_$, e) => ({ sessionId: e.sessionId }));
   stubOperations(on, { onRun: (argv) => argvs.push(argv.join(" ")) });
 
   await $.session.end({ reason: "other", sessionId: "sess-1", resume: { id: "sess-1" } });
 
   expect(argvs).toContain("wt config state marker clear");
-  expect(toasts.join("\n")).toContain("agent-x, agent-y");
 });
 
 test("session.start declares /qsm-worktrunk, which is what makes the doctor reachable", async ($, on) => {
@@ -254,4 +247,19 @@ test("a prompt submitted toasts and still lets the prompt through when process.r
   expect(result.text).toBe("hello");
   expect(toasts.length).toBe(1);
   expect(toasts[0]).toMatch(/^qsm-worktrunk ERROR: prompt\.submit:/);
+});
+
+test("a prompt whose marker fails still reaches the bottom once", async ($, on) => {
+  const bottomRan = stubPromptSubmit(on);
+  on("ui.log", () => ({ value: undefined }));
+  on("ui.toast", () => ({ value: undefined }));
+  on("session.cwd", () => ({ value: "/repo" }));
+  on("env.get", () => ({ value: "/home/p" }));
+  on("process.run", () => {
+    throw new Error("wt is gone");
+  });
+
+  await $.prompt.submit({ text: "hi", wait: false, origin: { kind: "composer" } });
+
+  expect(bottomRan()).toBe(1);
 });

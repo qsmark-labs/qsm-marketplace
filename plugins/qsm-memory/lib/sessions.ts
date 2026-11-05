@@ -3,10 +3,11 @@
 
 import type { Database } from "bun:sqlite";
 import { existsSync, readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, dirname } from "node:path";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { projectOf } from "./project.ts";
 import { sinceCutoff } from "./search.ts";
+import { packedEntry } from "./store.ts";
 import { fullTurns, type Turn } from "./transcript.ts";
 
 export interface SessionRow {
@@ -77,9 +78,28 @@ function savedTurns(db: Database, session: SessionRow): [number, Turn][] {
     ]);
 }
 
+const quoted = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
+
+/** The restore command of a packed session: exactly the `entries` archived for it, quoted for a
+ * shell. The Claude home is where the transcript lived: three levels above it. */
+function restoreCommand(archive: string, transcriptPath: string, entries: readonly string[]) {
+  const home = dirname(dirname(dirname(transcriptPath)));
+  return `tar --zstd -xmf ${quoted(archive)} -C ${quoted(home)} ${entries.map(quoted).join(" ")}`;
+}
+
 /** The turns of the transcript file, numbered by position; loud when the file is gone. */
-function transcriptTurns(session: SessionRow): [number, Turn][] {
+function transcriptTurns(db: Database, session: SessionRow): [number, Turn][] {
   if (!existsSync(session.transcript_path)) {
+    const packed = packedEntry(db, session.id);
+    if (packed !== null) {
+      const { archive } = packed;
+      const restore = restoreCommand(archive, session.transcript_path, packed.entries);
+      throw new QsmError(
+        "missing",
+        `the transcript ${session.transcript_path} was packed into ${archive}; restore it with ${restore}`,
+        { next: `run qsm-memory show ${session.id} without --full to read the saved text` },
+      );
+    }
     throw new QsmError(
       "missing",
       `the transcript ${session.transcript_path} is gone; only the saved text is left`,
@@ -92,7 +112,7 @@ function transcriptTurns(session: SessionRow): [number, Turn][] {
 export function show(db: Database, prefix: string, options: ShowOptions = {}): string {
   const session = resolveSession(db, prefix);
   const [from, to] = options.lines ?? [1, Number.MAX_SAFE_INTEGER];
-  const all = options.full === true ? transcriptTurns(session) : savedTurns(db, session);
+  const all = options.full === true ? transcriptTurns(db, session) : savedTurns(db, session);
   const rows = all.filter(([seq]) => seq >= from && seq <= to);
   if (rows.length === 0) {
     return `${header(session)}\nno turns in ${from}-${to === Number.MAX_SAFE_INTEGER ? "end" : to}; the last turn is #${all.at(-1)?.[0] ?? 0}`;

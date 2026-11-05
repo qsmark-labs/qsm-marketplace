@@ -1,7 +1,8 @@
 // qsm-langdev's function-hooks module: the Bash guard, and the edit hook that tells the model what
 // an edit did to the file's findings. The guard's rule is lib/blocked-git.ts, the findings are the
 // `edited` verb's. The stop gate (hooks.json, dist/gate-hook) stays a classic command hook: its
-// event is SubagentStop, which has no function form, and a function hook cannot block a stop.
+// events are Stop (the main agent) and SubagentStop, which have no function form, and a function
+// hook cannot block a stop.
 import type { Caught, EngineInterface, On } from "claude-code";
 import { gitDenial } from "../lib/blocked-git.ts";
 import { registerNoun } from "./noun.generated.ts";
@@ -16,8 +17,16 @@ function failed($: EngineInterface, event: string, error: Caught["error"]): stri
   return said;
 }
 
-/** The `text` of the edited verb's data; null when it had nothing to say. */
-function findingsText(data: unknown): string | null {
+/** The `text` of the edited verb's data, for the model; null when the file has no finding. Its `log`
+ * lines, how the run went, go to the debug log, because the model cannot act on them. */
+function findingsText($: EngineInterface, data: unknown): string | null {
+  // A hooks module imports nothing outside the plugin, and lib/json.ts reaches the root lib/.
+  const field: unknown =
+    typeof data === "object" && data !== null ? Reflect.get(data, "log") : undefined;
+  const log = (Array.isArray(field) ? field : []).filter((line) => typeof line === "string");
+  if (log.length > 0) {
+    $.ui.log(log.join("\n"), { to: "debug" });
+  }
   const text = stringField(data, "text");
   return text !== null && text.length > 0 ? text : null;
 }
@@ -42,7 +51,7 @@ function registerGuard(on: On): void {
   }));
 }
 
-/** After a Write, Edit or NotebookEdit ran, the file's findings against HEAD go to the model as the
+/** After a Write, Edit or NotebookEdit ran, the file's findings, checked in place, go to the model as the
  * result's context. Advisory: a failure leaves the result as the tool made it. */
 function registerEditFindings(on: On): void {
   on("tool.call", async ($, e, next) => {
@@ -55,6 +64,7 @@ function registerEditFindings(on: On): void {
       return result;
     }
     const text = findingsText(
+      $,
       await $.langdev.edited({ file, session: await $.session.id(), agent: e.agentId }),
     );
     return text === null ? result : { ...result, context: [...(result.context ?? []), text] };

@@ -313,10 +313,12 @@ def main() -> None:
     # The browser keeps its own session history, which the stealth build
     # disables by default; without it nothing can go back. The value the
     # page can read is masked to the build's stock number, so re-enabling
-    # it adds no surface a site can measure.
+    # it adds no surface a site can measure. Humanize makes the browser
+    # replay a recorded human path for every mouse move instead of a jump.
     with Camoufox(
         headless=False,
         geoip=True,
+        humanize=True,
         firefox_user_prefs={"browser.sessionhistory.max_entries": 50},
         config={"window.history.length": 2},
         i_know_what_im_doing=True,

@@ -22,20 +22,13 @@ function repoWithFile(fileName: string, content: string): { root: string; head: 
   return { root, head: git(root, "rev-parse", "HEAD") };
 }
 
-/** Opts `root` into qsm-langdev with no gates and no languages. */
-function initGates(root: string): void {
-  mkdirSync(join(root, ".qsm-langdev"), { recursive: true });
-  writeFileSync(
-    join(root, ".qsm-langdev", "gates.json"),
-    `${JSON.stringify({ hooks: { "pre-commit": [], "pre-push": [] }, languages: [] })}\n`,
-  );
-}
-
-/** notes.md edited to `content` in a repository set up for qsm-langdev, and what the hook said. */
+/** notes.md edited to `content` in a repository that ran `init` and committed its configs, as a
+ * person does, and what the hook said. */
 function editMarkdown(content: string) {
   const { root } = repoWithFile("notes.md", "# notes\n");
+  runBin(CLI, ["init", root, "--profile", "general"], { env: tmpEnv() });
+  commit(root, "init");
   writeFileSync(join(root, "notes.md"), content);
-  initGates(root);
   return { root, r: runEdited(join(root, "notes.md")) };
 }
 
@@ -110,10 +103,63 @@ describe("qsm-langdev edit hook: a repository that never ran init", () => {
   });
 
   test("A written file gained a finding", () => {
-    const { r } = editMarkdown("#no-space-heading\n");
+    // A fence with no language is a finding no fixer can rewrite.
+    const { r } = editMarkdown("# notes\n\n```\nx\n```\n");
 
     expect(r.status).toBe(0);
-    expect(r.text).toContain("qsm-langdev on notes.md against HEAD");
+    expect(r.text).toContain("qsm-langdev: notes.md breaks this project's rules");
+    expect(r.text).toContain("notes.md:3: MD040/fenced-code-language");
+    expect(r.text).not.toContain(" -> ");
+  });
+
+  test("A clean edit says nothing", () => {
+    const { r } = editMarkdown("# notes\n\nfine\n");
+
+    expect(r.status).toBe(0);
+    expect(r.text).toBeNull();
+  });
+
+  test("A new file git does not track is checked in place", () => {
+    const { root } = editMarkdown("# notes\n");
+    writeFileSync(join(root, "new.md"), "# new\n\n```\nx\n```\n");
+
+    const r = runEdited(join(root, "new.md"));
+
+    expect(r.status).toBe(0);
+    expect(r.text).toContain("new.md:3: MD040/fenced-code-language");
+  });
+
+  test("A file git ignores is neither fixed nor checked: no commit will score it", () => {
+    const { root } = editMarkdown("# notes\n");
+    writeFileSync(join(root, ".gitignore"), "dist/\n");
+    commit(root, "ignore dist");
+    mkdirSync(join(root, "dist"));
+    const content = "# out\n\n*   one\n\n```\nx\n```\n";
+    writeFileSync(join(root, "dist", "out.md"), content);
+
+    const r = runEdited(join(root, "dist", "out.md"));
+
+    expect(r.text).toBeNull();
+    expect(readFileSync(join(root, "dist", "out.md"), "utf8")).toBe(content);
+  });
+
+  test("A file of a language the repository does not gate tells the model nothing", () => {
+    const { root } = editMarkdown("# notes\n");
+    writeFileSync(join(root, "a.py"), "import os\n");
+
+    const r = runEdited(join(root, "a.py"));
+
+    expect(r.text).toBeNull();
+  });
+
+  test("A finding the file already had at HEAD is reported: the rules decide, not HEAD", () => {
+    const { root } = editMarkdown("# notes\n\n```\nx\n```\n");
+    commit(root, "the finding lands");
+    writeFileSync(join(root, "notes.md"), "# notes\n\n```\nx\n```\n\nmore\n");
+
+    const r = runEdited(join(root, "notes.md"));
+
+    expect(r.text).toContain("notes.md:3: MD040/fenced-code-language");
   });
 });
 
@@ -125,6 +171,17 @@ describe("qsm-langdev edit hook: markdown line length", () => {
 
     expect(r.status).toBe(0);
     expect(readFileSync(join(root, "notes.md"), "utf8")).not.toContain(long);
+    expect(r.text ?? "").not.toContain("MD013");
+  });
+
+  test("an OpenSpec rename line stays one line while an ordinary long line is rewrapped", () => {
+    const to = `- TO: \`### Requirement: ${"name ".repeat(22)}end\``;
+    expect(to.length).toBeGreaterThan(100);
+    const { root, r } = editMarkdown(`## RENAMED Requirements\n\n${to}\n\n${long}\n`);
+
+    const written = readFileSync(join(root, "notes.md"), "utf8");
+    expect(written.split("\n")).toContain(to);
+    expect(written).not.toContain(long);
     expect(r.text ?? "").not.toContain("MD013");
   });
 });
@@ -153,22 +210,37 @@ describe("qsm-langdev pre-commit hook: static fixers", () => {
   const initRepo = () => {
     const { root } = repoWithFile("seed.ts", "export {};\n");
     runBin(CLI, ["init", root, "--profile", "general"], { env: tmpEnv() });
+    // knip, a commit-point checker, is not measured on either side without a committed package.json
+    writeFileSync(join(root, "package.json"), "{}\n");
+    commit(root, "configs");
     return root;
   };
 
   test("an oxfmt format defect and a markdown rule are fixed in the staged blobs, the hook passes", () => {
     const root = initRepo();
-    writeFileSync(join(root, "a.ts"), "export const a  =  1\n");
+    writeFileSync(join(root, "a.test.ts"), "export const a  =  1\n");
     writeFileSync(join(root, "a.md"), "# A\n\n*   one\n*   two\n");
     git(root, "add", "-A");
 
     const hook = preCommit(root);
 
     expect(hook.exit).toBe(0);
-    expect(staged(root, "a.ts")).toBe("export const a = 1;");
+    expect(staged(root, "a.test.ts")).toBe("export const a = 1;");
     // git() trims its output, so the blob's byte size proves the final newline survived
-    expect(git(root, "cat-file", "-s", ":a.ts")).toBe(String("export const a = 1;\n".length));
+    expect(git(root, "cat-file", "-s", ":a.test.ts")).toBe(String("export const a = 1;\n".length));
     expect(staged(root, "a.md")).toContain("* one\n");
+  }, 60_000);
+
+  test("an unused export is blocked by knip at the commit gate, not left for the push", () => {
+    const root = initRepo();
+    mkdirSync(join(root, "lib"));
+    writeFileSync(join(root, "lib", "a.ts"), "export const a = 1;\n");
+    git(root, "add", "-A");
+
+    const hook = preCommit(root);
+
+    expect(hook.exit).not.toBe(0);
+    expect(hook.stderr).toContain("knip");
   }, 60_000);
 
   test("a finding no fixer can rewrite still blocks", () => {

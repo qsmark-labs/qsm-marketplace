@@ -60,6 +60,8 @@ ignore = [
 # print is these programs' output: the daemon's ready line, ctl's answer, the scripts' report.
 "plugins/qsm-web/docker/driver/{ctl,daemon}.py" = ["T201"]
 "plugins/qsm-web/scripts/instagram_saved/*.py" = ["T201"]
+# A build step the Dockerfile runs once by path: not a package, and its print is the build log.
+"plugins/qsm-web/docker/search_engine.py" = ["T201", "INP001"]
 # One failed reel is recorded with its traceback and the run goes on to the next.
 "plugins/qsm-web/scripts/instagram_saved/scrape_reels.py" = ["BLE001"]
 

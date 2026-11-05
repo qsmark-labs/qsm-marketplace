@@ -97,27 +97,33 @@ const withSemgrep = (semgrep: boolean): InstallContext =>
   fakeInstall({ present: semgrep ? ["cargo", "semgrep"] : ["cargo"] }).ctx;
 
 describe("qsm-langdev semgrep login step", () => {
-  test("logged out is its own suggested step carrying the warning, never a failure", () => {
-    const step = semgrepLoginStep(withSemgrep(true), () => "logged-out");
+  test("logged out is its own suggested step carrying the warning, never a failure", async () => {
+    const step = await semgrepLoginStep(withSemgrep(true), () =>
+      Promise.resolve("logged-out" as const),
+    );
     expect(step).toEqual({ name: "semgrep login", status: "suggested", detail: WARNING });
     expect(isFailure(step?.status ?? "error")).toBe(false);
   });
 
-  test("an unknown login state is said, not taken for logged out", () => {
-    const step = semgrepLoginStep(withSemgrep(true), () => "unknown");
+  test("an unknown login state is said, not taken for logged out", async () => {
+    const step = await semgrepLoginStep(withSemgrep(true), () =>
+      Promise.resolve("unknown" as const),
+    );
     expect(step?.status).toBe("suggested");
     expect(step?.detail).toStartWith("semgrep login state is unknown");
   });
 
-  test("logged in is no step", () => {
-    expect(semgrepLoginStep(withSemgrep(true), () => "logged-in")).toBeNull();
+  test("logged in is no step", async () => {
+    expect(
+      await semgrepLoginStep(withSemgrep(true), () => Promise.resolve("logged-in" as const)),
+    ).toBeNull();
   });
 
-  test("no semgrep on PATH asks nothing and is no step: that is the missing-binary path", () => {
+  test("no semgrep on PATH asks nothing and is no step: that is the missing-binary path", async () => {
     let asked = false;
-    const step = semgrepLoginStep(withSemgrep(false), () => {
+    const step = await semgrepLoginStep(withSemgrep(false), () => {
       asked = true;
-      return "logged-out";
+      return Promise.resolve("logged-out" as const);
     });
     expect(step).toBeNull();
     expect(asked).toBe(false);
@@ -126,7 +132,9 @@ describe("qsm-langdev semgrep login step", () => {
 
 describe("qsm-langdev extra steps", () => {
   test("logged out adds the login step after the checker and leaves the checker alone", async () => {
-    const steps = await extraSteps(withSemgrep(true), patched, () => "logged-out");
+    const steps = await extraSteps(withSemgrep(true), patched, () =>
+      Promise.resolve("logged-out" as const),
+    );
     expect(steps).toEqual([
       {
         name: "structural checker",
@@ -138,12 +146,16 @@ describe("qsm-langdev extra steps", () => {
   });
 
   test("logged in is the checker step alone", async () => {
-    const steps = await extraSteps(withSemgrep(true), patched, () => "logged-in");
+    const steps = await extraSteps(withSemgrep(true), patched, () =>
+      Promise.resolve("logged-in" as const),
+    );
     expect(steps.map((s) => s.name)).toEqual(["structural checker"]);
   });
 
   test("no semgrep is the checker step alone", async () => {
-    const steps = await extraSteps(withSemgrep(false), patched, () => "logged-out");
+    const steps = await extraSteps(withSemgrep(false), patched, () =>
+      Promise.resolve("logged-out" as const),
+    );
     expect(steps.map((s) => s.name)).toEqual(["structural checker"]);
   });
 
@@ -151,7 +163,7 @@ describe("qsm-langdev extra steps", () => {
     const steps = await extraSteps(
       withSemgrep(true),
       absent,
-      () => "logged-out",
+      () => Promise.resolve("logged-out" as const),
       builder([], "cargo exited 101"),
     );
     expect(steps.map((s) => [s.name, s.status])).toEqual([

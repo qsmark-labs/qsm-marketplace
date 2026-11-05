@@ -13,7 +13,7 @@ import { isRecord } from "../../../lib/outcome.ts";
 import { isErrno } from "./errors.ts";
 import { recordOf } from "./json.ts";
 import { tsconfigInputs } from "./tree.ts";
-import type { EnforcementPoint } from "./registry.ts";
+import type { ComparedPoint } from "./registry.ts";
 
 /**
  * What a checker's run over one side comes to: a tally and the tool's own words, or the reason it
@@ -21,7 +21,7 @@ import type { EnforcementPoint } from "./registry.ts";
  */
 export type Score =
   | { tally: Tally; output: string }
-  | { reason: string; timedOut?: true; failedRun?: true };
+  | { kind: "timed-out" | "failed-run" | "missing"; reason: string };
 
 /** The stored form of a score, raised whenever what a stored score means changes (its form, or
  * the inputs a side is scored with), so an entry an older qsm-langdev wrote is scored again. */
@@ -214,12 +214,12 @@ const ABANDONED_TMP_MS = 10 * 60 * 1000;
 /** The store of one checkout for one run at one enforcement point. */
 export class ResultStore {
   readonly #root: string;
-  readonly #point: EnforcementPoint;
+  readonly #point: ComparedPoint;
   readonly #used = new Map<string, Set<string>>();
   readonly #inFlight = new Map<string, Promise<Score>>();
   #unwritten: string | undefined;
 
-  constructor(root: string, point: EnforcementPoint) {
+  constructor(root: string, point: ComparedPoint) {
     this.#root = root;
     this.#point = point;
   }

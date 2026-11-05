@@ -12,12 +12,15 @@ qsm-web doctor        # bins, tvly, the Tavily skills, the Context7 skill
 qsm-web browserbox start | ls | stop <name> | stop --all
 qsm-web browserbox fetch <url> [--in <name>] [--html] [--screenshot] [--cookies] [--keep]
 qsm-web browserbox script <name> (--file <path> | --steps <json>)
-qsm-web browserbox takeover <name> <tab> [--open]
+qsm-web browserbox takeover <name> <tab> [--reason <text>] [--timeout <ms>]
+qsm-web browserbox view <name>
 ```
 
 `qsm-web <verb> --help` lists the rest; `--dry-run` shows the commands without running them.
 
-- Search instance: `--instance`, then `QSM_SEARXNG_INSTANCE`. The instance owns the engine and
+- Search instance: `--instance`, then `QSM_SEARXNG_INSTANCE`, then the `instance` field in
+  `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default `~/.config/qsm-searxng/config.json`), kept
+  on this machine. The instance owns the engine and
   policy defaults: only the flags you pass are sent. `--num-results` keeps 10 results by default
   and `--timeout` gives the entire exchange 10000 ms, including a profile's catalog lookup.
 - Sources from `opensrc get` land in `QSM_OPENSRC_DIR` (default `~/Clonned`). `versionMatched` is
@@ -25,8 +28,16 @@ qsm-web browserbox takeover <name> <tab> [--open]
 - `browserbox fetch` without `--in` starts and stops its own instance; `--keep` leaves it running,
   stop it by name.
 - `script` steps: `navigate`, `fill`, `fill-secret` (Bitwarden item, shown as `[redacted]`),
-  `click`, `wait`, `extract`, `screenshot`. A failed step ends the run.
-- `takeover` waits for a person to clear a challenge in the live view; default timeout five minutes.
+  `click`, `mouse`, `wait`, `extract`, `screenshot`. A failed step ends the run. `mouse` takes a
+  point (`{"action": "mouse", "x": 412, "y": 288}`), and `"click": true` clicks there. Every
+  mouse move, a click's too, follows a recorded human path inside the browser from wherever the
+  cursor is, overshoots included.
+- `takeover` opens the live view in your desktop browser and waits for a person to clear a
+  challenge there; default timeout five minutes. `view <name>` opens the live view any time.
+  The live view asks for a per-instance password, which only these two verbs put in the address
+  they open (through `xdg-open`); nothing the CLI prints carries it. With no `xdg-open` or no
+  display they fail with the address, and `docker exec <name> cat /run/bbox.token` prints the
+  password for a person to add as `?password=`.
 - Env: `QSM_CONTAINER_RUNTIME`, `QSM_BROWSERBOX_OUT` (default `~/.cache/qsm-browserbox`),
   `QSM_BITWARDEN_CLI`, `QSM_MARKETPLACE` (the checkout, for the image build).
 

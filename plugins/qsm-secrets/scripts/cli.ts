@@ -27,11 +27,14 @@ import { pathEnvOf } from "../lib/protected.ts";
 import { runClean, runRender } from "../lib/render.ts";
 import {
   type Delivery,
+  formatCaptures,
   runCapture,
+  runCaptures,
   runCheck,
   runEnv,
   runGet,
   runHas,
+  runIndexCheck,
   runInspect,
   runList,
   runMask,
@@ -107,13 +110,13 @@ const rename: Handler = (call) => {
     namespace: optionalString(call, "toFolder") ?? (legacy ? namespace(call) : from.namespace),
     key: requiredString(call, "to"),
   };
-  const done = runRename(from, to);
-  return ok(done, `renamed ${done.from} to ${done.to}`);
+  const { warnings, ...done } = runRename(from, to);
+  return { ...ok(done, `renamed ${done.from} to ${done.to}`), warnings };
 };
 
 const prune: Handler = (call) => {
-  const done = runPrune(flagArg(call, "dryRun"));
-  return ok(done, done.ids.length === 0 ? undefined : done.ids.join("\n"));
+  const { warnings, ...done } = runPrune(flagArg(call, "dryRun"));
+  return { ...ok(done, done.ids.length === 0 ? undefined : done.ids.join("\n")), warnings };
 };
 
 /** The consumer's words follow `--`: for sudo, ssh and git the first is the prompt it wants shown. */
@@ -147,8 +150,8 @@ const set: Handler = (call) => {
   if (flagArg(call, "gui")) {
     return ask("secret", [key(call)], { env: process.env, namespace: namespace(call) });
   }
-  const stored = runSet(namespace(call), key(call));
-  return ok(stored, `stored ${stored.key}`);
+  const { warnings, ...stored } = runSet(namespace(call), key(call));
+  return { ...ok(stored, `stored ${stored.key}`), warnings };
 };
 
 const has: Handler = (call) => {
@@ -171,14 +174,23 @@ const inspect: Handler = (call) => {
 };
 
 const rm: Handler = (call) => {
-  const removed = runRemove(namespace(call), key(call));
-  return ok(removed, `removed ${removed.key}`);
+  const { warnings, ...removed } = runRemove(namespace(call), key(call));
+  return { ...ok(removed, `removed ${removed.key}`), warnings };
 };
 
 /** The text on stdin with each secret swapped for its id; the values never leave the backend. */
-const capture: Handler = async () => {
-  const done = await runCapture();
+const capture: Handler = async (call) => {
+  const done = await runCapture({
+    session: optionalString(call, "session") ?? null,
+    cwd: optionalString(call, "cwd") ?? null,
+  });
   return ok(done, done.text);
+};
+
+/** One line per stored capture, never a value; a row whose entry went is named in a warning. */
+const captures: Handler = () => {
+  const { rows, warnings } = runCaptures();
+  return { ...ok({ rows }, formatCaptures(rows)), warnings };
 };
 
 /**
@@ -281,7 +293,7 @@ async function guardCheck(): Promise<Check> {
 const doctor: Handler = async (call) => {
   const parser = await guardCheck();
   const ns = namespace(call);
-  const checks = [...activeBackend().health(ns, process.env), parser];
+  const checks = [...activeBackend().health(ns, process.env), parser, runIndexCheck()];
   const healthy = checks.every((check) => check.ok);
   const data = { namespace: ns, checks, ok: healthy };
   return healthy ? ok(data, formatChecks(checks)) : fail("missing", formatChecks(checks), data);
@@ -308,6 +320,7 @@ if (import.meta.main) {
         get,
         doctor,
         capture,
+        captures,
         guard,
         mask,
         scrub,

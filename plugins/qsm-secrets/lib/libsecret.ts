@@ -2,7 +2,7 @@
 // Secret Service daemon on the session bus, never to a network, and never to rbw.
 
 import { spawnSync } from "node:child_process";
-import { onPath } from "../../../lib/outcome.ts";
+import { messageOf, onPath } from "../../../lib/outcome.ts";
 import { binCheck } from "./bin.ts";
 import type { Check } from "./doctor.ts";
 import type { Entry } from "./entries.ts";
@@ -17,6 +17,10 @@ const SERVICE = "org.freedesktop.secrets";
 const START_PROVIDER =
   "start a Secret Service provider, for example gnome-keyring-daemon or KeePassXC";
 const INSTALL_FIX = "install libsecret (it ships secret-tool)";
+/** Why a search that ran fails: measured, no session bus; expected, a cancelled unlock prompt. */
+const SEARCH_CAUSES =
+  "the usual causes are a locked keyring whose unlock prompt was cancelled, a provider that stopped, or no session bus";
+const SEARCH_FIX = `run qsm-secrets doctor; ${SEARCH_CAUSES}`;
 
 /** The attributes every entry of ours carries; `secret-tool` matches on all of them. */
 function attributes(namespace: string, key?: string): string[] {
@@ -75,6 +79,16 @@ function ready(): void {
 function entries(allowLegacy = false): Entry[] {
   ready();
   const found = spawnSync(BIN, ["search", "--all", "service", "qsm"], { encoding: "utf8" });
+  // A search that matches nothing exits 0; one the Secret Service could not answer exits 1 with
+  // its error as the last line of stderr (measured: an unreachable bus). An empty listing from a
+  // failed search would read as "nothing is stored", and `captures` would forget every row.
+  if (found.status !== 0) {
+    const said = found.stderr
+      .split("\n")
+      .findLast((line) => line.trim() !== "" && !line.startsWith("attribute."));
+    const cause = (said ?? "no error text").slice(0, 200);
+    fail(`${BIN} search failed (exit ${found.status ?? "none"}): ${cause}`, SEARCH_FIX);
+  }
   const rows: Entry[] = [];
   let item = new Map<string, string>();
   const flush = (): void => {
@@ -158,12 +172,16 @@ function health(namespace: string): Check[] {
   if (!(bin.ok && owned)) {
     return [bin, daemon];
   }
-  const count = entries().filter((entry) => entry.folder === namespace || namespace === "").length;
-  return [
-    bin,
-    daemon,
-    { name: `namespace ${namespace}`, ok: true, detail: `${count} entries`, fix: null },
-  ];
+  const name = `namespace ${namespace}`;
+  // doctor is where a failed search sends the person, so it reports the failure as a check.
+  let listed: Entry[];
+  try {
+    listed = entries();
+  } catch (error) {
+    return [bin, daemon, { name, ok: false, detail: messageOf(error), fix: SEARCH_CAUSES }];
+  }
+  const count = listed.filter((entry) => entry.folder === namespace || namespace === "").length;
+  return [bin, daemon, { name, ok: true, detail: `${count} entries`, fix: null }];
 }
 
 /** Shaped like `Backend`; `backend.ts` is where that is checked. */

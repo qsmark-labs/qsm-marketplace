@@ -4,6 +4,7 @@ import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, linkSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { dataDir } from "../../../lib/paths.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
 import { typedText } from "./transcript.ts";
 
 export type Env = Readonly<Record<string, string | undefined>>;
@@ -81,6 +82,21 @@ CREATE TABLE IF NOT EXISTS notes (
   text TEXT NOT NULL,
   created_at TEXT NOT NULL,
   expires_at TEXT
+);
+
+-- retention, activated_at and last_pack_at: what the person chose and when the pack last ran.
+CREATE TABLE IF NOT EXISTS state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- A session whose transcript moved into an archive under transcripts/.
+CREATE TABLE IF NOT EXISTS packed (
+  session_id TEXT PRIMARY KEY,
+  archive TEXT NOT NULL,
+  packed_at TEXT NOT NULL,
+  -- the top-level entries archived for the session, as a JSON array of paths in the Claude home
+  entries TEXT NOT NULL
 );
 `;
 
@@ -161,6 +177,46 @@ function createDb(path: string): void {
       rmSync(file, { force: true });
     }
   }
+}
+
+/** One recorded value (`retention`, `activated_at`, `last_pack_at`), or null when never set. */
+export function getState(db: Database, key: string): string | null {
+  return (
+    db.query<{ value: string }, [string]>("SELECT value FROM state WHERE key = ?").get(key)
+      ?.value ?? null
+  );
+}
+
+/** Records `value` under `key`; null forgets the key. */
+export function setState(db: Database, key: string, value: string | null): void {
+  if (value === null) {
+    db.query("DELETE FROM state WHERE key = ?").run(key);
+    return;
+  }
+  db.query("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)").run(key, value);
+}
+
+/** The archive a session was packed into and the entries archived for it, or null when it was not
+ * packed. */
+export function packedEntry(
+  db: Database,
+  sessionId: string,
+): { archive: string; entries: string[] } | null {
+  const row = db
+    .query<{ archive: string; entries: string }, [string]>(
+      "SELECT archive, entries FROM packed WHERE session_id = ?",
+    )
+    .get(sessionId);
+  if (row === null) {
+    return null;
+  }
+  const entries: unknown = JSON.parse(row.entries);
+  if (!Array.isArray(entries) || !entries.every((e) => typeof e === "string")) {
+    throw new QsmError("failed", `the packed entries of ${sessionId} are not a list of paths`, {
+      next: "the archive was written by something else; look at the packed table",
+    });
+  }
+  return { archive: row.archive, entries };
 }
 
 /** The archive for this environment. */

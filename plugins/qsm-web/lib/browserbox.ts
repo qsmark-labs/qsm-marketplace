@@ -2,6 +2,7 @@
 // the exact argument vector that starts it.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { isRecord } from "../../../lib/outcome.ts";
 
 export const IMAGE = "qsm-browserbox";
 export const LABEL = "qsm.browserbox";
@@ -44,6 +45,23 @@ export function instanceName(port: number): string {
 /** The address a human opens to watch and drive this instance's browser. */
 export function liveViewUrl(port: number): string {
   return `http://127.0.0.1:${port}/`;
+}
+
+/** Where an instance keeps the password its live view asks for, readable only inside it. */
+const TOKEN_FILE = "/run/bbox.token";
+
+/** The command that prints an instance's live-view password. */
+export function tokenDefinition(name: string): string[] {
+  return ["exec", name, "cat", TOKEN_FILE];
+}
+
+/**
+ * The address a person opens: the live view's own address plus the password its server asks for.
+ * Any page in the person's browser can reach a loopback port, so the password is what keeps it
+ * from typing into this browser.
+ */
+export function liveViewLink(port: number, token: string): string {
+  return `${liveViewUrl(port)}?password=${token}`;
 }
 
 /** The lowest free port in the block, or null when every one is taken. */
@@ -136,8 +154,36 @@ export function stopDefinition(name: string): string[] {
   return ["rm", "--force", name];
 }
 
-export function buildDefinition(contextDir: string, source: string): string[] {
-  return ["build", "--tag", IMAGE, "--label", `${SOURCE_LABEL}=${source}`, contextDir];
+export function buildDefinition(contextDir: string, source: string, browser: string): string[] {
+  return [
+    "build",
+    "--tag",
+    IMAGE,
+    "--label",
+    `${SOURCE_LABEL}=${source}`,
+    "--build-arg",
+    `CAMOUFOX_BROWSER=${browser}`,
+    contextDir,
+  ];
+}
+
+/** The mise.toml row that pins the browser build, in the plugin's own version file. */
+const BROWSER_TOOL = "github:daijro/camoufox";
+
+/**
+ * The Camoufox browser build the plugin's mise.toml pins, as `camoufox set` names it, or null
+ * when the file has no such row.
+ */
+export function pinnedBrowser(miseToml: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = Bun.TOML.parse(miseToml);
+  } catch {
+    return null;
+  }
+  const tools = isRecord(parsed) ? parsed.tools : undefined;
+  const version = isRecord(tools) ? tools[BROWSER_TOOL] : undefined;
+  return typeof version === "string" ? `official/stable/${version.replace(/^v/, "")}` : null;
 }
 
 /** Prints the source hash the image was built from, or fails when there is no image. */

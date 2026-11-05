@@ -1,0 +1,7 @@
+{
+  "name": "qsm-compuse",
+  "private": true,
+  "dependencies": {
+    "dbus-native": "0.16.3"
+  }
+}

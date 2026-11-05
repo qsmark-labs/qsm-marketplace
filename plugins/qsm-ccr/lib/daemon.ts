@@ -18,7 +18,7 @@ import {
   ok,
 } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
-import { claudeSettingsFiles, gatewayOf, globalProfiles, readCcrConfig } from "./ccr-config.ts";
+import { claudeSettingsFiles, gatewayIn, globalProfiles, readCcrConfig } from "./ccr-config.ts";
 import { CODEX_TIMEOUT_MS } from "./codex.ts";
 import { type Json, parseJson } from "./parse.ts";
 import type { Places } from "./places.ts";
@@ -321,7 +321,11 @@ export async function takeDown(daemon: Daemon): Promise<boolean> {
     });
   }
   const { address } = daemon;
-  const closed = async () => address === undefined || !(await isRunning(address));
+  // Down is every process gone as well as the port shut: a daemon that never listened has its port
+  // shut from the start, and the signal below has not ended it yet.
+  const pids = [named, daemon.spawned].filter((pid) => pid !== undefined);
+  const closed = async () =>
+    pids.every((pid) => !isAlive(pid)) && (address === undefined || !(await isRunning(address)));
   if (daemon.spawned !== undefined) {
     terminate(daemon.spawned, true);
     terminate(named);
@@ -341,6 +345,7 @@ export function guards(
   places: Places,
   config: Json | null,
   settings: Outcome<UserSettings>,
+  gateway: Gateway | undefined,
 ): Violation[] {
   const broken: Violation[] = [];
   if (config === null) {
@@ -365,7 +370,6 @@ export function guards(
       detail: settings.message ?? "",
     });
   }
-  const gateway = config === null ? undefined : gatewayOf(config);
   const damage = settings.data === undefined ? [] : routerDamage(settings.data.json, gateway);
   if (damage.length > 0) {
     broken.push({
@@ -384,13 +388,16 @@ interface Admitted {
 
 /** The guards, refusing on the first broken one, and the address a start listens on. */
 function admit(places: Places, config: Json | null): Outcome<Admitted> {
-  const [broken] = guards(places, config, readUserSettings(places.userSettings));
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
+  const [broken] = guards(places, config, readUserSettings(places.userSettings), gateway);
   if (broken !== undefined) {
     return fail(broken.code, broken.detail);
   }
-  const gateway = config === null ? undefined : gatewayOf(config);
   if (config === null || gateway === undefined) {
-    return fail("missing", `CCR config at ${places.ccrDb} names no PORT and APIKEY`);
+    return fail(
+      "missing",
+      `CCR config at ${places.ccrDb} has no usable gateway address and local-gateway key`,
+    );
   }
   return ok({ gateway, config });
 }
@@ -447,7 +454,7 @@ async function startProven(
  * undefined when the port does not answer as CCR's daemon. */
 export async function runningDaemon(places: Places): Promise<Outcome<Gateway> | undefined> {
   const config = readCcrConfig(places.ccrDb);
-  const gateway = config === null ? undefined : gatewayOf(config);
+  const gateway = config === null ? undefined : gatewayIn(places.ccrDb);
   if (gateway === undefined || (await daemonState(places.ccrHome, gateway.address)) !== "ccr") {
     return undefined;
   }
