@@ -2,19 +2,26 @@
 // of the picture rule. A process that has geometry is never laid out again, because the layout the
 // owner made in bpmn.io must survive.
 import { readFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { layoutProcess } from "bpmn-auto-layout";
 import { writeAtomic } from "../../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
+import { QsmError } from "../../../../lib/qsm-error.ts";
+import { isActor } from "../c4/lint.ts";
+import { readC4OrThrow } from "../c4/model.ts";
 import { PALETTE } from "../c4/style.ts";
+import { graphIn } from "../graphs.ts";
 import {
   type Definitions,
   type Diagram,
   diagramOf,
   isModdle,
+  type Lane,
   newLabel,
   parseXml,
   type Process,
   processesOf,
+  qsmAttr,
   type Shape,
   toXml,
 } from "./model.ts";
@@ -33,17 +40,75 @@ function mix(hex: string, toward: number, by: number): string {
     .join("")}`;
 }
 
-/** The colour of each lane and of each node in it: the palette in lane order. */
-function laneColours(p: Process): Map<string, string> {
+const lanesOf = (p: Process): Lane[] => (p.laneSets ?? []).flatMap((s) => s.lanes ?? []);
+
+/** The colour of each lane and of each node in it: a lane linked to a C4 actor takes the actor's
+ * colour; the others take the palette colours the linked lanes left, in lane order. */
+function laneColours(
+  p: Process,
+  defs: Definitions,
+  actors: ReadonlyMap<string, string>,
+): Map<string, string> {
   const laneOf = new Map<string, string>();
-  const lanes = (p.laneSets ?? []).flatMap((s) => s.lanes ?? []);
-  lanes.forEach((l, i) => {
-    const c = COLOURS[i % COLOURS.length] ?? "#333333";
+  const taken = new Set(actors.values());
+  const free = COLOURS.filter((c) => !taken.has(c));
+  const pool = free.length > 0 ? free : COLOURS;
+  let next = 0;
+  for (const l of lanesOf(p)) {
+    const link = qsmAttr(l, "c4", defs);
+    const linked = link === undefined ? undefined : actors.get(link);
+    const c = linked ?? pool[next++ % pool.length] ?? "#333333";
     for (const id of [l.id, ...(l.flowNodeRef ?? []).map((n) => n.id)]) {
       laneOf.set(id ?? "", c);
     }
-  });
+  }
   return laneOf;
+}
+
+/** The colour of each C4 element the lanes of these processes link to, read from the C4 graph
+ * beside the file; a link the C4 graph cannot resolve fails here. */
+async function linkedColours(
+  file: string,
+  defs: Definitions,
+  todo: Process[],
+): Promise<Map<string, string>> {
+  const links = todo
+    .flatMap(lanesOf)
+    .map((l) => qsmAttr(l, "c4", defs))
+    .filter((v) => v !== undefined);
+  const out = new Map<string, string>();
+  if (links.length === 0) {
+    return out;
+  }
+  const c4File = graphIn(dirname(file), ".c4");
+  if (c4File === undefined) {
+    throw new QsmError(
+      "failed",
+      `${file}: a lane links to ${links[0] ?? ""} and ${dirname(file)} holds no C4 graph`,
+      { next: "add the project's .c4 beside the .bpmn, or drop the lane's qsm:c4" },
+    );
+  }
+  const c4 = await readC4OrThrow(c4File);
+  for (const link of links) {
+    const e = c4.elements.find((x) => x.id === link);
+    if (e === undefined) {
+      throw new QsmError(
+        "failed",
+        `${file}: a lane links qsm:c4="${link}", which names no element of ${c4File}`,
+        { next: "run qsm-models check" },
+      );
+    }
+    const hue = isActor(e) ? PALETTE[e.metadata.colour ?? ""] : undefined;
+    if (hue === undefined) {
+      throw new QsmError(
+        "failed",
+        `${file}: a lane links to ${link}, which is no actor with a palette colour in ${c4File}`,
+        { next: "link the lane to a person or agent of the C4 graph" },
+      );
+    }
+    out.set(link, hue);
+  }
+  return out;
 }
 
 function paint(s: Shape, stroke: string, fill?: string): void {
@@ -74,8 +139,13 @@ function paintShape(s: Shape, c: string): void {
   }
 }
 
-function colour(p: Process, d: Diagram): void {
-  const laneOf = laneColours(p);
+function colour(
+  p: Process,
+  d: Diagram,
+  defs: Definitions,
+  actors: ReadonlyMap<string, string>,
+): void {
+  const laneOf = laneColours(p, defs, actors);
   for (const s of d.plane.planeElement ?? []) {
     const e = s.bpmnElement;
     const source = e !== undefined && "sourceRef" in e && isModdle(e.sourceRef) ? e.sourceRef : e;
@@ -98,6 +168,7 @@ export async function layoutFile(file: string): Promise<Outcome<{ laidOut: strin
       { laidOut: [] },
     );
   }
+  const actors = await linkedColours(file, defs, todo);
   const laid = await parseXml((await layoutProcess(xml)).xml, file);
   for (const p of todo) {
     const d = diagramOf(laid, p.id ?? "");
@@ -108,10 +179,8 @@ export async function layoutFile(file: string): Promise<Outcome<{ laidOut: strin
         { laidOut: [] },
       );
     }
-    const lp = processesOf(laid).find((x) => x.id === p.id);
-    if (lp !== undefined) {
-      colour(lp, d);
-    }
+    // the lanes are read from the file as written, which keeps their qsm: links
+    colour(p, d, defs, actors);
     defs.diagrams = [...(defs.diagrams ?? []), d];
   }
   writeAtomic(file, await toXml(defs));
