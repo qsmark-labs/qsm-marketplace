@@ -70,6 +70,8 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 #focus header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
 #focus header h2 { margin: 0; font-size: 15px; }
 #focus header .grow { flex: 1; }
+/* Nothing touches: badges and buttons in a row keep a gap. */
+#focus-badges, #modes { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 #focus .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(260px, 0.9fr); gap: 16px; padding: 16px; min-height: 0; }
 #focus .pane { min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 #focus .pane h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
