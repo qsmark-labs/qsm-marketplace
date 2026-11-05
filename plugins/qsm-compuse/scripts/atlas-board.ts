@@ -17,9 +17,9 @@ import { tryFlock, writeAtomic } from "../../../lib/fs.ts";
 import { isRecord, messageOf } from "../../../lib/outcome.ts";
 
 type Rect = { x: number; y: number; w: number; h: number };
-// A changed area (device px) and the item of the shot's tree that holds it, "" when none of the
-// shell's items does (the cursor, the wallpaper, a client window).
-type Area = Rect & { item: string };
+// A changed area (device px) and the item of the shot's tree that holds it (its rect in logical
+// px), "" when none of the shell's items does (the cursor, the wallpaper, a client window).
+type Area = Rect & { item: string; held: Rect | null };
 // One shot of diff.json, before its areas are named.
 type Diff = { areas: Rect[]; changes: Change[] };
 type Change = { key: string; before: string; after: string };
@@ -315,18 +315,27 @@ function itemName(at: Record<string, unknown>, owner: string): string {
 const drawn = (at: unknown): at is Record<string, unknown> =>
   isRecord(at) && at.opacity !== 0 && at.visible !== false;
 
-function itemAt(tree: unknown, screen: { w: number; h: number }, area: Rect): string {
-  let best = { item: "", depth: -1 };
+function itemAt(
+  tree: unknown,
+  screen: { w: number; h: number },
+  area: Rect,
+): { item: string; held: Rect | null } {
+  let best: { item: string; held: Rect | null; depth: number } = {
+    item: "",
+    held: null,
+    depth: -1,
+  };
   const names = (r: Rect): boolean => holds(r, area) && (r.w < screen.w || r.h < screen.h);
   const walk = (at: unknown, owner: string, depth: number): void => {
     if (!drawn(at)) return;
-    if (depth > best.depth && names(rectOf(at))) best = { item: itemName(at, owner), depth };
+    const r = rectOf(at);
+    if (depth > best.depth && names(r)) best = { item: itemName(at, owner), held: r, depth };
     const type = str(at.type);
     const next = GENERIC.has(type) ? owner : type;
     if (Array.isArray(at.children)) for (const child of at.children) walk(child, next, depth + 1);
   };
   walk(tree, "", 0);
-  return best.item;
+  return { item: best.item, held: best.held };
 }
 
 // A shot's diff with each area (device px) named by the shot's tree (logical px, SCALE apart).
@@ -339,7 +348,7 @@ function namedChange(
   if (!diff) return null;
   const areas = diff.areas.map((a) => ({
     ...a,
-    item: itemAt(tree, screen, { x: a.x / scale, y: a.y / scale, w: a.w / scale, h: a.h / scale }),
+    ...itemAt(tree, screen, { x: a.x / scale, y: a.y / scale, w: a.w / scale, h: a.h / scale }),
   }));
   return { ...diff, areas };
 }

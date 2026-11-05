@@ -391,13 +391,13 @@ function renderFocus() {
   renderSide(f);
 }
 
-// One line per item with the box around its areas, since a changed text is one area per glyph
-// cluster; an area no shell item holds keeps its own line, since those share no place. Areas and
-// the box are device px.
+// One line per item (its name and its rect, so two glyphs of one type stay two lines) with the
+// box around its areas, since a changed text is one area per glyph cluster; an area no shell item
+// holds keeps its own line, since those share no place. Areas and the box are device px.
 function byItem(areas) {
   const items = new Map();
   for (const [i, a] of areas.entries()) {
-    const key = a.item || `none ${i}`;
+    const key = a.held ? `${a.item} ${a.held.x},${a.held.y} ${a.held.w}x${a.held.h}` : `none ${i}`;
     const b = items.get(key);
     const x = Math.min(b?.box.x ?? a.x, a.x), y = Math.min(b?.box.y ?? a.y, a.y);
     const x1 = Math.max(b ? b.box.x + b.box.w : 0, a.x + a.w), y1 = Math.max(b ? b.box.y + b.box.h : 0, a.y + a.h);
