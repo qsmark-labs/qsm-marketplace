@@ -80,7 +80,10 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 .closeup .pair { display: flex; gap: 12px; }
 .closeup figure { margin: 0; }
 .closeup .cu { position: relative; overflow: hidden; background: #000; border-radius: 4px; box-shadow: 0 0 0 1px var(--line); }
-.closeup .cu img { position: absolute; max-width: none; }
+.closeup .cu img, .closeup .cu video { position: absolute; max-width: none; }
+.closeup .cu.empty { display: grid; place-items: center; color: var(--muted); }
+.frame .crop video { position: absolute; max-width: none; }
+.badge.recording { background: var(--animates); }
 .closeup figcaption { margin-top: 4px; }
 .shot img { display: block; max-width: 100%; height: auto; }
 .shot svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -150,6 +153,24 @@ function s(tag, attrs) {
   return el;
 }
 const image = (f) => `shots/${f.name}.png`;
+// A muted video that holds its last frame for a second and starts over, so a short recording
+// (text typed into a field) shows its result before it loops. The file holds only captured
+// frames, so the hold is the player's. muted is a property: the attribute does not mute a built
+// element.
+function loop(attrs) {
+  const v = h("video", { muted: "", autoplay: "", playsinline: "", ...attrs });
+  v.muted = true;
+  // A redrawn board detaches the old element; it stops there instead of looping unseen.
+  v.addEventListener("ended", () => setTimeout(() => { if (!v.isConnected) return; v.currentTime = 0; v.play(); }, 1000));
+  return v;
+}
+// What a frame shows: its recording looping over the still it starts from, or the still. STYLE
+// places it like a crop: the whole screen, moved so the frame's region shows.
+function media(f, style, attrs = {}) {
+  if (!f.video) return h("img", { src: image(f), alt: f.name, draggable: "false", style, ...attrs });
+  return loop({ src: f.video.src, preload: "auto", ...(f.kind === "shot" ? { poster: image(f) } : {}), style, ...attrs });
+}
+const cadenceText = (c) => `${c.fps} fps · max gap ${c.maxGap} ms · ${c.slow} slow · ${c.frames} frames in ${c.span} s`;
 const notesOf = (f) => comments.filter((c) => c.shot === f.name);
 
 // "20261101-050202-7ad8", the id drive atlas gives a run, reads "1 Nov 05:02".
@@ -173,7 +194,8 @@ function badges(f) {
     f.checks.length > 0 && badge("fail", `FAIL · ${f.checks.length}`),
     f.checkError && badge("fail", "check did not run"),
     f.still === "moving" && badge("moving", "never still"),
-    f.masks.length > 0 && badge("animates", "animates", "an item animates by design: the run neither waits for it nor compares it"),
+    f.masks.length > 0 && badge("animates", "animates", "an item animates by design: the run neither waits for it nor compares it, and records it"),
+    f.kind === "recording" && badge("recording", `recording · ${f.video.cadence.fps} fps`, cadenceText(f.video.cadence)),
     n > 0 && badge("note", `${n} note${n > 1 ? "s" : ""}`),
   ];
 }
@@ -263,10 +285,9 @@ function frameEl(f) {
   const cls = ["frame", f.todo && "todo", f.changed && "is-changed", (f.checks.length || f.checkError) && "is-failing"].filter(Boolean).join(" ");
   const crop = f.todo
     ? h("div", { class: "crop" }, "not shot yet")
-    : h("div", { class: "crop" }, h("img", {
-        src: image(f), loading: "lazy", alt: f.name, draggable: "false",
-        style: { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` },
-      }));
+    : h("div", { class: "crop" }, media(f,
+        { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` },
+        f.video ? {} : { loading: "lazy" }));
   const control = f.todo ? {} : { tabindex: "0", role: "button", "aria-label": `${f.name}, open` };
   return h("div", {
     class: cls, ...control,
@@ -381,12 +402,16 @@ function renderFocus() {
   for (const r of f.failing)
     marks.append(s("rect", { x: r.x - 2, y: r.y - 2, width: r.w + 4, height: r.h + 4, fill: "none", stroke: "#ff7a6b", "stroke-width": 2 }));
   const crop = h("div", { class: "frame", style: { position: "relative", width: `${f.crop.w}px`, height: `${f.crop.h}px`, maxWidth: "100%" } },
-    h("div", { class: "crop" }, h("img", { src: image(f), alt: "", style: { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` } }), marks));
+    h("div", { class: "crop" }, media(f, { width: `${f.screen.w}px`, height: `${f.screen.h}px`, left: `${-f.crop.x}px`, top: `${-f.crop.y}px` }), marks));
   document.getElementById("focus-crop").replaceChildren(f.surface ? crop : h("p", { class: "hint" }, "This shot names no surface: the screen is the frame."));
 
   const screen = document.getElementById("focus-screen");
   const title = document.getElementById("screen-title");
-  if (mode === "diff") {
+  if (f.kind === "recording") {
+    title.textContent = `Recording · ${now}`;
+    screen.replaceChildren(motion(f, screen.clientWidth),
+      h("h3", {}, "The whole screen"), media(f, { maxWidth: "100%", display: "block" }, { controls: "" }));
+  } else if (mode === "diff") {
     title.textContent = `Diff · ${before} beside ${now}`;
     screen.replaceChildren(...byItem(f.changed.areas).map((g) => closeUp(f, g, screen.clientWidth)),
       h("h3", {}, "The whole screen"),
@@ -398,7 +423,40 @@ function renderFocus() {
     title.textContent = `${f.changed ? `After · ${now}` : "Screen"}${served ? " · click to pin a note" : ""}`;
     screen.replaceChildren(overlay(f, h("img", { src: image(f), alt: f.name }), true));
   }
+  // A masked shot's motion stands above whichever still view is chosen.
+  if (f.video && f.kind === "shot") screen.prepend(motion(f, screen.clientWidth));
   renderSide(f);
+}
+
+// A frame's recording beside the previous run's of the same name, up close, each with its cadence.
+// The region is the masked items with room around them, or a recording's surface crop. Recordings
+// are never compared by pixels: an animation lands on another phase every run.
+function motionBox(f) {
+  if (!f.masks.length) return f.crop;
+  const x0 = Math.min(...f.masks.map((m) => m.x)) / f.scale, y0 = Math.min(...f.masks.map((m) => m.y)) / f.scale;
+  const x1 = Math.max(...f.masks.map((m) => m.x + m.w)) / f.scale, y1 = Math.max(...f.masks.map((m) => m.y + m.h)) / f.scale;
+  const m = Math.max(24, x1 - x0, y1 - y0);
+  const x = Math.max(0, x0 - m), y = Math.max(0, y0 - m);
+  return { x, y, w: Math.min(f.screen.w, x1 + m) - x, h: Math.min(f.screen.h, y1 + m) - y };
+}
+function motion(f, paneW) {
+  const box = motionBox(f);
+  const fitZ = Math.min(Math.max(paneW - 12, 48) / 2 / box.w, 420 / box.h, 8);
+  const z = fitZ > 2 ? Math.floor(fitZ) : fitZ;
+  const size = { width: `${box.w * z}px`, height: `${box.h * z}px` };
+  const cell = (src, label) => h("figure", {},
+    src
+      ? h("div", { class: "cu", style: size }, loop({ src, style: {
+          width: `${f.screen.w * z}px`, height: `${f.screen.h * z}px`, left: `${-box.x * z}px`, top: `${-box.y * z}px`,
+          imageRendering: z > 2 ? "pixelated" : "auto" } }))
+      : h("div", { class: "cu empty", style: size }, "no recording"),
+    h("figcaption", { class: "hint" }, label));
+  const p = f.video.prev;
+  return h("section", { class: "closeup" },
+    h("h3", {}, `Motion · ${Math.round(z * 10) / 10}x`),
+    h("div", { class: "pair" },
+      cell(p?.src, p ? `before · ${when(board.prev)} · ${cadenceText(p.cadence)}` : "before · the previous run has no recording of this name"),
+      cell(f.video.src, `after · ${when(board.run)} · ${cadenceText(f.video.cadence)}`)));
 }
 
 // One line per item (its name and its rect, so two glyphs of one type stay two lines) with the

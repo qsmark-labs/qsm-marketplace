@@ -21,13 +21,18 @@
 # either may end in @Type, the item type of the surface it shows, which the board crops to; @A/B
 # is the first B inside the first A, for a surface whose own type is generic, and A[n] the nth A
 # (0 the first). ~@PATH after it masks an item that animates by design (a pulsing glyph): the shot
-# waits for the rest of the screen, the comparison skips its rect, and its node leaves the tree.
+# waits for the rest of the screen, the comparison skips its rect, and its node leaves the tree,
+# and the run records ATLAS_MASK_SECS of the screen right after the shot, so the board plays what
+# moves. record NAME [@Type] starts a real-frame recording of the screen and stop ends it; the
+# steps between them run as usual.
 # todo @Type STATE, anywhere: a state of that surface no journey shoots yet, an empty frame on the board.
 #
 # A run is <scenario>/<date>-<time>-<rng>/: board.html (the review board, see
 # scripts/atlas-board.ts), shots/ (the captures as taken), trees/ (the item tree of each shot),
 # logs/ (the shell's log per journey), checks/ (what the scenario's check printed per shot),
-# diff-<run>/ (a comparison with that run, see atlas_compare).
+# recordings/ (NAME.webm and the item tree at its end) with recordings.tsv (journey, name, kind
+# record or mask, surface, then the cadence: frames, span s, effective fps, max gap ms, gaps over
+# 1.5 periods of 60 fps), diff-<run>/ (a comparison with that run, see atlas_compare).
 
 ATLAS_ROOT="${DRIVE_ATLAS_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/qsm/compuse/atlas}"
 # A changed pixel differs by more than this share in one channel; a changed area is a connected
@@ -106,6 +111,59 @@ atlas_still() {
   echo moving
 }
 
+ATLAS_MASK_SECS=2
+# The pause between keystrokes while a record ... stop runs.
+ATLAS_REC_KEY_MS=90
+
+# Starts wf-recorder on the slot's screen; it stamps each frame with its capture time and asks for
+# a frame only on damage (see drive-motion), so the file's timestamps are the real cadence. Sets
+# ATLAS_REC_PID in this shell, never in a subshell, so atlas_rec_save can wait for it.
+atlas_rec_begin() {
+  wf-recorder -y -o "$SLOT_OUTPUT" -f "$1" >/dev/null 2>&1 &
+  ATLAS_REC_PID=$!
+  # wf-recorder binds to the output before its first frame; a step taken sooner is not recorded.
+  sleep 0.3
+}
+
+# Ends the recording of NAME and keeps it: NAME.webm (VP9, the capture timestamps passed through,
+# since a browser plays no Matroska H.264 reliably), the item tree at its end (the board's crop),
+# and a recordings.tsv row with the cadence.
+atlas_rec_save() {
+  local slot="$1" run="$2" journey="$3" name="$4" kind="$5" surface="$6" base cadence
+  base="$run/recordings/$journey--$name"
+  kill -INT "$ATLAS_REC_PID" 2>/dev/null
+  # wf-recorder finalises the file on its next frame, and a still screen sends none.
+  slot_wake
+  local i
+  for ((i = 0; i < 100; i++)); do
+    kill -0 "$ATLAS_REC_PID" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "$ATLAS_REC_PID" 2>/dev/null; then
+    kill -KILL "$ATLAS_REC_PID" 2>/dev/null
+    wait "$ATLAS_REC_PID" 2>/dev/null
+    ATLAS_REC_PID=""
+    die "recording $journey--$name: wf-recorder did not finish within 10 s of its stop"
+  fi
+  wait "$ATLAS_REC_PID" 2>/dev/null
+  ATLAS_REC_PID=""
+  [[ -s "$base.mkv" ]] || die "recording $journey--$name: wf-recorder wrote no video"
+  slot_tree "$slot" >"$base.json"
+  [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$base.json" "$surface" >/dev/null ||
+    die "recording $journey--$name names @$surface, and its item tree holds no $surface with a size"
+  cadence="$(ffprobe -v error -select_streams v:0 -show_entries frame=pts_time -of csv=p=0 "$base.mkv" |
+    awk -F, -v fps=60 -f "$MOTION_DIR/cadence.awk" |
+    awk '{ for (i = 1; i <= NF; i++) { split($i, kv, "="); v[kv[1]] = kv[2] } }
+      END { printf "%d\t%.3f\t%.1f\t%.1f\t%d", v["frames"], v["span"], v["effective_fps"], v["max_gap"], v["gaps_over_1.5_periods"] }')"
+  # A screen that never changed while it recorded gives one frame: nothing moved that should have.
+  ((${cadence%%$'\t'*} >= 2)) ||
+    die "recording $journey--$name caught ${cadence%%$'\t'*} frames: the screen did not change while it recorded"
+  ffmpeg -v error -y -i "$base.mkv" -an -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -crf 34 -b:v 0 \
+    -fps_mode passthrough "$base.webm" || die "recording $journey--$name: ffmpeg could not write WebM"
+  rm -f "$base.mkv"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$journey" "$name" "$kind" "$surface" "$cadence" >>"$run/recordings.tsv"
+}
+
 # hyprctl exits 0 when the lua of a dispatch or eval fails and prints the error, so its output decides.
 atlas_hyprctl() {
   [[ "$( (slot_run "$1" -- hyprctl "$2" "$3") 2>&1)" == ok ]] || die "$2 failed: $3"
@@ -115,7 +173,8 @@ atlas_step() {
   local slot="$1" line="$2" verb a b rest
   read -r verb a b rest <<<"$line"
   case "$verb" in
-    type) slot_type "${line#type }" 0 ;;
+    # Inside a recording a person watches the text arrive, so it is typed at a person's pace.
+    type) slot_type "${line#type }" 0 "${ATLAS_KEY_MS:-}" ;;
     exec)
       [[ "$line" != *"]]"* ]] || die "an exec command must not hold ']]' (it is a lua long string): $line"
       atlas_hyprctl "$slot" dispatch "hl.dsp.exec_cmd([[${line#exec }]])"
@@ -156,8 +215,11 @@ atlas_mask() {
 # "journey<TAB>shot<TAB>step<TAB>still<TAB>fails<TAB>surface<TAB>masks" per shot.
 atlas_journey() {
   local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line shot surface name still fails
-  local rest word rects tree
+  local rest word rects tree recording="" rec_surface=""
   local -a steps words masks
+  # A recording shares no name with a shot or another recording of its journey: the board keys
+  # frames and notes by name, and a masked shot's recording already takes its shot's.
+  local -A named=()
   shift 7
   slot_start "$slot" "$@" >/dev/null
   export DRIVE_SLOT="$slot"
@@ -171,6 +233,8 @@ atlas_journey() {
       read -r _ shot rest <<<"$line"
       read -ra words <<<"$rest"
       name="$journey--$shot" surface="" masks=() rects=""
+      [[ "${named[$shot]:-}" != record ]] || die "shot $name has the name of a recording of its journey"
+      named[$shot]=shot
       [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "shot names are letters, digits, dot, dash and underscore: '$name'"
       for word in "${words[@]}"; do
         [[ "${word#*@}" =~ $ATLAS_PATH ]] ||
@@ -203,12 +267,36 @@ atlas_journey() {
       fails=""
       [[ -z "$check" ]] || fails="$(atlas_check "$check" "$run" "$journey" "$name" "$slot")"
       printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$journey" "$shot" "$((n + 1))" "$still" "$fails" "$surface" "$rects"
+      if ((${#masks[@]})); then
+        [[ -z "$recording" ]] || die "shot $name masks an item while $recording records; a recording already holds it"
+        atlas_rec_begin "$run/recordings/$name.mkv"
+        sleep "$ATLAS_MASK_SECS"
+        atlas_rec_save "$slot" "$run" "$journey" "$shot" mask "$surface"
+      fi
+    elif [[ "$line" == record\ * ]]; then
+      read -r _ shot rest <<<"$line"
+      [[ -n "$shot" && "$shot" != @* ]] || die "journey $journey: record needs a NAME: '$line'"
+      [[ -z "${named[$shot]:-}" ]] || die "journey $journey: record $shot has the name of a shot or recording of it"
+      named[$shot]=record
+      [[ -z "$recording" ]] || die "journey $journey: record $shot starts while $recording records"
+      [[ "$journey--$shot" =~ ^[A-Za-z0-9._-]+$ ]] || die "recording names are letters, digits, dot, dash and underscore: '$shot'"
+      rec_surface="${rest#@}"
+      [[ -z "$rest" || ("$rest" == @* && "$rec_surface" =~ $ATLAS_PATH) ]] ||
+        die "record $shot: '$rest' is not @SURFACE"
+      recording="$journey--$shot"
+      ATLAS_KEY_MS="$ATLAS_REC_KEY_MS"
+      atlas_rec_begin "$run/recordings/$recording.mkv"
+    elif [[ "$line" == stop ]]; then
+      [[ -n "$recording" ]] || die "journey $journey: stop with no record before it"
+      atlas_rec_save "$slot" "$run" "$journey" "${recording#"$journey--"}" record "$rec_surface"
+      recording="" ATLAS_KEY_MS=""
     else
       atlas_step "$slot" "$line"
       # A step right before shot-now gets no settle, or the state it caught is already gone.
       [[ "${steps[n + 1]:-}" == shot-now\ * ]] || sleep "$settle"
     fi
   done
+  [[ -z "$recording" ]] || die "journey $journey ends while $recording records: a record needs its stop"
   # The shell's log is the one record of what it saw; the slot dir goes with the slot.
   command cp "$(slot_dir "$slot")/qs.log" "$run/logs/$journey.qs.log"
   slot_kill "$slot"
@@ -237,14 +325,17 @@ atlas_run() {
   prev="$(atlas_runs "$dir" | tail -1)"
   id="$(date +%Y%m%d-%H%M%S)-$(printf '%04x' "$RANDOM")"
   run="$dir/.$id"
-  mkdir -p "$run/shots" "$run/trees" "$run/logs" "$run/checks"
+  need wf-recorder
+  need ffprobe
+  need ffmpeg
+  mkdir -p "$run/shots" "$run/trees" "$run/logs" "$run/checks" "$run/recordings"
   command cp "$scenario" "$run/scenario"
   printf '%s\n' "$(git -C "$desktop" describe --always --dirty 2>/dev/null || echo unknown)" >"$run/desktop-version"
   slot="at$((RANDOM % 10000))"
   start=(--desktop "$desktop")
   [[ -z "$hypr" ]] || start+=(--hypr "$hypr")
   [[ -z "$mock" ]] || start+=(--mock "$mock")
-  trap 'slot_kill "'"$slot"'" 2>/dev/null; rm -rf "'"$run"'"' EXIT
+  trap '[[ -z "${ATLAS_REC_PID:-}" ]] || kill "$ATLAS_REC_PID" 2>/dev/null; slot_kill "'"$slot"'" 2>/dev/null; rm -rf "'"$run"'"' EXIT
   for journey in $(atlas_journeys "$scenario"); do
     printf 'journey %s\n' "$journey" >&2
     atlas_journey "$scenario" "$journey" "$run" "$slot" "$settle" "$ready" "$check" "${start[@]}" >>"$run/shots.tsv"

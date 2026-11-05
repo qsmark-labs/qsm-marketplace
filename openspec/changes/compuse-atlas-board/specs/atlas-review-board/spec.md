@@ -50,6 +50,18 @@ SHALL stop the run.
 - **WHEN** a journey runs `record typing` and ends without `stop`
 - **THEN** `drive atlas run` exits non-zero naming the journey and the recording
 
+### Requirement: A masked shot shows its motion
+
+A shot with a `~@PATH` mask SHALL also keep a 2 s recording of the screen taken right after the
+shot, and the board SHALL play it in the shot's frame and, up close around the masked items, in
+its focus beside the previous run's.
+
+#### Scenario: The pulsing glyph plays on the board
+
+- **WHEN** the owner opens `network-states--rail-connecting`, a shot masking the pulsing glyph
+- **THEN** the frame loops the pulse, and focus shows the glyph's region from both runs side by
+  side with each run's cadence
+
 ### Requirement: The board plays recordings beside the previous run's
 
 The board SHALL show a recording as a looping frame in the Type's section, cropped to the Type's

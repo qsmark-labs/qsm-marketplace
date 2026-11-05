@@ -598,9 +598,10 @@ slot_scroll() {
   sleep "${2:-0.4}"
 }
 
+# slot_type TEXT [SETTLE] [KEY_MS]: KEY_MS between keystrokes, none by default.
 slot_type() {
   need wtype
-  WAYLAND_DISPLAY="$SLOT_KEYBOARD" wtype -- "$1" || die "type failed"
+  WAYLAND_DISPLAY="$SLOT_KEYBOARD" wtype ${3:+-d "$3"} -- "$1" || die "type failed"
   sleep "${2:-0.4}"
 }
 
