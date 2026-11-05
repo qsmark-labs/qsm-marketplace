@@ -71,9 +71,15 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 #focus header h2 { margin: 0; font-size: 15px; }
 #focus header .grow { flex: 1; }
 #focus .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(260px, 0.9fr); gap: 16px; padding: 16px; min-height: 0; }
-#focus .pane { min-width: 0; min-height: 0; overflow: auto; }
+#focus .pane { min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 #focus .pane h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .shot { position: relative; display: inline-block; max-width: 100%; }
+.closeup { margin: 0 0 18px; }
+.closeup .pair { display: flex; gap: 12px; }
+.closeup figure { margin: 0; }
+.closeup .cu { position: relative; overflow: hidden; background: #000; border-radius: 4px; box-shadow: 0 0 0 1px var(--line); }
+.closeup .cu img { position: absolute; max-width: none; }
+.closeup figcaption { margin-top: 4px; }
 .shot img { display: block; max-width: 100%; height: auto; }
 .shot svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .shot.pinnable { cursor: crosshair; }
@@ -89,7 +95,7 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 .pinform textarea { font: inherit; color: inherit; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; min-height: 64px; resize: vertical; }
 .pinform div { display: flex; gap: 6px; justify-content: end; }
 @media (prefers-reduced-motion: no-preference) { #world.glide { transition: transform 180ms cubic-bezier(.2, .7, .2, 1); } }
-@media (max-width: 900px) { #focus .body { grid-template-columns: 1fr; overflow: auto; } }
+@media (max-width: 900px) { #focus .body { grid-template-columns: 1fr; overflow: auto; } #focus .pane { min-height: auto; overflow: visible; } }
 </style>
 </head>
 <body>
@@ -322,8 +328,8 @@ function neighbours(f) {
 function openFocus(f) {
   if (f.todo) return;
   current = f;
-  // A view the frame does not have falls back to After: Diff exists only where pixels changed.
-  if (!f.changed || !board.prev || (mode === "diff" && !f.changed.areas.length)) mode = "after";
+  // A frame whose pixels changed opens on Diff, the reason to open it; any other frame on After.
+  mode = f.changed?.areas.length && board.prev ? "diff" : "after";
   focus.hidden = false;
   renderFocus();
   document.getElementById("close").focus();
@@ -380,7 +386,9 @@ function renderFocus() {
   const title = document.getElementById("screen-title");
   if (mode === "diff") {
     title.textContent = `Diff · ${before} beside ${now}`;
-    screen.replaceChildren(h("img", { src: `diff-${board.prev}/${f.name}.png`, alt: "previous run beside this run, changes boxed", style: { maxWidth: "100%" } }));
+    screen.replaceChildren(...byItem(f.changed.areas).map((g) => closeUp(f, g, screen.clientWidth)),
+      h("h3", {}, "The whole screen"),
+      h("img", { src: `diff-${board.prev}/${f.name}.png`, alt: "previous run beside this run, changes boxed", style: { maxWidth: "100%" } }));
   } else if (mode === "before") {
     title.textContent = `Before · ${before} (${board.prev})`;
     screen.replaceChildren(h("img", { src: `../${board.prev}/shots/${f.name}.png`, alt: "previous run", style: { maxWidth: "100%" } }));
@@ -401,9 +409,37 @@ function byItem(areas) {
     const b = items.get(key);
     const x = Math.min(b?.box.x ?? a.x, a.x), y = Math.min(b?.box.y ?? a.y, a.y);
     const x1 = Math.max(b ? b.box.x + b.box.w : 0, a.x + a.w), y1 = Math.max(b ? b.box.y + b.box.h : 0, a.y + a.h);
-    items.set(key, { item: a.item, n: (b?.n ?? 0) + 1, box: { x, y, w: x1 - x, h: y1 - y } });
+    items.set(key, { item: a.item, n: (b?.n ?? 0) + 1, areas: [...(b?.areas ?? []), a], box: { x, y, w: x1 - x, h: y1 - y } });
   }
   return [...items.values()];
+}
+
+// One changed item up close: the region around its areas from the previous run's shot and from
+// this run's, side by side and scaled up to fill the pane, its areas boxed. A small change (a
+// cursor, a glyph) is a few pixels in the whole screen; here it is what fills the view.
+function closeUp(f, g, paneW) {
+  const b = { x: g.box.x / f.scale, y: g.box.y / f.scale, w: g.box.w / f.scale, h: g.box.h / f.scale };
+  const m = Math.max(24, Math.max(b.w, b.h) / 2);
+  const x = Math.max(0, b.x - m), y = Math.max(0, b.y - m);
+  const r = { x, y, w: Math.min(f.screen.w, b.x + b.w + m) - x, h: Math.min(f.screen.h, b.y + b.h + m) - y };
+  // At most 420 px tall or 8x; past 2x a whole number, so every source pixel is an even block.
+  const fitZ = Math.min(Math.max(paneW - 12, 48) / 2 / r.w, 420 / r.h, 8);
+  const z = fitZ > 2 ? Math.floor(fitZ) : fitZ;
+  const cell = (src, label) => {
+    const marks = s("svg", { viewBox: `${r.x} ${r.y} ${r.w} ${r.h}`, style: "position:absolute;inset:0;width:100%;height:100%" });
+    for (const a of g.areas)
+      marks.append(s("rect", { x: a.x / f.scale - 1, y: a.y / f.scale - 1, width: a.w / f.scale + 2, height: a.h / f.scale + 2, fill: "none", stroke: "#ff6bd8", "stroke-width": 2 / z }));
+    return h("figure", {},
+      h("div", { class: "cu", style: { width: `${r.w * z}px`, height: `${r.h * z}px` } },
+        h("img", { src, alt: label, style: { width: `${f.screen.w * z}px`, height: `${f.screen.h * z}px`, left: `${-r.x * z}px`, top: `${-r.y * z}px`, imageRendering: z > 2 ? "pixelated" : "auto" } }),
+        marks),
+      h("figcaption", { class: "hint" }, label));
+  };
+  return h("section", { class: "closeup" },
+    h("h3", {}, `${g.item || "no shell item"} · ${g.n} area${g.n > 1 ? "s" : ""} · ${Math.round(z * 10) / 10}x`),
+    h("div", { class: "pair" },
+      cell(`../${board.prev}/shots/${f.name}.png`, `before · ${when(board.prev)}`),
+      cell(image(f), `after · ${when(board.run)}`)));
 }
 
 function renderSide(f) {
