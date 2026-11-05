@@ -1,6 +1,6 @@
 // The render verb: every picture of the graphs of a path, written beside each graph, or compared
 // with what is there under --check.
-import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { writeAtomic } from "../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
@@ -42,20 +42,14 @@ function orphansOf(file: string, pictures: readonly Picture[]): string[] {
 interface Result {
   written: string[];
   stale: string[];
-  deleted: string[];
+  orphans: string[];
 }
 
-/** One graph's pictures settled: under `check` each wrong or orphan file is named stale; otherwise
- * every picture is written and every orphan deleted. */
+/** One graph's pictures settled: under `check` each wrong picture is named stale; otherwise every
+ * picture is written. An orphan is only named, never deleted, because a file that merely carries
+ * the project's name may be one the person made. */
 function settle(file: string, pictures: readonly Picture[], check: boolean, into: Result): void {
-  for (const orphan of orphansOf(file, pictures)) {
-    if (check) {
-      into.stale.push(orphan);
-    } else {
-      rmSync(orphan);
-      into.deleted.push(orphan);
-    }
-  }
+  into.orphans.push(...orphansOf(file, pictures));
   for (const p of pictures) {
     const out = join(dirname(file), p.name);
     if (!check) {
@@ -68,14 +62,19 @@ function settle(file: string, pictures: readonly Picture[], check: boolean, into
 }
 
 export async function renderPath(path: string, check: boolean): Promise<Outcome<Result>> {
-  const result: Result = { written: [], stale: [], deleted: [] };
+  const result: Result = { written: [], stale: [], orphans: [] };
   for (const file of graphFiles(path)) {
     settle(file, await picturesOf(file), check, result);
   }
-  const { written, stale, deleted } = result;
-  if (stale.length > 0) {
-    return fail("worse", `stale, run qsm-models render: ${stale.join(", ")}`, result);
+  const { written, stale, orphans } = result;
+  const problems = [
+    ...(stale.length > 0 ? [`stale, run qsm-models render: ${stale.join(", ")}`] : []),
+    ...(orphans.length > 0
+      ? [`no render writes these, delete them if they are old pictures: ${orphans.join(", ")}`]
+      : []),
+  ];
+  if (problems.length > 0) {
+    return fail("worse", problems.join("\n"), result);
   }
-  const gone = deleted.length > 0 ? `; deleted ${deleted.join(", ")}` : "";
-  return ok(result, check ? "every picture is current" : `wrote ${written.join(", ")}${gone}`);
+  return ok(result, check ? "every picture is current" : `wrote ${written.join(", ")}`);
 }

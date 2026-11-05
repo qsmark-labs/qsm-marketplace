@@ -77,21 +77,22 @@ describe("render --check", () => {
     expect(readFileSync(picture, "utf8")).toBe(before);
   });
 
-  it("names a picture no render would write as stale, and render deletes it and says so", () => {
+  it("names a picture no render would write, and neither render nor --check deletes it", () => {
     const dir = sandboxDir("qsm-models-orphan-");
     writeIn(dir, "shop.bpmn", PLAN);
     expect(runBin(CLI, ["render", dir]).exit).toBe(0);
     writeIn(dir, "shop.gone_process.svg", "<svg/>");
     writeIn(dir, "other.keep.svg", "<svg/>");
-    const stale = runBin(CLI, ["render", dir, "--check", "--json"]);
-    expect(stale.exit).toBe(3);
-    expect(envelopeOf(stale.stdout).message).toContain("shop.gone_process.svg");
-    const run = runBin(CLI, ["render", dir, "--json"]);
-    expect(run.exit).toBe(0);
-    expect(envelopeOf(run.stdout).message).toContain("deleted");
-    expect(envelopeOf(run.stdout).message).toContain("shop.gone_process.svg");
-    expect(existsSync(join(dir, "shop.gone_process.svg"))).toBe(false);
+    for (const args of [
+      ["render", dir, "--check", "--json"],
+      ["render", dir, "--json"],
+    ]) {
+      const run = runBin(CLI, args);
+      expect(run.exit).toBe(3);
+      expect(envelopeOf(run.stdout).message).toContain("shop.gone_process.svg");
+      expect(envelopeOf(run.stdout).message).not.toContain("other.keep.svg");
+    }
+    expect(existsSync(join(dir, "shop.gone_process.svg"))).toBe(true);
     expect(existsSync(join(dir, "other.keep.svg"))).toBe(true);
-    expect(runBin(CLI, ["render", dir, "--check"]).exit).toBe(0);
   });
 });

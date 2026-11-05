@@ -52,12 +52,18 @@ function laneColours(
   const laneOf = new Map<string, string>();
   const taken = new Set(actors.values());
   const free = COLOURS.filter((c) => !taken.has(c));
-  const pool = free.length > 0 ? free : COLOURS;
   let next = 0;
   for (const l of lanesOf(p)) {
     const link = qsmAttr(l, "c4", defs);
     const linked = link === undefined ? undefined : actors.get(link);
-    const c = linked ?? pool[next++ % pool.length] ?? "#333333";
+    const c = linked ?? free[next++];
+    if (c === undefined) {
+      throw new QsmError(
+        "failed",
+        `${p.id ?? "a process"}: lane ${l.name ?? l.id ?? ""} has no palette colour left, the ${free.length} free ones are taken`,
+        { next: "link a lane to its C4 actor with qsm:c4, so it shares the actor's colour" },
+      );
+    }
     for (const id of [l.id, ...(l.flowNodeRef ?? []).map((n) => n.id)]) {
       laneOf.set(id ?? "", c);
     }
