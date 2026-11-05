@@ -4,7 +4,7 @@ import { BpmnModdle } from "bpmn-moddle";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 
 /** The namespace of this plugin's link attributes, `qsm:c4` and `qsm:decision`. */
-const QSM_NS = "urn:qsm:models";
+export const QSM_NS = "urn:qsm:models";
 
 export interface ModdleElement {
   readonly $type: string;
@@ -155,6 +155,23 @@ export function qsmAttr(e: ModdleElement, name: string, defs: Definitions): stri
     .filter(([k, v]) => k.startsWith("xmlns:") && v === QSM_NS)
     .map(([k]) => k.slice("xmlns:".length));
   return prefixes.map((p) => e.$attrs?.[`${p}:${name}`]).find((v) => v !== undefined);
+}
+
+const LINK_ATTRS = new Set(["c4", "decision"]);
+
+/** The link attributes of an element under a namespace other than this plugin's: each one is a
+ * link `qsmAttr` does not read, so the caller reports it. */
+export function foreignLinkAttrs(
+  e: ModdleElement,
+  defs: Definitions,
+): { attr: string; namespace: string }[] {
+  return Object.keys(e.$attrs ?? {}).flatMap((k) => {
+    const [prefix = "", local = ""] = k.split(":");
+    const namespace = defs.$attrs?.[`xmlns:${prefix}`];
+    return LINK_ATTRS.has(local) && namespace !== QSM_NS
+      ? [{ attr: k, namespace: namespace ?? "(no namespace declared)" }]
+      : [];
+  });
 }
 
 /** A property that points at an element owned elsewhere, so a walk does not enter it. */

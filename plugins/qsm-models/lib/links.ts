@@ -6,10 +6,12 @@ import { join } from "node:path";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import {
   everyElement,
+  foreignLinkAttrs,
   type Graph,
   type ModdleElement,
   nodesOf,
   processesOf,
+  QSM_NS,
   qsmAttr,
 } from "./bpmn/model.ts";
 import type { C4Model } from "./c4/model.ts";
@@ -62,7 +64,9 @@ function elementProblems(
   c4: C4Model | undefined,
   ctx: LinkContext,
 ): string[] {
-  const out: string[] = [];
+  const out: string[] = foreignLinkAttrs(e, graph.defs).map(
+    (a) => `${a.attr} is under ${a.namespace}, not ${QSM_NS}: the link is not read`,
+  );
   const c4Link = qsmAttr(e, "c4", graph.defs);
   if (c4Link !== undefined && c4?.elements.some((x) => x.id === c4Link) !== true) {
     out.push(

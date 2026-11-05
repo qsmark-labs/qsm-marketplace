@@ -81,6 +81,19 @@ describe("check", () => {
     expect(r.message).toContain('plan_process_context: qsm:c4="mp.taskz" names no element of');
   });
 
+  it("names a link attribute under a namespace the tool does not read", () => {
+    const r = check(
+      linked('qsm:c4="mp.models"').replace(
+        'xmlns:qsm="urn:qsm:models"',
+        'xmlns:qsm="urn:qsm:model"',
+      ),
+    );
+    expect(r.exit).toBe(3);
+    expect(r.message).toContain(
+      "plan_process_context: qsm:c4 is under urn:qsm:model, not urn:qsm:models",
+    );
+  });
+
   it("names the node, the file and a number the design lacks", () => {
     const r = check(linked(`qsm:decision="design:${DESIGN_PATH}#99"`));
     expect(r.exit).toBe(3);
