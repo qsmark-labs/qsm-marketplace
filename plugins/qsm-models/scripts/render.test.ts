@@ -51,6 +51,17 @@ describe("layout colours", () => {
   });
 });
 
+describe("render", () => {
+  it("fails on a process that has no diagram, naming it and the verb that draws it", () => {
+    const dir = sandboxDir("qsm-models-undrawn-");
+    writeIn(dir, "shop.bpmn", undrawn("qa"));
+    writeIn(dir, "shop.c4", C4);
+    const run = runBin(CLI, ["render", dir, "--json"]);
+    expect(run.exit).toBe(1);
+    expect(envelopeOf(run.stdout).message).toContain("process plan_process has no diagram");
+  });
+});
+
 describe("render --check", () => {
   it("names the picture a changed graph made stale and writes nothing", () => {
     const dir = sandboxDir("qsm-models-render-");

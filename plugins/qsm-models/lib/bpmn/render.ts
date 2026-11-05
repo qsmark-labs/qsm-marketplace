@@ -1,5 +1,6 @@
 // render for BPMN: one SVG per process, drawn by bpmn-js from the graph's own geometry, with links
 // between the processes, lines that read at a glance, and a legend.
+import { QsmError } from "../../../../lib/qsm-error.ts";
 import { esc, type Picture } from "../svg.ts";
 import { domContainer } from "./dom.ts";
 import {
@@ -231,18 +232,23 @@ function pictureOf(
     )}<g class="diagram-links">${links.join("")}</g>${directionMarks(reg)}${key.svg}</svg>\n`;
 }
 
-/** One picture per process of the graph that has a diagram; a process without one is named. */
+/** One picture per process of the graph; a process without a diagram fails, naming it. */
 export async function renderBpmn(graph: Graph, xml: string, project: string): Promise<Picture[]> {
+  const drawn = processesOf(graph.defs).map((p) => {
+    const id = diagramOf(graph.defs, p.id ?? "")?.id;
+    if (id === undefined) {
+      throw new QsmError("failed", `process ${p.id ?? "(no id)"} has no diagram`, {
+        next: "run qsm-models layout on the file",
+      });
+    }
+    return { p, id };
+  });
   const { default: Viewer } = await import("bpmn-js/lib/Viewer.js");
   const viewer = new Viewer({ container: domContainer() });
   await viewer.importXML(xml);
   const out: Picture[] = [];
-  for (const p of processesOf(graph.defs)) {
-    const d = diagramOf(graph.defs, p.id ?? "");
-    if (d?.id === undefined) {
-      continue;
-    }
-    await viewer.open(d.id);
+  for (const { p, id } of drawn) {
+    await viewer.open(id);
     const reg = viewer.get<Registry>("elementRegistry");
     tweak(reg);
     const { svg } = await viewer.saveSVG();

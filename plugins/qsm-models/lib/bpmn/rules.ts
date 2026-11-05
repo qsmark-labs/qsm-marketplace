@@ -177,9 +177,6 @@ export const RULES: Readonly<Record<string, () => Rule>> = {
     }
   }),
   "lanes-hold-every-node": perProcess((p, reporter) => {
-    if ((p.laneSets ?? []).length === 0) {
-      return;
-    }
     const count = laneCounts(p);
     for (const n of nodesOf(p)) {
       const k = count.get(idOf(n)) ?? 0;

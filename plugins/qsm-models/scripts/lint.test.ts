@@ -93,6 +93,17 @@ describe("lint on BPMN", () => {
     expect(rulesOf(r.findings, "plan_process_close")).toContain("lanes-hold-every-node");
   });
 
+  it("refuses a process with no lanes: every step is in no lane", () => {
+    const r = lint(
+      PLAN.replace(/\s*<bpmn:laneSet[\s\S]*?<\/bpmn:laneSet>/, "").replace(
+        /\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/,
+        "",
+      ),
+    );
+    expect(r.exit).toBe(3);
+    expect(rulesOf(r.findings, "plan_process_close")).toContain("lanes-hold-every-node");
+  });
+
   it("passes a lane that names a business role no C4 element has", () => {
     expect(lint(plan(['name="Owner"', 'name="Accountant"'])).exit).toBe(0);
   });
