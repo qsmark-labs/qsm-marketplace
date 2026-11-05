@@ -3,12 +3,13 @@
 The change is built in two stages, marked on each line: **first build** is what the owner sees first
 (design decision 22), **waits** is built after he has looked at the pages. Each line can be shown
 working alone; the proof is the run named after it. The revision of 2026-11-05 reopened lines 1, 2,
-5, 6, 7, 8 and 9 and added lines 12 and 13; no line was ticked.
+5, 6, 7, 8 and 9 and added lines 12 and 13; no line was ticked. A line with a waiting part stays
+open and its first-build part says `(done)` once it is built.
 
 - [ ] 1. Verify 2, 4 and 6 of the design: bpmnlint in a compiled binary, `likec4 validate` from the
-  binary, a `qsm:` attribute kept by bpmn.io. Files: a scratch prototype, none in the tree. Proof:
-  each verdict written into the design. Blocks 3 and 4.
-  **First build:** Verify 2 and 4. **Waits:** the modeler half of Verify 6 (models-pages).
+      binary, a `qsm:` attribute kept by bpmn.io. Files: a scratch prototype, none in the tree.
+      Proof: each verdict written into the design. Blocks 3 and 4. **First build (done):** Verify 2
+      and 4, and Verify 7 ahead of line 12. **Waits:** the modeler half of Verify 6 (models-pages).
 - [ ] 2. The plugin: README, `plugin.json`, `qsm.json` with the verbs, the installer. Files:
   `plugins/qsm-models/**`. Proof: `bun run validate`.
   **First build:** repo mode only, `plugin.json` with no dependency, so no wait on qsm-docs line 1.

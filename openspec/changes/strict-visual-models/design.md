@@ -175,12 +175,22 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 2. **bpmnlint inside a compiled binary**: the CLI resolves rules by `require` and fails compiled
    ("cannot resolve config", measured). Proof: `bun build --compile` a binary that hands its rules
    to bpmnlint's static resolver and lints `flow.bpmn` with the same findings as the CLI.
+   **Verdict 2026-11-05: holds.** bpmnlint 12.0.0's `StaticResolver`, fed every recommended rule by
+   a static import, compiled by `bun build --compile` (bun 1.4.4): `flow.bpmn` clean in both, and a
+   fixture with a complex gateway, unnamed nodes and no DI gives the same 29 findings, rule and id,
+   as the CLI, run from `/` with no `node_modules` beside it.
 3. **draw.io opens a `.drawio.svg`** written this way: no draw.io here. Proof: open one in draw.io
    desktop and save it unchanged.
 4. **`likec4 validate` from the binary**: under bun the package does not install (measured). Proof:
    a compiled binary that validates `marketplace.c4` with LikeC4's language services and gives the
    same verdict as the CLI; failing that, `likec4` installed by npm on PATH, named as a program the
    plugin needs, and `missing` without it.
+   **Verdict 2026-11-05: holds in the binary, no program on PATH.** Under bun 1.4.4 `likec4@1.60.0`
+   installs; its CLI still breaks there (`cliui` not found), but its API does not need it:
+   `LikeC4.fromWorkspace` and `getErrors()` compiled into a binary run from `/` give the npm CLI's
+   verdict, valid on `marketplace.c4` with the vocabulary (79 elements, 104 relations), and on a
+   relation to a missing element the same two errors on the same line. The binary is 94 MB with
+   likec4 alone.
 5. **ELK keeps an order hint under hierarchy**: unverified. Proof: render the container view with
    `order` on qsm-docs and qsm-builder swapped, twice, and read the positions.
 6. **A `qsm:` attribute survives**: unverified. First build: bpmn-moddle reads a `qsm:c4` attribute
@@ -189,6 +199,11 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 7. **bpmn-js Viewer from one file**: unverified. Proof: `pages` on the one graph writes a single
    HTML whose script opens a file with several diagrams, `open` switches to a called process, and
    a scripted browser records no request but the file; the file size is written into the design.
+   **Verdict 2026-11-05: holds.** bpmn-js 18.31.1's navigated viewer inlined with three processes of
+   one definitions (`flow`, `plan`, `split`): `open` on the diagram whose collaboration holds the
+   called process draws planning after a click on "2 Plan the feature", and Chromium records one
+   request, the file. The scratch page is 278 KB; the size of the full graph's page is written
+   here by line 12.
 
 ## Open decisions
 
