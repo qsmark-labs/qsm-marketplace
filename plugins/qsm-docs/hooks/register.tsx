@@ -4,6 +4,7 @@
 
 import type { EngineInterface, On } from "claude-code";
 import { deleteRefusal } from "../lib/delete-guard.ts";
+import { docsIn, ledgerIn } from "../lib/store/layout.ts";
 import { failure, registerNoun } from "./noun.generated.ts";
 
 /** What this session has already named, kept in the plugin's store until the session ends. */
@@ -27,8 +28,10 @@ function seenOf(value: unknown): Seen | undefined {
 }
 
 /** The project's ledger as `<mtime>:<size>`, or `none` before its first snapshot: what changes
- * whenever a snapshot is created or deleted, so an unchanged one needs no `list`. The store is
- * `$XDG_DATA_HOME/qsm-docs`, `~/.local/share/qsm-docs` without it, as the binary reads it. */
+ * whenever a snapshot is created or deleted, so an unchanged one needs no `list`. The layout below
+ * the data directory is the binary's own (lib/store/layout.ts); the data directory itself is root
+ * lib's dataDir, which the sandbox cannot import, so its one rule is written here: `$XDG_DATA_HOME`,
+ * else `~/.local/share`. */
 async function ledgerMark($: EngineInterface, project: string): Promise<string> {
   const xdg = await $.env.get("XDG_DATA_HOME");
   const home = await $.env.get("HOME");
@@ -36,7 +39,7 @@ async function ledgerMark($: EngineInterface, project: string): Promise<string> 
     throw new Error("neither XDG_DATA_HOME nor HOME is set, so the store cannot be found");
   }
   const data = xdg ?? `${home}/.local/share`;
-  const ledger = `${data}/qsm-docs/${project}/ledger.jsonl`;
+  const ledger = ledgerIn(docsIn(data), project);
   if (!(await $.fs.exists(ledger))) {
     return "none";
   }

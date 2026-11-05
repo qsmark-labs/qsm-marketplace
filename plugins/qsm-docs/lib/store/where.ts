@@ -2,14 +2,15 @@
 // repository's main worktree, so every worktree of one repository is one project, and the branch is
 // the checked-out one.
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname } from "node:path";
 import { UsageError } from "../../../../lib/outcome.ts";
 import { dataDir, type Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
+import { docsIn } from "./layout.ts";
 
 /** `<data>/qsm-docs`: a directory per project, and `.kinds` for the installed kinds. */
 export function docsDir(env: Env): string {
-  return join(dataDir(env), "qsm-docs");
+  return docsIn(dataDir(env));
 }
 
 export interface Where {

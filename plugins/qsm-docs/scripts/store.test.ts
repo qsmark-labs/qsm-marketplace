@@ -172,6 +172,24 @@ describe("the store", () => {
     expect(s.run(["get", kept]).stdout).toBe("{}");
   });
 
+  it("names a torn ledger line by file and line, and a torn project leaves the others readable", () => {
+    const s = store();
+    writeIn(s.repo, "a.json", "{}");
+    writeIn(s.repo, "b.json", '{"b": 1}');
+    const a = s.create(["json", "a.json"]);
+    const b = s.create(["json", "b.json", "--parent", a]);
+    s.create(["json", "a.json", "--project", "aaa", "--branch", "main"]);
+    const torn = join(s.env.XDG_DATA_HOME ?? "", "qsm-docs", "aaa", "ledger.jsonl");
+    writeFileSync(torn, `${readFileSync(torn, "utf8")}{"op":"cre`);
+    expect(s.run(["get", a]).stdout).toBe("{}");
+    expect(s.run(["diff", b]).stdout).toBe("added b\n");
+    const listed = s.run(["list", "aaa", "--json"]);
+    expect(envelopeOf(listed.stdout)).toMatchObject({
+      code: "failed",
+      message: `${torn}:2 is not a ledger line of qsm-docs`,
+    });
+  });
+
   it("refuses a diff of a snapshot without a parent and no second id", () => {
     const s = store();
     writeIn(s.repo, "a.json", "{}");

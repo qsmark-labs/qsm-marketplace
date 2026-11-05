@@ -11,7 +11,7 @@ import {
   listenLoopback,
   reply,
 } from "../../../../lib/loopback.ts";
-import { isRecord, type OutcomeCode, UsageError } from "../../../../lib/outcome.ts";
+import { isRecord, messageOf, type OutcomeCode, UsageError } from "../../../../lib/outcome.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { kindOf } from "../kinds/kind.ts";
@@ -19,8 +19,8 @@ import {
   createSnapshot,
   entryOf,
   listSnapshots,
+  lookupIn,
   readSnapshot,
-  readStore,
   type Entry,
 } from "../store/store.ts";
 import type { Where } from "../store/where.ts";
@@ -56,15 +56,25 @@ const HTTP_STATUS: Readonly<Record<Exclude<OutcomeCode, "ok">, number>> = {
 const html = (status: number, body: string): Response =>
   reply(status, body, "text/html; charset=utf-8");
 
-/** A store error as the API answers it: `{code, message}` with the status of its code. */
-function apiError(error: unknown): Response {
+/** Any throw as the API answers it: `{code, message}` with the status of its code, and a throw
+ * that is no QsmError as `failed` with 500, so no request ever meets Bun's own error page. */
+function errorAnswer(error: unknown): Response {
   if (error instanceof QsmError) {
     return json(HTTP_STATUS[error.code], { code: error.code, message: error.message });
   }
   if (error instanceof UsageError) {
     return json(400, { code: "usage", message: error.message });
   }
-  throw error;
+  return json(500, { code: "failed", message: messageOf(error) });
+}
+
+/** A part of the address, decoded; a malformed escape is a `usage` error. */
+function decoded(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    throw new UsageError(`${part} is not a valid part of an address`);
+  }
 }
 
 /** A store error as a page says it. */
@@ -99,42 +109,31 @@ async function save(env: Env, req: Request, port: number): Promise<Response> {
       message: 'a save is {"kind", "parent", "content"}, each a string',
     });
   }
-  try {
-    const parent = entryOf(env, body.parent);
-    const entry = createSnapshot(env, {
-      kind: body.kind,
-      bytes: new TextEncoder().encode(body.content),
-      parent,
-      where: { project: parent.project, branch: parent.branch },
-      by: "page",
-    });
-    return json(201, { id: entry.id });
-  } catch (error) {
-    return apiError(error);
-  }
+  const parent = entryOf(env, body.parent);
+  const entry = createSnapshot(env, {
+    kind: body.kind,
+    bytes: new TextEncoder().encode(body.content),
+    parent,
+    where: { project: parent.project, branch: parent.branch },
+    by: "page",
+  });
+  return json(201, { id: entry.id });
 }
 
 /** `GET /api/snapshots/<id>`: the stored bytes with the kind's media type; `/json` the converter's
- * output, converted once per server. */
+ * output. The snapshot is found, its hash checked and its kind read on every request, so a deleted,
+ * edited or kindless one fails; only the converter's run is kept for the server's life. */
 function snapshotApi({ env, converted }: Context, rest: string): Response {
   const asJson = rest.endsWith("/json");
-  const id = decodeURIComponent(asJson ? rest.slice(0, -"/json".length) : rest);
-  const kept = asJson ? converted.get(id) : undefined;
-  if (kept !== undefined) {
-    return reply(200, kept, "application/json");
+  const id = decoded(asJson ? rest.slice(0, -"/json".length) : rest);
+  const { entry, bytes } = readSnapshot(env, entryOf(env, id));
+  const kind = kindOf(entry.kind, env, entry.plugin);
+  if (!asJson) {
+    return reply(200, new Uint8Array(bytes), kind.mediaType);
   }
-  try {
-    const { entry, bytes } = readSnapshot(env, entryOf(env, id));
-    const kind = kindOf(entry.kind, env, entry.plugin);
-    if (!asJson) {
-      return reply(200, new Uint8Array(bytes), kind.mediaType);
-    }
-    const out = kind.convert(bytes);
-    converted.set(id, out);
-    return reply(200, out, "application/json");
-  } catch (error) {
-    return apiError(error);
-  }
+  const out = converted.get(id) ?? kind.convert(bytes);
+  converted.set(id, out);
+  return reply(200, out, "application/json");
 }
 
 /** A file of a kind's page: json's from the binary, an installed kind's from its kept copy. */
@@ -169,10 +168,11 @@ function located(
     const siblings = listSnapshots(env, where.project, { branch: where.branch });
     return { entry: siblings.find((e) => e.kind === kindName), siblings };
   }
-  const store = readStore(env);
-  const entry = entryOf(env, id, store);
-  const siblings = [...store.values()]
-    .filter((e) => e.project === entry.project && e.branch === entry.branch)
+  const lookup = lookupIn(env);
+  const entry = lookup.entry(id);
+  const siblings = lookup
+    .live(entry.project)
+    .filter((e) => e.branch === entry.branch)
     .toReversed();
   return { entry, siblings };
 }
@@ -226,12 +226,12 @@ function read(ctx: Context, path: string): Response {
   }
   const kindAt = /^\/kinds\/([^/]+)\/(.+)$/.exec(path);
   if (kindAt !== null) {
-    return kindFile(env, kindAt[1] ?? "", decodeURIComponent(kindAt[2] ?? ""));
+    return kindFile(env, kindAt[1] ?? "", decoded(kindAt[2] ?? ""));
   }
   const page = /^\/([^/]+)(?:\/([^/]+))?$/.exec(path);
   if (page !== null) {
-    const id = page[2] === undefined ? null : decodeURIComponent(page[2]);
-    return shell(env, where, decodeURIComponent(page[1] ?? ""), id);
+    const id = page[2] === undefined ? null : decoded(page[2]);
+    return shell(env, where, decoded(page[1] ?? ""), id);
   }
   return html(404, notFoundPage(path));
 }
@@ -240,7 +240,12 @@ function read(ctx: Context, path: string): Response {
 export function serveDocs(env: Env, where: Where, port: number): Served {
   const ctx: Context = { env, where, converted: new Map() };
   const server = listenLoopback(port, async (req, at) => {
-    const res = await route(ctx, req, at);
+    let res: Response;
+    try {
+      res = await route(ctx, req, at);
+    } catch (error) {
+      res = errorAnswer(error);
+    }
     res.headers.set("content-security-policy", CSP);
     return res;
   });

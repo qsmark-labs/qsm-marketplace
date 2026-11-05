@@ -16,6 +16,7 @@ import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { type Change, changesOf } from "../kinds/change.ts";
 import { kindOf } from "../kinds/kind.ts";
+import { ledgerIn } from "./layout.ts";
 import { docsDir, type Where } from "./where.ts";
 
 /** One snapshot as its ledger line records it. */
@@ -46,13 +47,22 @@ function projectDir(env: Env, project: string): string {
   return join(docsDir(env), project);
 }
 
-const ledgerOf = (env: Env, project: string): string =>
-  join(projectDir(env, project), "ledger.jsonl");
+const ledgerOf = (env: Env, project: string): string => {
+  projectDir(env, project);
+  return ledgerIn(docsDir(env), project);
+};
 
 const fileOf = (env: Env, e: Entry): string => join(projectDir(env, e.project), `${e.id}.${e.ext}`);
 
-/** A ledger line read back; `failed` names the file and the line that is not one. */
-function lineOf(raw: unknown, where: string): Line {
+/** A ledger line read back; `failed` names the file and the line when it is torn or no line of
+ * ours. */
+function lineOf(text: string, where: string): Line {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    raw = null;
+  }
   if (
     isRecord(raw) &&
     raw.op === "delete" &&
@@ -86,7 +96,7 @@ function readLedger(env: Env, project: string): Line[] {
   return readFileSync(file, "utf8")
     .split("\n")
     .filter((l) => l !== "")
-    .map((l, i) => lineOf(JSON.parse(l), `${file}:${i + 1}`));
+    .map((l, i) => lineOf(l, `${file}:${i + 1}`));
 }
 
 /** The snapshots of a project that were not deleted, in the order they were created. */
@@ -102,21 +112,41 @@ function projects(env: Env): string[] {
   return existsSync(root) ? readdirSync(root).filter((name) => !name.startsWith(".")) : [];
 }
 
-/** Every live snapshot of the store by id, each project's ledger read once. */
-export function readStore(env: Env): Map<string, Entry> {
-  return new Map(projects(env).flatMap((p) => liveEntries(env, p).map((e) => [e.id, e] as const)));
+/** Finds snapshots for one call, reading each project's ledger at most once. */
+export interface Lookup {
+  /** the live snapshot `id` in any project, or `missing` */
+  readonly entry: (id: string) => Entry;
+  /** a project's live snapshots in the order they were created */
+  readonly live: (project: string) => Entry[];
 }
 
-/** The live snapshot `id` in any project, or `missing`. The id is never parsed. */
-export function entryOf(env: Env, id: string, store = readStore(env)): Entry {
-  const found = store.get(id);
-  if (found === undefined) {
+/** A lookup that reads the projects an id starts with first, longest name first: the id is never
+ * parsed, but its own project holds it, so a torn ledger of another project does not stop it. */
+export function lookupIn(env: Env): Lookup {
+  const read = new Map<string, Entry[]>();
+  const live = (project: string): Entry[] => {
+    const known = read.get(project) ?? liveEntries(env, project);
+    read.set(project, known);
+    return known;
+  };
+  const entry = (id: string): Entry => {
+    const all = projects(env);
+    const named = all.filter((p) => id.startsWith(`${p}-`)).toSorted((a, b) => b.length - a.length);
+    for (const project of [...named, ...all.filter((p) => !named.includes(p))]) {
+      const found = live(project).find((e) => e.id === id);
+      if (found !== undefined) {
+        return found;
+      }
+    }
     throw new QsmError("missing", `no snapshot ${id} in the store`, {
       next: "qsm-docs list <project> names the snapshots there are",
     });
-  }
-  return found;
+  };
+  return { entry, live };
 }
+
+/** The live snapshot `id` in any project, or `missing`. */
+export const entryOf = (env: Env, id: string): Entry => lookupIn(env).entry(id);
 
 /** A snapshot's bytes, checked against the sha256 recorded at create. */
 export function readSnapshot(
@@ -219,13 +249,13 @@ export function deleteSnapshot(env: Env, id: string): Entry {
 
 /** The changes from the parent (or `other`) to `id`, through the kind of `id`. */
 export function diffSnapshots(env: Env, id: string, other?: string): Change[] {
-  const store = readStore(env);
-  const b = readSnapshot(env, entryOf(env, id, store));
+  const lookup = lookupIn(env);
+  const b = readSnapshot(env, lookup.entry(id));
   const againstId = other ?? b.entry.parent;
   if (againstId === null) {
     throw new UsageError(`${id} has no parent: name a second snapshot to compare it with`);
   }
-  const a = readSnapshot(env, entryOf(env, againstId, store));
+  const a = readSnapshot(env, lookup.entry(againstId));
   if (other !== undefined && a.entry.kind !== b.entry.kind) {
     throw new UsageError(
       `${other} is ${a.entry.kind} and ${id} is ${b.entry.kind}: two snapshots named must share a kind`,
