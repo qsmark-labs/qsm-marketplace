@@ -39,7 +39,15 @@ type Frame = {
   // Items that animate by design (device px): the run neither waits for nor compares them.
   masks: Rect[];
   changed: { areas: Area[]; changes: Change[] } | null;
+  // A shot is a still from shots/; a recording is a video from a record ... stop, with no still.
+  kind: "shot" | "recording";
+  // The run's recording of this frame (a recording, or a masked shot's few seconds) and the
+  // previous run's of the same name, each with its cadence.
+  video: Video | null;
 };
+type Cadence = { frames: number; span: number; fps: number; maxGap: number; slow: number };
+type Video = { src: string; cadence: Cadence; prev: { src: string; cadence: Cadence } | null };
+type Recording = { journey: string; name: string; kind: string; surface: string; cadence: Cadence };
 type Section = { title: string; frames: Frame[] };
 type NewComment = { shot: string; x: number; y: number; text: string; run: string };
 type Comment = {
@@ -246,6 +254,8 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   failing: [],
   masks: [],
   changed: null,
+  kind: "shot",
+  video: null,
 });
 
 // The frame's crop: its surface padded by PAD and clipped to the screen, else the whole screen.
@@ -420,6 +430,59 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   return [...sections.values()];
 }
 
+// recordings.tsv: journey, name, kind (record or mask), surface, frames, span, fps, max gap, slow.
+function recordingsOf(run: string): Recording[] {
+  const path = join(run, "recordings.tsv");
+  if (!existsSync(path)) return [];
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .filter((l) => l !== "")
+    .map((l) => {
+      const [journey = "", name = "", kind = "", surface = "", ...c] = l.split("\t");
+      const [frames = 0, span = 0, fps = 0, maxGap = 0, slow = 0] = c.map(Number);
+      return { journey, name, kind, surface, cadence: { frames, span, fps, maxGap, slow } };
+    });
+}
+
+// Each recording of RUN as the video of its frame: a masked shot's joins that shot, a record ...
+// stop is a frame of its own, cropped to its surface in the tree read when it stopped.
+function withRecordings(run: string, prev: string, frames: Frame[]): Frame[] {
+  const before = new Map(
+    (prev === "" ? [] : recordingsOf(join(dirname(run), prev))).map((r) => [
+      `${r.journey}--${r.name}`,
+      { src: `../${prev}/recordings/${r.journey}--${r.name}.webm`, cadence: r.cadence },
+    ]),
+  );
+  const made: Frame[] = [];
+  for (const r of recordingsOf(run)) {
+    const name = `${r.journey}--${r.name}`;
+    const video = {
+      src: `recordings/${name}.webm`,
+      cadence: r.cadence,
+      prev: before.get(name) ?? null,
+    };
+    if (r.kind === "mask") {
+      const shot =
+        frames.find((f) => f.name === name) ?? fail(`recording ${name} masks no shot of the run`);
+      shot.video = video;
+      continue;
+    }
+    const tree = readJson(join(run, "recordings", `${name}.json`));
+    if (!isRecord(tree)) return fail(`the tree of recording ${name} is not an object`);
+    const screen = { w: num(tree.width), h: num(tree.height) };
+    made.push({
+      ...blankFrame(name, r.name, r.surface),
+      journey: r.journey,
+      still: "recording",
+      screen,
+      crop: cropOf(tree, screen, r.surface),
+      kind: "recording",
+      video,
+    });
+  }
+  return [...frames, ...made];
+}
+
 function build(run: string, prev: string): void {
   const tsv = join(run, "shots.tsv");
   if (!existsSync(tsv)) fail(`${run} is not an atlas run (no shots.tsv)`);
@@ -428,7 +491,11 @@ function build(run: string, prev: string): void {
     .split("\n")
     .filter((l) => l !== "")
     .map((l) => l.split("\t"));
-  const frames = rows.map((row) => frameOf(run, row, diffs));
+  const frames = withRecordings(
+    run,
+    prev,
+    rows.map((row) => frameOf(run, row, diffs)),
+  );
   const sections = sectionsOf(frames, todosOf(join(run, "scenario")));
   const scenarioDir = dirname(run);
   const board = {

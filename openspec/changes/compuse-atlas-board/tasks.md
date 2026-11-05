@@ -42,10 +42,13 @@
 
 ## 5. Recordings
 
-- [ ] 5.1 `scripts/drive-atlas`: `record NAME [@Type]` / `stop`, WebM and `recordings.tsv`, a
+- [x] 5.1 `scripts/drive-atlas`: `record NAME [@Type]` / `stop`, WebM and `recordings.tsv`, a
   missing pair stops the run. Proof: a one-journey scenario that records typing in the launcher
   writes the WebM and its cadence; one with `record` and no `stop` exits non-zero naming it.
-- [ ] 5.2 `scripts/atlas-board.ts` and `atlas-board.html`: recording frames, looping, focus beside
+- [x] 5.2 `scripts/atlas-board.ts` and `atlas-board.html`: recording frames, looping, focus beside
   the previous run's with both cadences. Proof: two runs of that scenario, the board in the
   browser, focus on the recording plays both. Blocked by 5.1.
+- [x] 5.3 `scripts/drive-atlas`, `atlas-board.ts`, `atlas-board.html`: a masked shot records 2 s and
+  its frame plays it. Proof: the network-states journey's connecting shots play the pulse on the
+  board. Blocked by 5.1.
   `USAGE.md`: the scenario grammar row names `record` and `stop`.

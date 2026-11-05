@@ -92,7 +92,9 @@ measurement. The board never computes a diff or a check; it shows the ones the r
   surface, cadence). Recordings are never compared by pixels: an animation lands on another phase
   every run. The board compares the cadence numbers with the previous run's recording of the same
   name and plays both side by side. The canvas frame is a muted looping `<video>` cropped like an
-  image; only the focused frame and its neighbours play, so a board of many recordings decodes few.
+  image, since a scenario records a handful, not one per shot. A masked shot records 2 s after it
+  is taken, so the pulse the mask hides from the comparison is still there to judge; the mask's
+  dashed rect alone said only that something moved.
 
 ## Risks / Trade-offs
 
