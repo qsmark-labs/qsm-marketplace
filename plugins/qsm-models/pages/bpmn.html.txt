@@ -28,7 +28,7 @@ aside pre { white-space: pre-wrap; background: #ffffff; border: 1px solid var(--
 <body>
 <header><span class="project"><!--PROJECT--></span><nav id="crumbs" aria-label="Processes"></nav></header>
 <div id="canvas"></div>
-<aside aria-live="polite"><h2>Details</h2><div id="details"><p class="hint">Click a step to see its lane, its name and its notes. A step with a thick border opens the process it calls.</p></div></aside>
+<aside aria-live="polite"><h2>Details</h2><div id="details"><p class="hint">Click a step to see its lane, its name and its notes. Drag to move the diagram, Ctrl and the wheel to zoom. A step with a thick border opens the process it calls.</p></div></aside>
 <script type="application/xml" id="graph"><!--GRAPH--></script>
 <script>/*BPMN-JS*/</script>
 <script>
@@ -38,6 +38,7 @@ aside pre { white-space: pre-wrap; background: #ffffff; border: 1px solid var(--
   const nav = document.getElementById('crumbs');
   const details = document.getElementById('details');
   const STEP = /Task$|^bpmn:(CallActivity|SubProcess)$/;
+  const MIN_ZOOM = 0.9;
 
   function processOf(diagram) {
     const e = diagram.plane.bpmnElement;
@@ -65,11 +66,18 @@ aside pre { white-space: pre-wrap; background: #ffffff; border: 1px solid var(--
 
   function show(diagram) {
     return viewer.open(diagram).then(function () {
-      viewer.get('canvas').zoom('fit-viewport');
+      // a wide process fitted to the window shrinks its labels below reading size: below MIN_ZOOM
+      // it opens at MIN_ZOOM from its top left, and the reader drags to see the rest
+      const canvas = viewer.get('canvas');
+      canvas.zoom('fit-viewport');
+      if (canvas.zoom() < MIN_ZOOM) {
+        const box = canvas.viewbox();
+        canvas.viewbox({ x: box.inner.x - 20, y: box.inner.y - 20, width: box.outer.width / MIN_ZOOM, height: box.outer.height / MIN_ZOOM });
+      }
       drawCrumbs();
       details.replaceChildren();
       const p = document.createElement('p'); p.className = 'hint';
-      p.textContent = 'Click a step to see its lane, its name and its notes.';
+      p.textContent = 'Click a step to see its lane, its name and its notes. Drag to move the diagram, Ctrl and the wheel to zoom.';
       details.append(p);
     });
   }

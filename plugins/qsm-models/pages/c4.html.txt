@@ -12,7 +12,7 @@ header .project { font-weight: bold; }
 header .view { color: var(--muted); }
 main { padding: 12px 16px; overflow: auto; }
 section[hidden] { display: none; }
-section svg { max-width: 100%; height: auto; }
+section svg { display: block; }
 </style>
 </head>
 <body>
