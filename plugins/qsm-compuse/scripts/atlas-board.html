@@ -71,7 +71,7 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 #focus header h2 { margin: 0; font-size: 15px; }
 #focus header .grow { flex: 1; }
 #focus .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(260px, 0.9fr); gap: 16px; padding: 16px; min-height: 0; }
-#focus .pane { min-width: 0; min-height: 0; overflow: auto; }
+#focus .pane { min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 #focus .pane h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .shot { position: relative; display: inline-block; max-width: 100%; }
 .closeup { margin: 0 0 18px; }
@@ -95,7 +95,7 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 .pinform textarea { font: inherit; color: inherit; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; min-height: 64px; resize: vertical; }
 .pinform div { display: flex; gap: 6px; justify-content: end; }
 @media (prefers-reduced-motion: no-preference) { #world.glide { transition: transform 180ms cubic-bezier(.2, .7, .2, 1); } }
-@media (max-width: 900px) { #focus .body { grid-template-columns: 1fr; overflow: auto; } }
+@media (max-width: 900px) { #focus .body { grid-template-columns: 1fr; overflow: auto; } #focus .pane { min-height: auto; overflow: visible; } }
 </style>
 </head>
 <body>
@@ -422,7 +422,9 @@ function closeUp(f, g, paneW) {
   const m = Math.max(24, Math.max(b.w, b.h) / 2);
   const x = Math.max(0, b.x - m), y = Math.max(0, b.y - m);
   const r = { x, y, w: Math.min(f.screen.w, b.x + b.w + m) - x, h: Math.min(f.screen.h, b.y + b.h + m) - y };
-  const z = Math.min((paneW - 12) / 2 / r.w, 420 / r.h, 8);
+  // At most 420 px tall or 8x; past 2x a whole number, so every source pixel is an even block.
+  const fitZ = Math.min(Math.max(paneW - 12, 48) / 2 / r.w, 420 / r.h, 8);
+  const z = fitZ > 2 ? Math.floor(fitZ) : fitZ;
   const cell = (src, label) => {
     const marks = s("svg", { viewBox: `${r.x} ${r.y} ${r.w} ${r.h}`, style: "position:absolute;inset:0;width:100%;height:100%" });
     for (const a of g.areas)

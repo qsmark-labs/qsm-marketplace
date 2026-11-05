@@ -137,7 +137,8 @@ no item of the shell holds it (the cursor, the wallpaper, a client window).
 
 - **WHEN** the owner opens a frame whose only change is a 16x21 px cursor
 - **THEN** focus opens on Diff with the region around the cursor from both runs side by side,
-  scaled up until it fills the pane, the area boxed on both, and the whole screens below
+  scaled up to the pane's width, at most 420 px tall or 8x, the area boxed on both, and the whole
+  screens below
 
 ### Requirement: Comments land where the agent reads them
 
