@@ -6,15 +6,17 @@
 import { flagArg, optionalString, requiredString, runCli } from "../../../lib/cli-base.ts";
 import { doctorVerdict } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { MODELS_DIR, oneGraph } from "../lib/graphs.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 
 const manifest = parseManifest(manifestJson, "qsm-models/qsm.json");
 
-/** The project's models/ in the checkout the working directory is in. */
+/** The project's models/ in the checkout the working directory is in, relative to it so findings stay short. */
 async function modelsDir(): Promise<string> {
-  return join((await import("../lib/conform.ts")).repoRoot(), MODELS_DIR);
+  return (
+    relative(process.cwd(), join((await import("../lib/conform.ts")).repoRoot(), MODELS_DIR)) || "."
+  );
 }
 
 // each verb loads its own modules when it runs, so `doctor` and `paths` do not pay for the C4 and
