@@ -1,12 +1,12 @@
 ---
-name: ui-design-monochrome-shell
+name: ui-palette-monochrome-shell
 tags: [scenario]
 runs: 3
 max_turns: 8
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Use the ui-design skill.
+Use the ui-palette skill.
 
 My desktop shell (a Quickshell panel) runs on one theme. It feels vibecoded to me and I cannot say
 why. These are its colour tokens, verbatim:

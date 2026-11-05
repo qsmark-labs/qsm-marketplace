@@ -1,5 +1,5 @@
 ---
-name: css-ui-tailwind-drifting-greens
+name: css-tokens-tailwind-drifting-greens
 tags: [scenario]
 runs: 3
 max_turns: 8

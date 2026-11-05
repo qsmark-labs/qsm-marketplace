@@ -6,10 +6,10 @@ description: "Use when writing or changing QML in a Quickshell shell: components
 # QML UI
 
 Quickshell moves fast: an unaided model guesses a colour or exclusive zone and leaves nothing to
-measure. This skill builds on the shell's tokens, reserves the right space, and leaves a way to
-read geometry back. It is how QML is written; what a bar, popout
-or OSD is and does, the desktop rules and the Hyprland config are desktop-ui. Values: ui-design.
-Names, keyboard, reduced motion: a11y-audit.
+measure. This skill builds on the shell's tokens, reserves the right space, and leaves a way to read
+geometry back. It is how QML is written; what a bar, popout or OSD is and does, the desktop rules
+and the Hyprland config are desktop-ui. Values: ui-design, ui-palette. Names, keyboard, reduced
+motion: a11y-audit.
 
 ## Before the first line
 
@@ -31,15 +31,13 @@ Names, keyboard, reduced motion: a11y-audit.
 
 ## Rules
 
-- **No literal in a component.** Every colour, size, radius, spacing and duration is a `Theme.` /
-  `Motion.` property. A missing token means add it to the singleton in the design
+- **No literal in a component.** Every colour, size, radius, spacing, and duration is a
+  `Theme.` / `Motion.` property. A missing token means add it to the singleton in the design
   source's name and fill the dark and light values, never a literal beside it, because a literal
   is invisible to a theme switch and to the audit's token trace.
-- **Components read roles only.** A component binds `Theme.accent`, never a named value
-  (`Theme.palette.mauve`), so a theme swap replaces one file (ui-design); a role points at one
-  `palette` entry. Check: `grep -rn 'palette\.' components/` prints nothing.
 - **Pairs travel together.** A fill token and its on-token (`primary` / `onPrimary`) are read
-  together in one item; never copy a colour into a local property.
+  together in one item. Colours bind to the singleton; never copy one into a local
+  `property color`, or a theme swap misses it.
 - **Durations and easing come from the motion tokens** (`Motion`, else `Theme`; with none, say so
   and ask). Reduced motion is clamped in the singleton, nowhere else, because a component that
   bypasses it breaks the setting for the whole shell. How a surface animates is desktop-ui. A
@@ -167,6 +165,7 @@ live geometry.
 
 ## Red flags
 
+- A hex, or a number beside `duration`, `radius` or `spacing`: use a token.
 - When a panel overlaps windows on one monitor, read `reserved`, the window's anchors and
   `exclusionMode` for that output before touching a margin: the cause is nearly always a zone or
   a missing per-output window.
@@ -177,7 +176,7 @@ live geometry.
 
 ## Say it in the reply
 
-- The tokens used and any added.
-- The `qmlformat` / `qmllint` result, whether the surface was run (or the owner checks), the dump
-  target and `objectName`.
+- The tokens used and any added, with the file.
+- The `qmlformat` / `qmllint` result, whether the surface was run (or the owner checks), and the
+  dump target and `objectName`.
 - For reserved space: the `reserved` numbers before and after, or that they were not read.

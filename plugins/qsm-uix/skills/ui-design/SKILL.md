@@ -48,19 +48,12 @@ Use these headings, because the audits and the stack skills look for them:
 
 ## Rules
 
-- **A role gets its sentence before its value.** Each role in `## Tokens` says what it is for
-  ("accent: what is current now, the active tab or selected row, nothing else"), and its value is
-  chosen after. Why: a hue with no job gets reused for whatever
-  looks good.
-- **Neutrals carry structure, hues carry meaning.** Neutrals are a ladder of low-chroma steps; when
-  lightness is the separation, a container sits at least 1.3:1 (default, WCAG formula, computed) on
-  its parent. The named hues share one lightness per theme (default: dark OKLCH L 0.80, light 0.55)
-  at the largest chroma every hue holds in sRGB (about C 0.10 and 0.09). A role's hue sits more
-  than 15 degrees (OKLCH, chroma above 0.02) from the neutral tint, status roles at least 30 from
-  each other and from `accent` (defaults). Why: a hue within 15 degrees of its ground differs only
-  by lightness and marks nothing.
-- **Palette, roles, components, surfaces.** A component reads roles only; a surface overrides a
-  role only in its page file, with the reason, because a value a surface sets for itself drifts.
+- **The palette's structure is ui-palette's.** Role sentences, neutrals against hues, components
+  reading roles, one container separation and a theme from an image: this source holds the result
+  in `## Tokens` and `## Style`.
+- **Hover is for a fine hovering pointer.** A hover effect applies only where the device has one
+  (animate and review-animations point here), because a touch screen fires hover on tap and shows
+  it as a false positive.
 - **Every colour is a token, and a fill token never travels alone.** Define `primary` with
   `on-primary` and record the ratio per theme: 4.5 for text, 3 for large text, icons, control
   borders and focus indicators (WCAG 1.4.3, 1.4.11). Why: contrast belongs to a pair, so a colour
@@ -87,11 +80,6 @@ Use these headings, because the audits and the stack skills look for them:
   the defaults must already be the best the design has.
 - **A component's character is one personality.** A professional dashboard is crisp and dense, a
   playful tool may be looser; a rule right in isolation reads wrong beside another character.
-- **One separation mechanism for containers.** Panels, cards and sections separate by a lightness
-  step, a border (3:1) or a shadow; `## Style` names the one and every container edge uses only it.
-  A control whose edge identifies it keeps its 3:1 border; a row rule, a focus ring and an
-  overlay's edge (next rule) are not container edges. Why: two marks on one edge read as
-  two products.
 - **A raised surface (overlay, popover) separates by a soft shadow, not a solid border.** A
   semi-transparent shadow reads as depth; an opaque border reads as a box drawn around the content
   (emilkowalski/skills README.md names a solid border over a shadow as an agent mistake). In a dark

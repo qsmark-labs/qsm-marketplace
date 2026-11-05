@@ -1,6 +1,6 @@
 ---
 name: css-ui
-description: "Use when writing or fixing plain CSS and HTML for a page or component, or wiring Tailwind to a set of colours. Triggers: write the CSS for, style this card, CSS dark mode, CSS sticky header covers content, CSS layout shifts, no framework, vanilla CSS, container query, Tailwind colours consistent, Tailwind theme config, napis CSS, tmavy rezim, stylovani. Builds the design source in CSS; how to audit it is ui-audit, why the values are what they are is ui-design."
+description: "Use when writing or fixing plain CSS and HTML for a page or component. Triggers: write the CSS for, style this card, CSS dark mode, CSS sticky header covers content, CSS layout shifts, no framework, vanilla CSS, container query, napis CSS, tmavy rezim, stylovani. Builds the design source in CSS; palette roles and Tailwind are css-tokens, how to audit it is ui-audit, why the values are what they are is ui-design."
 ---
 
 # CSS UI
@@ -77,19 +77,11 @@ design source is the expected column), measuring the result (ui-audit), criteria
     compound control open while focus is inside.
 14. **A dark overlay follows ui-design's overlay rule.** In CSS: a layered `box-shadow`, and in the
     dark block a `1px` border whose colour token carries alpha.
-15. **Palette values, roles point at them, components read roles.** The palette is rule 3's named
-    values (`--mauve`); a role points at one
-    (`--primary: var(--mauve); --on-primary: var(--crust)`), repointed in the dark block where
-    ui-design's dark column names another value and redeclared in any subtree that switches
-    appearance itself, because a `var()` resolves where it is declared. A component reads roles
-    only; a brand theme is a block under its own selector that repoints roles with their `--on-`
-    partners. Reason: a component naming `--mauve` stays mauve in a teal theme. Check: grep
-    component styles for palette names, zero hits.
 
 ## Libraries
 
 Platform first: `dialog`, `popover`, `details`, `:has` and container queries need no package.
-Tailwind v4 carries tokens as utilities (below); the library picks are pick-ui-library's. No
+Tailwind and the palette's role aliases are css-tokens'; the library picks are pick-ui-library's. No
 CSS-in-JS runtime for a static page. Touch and phone fixes (tap highlight, `dvh`, safe areas, input
 zoom) are mobile-native; motion is animate and review-animations.
 
@@ -102,8 +94,9 @@ From the Vercel web interface guidelines, in our words:
   and `color`, and `theme-color` matches the page background.
 - Increase contrast on `:hover`, `:active` and `:focus`, never lower it. Make focus rings clear
   sticky bars (rule 10), and keep a visible replacement for any removed outline.
-- Layered shadows (an ambient one and a direct one), crisp edges from a semi-transparent border
-  plus a shadow (rule 14), nested radii where the child is never larger than the parent, and
+- On an overlay: layered shadows (an ambient one and a direct one) and a crisp edge from a
+  semi-transparent border plus a shadow (rule 14); a container's edge is ui-palette's one
+  separation mechanism, not this. Nested radii where the child is never larger than the parent, and
   borders and shadows tinted toward the background hue so greys do not look pasted on.
 - Text: `text-wrap: balance` on headings, `…` not `...`, a non-breaking space inside `10 MB` and
   `⌘ K`, curly quotes, `scroll-margin-top` on headings, and a skip link.
@@ -136,23 +129,6 @@ a test driver's accessibility snapshot or the browser's accessibility pane), and
 `getComputedStyle(el)` for colour, size and bounds per state. These are the introspection surface
 for ui-audit and a11y-audit; a UI that cannot be read this way is reported as not measured.
 
-## Tailwind
-
-Tailwind is the same tokens in another syntax; it adds nothing to the discipline.
-
-- Put tokens in `@theme` (v4) or `theme.extend` (v3) and nowhere else. Define the pair names
-  (`--color-primary`, `--color-on-primary`) so `bg-primary text-on-primary` is the only way
-  to colour a fill.
-- For themes, define the values as plain custom properties flipped by the
-  `prefers-color-scheme` block of rule 3, and reference them with `@theme inline { --color-canvas:
-  var(--canvas) }`. Then no `dark:` variant is needed on each element; a component with a
-  `dark:` colour is a second place the dark value lives.
-- No arbitrary values (`bg-[#1a1a1a]`, `p-[13px]`, `duration-[240ms]`): they are literals. A
-  missing step means a missing token; add it to the design source first.
-- `motion-reduce:` and `focus-visible:` on every animation and every control, as rules 4 and 7.
-- Build class names whole (`{ red: 'bg-red-500' }`), never `bg-${color}-500`: the scanner
-  cannot see the second.
-
 ## Red flags
 
 - `transition: all`: name the properties, because layout properties will animate and shift.
@@ -168,6 +144,4 @@ checked or could not measure ("not measured: no browser here"; ui-audit measures
 states and what bounds they hold. Say which rules from the design source you could not apply because
 it was absent, and which you assumed. Never claim a contrast ratio you did not compute.
 
-Sources: see the README. Tailwind syntax: [theme variables](https://tailwindcss.com/docs/theme) and
-[class detection](https://tailwindcss.com/docs/detecting-classes-in-source-files).
-The token-only policy is ui-design's, not a Tailwind restriction.
+Sources: see the README.

@@ -22,7 +22,8 @@ its stack's syntax, libraries and design rules; a general skill ends by pointing
 
 | Kind | Name | What it does |
 | --- | --- | --- |
-| Skill | `ui-design` | Writes a stack-neutral design source: a palette of neutrals and hues, roles with their meaning, pairs, themes, one container separation and product-defined scales; polish from [Emil](https://github.com/emilkowalski/skills) (MIT), waits and targets from [Vercel](https://github.com/vercel-labs/web-interface-guidelines) (MIT); scale references: Carbon, Modular Scale, USWDS |
+| Skill | `ui-design` | Writes a stack-neutral design source: tokens, pairs, themes and product-defined scales; polish from [Emil](https://github.com/emilkowalski/skills) (MIT), waits and targets from [Vercel](https://github.com/vercel-labs/web-interface-guidelines) (MIT); scale references: Carbon, Modular Scale, USWDS |
+| Skill | `ui-palette` | Builds a coherent palette: a sentence per role, neutrals that carry structure and hues that carry meaning, components that read roles, one container separation, a theme derived from an image |
 | Skill | `apple-design` | Apple's interface foundations: response, materials, typography, principles; Apple's WWDC talks Designing Fluid Interfaces, The Details of UI Typography and Principles of Great Design, as distilled by [Emil](https://github.com/emilkowalski/skills) (MIT) |
 | Skill | `ui-audit` | Measures static visuals against the product's design source; polish from [Emil](https://github.com/emilkowalski/skills) (MIT), grouping from [NN/g proximity](https://www.nngroup.com/articles/gestalt-proximity/), contrast from WCAG |
 | Skill | `ux-audit` | Traces behaviour, feedback, targets, reversibility and forms; direct-response timing from [NN/g](https://www.nngroup.com/articles/response-times-3-important-limits/), contrast from WCAG; motion verdicts belong to review-animations |
@@ -55,7 +56,8 @@ its stack's syntax, libraries and design rules; a general skill ends by pointing
 
 | Kind | Name | What it does |
 | --- | --- | --- |
-| Skill | `css-ui` | Plain CSS and HTML with a short Tailwind section; sources: [Vercel](https://github.com/vercel-labs/web-interface-guidelines) (MIT), [Emil](https://github.com/emilkowalski/skills) (MIT), [Tailwind documentation](https://tailwindcss.com/docs/theme) for its syntax |
+| Skill | `css-ui` | Plain CSS and HTML; sources: [Vercel](https://github.com/vercel-labs/web-interface-guidelines) (MIT), [Emil](https://github.com/emilkowalski/skills) (MIT) |
+| Skill | `css-tokens` | Wires a palette into CSS and Tailwind: roles that point at palette values, brand themes, dark values defined once; sources: [Tailwind documentation](https://tailwindcss.com/docs/theme) for its syntax |
 | Skill | `react-ui` | What React leaves to you: focus and aria, forms, loading states, feedback, gestures, libraries and conventions; sources: [vercel-labs/web-interface-guidelines](https://github.com/vercel-labs/web-interface-guidelines) (MIT), [emilkowalski/skills](https://github.com/emilkowalski/skills) pick-ui-library (MIT) |
 | Skill | `web-motion` | Motion on a web page: curves as custom properties, compositor-only properties, reduced motion, the Motion library, performance, review and survey terms; adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT) and [vercel-labs/web-interface-guidelines](https://github.com/vercel-labs/web-interface-guidelines) (MIT) |
 | Skill | `web-harness` | The browser side of break-ui and prototype: data toggle, adapted variant picker and CSS fixes; sources: [Emil](https://github.com/emilkowalski/skills) (MIT), [Vercel](https://github.com/vercel-labs/web-interface-guidelines) (MIT) |
