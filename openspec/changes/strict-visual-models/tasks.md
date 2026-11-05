@@ -11,9 +11,9 @@ open and its first-build part says `(done)` once it is built.
       Proof: each verdict written into the design. Blocks 3 and 4. **First build (done):** Verify 2
       and 4, and Verify 7 ahead of line 12. **Waits:** the modeler half of Verify 6 (models-pages).
 - [ ] 2. The plugin: README, `plugin.json`, `qsm.json` with the verbs, the installer. Files:
-  `plugins/qsm-models/**`. Proof: `bun run validate`.
-  **First build:** repo mode only, `plugin.json` with no dependency, so no wait on qsm-docs line 1.
-  **Waits:** the dependency on qsm-docs, line 13.
+      `plugins/qsm-models/**`. Proof: `bun run validate`. **First build (done):** repo mode only,
+      `plugin.json` with no dependency, so no wait on qsm-docs line 1. **Waits:** the dependency on
+      qsm-docs, line 13.
 - [ ] 3. `lint` for BPMN: bpmnlint recommended and our rules as a bpmnlint plugin, Method and
   Style, the backtick rule. Files: `plugins/qsm-models/lib/bpmn/`. Proof: a `runBin` test on the
   migrated graph and one fixture per rule. Blocked by 1, 2. **First build.**

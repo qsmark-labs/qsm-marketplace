@@ -16,8 +16,9 @@ prototype of each piece, none of it in the tree, unless it says 2026-11-04.
 2. **The verbs are the ones described in `qsm.json`, the one list.** The rules that bind them:
    `layout` refuses a file that has geometry, because bpmn-auto-layout discards it and the owner's
    bpmn.io layout must survive; `render --check` writes nothing. Later changes add their verbs
-   to `qsm.json` and need no edit of any requirement here. No `doctor`: a verb fails `missing`
-   naming the package it lacks.
+   to `qsm.json` and need no edit of any requirement here. `doctor`, which the gate
+   `validate-generated` asks of every binary, reports healthy and checks no program on PATH,
+   because Verify 4 put LikeC4 inside the binary (2026-11-05).
 3. **Strict BPMN, as bpmnlint rules, and pure business.** bpmnlint `recommended` with warnings
    raised to errors, plus `analytic-only` (BPMN 2.0.2 clause 2.2, tables 2.1 and 2.2),
    `split-flows-labelled`, `lanes-hold-every-node`, the Method and Style rules of decision 14 and no

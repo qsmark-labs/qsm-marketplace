@@ -1,0 +1,92 @@
+{
+  "name": "qsm-models",
+  "qsm": {
+    "bin": {
+      "qsm-models": "scripts/cli.ts"
+    },
+    "noun": "models",
+    "commands": {
+      "qsm-models doctor": {
+        "description": "Report that the binary needs no program on PATH: every library it runs is compiled into it"
+      },
+      "qsm-models lint": {
+        "description": "Lint the BPMN and C4 graphs: the standard tools' checks, then this plugin's rules",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .bpmn or .c4 file, or the directory that holds them (default models)"
+          }
+        ]
+      },
+      "qsm-models layout": {
+        "description": "Write the diagram geometry of each BPMN process that has none; refuse a file that has a layout",
+        "args": [
+          {
+            "name": "file",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the .bpmn file to lay out in place"
+          }
+        ]
+      },
+      "qsm-models render": {
+        "description": "Write one SVG per BPMN process and one .drawio.svg per generated C4 view beside the graph",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .bpmn or .c4 file, or the directory that holds them (default models)"
+          },
+          {
+            "name": "check",
+            "type": "boolean",
+            "description": "write nothing; name each picture that differs from what render would write"
+          }
+        ]
+      },
+      "qsm-models paths": {
+        "description": "Print the cover of each process: start-to-end paths with stable ids",
+        "args": [
+          {
+            "name": "file",
+            "type": "string",
+            "positional": true,
+            "description": "the .bpmn graph (default the one under models)"
+          },
+          {
+            "name": "process",
+            "type": "string",
+            "description": "only this process, by id, with or without its _process suffix"
+          },
+          {
+            "name": "all",
+            "type": "boolean",
+            "description": "every path, not only the cover"
+          },
+          {
+            "name": "specs",
+            "type": "string",
+            "description": "a directory of specs: name each cover path no scenario cites and each cited id that does not exist"
+          }
+        ]
+      },
+      "qsm-models check": {
+        "description": "Find model files outside models/ and every link of the graphs that does not resolve"
+      },
+      "qsm-models pages": {
+        "description": "Lint the graphs and write bpmn.html and c4.html, each one self-contained file",
+        "args": [
+          {
+            "name": "out",
+            "type": "string",
+            "description": "the directory to write into (default .qsm/models at the repository root)"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -123,6 +123,10 @@
     {
       "name": "qsm-worktrunk",
       "source": "./plugins/qsm-worktrunk"
+    },
+    {
+      "name": "qsm-models",
+      "source": "./plugins/qsm-models"
     }
   ]
 }
