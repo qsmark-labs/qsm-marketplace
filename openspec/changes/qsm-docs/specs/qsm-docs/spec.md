@@ -7,15 +7,15 @@ An immutable store of document snapshots, a kind registry other plugins fill, an
 
 ### Requirement: One binary, qsm-docs, serves the docs port
 
-The plugin SHALL ship one binary `qsm-docs`, named after the plugin, with the verbs `get`, `create`,
-`list`, `diff`, `delete`, `kind add`, `kind list`, `kind remove` and `serve` described in
+The plugin SHALL ship one binary `qsm-docs`, named after the plugin, with the verbs `doctor`, `get`,
+`create`, `list`, `diff`, `delete`, `kind add`, `kind list`, `kind remove` and `serve` described in
 `qsm.json`, and the noun `$.docs`. The CLI SHALL be the only door: no MCP server, no file another
 plugin reads.
 
 #### Scenario: Help lists every verb
 
 - **WHEN** the owner runs `qsm-docs --help`
-- **THEN** it lists the nine verbs with their descriptions from `qsm.json`, and no MCP server is
+- **THEN** it lists the ten verbs with their descriptions from `qsm.json`, and no MCP server is
   registered by the plugin
 
 ### Requirement: create stores a snapshot and prints its id
@@ -118,10 +118,11 @@ the kind and the first record that does not fit. `diff --json` SHALL print the r
 
 ### Requirement: A kind is a manifest another plugin installs
 
-`kind add <manifest>` SHALL install a kind from a JSON manifest that names the kind, its media type
-and file extension, a directory of page assets, the command that converts a file to JSON on stdout,
-and the command that diffs two files to a JSON list of changes. It SHALL refuse a manifest missing
-any of these, or a page directory without `index.html`, with `usage`.
+`kind add <manifest>` SHALL install a kind from a JSON manifest that names the kind, the plugin that
+installs it, its media type and file extension, a directory of page assets, the command that
+converts a file to JSON on stdout, and the command that diffs two files to a JSON list of changes.
+It SHALL refuse a manifest missing any of these, or a page directory without `index.html`, with
+`usage`.
 
 #### Scenario: qsm-models installs its kinds
 
@@ -195,13 +196,23 @@ The shell SHALL show a kind's `index.html` in a frame at `/kinds/<kind>/index.ht
 A kind page SHALL read the snapshot with `GET /api/snapshots/<id>`, which returns the stored bytes
 with the kind's media type, and `GET /api/snapshots/<id>/json`, which returns the converter's
 output. It SHALL save with `POST /api/snapshots`, a JSON body `{"kind", "parent", "content"}`,
-answered `201` with `{"id"}`. A failed request SHALL be answered with the store's error as
-`{"code", "message"}` and the status of its code.
+answered `201` with `{"id"}`.
 
 #### Scenario: A page saves an edit
 
 - **WHEN** the `json` page posts `{"kind": "json", "parent": "<id>", "content": "{}"}`
 - **THEN** the server answers 201 with the new id, and `qsm-docs list --open` names it
+
+### Requirement: A failed request names its code
+
+Every failed request SHALL be answered `{"code", "message"}` with the content security policy, and
+the status of its code: `usage` 400, `missing` 404, `blocked` 409, `failed` 422, and 500 for a
+failure the store did not name.
+
+#### Scenario: An address that does not decode
+
+- **WHEN** the owner opens `/api/snapshots/%E0`
+- **THEN** the server answers 400 with `{"code": "usage", ...}` and the content security policy
 
 ### Requirement: The server answers only its own pages
 
@@ -235,10 +246,10 @@ made by a page. The snapshot that was open SHALL not change.
 
 ### Requirement: The agent hears of a new proposal
 
-A hook SHALL, at session start, give one line naming the open proposals of the session's project,
-and on each prompt, one line per proposal created since the last line of this session. It SHALL say
-nothing when there is none. It SHALL keep what it already named in the state directory per session
-and remove that file at session end.
+A hook SHALL, on the first prompt of a session, give one line naming the open proposals of the
+session's project, and on each later prompt, one line per proposal created since the last line of
+this session. It SHALL say nothing when there is none. It SHALL keep what it already named in the
+plugin's store under the session's id and remove that key at session end.
 
 #### Scenario: Saved in the browser, named on the next prompt (path p-3247dd)
 
@@ -249,14 +260,14 @@ and remove that file at session end.
 #### Scenario: A session starts with an open proposal (path p-9186ca)
 
 - **WHEN** a proposal is open and a new session of that project starts
-- **THEN** the session's start carries one line naming it
+- **THEN** the session's first prompt carries one line naming it
 
 ### Requirement: Only the owner deletes a snapshot
 
 `delete <id>` SHALL remove the snapshot's file and record the delete in the ledger. A hook SHALL
-deny every Bash call of the agent that runs `qsm-docs delete`, in any position of the command line,
-and name `! qsm-docs delete <id>` as what the owner runs. A gate SHALL fail naming the file when any
-skill, agent, command or hook of the marketplace calls `qsm-docs delete` or `$.docs.delete`.
+deny every Bash call of the agent that runs `qsm-docs delete`, in any position of the command line
+and through any path to the binary or its script, or that removes, moves, overwrites or truncates a
+file under qsm-docs' data directory, and name the same command after `!` as what the owner runs.
 
 #### Scenario: The owner deletes a snapshot (path p-c81356)
 
@@ -268,6 +279,23 @@ skill, agent, command or hook of the marketplace calls `qsm-docs delete` or `$.d
 
 - **WHEN** the guard denied the agent's delete and the owner answers no
 - **THEN** the snapshot stays and `qsm-docs get <id>` still prints it
+
+#### Scenario: The agent removes the file instead
+
+- **WHEN** the agent runs `rm ~/.local/share/qsm-docs/projects/demo/<id>.json`
+- **THEN** the guard denies it, names `! rm ~/.local/share/qsm-docs/projects/demo/<id>.json`, and
+  the snapshot stays
+
+#### Scenario: A mention is no call
+
+- **WHEN** the agent runs `grep -rn "qsm-docs delete" plugins`
+- **THEN** the guard lets it run
+
+### Requirement: No marketplace prompt or hook deletes a snapshot
+
+A gate SHALL fail naming the file and line when any skill, agent, command or hook of the
+marketplace calls `qsm-docs delete` or `$.docs.delete`. A comment line in code and the owner's form
+`! qsm-docs delete` SHALL not count as a call.
 
 #### Scenario: A skill that deletes
 

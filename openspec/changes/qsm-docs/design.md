@@ -14,9 +14,11 @@ it as the next piece.
    Reopens when: a second plugin never comes, and the lens stays where it is.
 2. **One file per snapshot plus one append-only ledger per project.** Options: one JSON envelope per
    snapshot holding the bytes and the metadata; a SQLite file; a git repository; files plus a
-   ledger. Choice: `<data>/qsm-docs/<project>/<id>.<ext>` holds the bytes exactly, written
-   read-only, and `<data>/qsm-docs/<project>/ledger.jsonl` gets one line per create (id, kind,
-   project, branch, time, parent, sha256, made by a page or the CLI) and per delete. Reason: `get`
+   ledger. Choice: `<data>/qsm-docs/projects/<project>/<id>.<ext>` holds the bytes exactly,
+   written read-only, and `<data>/qsm-docs/projects/<project>/ledger.jsonl` gets one line per
+   create (id, kind, the kind's plugin, project, branch, time, parent, sha256, made by a page or
+   the CLI) and per delete. Installed kinds live beside them in `<data>/qsm-docs/kinds/<kind>/`, so
+   no project name collides with them. Reason: `get`
    returns the file untouched, the ledger gives order and the hash that proves no update (criterion
    2), and an append never rewrites a line. SQLite hides the bytes; an envelope makes `get`
    reassemble them. Reopens when: a project holds so many snapshots that reading the ledger is slow
@@ -44,16 +46,23 @@ it as the next piece.
    its parent, so "open" is derived. A proposal the owner no longer wants is deleted by him.
    Reopens when: the owner wants to decline a proposal without deleting it.
 7. **The hook keeps per session what it named.** Options: name every open proposal on every prompt,
-   keep a global seen mark, keep it per session. Choice: at session start every open proposal of
-   the project, then on each prompt only what is new since this session's last line, kept in
-   `stateDir/qsm-docs/sessions/<session>` and removed at session end. Reason: two sessions of one
-   project each hear of a proposal once, and one line per prompt is the most a hook may add.
+   keep a global seen mark, keep it per session. Choice: on a session's first prompt every open
+   proposal of the project, then on each later prompt only what is new since this session's last
+   line, kept in the plugin's `$.store` under `sessions/<session>` and removed at session end.
+   Reason: two sessions of one project each hear of a proposal once, and one line per prompt is the
+   most a hook may add. The first prompt, not the session start, because the engine adds hidden
+   context only to a prompt; the store, not a file, because the hooks sandbox cannot remove a file.
+   A prompt whose project ledger has the same mtime and size as last time spawns nothing.
    Reopens when: the owner wants a proposal named in every prompt until it is applied.
 8. **The delete guard is a pure function of the command line in `lib/`.** Options: a guard in the
    hook, a guard in the binary that asks who called it. Choice: the qsm-forge pattern, a
-   `tool.call` hook on Bash calling a function of `lib/` that reads every command of the line. The
-   binary cannot know whether a person or an agent runs it; the hook can, and a `!` command of the
-   owner never reaches it. Reopens when: a harness without hooks runs the agent.
+   `tool.call` hook on Bash calling a function of `lib/` that splits the line into commands and
+   words as the shell does and reads every one, a quoted string again only after a shell's `-c`,
+   `eval` or a command substitution, so a mention in `grep` or a commit message runs. It also denies
+   a write, move or remove aimed at the data directory, because a read-only file mode does not stop
+   `rm`. The binary cannot know whether a person or an agent runs it; the hook can, and a `!`
+   command of the owner never reaches it. shell-ast is not used: its WASM parser does not load in
+   the hooks sandbox. Reopens when: a harness without hooks runs the agent.
 9. **The server takes the lens's shape.** Options: write a new server, reuse the lens's server. The
    lens code is qsm-builder's and may not be imported (AGENTS.md: a plugin imports root `lib/` and
    itself only). Choice: write qsm-docs' server on Bun's `serve`, as the lens does, and move the
