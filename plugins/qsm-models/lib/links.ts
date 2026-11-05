@@ -14,7 +14,7 @@ import {
 } from "./bpmn/model.ts";
 import type { C4Model } from "./c4/model.ts";
 
-const STORE = () =>
+const storeNotReached = (): QsmError =>
   new QsmError(
     "missing",
     "a link into another project needs qsm-docs, which this build does not reach",
@@ -87,7 +87,7 @@ function callProblems(graph: Graph): string[] {
     .flatMap(nodesOf)
     .filter((n) => n.$type === "bpmn:CallActivity");
   if (calls.some((n) => (n.calledElement ?? "").includes(":"))) {
-    throw STORE();
+    throw storeNotReached();
   }
   return calls
     .filter((n) => !processes.has(n.calledElement))
@@ -114,7 +114,7 @@ export function c4LinkFindings(m: C4Model, ctx: LinkContext): string[] {
   const out: string[] = [];
   for (const e of m.elements) {
     if (e.metadata.project !== undefined) {
-      throw STORE();
+      throw storeNotReached();
     }
     const decision = e.metadata.decision;
     const why =

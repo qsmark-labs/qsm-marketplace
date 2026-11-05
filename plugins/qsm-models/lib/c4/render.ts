@@ -2,18 +2,16 @@
 // (actors, the system in scope with its groups, external systems), drawn as an SVG that carries
 // the view's draw.io diagram, with links that zoom in and out between the views.
 import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
-import type { Picture } from "../bpmn/render.ts";
-import { Cells, esc, type Rect } from "./drawio.ts";
+import { esc, type Picture } from "../svg.ts";
+import { Cells, type Rect } from "./drawio.ts";
 import { isActor, isExternal } from "./lint.ts";
 import type { C4Element, C4Model, C4Relation } from "./model.ts";
-import { PALETTE } from "./style.ts";
+import { hasTag, PALETTE, TAGS } from "./style.ts";
 
 const FILL = {
   system: "#1168bd",
   container: "#438dd5",
   component: "#85bbf0",
-  artifact: "#c7e0f8",
-  external: "#8a8a8a",
 };
 const TINTS: readonly [string, string][] = [
   ["#e8f1fb", "#7aa7d9"],
@@ -37,13 +35,21 @@ interface Edge {
   readonly title: string;
 }
 
+/** A view as drawn: its parts, so the `<svg>` header is written once, when the links are known. */
 interface Drawn {
   readonly name: string;
   readonly title: string;
   readonly boundary: string | null;
   readonly box: ReadonlyMap<string, Rect>;
-  readonly doc: string;
+  readonly width: number;
+  readonly height: number;
+  /** the view's draw.io file */
+  readonly content: string;
+  readonly defs: string;
+  readonly body: string;
 }
+
+const kindFill = (kind: C4Element["kind"]): string => (kind === "person" ? GREY_LINE : FILL[kind]);
 
 /** Who uses a shared element: three names, or a count. */
 const names = (xs: string[]): string => (xs.length > 3 ? `${xs.length} plugins` : xs.join(", "));
@@ -81,18 +87,32 @@ class Graph4 {
     return isExternal(e, this.byId);
   }
 
+  /** An actor's colour, none for an element that is not one. */
+  actorColour(id: string): string | undefined {
+    const e = this.byId.get(id);
+    return e !== undefined && isActor(e)
+      ? (PALETTE[e.metadata.colour ?? ""] ?? GREY_LINE)
+      : undefined;
+  }
+
+  /** The top-level element the id sits in. */
+  rootTitle(id: string): string {
+    let at = this.byId.get(id);
+    for (let up = at?.parent; up !== null && up !== undefined; up = at?.parent) {
+      at = this.byId.get(up);
+    }
+    return at?.title ?? id;
+  }
+
   base(e: C4Element): string {
-    if (isActor(e)) {
-      return PALETTE[e.metadata.colour ?? ""] ?? GREY_LINE;
-    }
-    if (this.external(e)) {
-      return FILL.external;
-    }
-    return e.tags.includes("artifact")
-      ? FILL.artifact
-      : e.kind === "person"
-        ? GREY_LINE
-        : FILL[e.kind];
+    return (
+      this.actorColour(e.id) ??
+      (this.external(e)
+        ? TAGS.external.fill
+        : hasTag(e, "artifact")
+          ? TAGS.artifact.fill
+          : kindFill(e.kind))
+    );
   }
 
   ink(e: C4Element): string {
@@ -101,11 +121,11 @@ class Graph4 {
 
   kindLabel(e: C4Element): string {
     const kind = this.external(e)
-      ? "external system"
-      : e.tags.includes("agent")
-        ? "agent"
-        : e.tags.includes("artifact")
-          ? "artifact"
+      ? TAGS.external.label
+      : hasTag(e, "agent")
+        ? TAGS.agent.label
+        : hasTag(e, "artifact")
+          ? TAGS.artifact.label
           : e.kind;
     return e.technology === "" ? kind : `${kind}: ${e.technology}`;
   }
@@ -115,10 +135,7 @@ class Graph4 {
   }
 
   lineColour(from: string): string {
-    const s = this.byId.get(from);
-    return s !== undefined && isActor(s)
-      ? (PALETTE[s.metadata.colour ?? ""] ?? GREY_LINE)
-      : GREY_LINE;
+    return this.actorColour(from) ?? GREY_LINE;
   }
 
   /** Each relation lifted to the elements a view shows; one inside a shown element is dropped. */
@@ -263,30 +280,31 @@ function legendKeys(
   groups: number,
   shared: number,
 ): [string, string][] {
-  const keys: [string, string][] = shown
-    .filter(isActor)
-    .map((e) => [g.base(e), `${e.title}: its box and the lines it starts`]);
+  const keys: [string, string][] = shown.flatMap((e) => {
+    const colour = g.actorColour(e.id);
+    return colour === undefined ? [] : [[colour, `${e.title}: its box and the lines it starts`]];
+  });
   const inside = shown.find((e) => !isActor(e) && !g.external(e) && e.kind !== "component");
   if (inside !== undefined) {
-    keys.push([FILL[inside.kind === "person" ? "system" : inside.kind], "inside the marketplace"]);
+    keys.push([kindFill(inside.kind), `inside ${g.rootTitle(inside.id)}`]);
   }
-  if (shown.some((e) => e.kind === "component" && !e.tags.includes("artifact"))) {
+  if (shown.some((e) => e.kind === "component" && !hasTag(e, "artifact"))) {
     keys.push([FILL.component, "component: code inside the container"]);
   }
-  if (shown.some((e) => e.tags.includes("artifact"))) {
-    keys.push([FILL.artifact, "artifact: a skill or agent file a session loads"]);
+  if (shown.some((e) => hasTag(e, "artifact"))) {
+    keys.push([TAGS.artifact.fill, TAGS.artifact.legend]);
   }
   if (shown.some((e) => g.external(e))) {
-    keys.push([FILL.external, "external system"]);
+    keys.push([TAGS.external.fill, TAGS.external.legend]);
   }
-  if (lines.some((r) => g.lineColour(r.from) === GREY_LINE)) {
+  if (lines.some((r) => g.actorColour(r.from) === undefined)) {
     keys.push(["dash", "a relation between parts of the system"]);
   }
   if (groups > 0) {
     keys.push(["tint", "a group: one area of the system"]);
   }
   if (shared > 0) {
-    keys.push(["note", "italic note: who uses it, drawn without lines"]);
+    keys.push(["note", TAGS.shared.legend]);
   }
   if (shown.some((e) => g.els.some((c) => c.parent === e.id))) {
     keys.push(["zoom", "dashed outline: click to open its own view"]);
@@ -334,6 +352,34 @@ const LAYOUT = {
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
 };
 
+/** Each relation's label beside its own line, on its own background; `placed` grows with each, so
+ * the next label avoids it. */
+function edgeLabels(
+  g: Graph4,
+  drawn: readonly ElkExtendedEdge[],
+  byEdge: ReadonlyMap<string, Edge>,
+  placed: Rect[],
+): string[] {
+  const allSegs = drawn.map(segsOf);
+  return drawn.flatMap((ed, k) => {
+    const rel = byEdge.get(ed.id);
+    if (rel === undefined) {
+      return [];
+    }
+    const l = labelOf(rel.title);
+    const own = allSegs[k] ?? [];
+    const others = allSegs.filter((_, i) => i !== k).flat();
+    const p = placeLabel(l, own, others, placed);
+    placed.push(p);
+    const c = g.lineColour(rel.from);
+    const tx = p.end ? p.x + l.width - 2 : p.x + 3;
+    return [
+      `<rect x="${p.x}" y="${p.y - 1}" width="${l.width}" height="${l.height}" rx="2" fill="#ffffff"/>`,
+      `<text x="${tx}" y="${p.y + 9}" font-size="10" fill="${c}"${p.end ? ' text-anchor="end"' : ""}>${l.lines.map((t, i) => `<tspan x="${tx}" dy="${i === 0 ? 0 : 12}">${esc(t)}</tspan>`).join("")}</text>`,
+    ];
+  });
+}
+
 async function drawView(
   g: Graph4,
   name: string,
@@ -344,7 +390,7 @@ async function drawView(
 ): Promise<Drawn> {
   const inside = boundary === null ? [] : shown.filter((e) => e.parent === boundary.id);
   const outside = shown.filter((e) => !inside.includes(e));
-  const shared = inside.filter((e) => e.tags.includes("shared"));
+  const shared = inside.filter((e) => hasTag(e, "shared"));
   const groups = [...new Set(inside.map((e) => e.metadata.group).filter((x) => x !== undefined))];
   const tint = (grp: string): [string, string] =>
     TINTS[g.groups.indexOf(grp) % TINTS.length] ?? ["#ffffff", "#cccccc"];
@@ -356,21 +402,33 @@ async function drawView(
     ),
   ];
   // an external system whose users inside are not drawn in this view names them in a note
-  const hiddenUsers = (e: C4Element): string[] =>
-    g.external(e)
-      ? g.rels
-          .filter(
-            (r) =>
-              r.to === e.id &&
-              inside.some((i) => i.id === r.from) &&
-              !edges.some((d) => d.from === r.from && d.to === r.to),
-          )
-          .map((r) => g.title(r.from))
-      : [];
+  const hiddenUsers = new Map(
+    shown.map((e): [string, string[]] => [
+      e.id,
+      g.external(e)
+        ? g.rels
+            .filter(
+              (r) =>
+                r.to === e.id &&
+                inside.some((i) => i.id === r.from) &&
+                !edges.some((d) => d.from === r.from && d.to === r.to),
+            )
+            .map((r) => g.title(r.from))
+        : [],
+    ]),
+  );
+  /** The italic line under an element that is drawn without some of its lines. */
+  const noteOf = (e: C4Element): string[] => {
+    const hidden = hiddenUsers.get(e.id) ?? [];
+    if (shared.includes(e)) {
+      return [`used by ${names(usedBy(e))}`];
+    }
+    return hidden.length > 0 ? [`used by ${hidden.join(", ")}`] : [];
+  };
   const leaf = (e: C4Element): ElkNode => ({
     id: e.id,
     width: W,
-    height: H + (shared.includes(e) || hiddenUsers(e).length > 0 ? 14 : 0),
+    height: H + (noteOf(e).length > 0 ? 14 : 0),
   });
   const lines = edges.filter((r) => !shared.some((s) => s.id === r.from || s.id === r.to));
   const byEdge = new Map(lines.map((r, k) => [`e${k}`, r]));
@@ -465,12 +523,7 @@ async function drawView(
   }
   for (const e of shown) {
     const b = at(e.id);
-    const hidden = hiddenUsers(e);
-    const note = shared.includes(e)
-      ? [`used by ${names(usedBy(e))}`]
-      : hidden.length > 0
-        ? [`used by ${hidden.join(", ")}`]
-        : [];
+    const note = noteOf(e);
     const body = [...wrap(e.summary, 32), ...note];
     const base = g.base(e);
     svg.push(
@@ -479,15 +532,13 @@ async function drawView(
     );
     cells.element(e, b, { fill: base, stroke: base, ink: g.ink(e) });
   }
-  const allSegs = drawnEdges.map(segsOf);
   drawnEdges.forEach((ed) => {
     const rel = byEdge.get(ed.id);
     if (rel === undefined) {
       return;
     }
     const c = g.lineColour(rel.from);
-    const from = g.byId.get(rel.from);
-    const dash = from === undefined || !isActor(from);
+    const dash = g.actorColour(rel.from) === undefined;
     for (const [u, v] of segsOf(ed)) {
       placed.push({
         x: Math.min(u.x, v.x) - 2,
@@ -504,24 +555,7 @@ async function drawView(
       cells.relation(rel.from, rel.to, rel.title, s.bendPoints ?? [], c, dash);
     }
   });
-  svg.push(...titles);
-  drawnEdges.forEach((ed, k) => {
-    const rel = byEdge.get(ed.id);
-    if (rel === undefined) {
-      return;
-    }
-    const l = labelOf(rel.title);
-    const own = allSegs[k] ?? [];
-    const others = allSegs.filter((_, i) => i !== k).flat();
-    const p = placeLabel(l, own, others, placed);
-    placed.push(p);
-    const c = g.lineColour(rel.from);
-    const tx = p.end ? p.x + l.width - 2 : p.x + 3;
-    svg.push(
-      `<rect x="${p.x}" y="${p.y - 1}" width="${l.width}" height="${l.height}" rx="2" fill="#ffffff"/>`,
-      `<text x="${tx}" y="${p.y + 9}" font-size="10" fill="${c}"${p.end ? ' text-anchor="end"' : ""}>${l.lines.map((t, i) => `<tspan x="${tx}" dy="${i === 0 ? 0 : 12}">${esc(t)}</tspan>`).join("")}</text>`,
-    );
-  });
+  svg.push(...titles, ...edgeLabels(g, drawnEdges, byEdge, placed));
   const key = legendSvg(
     legendKeys(g, shown, lines, groups.length, shared.length),
     (out.height ?? 0) + 16,
@@ -536,14 +570,26 @@ async function drawView(
     .join("");
   const wt = Math.max(out.width ?? 0, 330) + 20;
   const ht = (out.height ?? 0) + key.height + 66;
-  const doc = `<svg xmlns="http://www.w3.org/2000/svg" content="${esc(cells.file(name))}" width="${wt}" height="${ht}" viewBox="-10 -40 ${wt} ${ht}" font-family="Helvetica, Arial, sans-serif"><defs>${defs}</defs><rect x="-10" y="-40" width="${wt}" height="${ht}" fill="#ffffff"/><text x="0" y="-16" font-size="15" font-weight="bold" fill="#111111">${esc(title)}</text>${svg.join("")}</svg>`;
   return {
     name,
     title,
     boundary: boundary?.id ?? null,
     box: new Map(shown.map((e) => [e.id, at(e.id)])),
-    doc,
+    width: wt,
+    height: ht,
+    content: cells.file(name),
+    defs,
+    body: svg.join(""),
   };
+}
+
+/** The view's `<svg>`, its header written once for the room `lift` makes above the title, with
+ * `extra` last inside it; the draw.io diagram rides in `content` only when it is wanted. */
+function svgOf(v: Drawn, lift: number, extra: string, drawio: boolean): string {
+  const top = -40 - lift;
+  const height = v.height + lift;
+  const content = drawio ? ` content="${esc(v.content)}"` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg"${content} width="${v.width}" height="${height}" viewBox="-10 ${top} ${v.width} ${height}" font-family="Helvetica, Arial, sans-serif"><defs>${v.defs}</defs><rect x="-10" y="${top}" width="${v.width}" height="${height}" fill="#ffffff"/><text x="0" y="-16" font-size="15" font-weight="bold" fill="#111111">${esc(v.title)}</text>${v.body}${extra}</svg>`;
 }
 
 /** The views of one element zoomed into: its children and what they touch outside; a view over the
@@ -593,8 +639,10 @@ async function zoom(g: Graph4, b: C4Element, level: string, title: string): Prom
   const deps = edges.filter((r) => !fromOutside(r));
   const touched = (es: Edge[]): C4Element[] =>
     shown.filter((e) => es.some((r) => r.from === e.id || r.to === e.id));
-  const withKids = (es: Edge[]): C4Element[] =>
-    shown.filter((e) => kids.includes(e) || es.some((r) => r.from === e.id || r.to === e.id));
+  const withKids = (es: Edge[]): C4Element[] => {
+    const hit = new Set(touched(es));
+    return shown.filter((e) => kids.includes(e) || hit.has(e));
+  };
   // the uses half shows only the containers an actor uses; every container is in the depends half
   return [
     await drawView(
@@ -623,6 +671,7 @@ function withZoomLinks(
   views: readonly Drawn[],
   fileOf: (name: string) => string,
   g: Graph4,
+  drawio: boolean,
 ): string {
   const links: string[] = [];
   for (const [id, b] of v.box) {
@@ -651,31 +700,15 @@ function withZoomLinks(
     (t, i) =>
       `<a href="${esc(fileOf(t.to.name))}"><text x="0" y="${-44 - 24 * (targets.length - 1 - i)}" font-size="13" fill="#08427b" text-decoration="underline">${t.text}</text></a>`,
   );
-  let doc = v.doc;
-  if (lift > 0) {
-    doc = doc
-      .replace(
-        /viewBox="-10 -40 ([\d.]+) ([\d.]+)"/,
-        (_, w: string, h: string) => `viewBox="-10 ${-40 - lift} ${w} ${Number(h) + lift}"`,
-      )
-      .replace(
-        / height="([\d.]+)" viewBox/,
-        (_, h: string) => ` height="${Number(h) + lift}" viewBox`,
-      )
-      .replace(
-        /<rect x="-10" y="-40" width="([\d.]+)" height="([\d.]+)" fill="#ffffff"\/>/,
-        (_, w: string, h: string) =>
-          `<rect x="-10" y="${-40 - lift}" width="${w}" height="${Number(h) + lift}" fill="#ffffff"/>`,
-      );
-  }
-  return `${doc.replace(/<\/svg>$/, `<g class="zoom-links">${links.join("")}${nav.join("")}</g></svg>`)}\n`;
+  return `${svgOf(v, lift, `<g class="zoom-links">${links.join("")}${nav.join("")}</g>`, drawio)}\n`;
 }
 
 const viewName = (project: string, view: string): string => `${project}.${view}.drawio.svg`;
 
 /** Every view of the graph: the context, the containers of each internal system, the components of
- * each container that has any. */
-export async function renderC4(m: C4Model, project: string): Promise<Picture[]> {
+ * each container that has any. A `.drawio.svg` carries its draw.io diagram; a page that only shows
+ * the picture asks for it without. */
+export async function renderC4(m: C4Model, project: string, drawio = true): Promise<Picture[]> {
   const g = new Graph4(m.elements, m.relations);
   const top = g.els.filter((e) => e.parent === null);
   const views: Drawn[] = [
@@ -709,6 +742,6 @@ export async function renderC4(m: C4Model, project: string): Promise<Picture[]> 
   return views.map((v) => ({
     name: fileOf(v.name),
     title: v.title,
-    svg: withZoomLinks(v, views, fileOf, g),
+    svg: withZoomLinks(v, views, fileOf, g, drawio),
   }));
 }

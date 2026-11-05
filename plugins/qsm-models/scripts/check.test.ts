@@ -11,7 +11,7 @@ import { C4, CLI, GRAPH, PLAN } from "./fixtures/plan.ts";
 const ROOT = resolve(import.meta.dir, "../../..");
 const DESIGN_PATH = "openspec/changes/strict-visual-models/design.md";
 const DESIGN = readFileSync(join(ROOT, DESIGN_PATH), "utf8");
-const NS = 'xmlns:qsm="https://github.com/qsmark-labs/qsm-marketplace/schema/qsm-models" ';
+const NS = 'xmlns:qsm="urn:qsm:models" ';
 const TASK = '<bpmn:task id="plan_process_context" name="2.1 Gather the context">';
 /** The planning process alone: its call activity calls a process this file lacks, so it calls
  * itself here. */

@@ -55,7 +55,7 @@ container names its code `path`. Every top-level person and every system tagged 
 
 A link is optional and, when present, must resolve: `qsm:c4="<element id>"` on a BPMN element,
 `qsm:decision="design:<repo path>#<n>"` or `"commit:<sha>"` on a BPMN element (namespace
-`https://github.com/qsmark-labs/qsm-marketplace/schema/qsm-models`), and `decision` in a C4
+`urn:qsm:models`), and `decision` in a C4
 element's metadata. `<n>` is a numbered item of that file.
 
 With `--json`, stdout is one envelope `{ code, exit, reason, message, warnings, data }`; `data`

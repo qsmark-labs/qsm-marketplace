@@ -3,6 +3,7 @@
 import { LikeC4 } from "likec4";
 import { isRecord } from "../../../../lib/outcome.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
+import { TAGS } from "./style.ts";
 
 /** The one C4 vocabulary. The tool supplies it; a source declares no specification of its own. */
 const VOCABULARY = `
@@ -12,10 +13,9 @@ specification {
   element container
   element component
   relationship uses
-  tag external
-  tag agent
-  tag shared
-  tag artifact
+${Object.keys(TAGS)
+  .map((t) => `  tag ${t}`)
+  .join("\n")}
 }
 `;
 
@@ -55,7 +55,7 @@ export interface C4Model {
   readonly views: readonly string[];
 }
 
-type C4Read = { ok: true; model: C4Model } | { ok: false; errors: SourceError[] };
+export type C4Read = { ok: true; model: C4Model } | { ok: false; errors: SourceError[] };
 
 const parentOf = (id: string): string | null =>
   id.includes(".") ? id.slice(0, id.lastIndexOf(".")) : null;
@@ -135,4 +135,20 @@ export async function readC4(file: string): Promise<C4Read> {
   } finally {
     await lc.dispose();
   }
+}
+
+/** The model of a `.c4` file, or the failure that names each line LikeC4 refused. */
+export function modelOrThrow(file: string, read: C4Read): C4Model {
+  if (!read.ok) {
+    throw new QsmError(
+      "worse",
+      `${file}: ${read.errors.map((e) => `line ${e.line}: ${e.message}`).join("; ")}`,
+      { next: "run qsm-models lint and fix the source" },
+    );
+  }
+  return read.model;
+}
+
+export async function readC4OrThrow(file: string): Promise<C4Model> {
+  return modelOrThrow(file, await readC4(file));
 }

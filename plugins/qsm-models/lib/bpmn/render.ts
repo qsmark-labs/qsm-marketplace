@@ -1,5 +1,6 @@
 // render for BPMN: one SVG per process, drawn by bpmn-js from the graph's own geometry, with links
 // between the processes, lines that read at a glance, and a legend.
+import { esc, type Picture } from "../svg.ts";
 import { domContainer } from "./dom.ts";
 import {
   type Definitions,
@@ -10,13 +11,6 @@ import {
   type Process,
   processesOf,
 } from "./model.ts";
-
-/** One picture a render writes: the file name beside the graph, and its bytes. */
-export interface Picture {
-  readonly name: string;
-  readonly title: string;
-  readonly svg: string;
-}
 
 interface Di {
   get(name: string): unknown;
@@ -42,12 +36,6 @@ interface Registry {
 
 const PAD = 20;
 const ARROW_MIN = 70;
-const esc = (t: string): string =>
-  t
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 
 const pictureName = (project: string, processId: string): string => `${project}.${processId}.svg`;
 

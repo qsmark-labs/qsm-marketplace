@@ -1,5 +1,6 @@
 // The draw.io half of a `.drawio.svg`: each shape of a view as a draw.io cell carrying draw.io's own
 // C4 attributes, so draw.io opens the picture as an editable C4 diagram.
+import { esc } from "../svg.ts";
 import type { C4Element } from "./model.ts";
 
 export interface Rect {
@@ -8,13 +9,6 @@ export interface Rect {
   readonly w: number;
   readonly h: number;
 }
-
-export const esc = (s: string): string =>
-  s
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
 
 const C4TYPE: Readonly<Record<C4Element["kind"], string>> = {
   person: "Person",

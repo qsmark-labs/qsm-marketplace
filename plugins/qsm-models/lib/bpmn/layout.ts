@@ -1,8 +1,9 @@
 // layout: geometry for each process of a file that has none, by bpmn-auto-layout, in the colours
 // of the picture rule. A process that has geometry is never laid out again, because the layout the
 // owner made in bpmn.io must survive.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { layoutProcess } from "bpmn-auto-layout";
+import { writeAtomic } from "../../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
 import { PALETTE } from "../c4/style.ts";
 import {
@@ -113,7 +114,7 @@ export async function layoutFile(file: string): Promise<Outcome<{ laidOut: strin
     }
     defs.diagrams = [...(defs.diagrams ?? []), d];
   }
-  writeFileSync(file, await toXml(defs));
+  writeAtomic(file, await toXml(defs));
   const ids = todo.map((p) => p.id ?? "");
   return ok({ laidOut: ids }, `${file}: laid out ${ids.join(", ")}`);
 }

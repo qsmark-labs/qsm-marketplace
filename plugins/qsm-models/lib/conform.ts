@@ -1,13 +1,13 @@
 // check: a project has one graph of each kind under models/, and every link its graphs carry
 // resolves. A model file anywhere else is a copy that drifts.
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { readGraph } from "./bpmn/model.ts";
-import { type C4Model, readC4 } from "./c4/model.ts";
-import { MODELS_DIR, oneGraph } from "./graphs.ts";
+import { readC4OrThrow } from "./c4/model.ts";
+import { GRAPH_FILE, graphIn, MODELS_DIR } from "./graphs.ts";
 import { bpmnLinkFindings, c4LinkFindings, type LinkContext } from "./links.ts";
 
 /** Directories that hold no project model: tooling, dependencies, and the archive of changes. */
@@ -34,7 +34,7 @@ function strayModels(root: string): string[] {
       const rel = relative(root, join(dir, d.name));
       if (d.isDirectory() && !SKIP.has(d.name) && !SKIP.has(rel) && rel !== MODELS_DIR) {
         visit(join(dir, d.name));
-      } else if (d.isFile() && /\.(bpmn|c4)$/.test(d.name)) {
+      } else if (d.isFile() && GRAPH_FILE.test(d.name)) {
         out.push(rel);
       }
     }
@@ -47,26 +47,6 @@ const commitIn =
   (root: string) =>
   (sha: string): boolean =>
     spawnSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: root }).status === 0;
-
-/** The project's graph of a kind under `models/`, or nothing when it has none. */
-function graphIn(models: string, ext: ".bpmn" | ".c4"): string | undefined {
-  return existsSync(models) && readdirSync(models).some((f) => f.endsWith(ext))
-    ? oneGraph(models, ext)
-    : undefined;
-}
-
-async function c4Of(file: string | undefined): Promise<C4Model | undefined> {
-  if (file === undefined) {
-    return undefined;
-  }
-  const read = await readC4(file);
-  if (!read.ok) {
-    throw new QsmError("worse", `${file}: LikeC4 refuses it`, {
-      next: "run qsm-models lint and fix the source",
-    });
-  }
-  return read.model;
-}
 
 export async function checkProject(root: string): Promise<Outcome<{ findings: string[] }>> {
   const models = join(root, MODELS_DIR);
@@ -81,7 +61,7 @@ export async function checkProject(root: string): Promise<Outcome<{ findings: st
       `${f} is a model outside ${MODELS_DIR}/: the change edits ${home(f.endsWith(".c4") ? ".c4" : ".bpmn")}`,
   );
   const ctx: LinkContext = { root, commitExists: commitIn(root) };
-  const c4 = await c4Of(c4File);
+  const c4 = c4File === undefined ? undefined : await readC4OrThrow(c4File);
   if (c4 !== undefined) {
     findings.push(...c4LinkFindings(c4, ctx));
   }

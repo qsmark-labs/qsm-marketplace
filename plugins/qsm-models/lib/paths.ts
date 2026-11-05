@@ -2,7 +2,7 @@
 // must cite. A path takes each flow at most twice, so each loop goes round at most once; its id is
 // a hash of the flow ids it takes, so a re-layout keeps it and a changed path changes it.
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
@@ -23,7 +23,6 @@ interface Path {
   readonly id: string;
   /** what QA observes: the split answers in order, then the end */
   readonly signature: string;
-  readonly end: string;
   readonly flows: readonly string[];
 }
 
@@ -90,7 +89,6 @@ function toPath(w: Walked): Path {
   return {
     id: pathId(w.trail),
     signature: [...answers, `-> ${end}`].join("; "),
-    end,
     flows: w.trail.map((f) => f.id ?? ""),
   };
 }
@@ -107,11 +105,16 @@ function cover(
   // most new flows first, then the fewer flows, then the lowest id, so the cover is reproducible
   const before = (a: Path, b: Path): number =>
     gain(b) - gain(a) || a.flows.length - b.flows.length || a.id.localeCompare(b.id);
-  for (
-    let best = paths.toSorted(before)[0];
-    best !== undefined && gain(best) > 0;
-    best = paths.toSorted(before)[0]
-  ) {
+  const bestOf = (): Path | undefined => {
+    let best: Path | undefined;
+    for (const p of paths) {
+      if (best === undefined || before(p, best) < 0) {
+        best = p;
+      }
+    }
+    return best;
+  };
+  for (let best = bestOf(); best !== undefined && gain(best) > 0; best = bestOf()) {
     chosen.push(best);
     for (const f of best.flows) {
       left.delete(f);
@@ -120,9 +123,18 @@ function cover(
   return { chosen, left };
 }
 
-function processPaths(p: Process, all: boolean): ProcessPaths {
-  const { all: walked, dead } = walk(p);
-  const paths = walked.map(toPath);
+/** The walk of a process: its paths and its dead ends. */
+interface Walks {
+  readonly paths: readonly Path[];
+  readonly dead: ReadonlySet<string>;
+}
+
+function walksOf(p: Process): Walks {
+  const { all, dead } = walk(p);
+  return { paths: all.map(toPath), dead };
+}
+
+function processPaths(p: Process, { paths, dead }: Walks, all: boolean): ProcessPaths {
   const flows = flowsOf(p).map((f) => f.id ?? "");
   const { chosen, left } = cover(paths, flows);
   return {
@@ -152,16 +164,18 @@ function pick(graph: Graph, id: string | undefined): Process[] {
 }
 
 /** Every path id a spec cites, with the files that cite it. */
-function citations(dir: string): Map<string, string[]> {
-  const cited = new Map<string, string[]>();
+function citations(dir: string): Map<string, Set<string>> {
+  const cited = new Map<string, Set<string>>();
   const visit = (d: string): void => {
-    for (const name of readdirSync(d).toSorted()) {
-      const at = join(d, name);
-      if (statSync(at).isDirectory()) {
+    for (const e of readdirSync(d, { withFileTypes: true }).toSorted((a, b) =>
+      a.name < b.name ? -1 : Number(a.name > b.name),
+    )) {
+      const at = join(d, e.name);
+      if (e.isDirectory()) {
         visit(at);
-      } else if (name.endsWith(".md")) {
+      } else if (e.name.endsWith(".md")) {
         for (const m of readFileSync(at, "utf8").matchAll(/\bp-[0-9a-f]{6}\b/g)) {
-          cited.set(m[0], [...new Set([...(cited.get(m[0]) ?? []), at])]);
+          cited.set(m[0], (cited.get(m[0]) ?? new Set<string>()).add(at));
         }
       }
     }
@@ -170,11 +184,15 @@ function citations(dir: string): Map<string, string[]> {
   return cited;
 }
 
-function specFindings(graph: Graph, shown: readonly ProcessPaths[], dir: string): string[] {
+/** What a spec directory says about the paths: the shown ones it never cites, and the ids it cites
+ * that are no path of the graph (`known` holds every path id of every process). */
+function specFindings(
+  graph: Graph,
+  shown: readonly ProcessPaths[],
+  known: ReadonlySet<string>,
+  dir: string,
+): string[] {
   const cited = citations(dir);
-  const known = new Set(
-    processesOf(graph.defs).flatMap((p) => processPaths(p, true).paths.map((x) => x.id)),
-  );
   const uncited = shown.flatMap((pp) =>
     pp.paths
       .filter((x) => !cited.has(x.id))
@@ -182,7 +200,7 @@ function specFindings(graph: Graph, shown: readonly ProcessPaths[], dir: string)
   );
   const unknown = [...cited]
     .filter(([id]) => !known.has(id))
-    .map(([id, files]) => `${id}, cited in ${files.join(", ")}, is no path of ${graph.file}`);
+    .map(([id, files]) => `${id}, cited in ${[...files].join(", ")}, is no path of ${graph.file}`);
   return [...uncited, ...unknown];
 }
 
@@ -204,7 +222,14 @@ export async function pathsOf(
   call: PathsCall,
 ): Promise<Outcome<{ processes: ProcessPaths[]; findings: string[] }>> {
   const graph = await readGraph(call.file);
-  const processes = pick(graph, call.process).map((p) => processPaths(p, call.all));
+  // each process is walked once, whether its paths are shown or only known to a spec
+  const walks = new Map<string, Walks>();
+  const walked = (p: Process): Walks => {
+    const w = walks.get(p.id ?? "") ?? walksOf(p);
+    walks.set(p.id ?? "", w);
+    return w;
+  };
+  const processes = pick(graph, call.process).map((p) => processPaths(p, walked(p), call.all));
   const dead = processes.flatMap((pp) =>
     pp.deadEnds.map(
       (d) => `${pp.process}: "${d}" has no way out and is no end event, so no path through it ends`,
@@ -212,7 +237,14 @@ export async function pathsOf(
   );
   const findings = [
     ...dead,
-    ...(call.specs === undefined ? [] : specFindings(graph, processes, call.specs)),
+    ...(call.specs === undefined
+      ? []
+      : specFindings(
+          graph,
+          processes,
+          new Set(processesOf(graph.defs).flatMap((p) => walked(p).paths.map((x) => x.id))),
+          call.specs,
+        )),
   ];
   const text = processes.map(render).join("\n");
   if (findings.length > 0) {

@@ -1,14 +1,15 @@
 // The render verb: every picture of the graphs of a path, written beside each graph, or compared
 // with what is there under --check.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { writeAtomic } from "../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../lib/outcome.ts";
-import { QsmError } from "../../../lib/qsm-error.ts";
 import { readGraph } from "./bpmn/model.ts";
-import { type Picture, renderBpmn } from "./bpmn/render.ts";
-import { readC4 } from "./c4/model.ts";
+import { renderBpmn } from "./bpmn/render.ts";
+import { readC4OrThrow } from "./c4/model.ts";
 import { renderC4 } from "./c4/render.ts";
 import { graphFiles, projectOf } from "./graphs.ts";
+import type { Picture } from "./svg.ts";
 
 /** The pictures of one graph file; a C4 source LikeC4 refuses renders nothing and says why. */
 async function picturesOf(file: string): Promise<Picture[]> {
@@ -16,17 +17,7 @@ async function picturesOf(file: string): Promise<Picture[]> {
     const graph = await readGraph(file);
     return renderBpmn(graph, readFileSync(file, "utf8"), projectOf(file));
   }
-  const read = await readC4(file);
-  if (!read.ok) {
-    throw new QsmError(
-      "worse",
-      `${file}: ${read.errors.map((e) => `line ${e.line}: ${e.message}`).join("; ")}`,
-      {
-        next: "run qsm-models lint and fix the source",
-      },
-    );
-  }
-  return renderC4(read.model, projectOf(file));
+  return renderC4(await readC4OrThrow(file), projectOf(file));
 }
 
 export async function renderPath(
@@ -43,7 +34,7 @@ export async function renderPath(
           stale.push(out);
         }
       } else {
-        writeFileSync(out, p.svg);
+        writeAtomic(out, p.svg);
         written.push(out);
       }
     }

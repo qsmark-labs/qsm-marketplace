@@ -1,8 +1,8 @@
 // lint for C4: LikeC4's own check first, then the vocabulary, the levels and the colours of the
 // actors, the rules a LikeC4 source may break and still validate.
 import type { Finding } from "../bpmn/lint.ts";
-import { type C4Element, type C4Model, readC4 } from "./model.ts";
-import { PALETTE } from "./style.ts";
+import { type C4Element, type C4Model, type C4Read, readC4 } from "./model.ts";
+import { hasTag, PALETTE } from "./style.ts";
 
 const METADATA = new Set([
   "colour",
@@ -28,14 +28,14 @@ const NEST: Readonly<Record<C4Element["kind"], string>> = {
   component: "a component sits in a container",
 };
 
-export const isActor = (e: C4Element): boolean => e.kind === "person" || e.tags.includes("agent");
+export const isActor = (e: C4Element): boolean => e.kind === "person" || hasTag(e, "agent");
 
 export function isExternal(
   e: C4Element | undefined,
   byId: ReadonlyMap<string, C4Element>,
 ): boolean {
   for (let at = e; at !== undefined; at = at.parent === null ? undefined : byId.get(at.parent)) {
-    if (at.tags.includes("external")) {
+    if (hasTag(at, "external")) {
       return true;
     }
   }
@@ -132,27 +132,20 @@ function colourProblems(m: C4Model): Problem[] {
   return out;
 }
 
+/** What a relation must say, each as the field that holds it, its rule and its message. */
+const RELATION_SAYS = [
+  { field: "title", rule: "relation-title", message: "a relation says what it does" },
+  { field: "technology", rule: "relation-technology", message: "a relation names its technology" },
+] as const;
+
 function relationProblems(m: C4Model): Problem[] {
-  return m.relations.flatMap((r) => [
-    ...(r.title === ""
-      ? [
-          {
-            id: `${r.from} -> ${r.to}`,
-            rule: "relation-title",
-            message: "a relation says what it does",
-          },
-        ]
-      : []),
-    ...(r.technology === ""
-      ? [
-          {
-            id: `${r.from} -> ${r.to}`,
-            rule: "relation-technology",
-            message: "a relation names its technology",
-          },
-        ]
-      : []),
-  ]);
+  return m.relations.flatMap((r) =>
+    RELATION_SAYS.filter((s) => r[s.field] === "").map((s) => ({
+      id: `${r.from} -> ${r.to}`,
+      rule: s.rule,
+      message: s.message,
+    })),
+  );
 }
 
 /** Every rule over a model LikeC4 accepted. */
@@ -172,8 +165,8 @@ function lintModel(m: C4Model): Finding[] {
   ].map((p) => ({ file: m.file, ...p }));
 }
 
-export async function lintC4(file: string): Promise<Finding[]> {
-  const read = await readC4(file);
+/** The findings of a source already read: LikeC4's own errors, or every rule over its model. */
+export function lintRead(file: string, read: C4Read): Finding[] {
   if (!read.ok) {
     return read.errors.map((e) => ({
       file,
@@ -183,4 +176,8 @@ export async function lintC4(file: string): Promise<Finding[]> {
     }));
   }
   return lintModel(read.model);
+}
+
+export async function lintC4(file: string): Promise<Finding[]> {
+  return lintRead(file, await readC4(file));
 }

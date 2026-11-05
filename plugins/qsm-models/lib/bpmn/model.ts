@@ -4,7 +4,7 @@ import { BpmnModdle } from "bpmn-moddle";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 
 /** The namespace of this plugin's link attributes, `qsm:c4` and `qsm:decision`. */
-const QSM_NS = "https://github.com/qsmark-labs/qsm-marketplace/schema/qsm-models";
+const QSM_NS = "urn:qsm:models";
 
 export interface ModdleElement {
   readonly $type: string;
@@ -14,16 +14,10 @@ export interface ModdleElement {
   name?: string;
 }
 
-interface Documentation extends ModdleElement {
-  text?: string;
-  textFormat?: string;
-}
-
 export interface FlowNode extends ModdleElement {
   incoming?: SequenceFlow[];
   outgoing?: SequenceFlow[];
   calledElement?: string;
-  documentation?: Documentation[];
 }
 
 export interface SequenceFlow extends ModdleElement {
