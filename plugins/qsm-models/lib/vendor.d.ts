@@ -5,6 +5,7 @@ declare module "bpmn-moddle" {
   export interface Moddle {
     fromXML(xml: string): Promise<{ rootElement: object; warnings: { message: string }[] }>;
     toXML(element: object, options?: { format?: boolean }): Promise<{ xml: string }>;
+    create(type: string, attrs?: Record<string, unknown>): object;
   }
   export const BpmnModdle: new () => Moddle;
 }
@@ -38,7 +39,7 @@ declare module "bpmnlint/rules/*" {
 }
 
 declare module "bpmn-auto-layout" {
-  export function layoutProcess(xml: string): Promise<string>;
+  export function layoutProcess(xml: string): Promise<{ xml: string; warnings: unknown[] }>;
 }
 
 declare module "jsdom" {

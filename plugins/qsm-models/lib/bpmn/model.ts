@@ -38,13 +38,23 @@ export interface Process extends ModdleElement {
   laneSets?: { lanes?: Lane[] }[];
 }
 
-interface Shape extends ModdleElement {
+interface Participant extends ModdleElement {
+  processRef?: Process;
+}
+
+interface Collaboration extends ModdleElement {
+  participants?: Participant[];
+}
+
+export interface Shape extends ModdleElement {
   bpmnElement?: ModdleElement;
+  label?: ModdleElement & { set(name: string, value: string): void };
+  set(name: string, value: string): void;
   bounds?: { x: number; y: number; width: number; height: number };
   waypoint?: { x: number; y: number }[];
 }
 
-interface Diagram extends ModdleElement {
+export interface Diagram extends ModdleElement {
   plane: ModdleElement & { bpmnElement?: ModdleElement; planeElement?: Shape[] };
 }
 
@@ -55,6 +65,7 @@ export interface Definitions extends ModdleElement {
 
 const isFlow = (e: ModdleElement): e is SequenceFlow => e.$type === "bpmn:SequenceFlow";
 export const isProcess = (e: ModdleElement): e is Process => e.$type === "bpmn:Process";
+const isCollaboration = (e: ModdleElement): e is Collaboration => e.$type === "bpmn:Collaboration";
 
 /** The flow nodes of a process: every flow element that is not a sequence flow. */
 export function nodesOf(p: Process): FlowNode[] {
@@ -69,6 +80,21 @@ export function processesOf(defs: Definitions): Process[] {
   return defs.rootElements.filter(isProcess);
 }
 
+/** The diagram that draws a process: its plane is the process, or a collaboration whose
+ * participant holds it. */
+export function diagramOf(defs: Definitions, processId: string): Diagram | undefined {
+  return (defs.diagrams ?? []).find((d) => {
+    const e = d.plane.bpmnElement;
+    if (e === undefined) {
+      return false;
+    }
+    return (
+      e.id === processId ||
+      (isCollaboration(e) && (e.participants ?? []).some((p) => p.processRef?.id === processId))
+    );
+  });
+}
+
 /** A parsed graph: the definitions and the file it came from. */
 export interface Graph {
   readonly file: string;
@@ -81,7 +107,7 @@ export async function readGraph(file: string): Promise<Graph> {
   return { file, defs: await parseXml(xml, file) };
 }
 
-async function parseXml(xml: string, file: string): Promise<Definitions> {
+export async function parseXml(xml: string, file: string): Promise<Definitions> {
   let read: { rootElement: object; warnings: { message: string }[] };
   try {
     read = await new BpmnModdle().fromXML(xml);
@@ -99,10 +125,28 @@ async function parseXml(xml: string, file: string): Promise<Definitions> {
 }
 
 /** A value bpmn-moddle produced: an object that names its BPMN type. */
-function isModdle(v: unknown): v is ModdleElement {
+export function isModdle(v: unknown): v is ModdleElement {
   return typeof v === "object" && v !== null && "$type" in v && typeof v.$type === "string";
 }
 
 export function isDefinitions(v: unknown): v is Definitions {
   return isModdle(v) && v.$type === "bpmn:Definitions" && "rootElements" in v;
+}
+
+export async function toXml(defs: Definitions): Promise<string> {
+  const { xml } = await new BpmnModdle().toXML(defs, { format: true });
+  return `${xml}\n`;
+}
+
+type Label = NonNullable<Shape["label"]>;
+const isLabel = (v: unknown): v is Label =>
+  isModdle(v) && "set" in v && typeof v.set === "function";
+
+/** A label element for a shape, so its text can take a colour. */
+export function newLabel(): Label {
+  const label = new BpmnModdle().create("bpmndi:BPMNLabel");
+  if (!isLabel(label)) {
+    throw new Error("bpmn-moddle created no BPMNLabel");
+  }
+  return label;
 }

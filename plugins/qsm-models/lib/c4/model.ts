@@ -33,7 +33,7 @@ export interface C4Element {
   readonly parent: string | null;
 }
 
-interface C4Relation {
+export interface C4Relation {
   readonly from: string;
   readonly to: string;
   readonly title: string;

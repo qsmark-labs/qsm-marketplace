@@ -28,9 +28,12 @@ const NEST: Readonly<Record<C4Element["kind"], string>> = {
   component: "a component sits in a container",
 };
 
-const isActor = (e: C4Element): boolean => e.kind === "person" || e.tags.includes("agent");
+export const isActor = (e: C4Element): boolean => e.kind === "person" || e.tags.includes("agent");
 
-function isExternal(e: C4Element | undefined, byId: ReadonlyMap<string, C4Element>): boolean {
+export function isExternal(
+  e: C4Element | undefined,
+  byId: ReadonlyMap<string, C4Element>,
+): boolean {
   for (let at = e; at !== undefined; at = at.parent === null ? undefined : byId.get(at.parent)) {
     if (at.tags.includes("external")) {
       return true;

@@ -1,6 +1,6 @@
 // Where the graphs are: the files a verb was pointed at, and a project's one graph of each kind.
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { QsmError } from "../../../lib/qsm-error.ts";
 
 export const MODELS_DIR = "models";
@@ -27,3 +27,6 @@ export function graphFiles(path: string): string[] {
   }
   return files;
 }
+
+/** The project name a graph file carries: `models/<project>.bpmn`. */
+export const projectOf = (file: string): string => basename(file).replace(/\.(bpmn|c4)$/, "");

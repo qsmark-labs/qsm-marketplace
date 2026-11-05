@@ -21,9 +21,10 @@ open and its first-build part says `(done)` once it is built.
   Files: `plugins/qsm-models/lib/c4/`. Proof: a test on `marketplace.c4` and the container-in-a-
   container fixture. Blocked by 1, 2. **First build.**
 - [ ] 5. `layout`, `render` and `render --check` on the one graph, the colour rule, the layout
-  hints. Files: `lib/bpmn/`, `lib/c4/`, `lib/c4/drawio.ts`. Proof: design Verify 5, then the same
-  bytes on two renders, and the pictures read as PNG. Blocked by 3, 4.
-  **First build:** `layout` and `render` without layout hints. **Waits:** the hints and Verify 5.
+      hints. Files: `lib/bpmn/`, `lib/c4/`, `lib/c4/drawio.ts`. Proof: design Verify 5, then the
+      same bytes on two renders, and the pictures read as PNG. Blocked by 3, 4.
+      **First build (done):** `layout` and `render` without layout hints. **Waits:** the hints and
+      Verify 5.
 - [ ] 6. `paths` per process, `--process`, `--specs`, `--compare`. Files: `lib/paths.ts`. Proof: the
   cover of every migrated process equals the measured one. Blocked by 3.
   **First build:** `paths` without `--compare`. **Waits:** `--compare`.
