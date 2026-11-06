@@ -59,6 +59,16 @@ compatibility branch is a second path that nobody runs and nobody tests (You Are
 It). Never history in the code: no deprecated marker, no renamed-from note, no `v2` copy, no
 date, because git already holds what the code used to be.
 
+## Whitelist: every input is wrong until a path says it is right
+
+Code accepts only what an implemented path names: every input and every output is wrong, and
+fails with the project's error, until a path says it is right. Validate data where it enters,
+against an explicit shape, and refuse an unknown field, value or shape instead of passing it on. A
+switch over a closed set names every case, and its default throws. A default that hides a missing
+value (`?? ""`, `|| []` on required data) and a catch that carries on are fallbacks too. The same
+input gives the same output: no hidden dependence on time, randomness, the environment or
+iteration order unless an input names it.
+
 ## Contracts: written before code
 
 Anything that crosses a boundary, another system, another agent, the shell, the browser, gets a
@@ -78,7 +88,7 @@ working code.
    never written.
 2. Each module, class and function has one job, so it has one reason to change, and its name says
    that job in one clear phrase. Keep the decisions (what to do) apart from the details (how it is
-   done).
+   done): a decision is a pure function, and side effects live at the edges.
 3. Open for extension, closed for modification: an extension adds code beside what it extends and
    touches nothing it does not extend. When adding one forces edits elsewhere, the seam is wrong;
    rewrite that seam first, then add the extension.
