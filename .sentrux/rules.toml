@@ -26,3 +26,4 @@ reason = "a plugin never imports from another plugin; shared code lives in root 
 # A plugin is one module: plugins/<name>.
 [modules]
 depth = 2
+whole = ["lib"]
