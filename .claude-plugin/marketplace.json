@@ -129,6 +129,14 @@
       "source": "./plugins/qsm-models"
     },
     {
+      "name": "qsm-bpmn",
+      "source": "./plugins/qsm-bpmn"
+    },
+    {
+      "name": "qsm-c4",
+      "source": "./plugins/qsm-c4"
+    },
+    {
       "name": "qsm-docs",
       "source": "./plugins/qsm-docs"
     }

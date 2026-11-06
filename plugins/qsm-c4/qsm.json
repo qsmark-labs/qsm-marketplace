@@ -1,0 +1,62 @@
+{
+  "name": "qsm-c4",
+  "qsm": {
+    "bin": {
+      "qsm-c4": "scripts/cli.ts"
+    },
+    "noun": "c4",
+    "commands": {
+      "qsm-c4 doctor": {
+        "description": "Report that the binary needs no program on PATH: LikeC4 and elkjs are compiled into it"
+      },
+      "qsm-c4 lint": {
+        "description": "Lint the C4 graph: likec4 validate with the vocabulary the tool supplies, then the vocabulary, the levels and the colours",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .c4 file, or the directory that holds the project's one graph (default models)"
+          }
+        ]
+      },
+      "qsm-c4 render": {
+        "description": "Write one .drawio.svg per generated C4 view beside the graph",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .c4 file, or the directory that holds the project's one graph (default models)"
+          },
+          {
+            "name": "check",
+            "type": "boolean",
+            "description": "write nothing; name each view that differs from what render would write"
+          }
+        ]
+      },
+      "qsm-c4 elements": {
+        "description": "Lint the C4 graph and list every element: its id, kind, title and tags, and an actor's palette colour",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .c4 file, or the directory that holds the project's one graph (default models)"
+          }
+        ]
+      },
+      "qsm-c4 pages": {
+        "description": "Lint the C4 graph and write c4.html, one self-contained file",
+        "args": [
+          {
+            "name": "out",
+            "type": "string",
+            "description": "the directory to write into (default .qsm/c4 at the repository root)"
+          }
+        ]
+      }
+    }
+  }
+}
