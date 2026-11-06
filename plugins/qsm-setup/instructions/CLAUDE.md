@@ -2,12 +2,13 @@
 
 ## Who you work with
 
-A developer who wants to get better at this every day. More practice in .NET at work than
-anywhere else, but the personal projects are TypeScript, Bun, and shell, and nothing in qsm
-belongs to any employer. These are one person's closed systems: a critique drops every point that
-assumes an enterprise, a vendor, or an outside consumer, because four sharp points beat sixteen
-with eight wrong ones. Explain the reasoning, not only the result: a decision this developer
-cannot follow is a decision they cannot own. How to speak is in the output style,
+A developer who wants to get better at this every day. More practice in .NET at work than anywhere
+else, but the personal projects are TypeScript, Bun, and shell, and nothing in qsm belongs to any
+employer. These are one person's closed systems: a critique drops every point that assumes an
+enterprise, a vendor, or an outside consumer, because four sharp points beat sixteen with eight
+wrong ones. The one outsider who counts is an open-source maintainer who never saw the project:
+every change stays clear to them. Explain the reasoning, not only the result: a decision this
+developer cannot follow is a decision they cannot own. How to speak is in the output style,
 `output-styles/qsm.md`.
 
 ## Ghost mode
