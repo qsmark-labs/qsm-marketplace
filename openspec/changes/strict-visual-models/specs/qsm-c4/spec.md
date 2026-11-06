@@ -51,6 +51,18 @@ views.
 - **WHEN** a relation names an element that does not exist
 - **THEN** `lint` exits `worse` with the message of `likec4 validate`, naming the file and line
 
+### Requirement: lint refuses a text a view cannot measure
+
+`lint` SHALL refuse an element's title or group and a relation's title or technology that holds a
+character the renderer has no glyph width for, naming the element or relation, the field and the
+character, so `render` never refuses a source `lint` passed.
+
+#### Scenario: A dash outside printable ASCII
+
+- **WHEN** a relation's title holds "—"
+- **THEN** `lint` exits `worse` naming the relation and the character, and `render` stops at that
+  lint and writes nothing
+
 ### Requirement: lint holds C4 to its levels
 
 `lint` SHALL refuse a person or a system that has a parent, a container outside a system, a
@@ -170,6 +182,18 @@ SHALL leave that flag to the owner to type, never the agent.
   0.2 to 0.5
 - **THEN** `render` exits `worse` naming edge crossings and both numbers, and writes nothing, and
   the agent restructures the source or asks the owner, never typing `--accept` itself
+
+### Requirement: Nothing a view paints touches anything else
+
+`render` and `pages` SHALL exit `worse` writing nothing when, in any view, two painted things come
+closer than the 16 px spacing step: a line and a box, a line and the boundary's or a group's title
+or outline, two lines that do not cross, a label and anything but its own line. A label SHALL sit
+nearer its own line than any other. `--accept` SHALL NOT pass it.
+
+#### Scenario: Two relations on one track
+
+- **WHEN** ELK routes two relations end to end on one track 9 px apart
+- **THEN** `render` exits `worse` naming the view, both relations and the gap, and writes nothing
 
 ### Requirement: An applied move survives the next render
 

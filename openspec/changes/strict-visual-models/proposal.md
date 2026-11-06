@@ -116,7 +116,8 @@ with this revision, local mode.
    tasks lines 2, 7, 9, 10 and 13. Choices the words left open were decided on 2026-11-06 by the
    main agent as craft, each with its options in the design:
    - local mode removed (design 7);
-   - the six palette colours in root `lib/palette.ts` (design 13);
+   - the six palette colours in root `lib/palette.ts` (design 13), and what both plugins do the
+     same way in root `lib/` (design 23);
    - a `model-reviewer` in each plugin, `model-simplifier` in qsm-bpmn only, the skills
      `bpmn-model` and `c4-model` (design 16);
    - the attribute `c4:element` under `https://c4model.com` unless tasks line 17 finds a published

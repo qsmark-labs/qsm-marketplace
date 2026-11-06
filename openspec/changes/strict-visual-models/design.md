@@ -195,9 +195,12 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     `model-reviewer`, page and checks, each installed and run alone. The code is moved, not
     rewritten: `lib/bpmn/`, `lib/paths.ts` and `pages/bpmn.html.txt` go to qsm-bpmn; `lib/c4/` and
     `pages/c4.html.txt` to qsm-c4; `lib/graphs.ts`, `lib/lint.ts`, `lib/render.ts` and
-    `lib/pages/pages.ts` split by kind, each plugin keeping its own five-line `repoRoot`. Neither
-    plugin imports the other (gate `validate-no-cross-plugin-import`). Reopens when: a third
-    notation needs the same verbs.
+    `lib/pages/pages.ts` split by kind. What both kinds do the same way went to root `lib/`,
+    because the jscpd gate refused the two copies: `lib/model-graph.ts` (the notation, the one
+    graph, `repoRoot`, findings, the render and page outcomes), `lib/pictures.ts` (settling the
+    pictures), `lib/palette.ts`, two page helpers in `lib/html.ts`, and `removeRetiredBin` in
+    `lib/install-base.ts`. Neither plugin imports the other (gate
+    `validate-no-cross-plugin-import`). Reopens when: a third notation needs the same verbs.
 24. **The link is a neutral C4 id, read through qsm-c4's CLI** (2026-11-06; the attribute, the door
     and the optional reach decided 2026-11-06, the main agent, craft). The owner: "using c4 ids or
     something in the bpmn, that is not qsm tool specific". Attribute options: `c4:element` under
@@ -244,6 +247,16 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     skill says that flag is the owner's to type, never the agent's, because accepting a worse
     picture is the owner's choice. The other options were no way past a worse measure, or a measure
     that only reports.
+26. **Nothing a view paints touches, and ELK places it** (2026-11-06, the main agent, craft, from
+    the owner's rule "Nikdy nikde nesmi byt nic co se dotyka"). The first build drew the boundary
+    title after layout and moved each label with its own search, so a line ran through a title and
+    labels sat on outlines and boxes. ELK now places every label (boundary and group titles as node
+    labels, relation labels non-inline), with one spacing scale (step 8 px, gap 16 px) for its
+    options and the check, and label widths from the font's own glyph advances. `render` and `pages`
+    refuse a view where two painted things come closer than the gap, with no `--accept`, because a
+    touch is never the owner's trade. A source the font cannot measure is a lint finding instead.
+    The other options were a measure that only reports, or fixing views one by one in the source.
+    Costs: views grew, because lines between layers keep the gap.
 
 ## Verify, each proved before the first task that depends on it
 

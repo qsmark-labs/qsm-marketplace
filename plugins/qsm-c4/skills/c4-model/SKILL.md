@@ -57,7 +57,8 @@ Four kinds at their levels, the vocabulary the tool supplies:
 6. `qsm-c4 render` writes the views beside the graph, and `qsm-c4 render --check` runs before
    every commit: a stale view is a lie in the tree. When `render` refuses a view whose layout
    measure grew, restructure the graph or ask the owner; `--accept <measure>` is the owner's to
-   type, never yours.
+   type, never yours. When it refuses a view where two painted things touch, nothing passes it:
+   fix the renderer or restructure the graph.
 7. `qsm-c4 pages` writes `.qsm/c4/c4.html`; the owner opens it in a browser. When he says a view
    does not say what he wants, his words go back to step 2.
 

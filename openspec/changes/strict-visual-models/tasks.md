@@ -128,7 +128,7 @@ new work.
       `plugins/qsm-bpmn/skills/bpmn-model/`, `plugins/qsm-bpmn/agents/`, `plugins/qsm-bpmn/evals/`,
       `plugins/qsm-c4/skills/c4-model/`, `plugins/qsm-c4/agents/`, `plugins/qsm-c4/evals/`. Proof:
       `bun run eval qsm-bpmn` and `bun run eval qsm-c4`, each skill under 12 KB. Blocked by 20.
-- [ ] 22. **New.** `models/marketplace.c4` draws qsm-models as two containers, qsm-bpmn and qsm-c4,
+- [x] 22. **New.** `models/marketplace.c4` draws qsm-models as two containers, qsm-bpmn and qsm-c4,
       each with its components and its relations (qsm-bpmn's tool to qsm-c4's tool, `exec, stdio`,
       reading element ids and colours), and loses the relations of what was removed (the commit
       gate, the conform component, the spec-propose relation). The relation that says qsm-models
@@ -138,7 +138,7 @@ new work.
       `openspec/changes/{strict-visual-models,models-pages,models-pr-pictures}/proposal.md`.
       Proof: `qsm-c4 lint` and `qsm-c4 render` clean, the two component views read as PNG,
       `model-reviewer` of qsm-c4 returns no finding. Blocked by 21.
-- [ ] 23. **New.** `model_gate_process` of `models/marketplace.bpmn` follows decision 25: no
+- [x] 23. **New.** `model_gate_process` of `models/marketplace.bpmn` follows decision 25: no
       commit gate, no separate link check, the lint and the reviewer before the write. The
       scenarios of this change that cite its paths are re-cited in the same commit. Files:
       `models/marketplace.bpmn`, its SVGs, `openspec/changes/strict-visual-models/specs/`. Proof:
