@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.hooks.json",
+  "include": [
+    "../../../.claude/types/claude-code.d.ts",
+    "register.tsx",
+    "register.test.ts",
+    "noun.generated.ts",
+    "host.generated.ts",
+    "../lib/delete-guard.ts",
+    "../lib/shell-split.ts",
+    "../lib/store/layout.ts",
+    "../types"
+  ]
+}

@@ -29,7 +29,7 @@ appendFileSync(
 );
 const mode = (name: string) => existsSync(join(root, "mode", name));
 const home = need(env.HOME, "HOME");
-const ccrHome = env.CCR_INTERNAL_HOME_DIR ?? join(home, ".claude-code-router");
+const ccrHome = join(env.CCR_INTERNAL_HOME_DIR ?? home, ".claude-code-router");
 const service = join(ccrHome, "service.json");
 
 if (verb === "stop") {

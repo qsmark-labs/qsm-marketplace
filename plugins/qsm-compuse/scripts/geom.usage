@@ -7,7 +7,7 @@ drive geom CHECK ARGS [--slot NAME] [--screen MON] [--tol PX] [--min PX] [--floo
   target SEL                 input area (largest MouseArea child, else StateLayer, else node) >= --floor (24) per axis
   dump [SEL]                 listing of nodes with rects, to find selectors (--depth 3)
   rect SEL                   "x y w h" of the first match
-  rects SEL                  "x y w h type color" (color "-" when the node has none) of every match a person can see (not invisible or at opacity 0, nor an ancestor); none is no error
+  rects SEL                  "x y w h type color" (color "-" when the node has none) of every match a person can see (not invisible or at opacity 0, nor an ancestor), its rect cut to every clipping ancestor and dropped when nothing is left; none is no error
 
 SEL = step/step/...  step = Type | Type|Type|... | *, then [N] (0-based index of the step's matches)
 and/or [attr=value] / [attr!=value] filters (an absent attr reads "null"); each step searches the descendants of the previous one.

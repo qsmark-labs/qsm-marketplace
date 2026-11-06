@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // The one place qsm-ccr changes files the person owns: CCR config (profile guard), codex's
-// config.toml (what CCR wrote into it), user settings (the teammate command), and its own state
+// config.toml (what CCR wrote into it), and its own state
 // (the custom router, the first sync). Each step names what it would change; none removes a router
 // value from user settings, and none creates the codex-api provider: that is CCR's own import.
 import { Database } from "bun:sqlite";
@@ -14,7 +14,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { resultOf } from "../../../lib/install-base.ts";
 import {
   type Activation,
@@ -23,13 +23,12 @@ import {
   type InstallResult,
   type Step,
 } from "../../../lib/install-contract.ts";
-import { binPath, fail, type Outcome, ok } from "../../../lib/outcome.ts";
+import { fail, type Outcome, ok } from "../../../lib/outcome.ts";
 import { type Env, withHomeAt } from "../../../lib/paths.ts";
 import { writeFileAtomic } from "../lib/atomic.ts";
 import {
   addressOf,
   gatewayIn,
-  gatewayOf,
   globalProfiles,
   guardHolds,
   hasProvider,
@@ -50,12 +49,6 @@ import {
 import type { Json } from "../lib/parse.ts";
 import { type Places, placesOf } from "../lib/places.ts";
 import { CODEX_PROVIDER, withoutRouterEnv } from "../lib/route.ts";
-import {
-  readUserSettings,
-  TEAMMATE_COMMAND,
-  teammateCommandOf,
-  withTeammateCommand,
-} from "../lib/settings.ts";
 import { carriesOn, lockedSync, syncIsFresh } from "../lib/sync.ts";
 
 type StepResult = Pick<Step, "status" | "detail">;
@@ -157,7 +150,7 @@ async function guardExisting(p: Places, ctx: ActivationContext, c: Json): Promis
     };
   }
   const ids = globalProfiles(c);
-  const gateway = gatewayOf(c);
+  const gateway = gatewayIn(p.ccrDb);
   if (gateway !== undefined && (await isRunning(gateway.address))) {
     return {
       status: "error",
@@ -281,50 +274,6 @@ const codexNative: ActivationStep = {
   },
 };
 
-const teammate: ActivationStep = {
-  name: "teammate command",
-  holds: (p, env) => {
-    const read = readUserSettings(p.userSettings);
-    const binary = binPath("qsm-ccr", env);
-    return (
-      read.data !== undefined && binary !== null && teammateCommandOf(read.data.json) === binary
-    );
-  },
-  run: (p, ctx) => {
-    const binary = binPath("qsm-ccr", ctx.env);
-    if (binary === null) {
-      return {
-        status: "error",
-        detail:
-          "qsm-ccr is not on PATH; install the plugin first (bun plugins/qsm-ccr/scripts/install.ts)",
-      };
-    }
-    const read = readUserSettings(p.userSettings);
-    if (read.data === undefined) {
-      return { status: "error", detail: read.message ?? p.userSettings };
-    }
-    const next = withTeammateCommand(read.data, binary);
-    if (next === null) {
-      return {
-        status: "already",
-        detail: `${TEAMMATE_COMMAND} is ${binary} in ${p.userSettings}`,
-      };
-    }
-    if (ctx.dryRun) {
-      return {
-        status: "skipped",
-        detail: `would write ${TEAMMATE_COMMAND}=${binary} into env of ${p.userSettings}`,
-      };
-    }
-    mkdirSync(dirname(p.userSettings), { recursive: true });
-    const swept = writeFileAtomic(p.userSettings, next);
-    return {
-      status: "installed",
-      detail: `wrote ${TEAMMATE_COMMAND}=${binary} into env of ${p.userSettings}${leftoversNote(swept)}`,
-    };
-  },
-};
-
 const firstSync: ActivationStep = {
   name: "first sync",
   holds: (p) => syncIsFresh(p.stateDir, Date.now()),
@@ -374,14 +323,7 @@ function holdsStep(s: ActivationStep, places: Places, env: Env): boolean {
   }
 }
 
-const STEPS: readonly ActivationStep[] = [
-  guard,
-  provider,
-  router,
-  codexNative,
-  teammate,
-  firstSync,
-];
+const STEPS: readonly ActivationStep[] = [guard, provider, router, codexNative, firstSync];
 
 export const activation: Activation = {
   options: [],

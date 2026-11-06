@@ -6,6 +6,7 @@
 //   serve SCENARIO_DIR    the scenario's runs on 127.0.0.1, the latest board at /, and comments
 //   comments SCENARIO_DIR the open comments, one per line: shot<TAB>x,y<TAB>text
 //   surface TREE PATH     exits 0 when the item tree holds the surface PATH names (drive's check)
+//   mask TREE SCALE PATH... takes the items the PATHs name out of TREE, prints their device rects
 //
 // The board never measures: a crop comes from the shot's item tree, a change from the run's
 // diff-<PREV>/diff.json, a failure from the check's lines. Comments are the one state it owns,
@@ -16,6 +17,11 @@ import { tryFlock, writeAtomic } from "../../../lib/fs.ts";
 import { isRecord, messageOf } from "../../../lib/outcome.ts";
 
 type Rect = { x: number; y: number; w: number; h: number };
+// A changed area (device px) and the item of the shot's tree that holds it (its rect in logical
+// px), "" when none of the shell's items does (the cursor, the wallpaper, a client window).
+type Area = Rect & { item: string; held: Rect | null };
+// One shot of diff.json, before its areas are named.
+type Diff = { areas: Rect[]; changes: Change[] };
 type Change = { key: string; before: string; after: string };
 type Frame = {
   name: string;
@@ -27,13 +33,22 @@ type Frame = {
   screen: { w: number; h: number };
   scale: number;
   crop: Rect;
-  at: { x: number; y: number };
   checks: string[];
   checkError: boolean;
   failing: Rect[];
-  changed: { areas: Rect[]; changes: Change[] } | null;
+  // Items that animate by design (device px): the run neither waits for nor compares them.
+  masks: Rect[];
+  changed: { areas: Area[]; changes: Change[] } | null;
+  // A shot is a still from shots/; a recording is a video from a record ... stop, with no still.
+  kind: "shot" | "recording";
+  // The run's recording of this frame (a recording, or a masked shot's few seconds) and the
+  // previous run's of the same name, each with its cadence.
+  video: Video | null;
 };
-type Section = { title: string; at: { x: number; y: number }; w: number; frames: Frame[] };
+type Cadence = { frames: number; span: number; fps: number; maxGap: number; slow: number };
+type Video = { src: string; cadence: Cadence; prev: { src: string; cadence: Cadence } | null };
+type Recording = { journey: string; name: string; kind: string; surface: string; cadence: Cadence };
+type Section = { title: string; frames: Frame[] };
 type NewComment = { shot: string; x: number; y: number; text: string; run: string };
 type Comment = {
   id: string;
@@ -49,14 +64,6 @@ type Comment = {
 // Logical px around a surface: its edge, its focus ring and the chrome its holder draws around it
 // (a popout's title sits above its content item) stay in the frame.
 const PAD = 32;
-// The canvas grid: frames left to right, a row wraps after PER_ROW; sections flow in rows ROW_W wide.
-const PER_ROW = 6;
-const ROW_W = 9000;
-const GAP_X = 80;
-const GAP_Y = 120;
-const TITLE_H = 140;
-const TITLE_CHAR = 26;
-const SECTION_GAP = 240;
 // An empty frame for a state no journey shoots yet, when its section has no shot to size it by.
 const TODO_SIZE = { w: 320, h: 240 };
 
@@ -67,27 +74,78 @@ const fail = (message: string): never => {
 
 const num = (value: unknown): number => (typeof value === "number" ? value : 0);
 
-// The first node of a type with a size, depth first: the order geom dumps the tree in. A collapsed
-// popout of the same type (0x0) shows nothing, so it is never the surface.
-function findType(node: unknown, type: string): Record<string, unknown> | undefined {
-  if (!isRecord(node)) return undefined;
-  if (node.type === type && num(node.w) > 0 && num(node.h) > 0) return node;
-  if (!Array.isArray(node.children)) return undefined;
-  for (const child of node.children) {
-    const found = findType(child, type);
-    if (found) return found;
-  }
-  return undefined;
+// The nth node of a type with a size (0 the first), depth first: the order geom dumps the tree
+// in. A collapsed popout of the same type (0x0) shows nothing, so it is never the surface.
+function findType(node: unknown, type: string, nth: number): Record<string, unknown> | undefined {
+  let left = nth;
+  const walk = (at: unknown): Record<string, unknown> | undefined => {
+    if (!isRecord(at)) return undefined;
+    if (at.type === type && num(at.w) > 0 && num(at.h) > 0 && left-- === 0) return at;
+    if (!Array.isArray(at.children)) return undefined;
+    for (const child of at.children) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return walk(node);
 }
 
-// A surface is a type, or a path of them: "PanelSurface/FocusScope" is the first FocusScope inside
-// the first PanelSurface, for a surface whose own type is generic.
-function findSurface(tree: unknown, path: string): Rect | undefined {
-  const node = path.split("/").reduce<unknown>((at, type) => findType(at, type), tree);
-  return isRecord(node)
-    ? { x: num(node.x), y: num(node.y), w: num(node.w), h: num(node.h) }
-    : undefined;
+// A path of types, each with an optional index: "PanelSurface/FocusScope" is the first
+// FocusScope inside the first PanelSurface, "RailEntry[5]/SvgIcon" the glyph of the sixth cell.
+function findNode(tree: unknown, path: string): Record<string, unknown> | undefined {
+  const node = path.split("/").reduce<unknown>((at, segment) => {
+    const [, type = "", nth = "0"] = /^(\w+)(?:\[(\d+)\])?$/u.exec(segment) ?? [];
+    return findType(at, type, Number(nth));
+  }, tree);
+  return isRecord(node) ? node : undefined;
 }
+
+const rectOf = (node: Record<string, unknown>): Rect => ({
+  x: num(node.x),
+  y: num(node.y),
+  w: num(node.w),
+  h: num(node.h),
+});
+
+function findSurface(tree: unknown, path: string): Rect | undefined {
+  const node = findNode(tree, path);
+  return node ? rectOf(node) : undefined;
+}
+
+// Takes the masked items out of a shot's tree, so the consumer's checks and the tree diff never
+// read a value the animation moves, and prints their rects as x,y,w,h;... in device px (SCALE per
+// logical px, grown to whole pixels) for shots.tsv, the units the captures are compared in.
+function mask(path: string, scale: number, paths: string[]): void {
+  if (!(scale > 0)) fail(`mask needs the screen's scale, got ${scale}`);
+  const tree = readJson(path);
+  if (!isRecord(tree)) return fail(`${path} is not an item tree`);
+  const nodes = paths.map(
+    (p) => findNode(tree.tree, p) ?? fail(`${path} holds no ${p} with a size`),
+  );
+  const prune = (at: unknown): void => {
+    if (!isRecord(at) || !Array.isArray(at.children)) return;
+    const kept: unknown[] = at.children.filter((child: unknown) => !nodes.some((n) => n === child));
+    at.children = kept;
+    kept.forEach(prune);
+  };
+  prune(tree.tree);
+  writeAtomic(path, JSON.stringify(tree));
+  const rects = nodes.map(rectOf).map((r) => {
+    const x = Math.floor(r.x * scale);
+    const y = Math.floor(r.y * scale);
+    return `${x},${y},${Math.ceil((r.x + r.w) * scale) - x},${Math.ceil((r.y + r.h) * scale) - y}`;
+  });
+  process.stdout.write(`${rects.join(";")}\n`);
+}
+
+const masksOf = (field: string): Rect[] =>
+  field === ""
+    ? []
+    : field.split(";").map((r) => {
+        const [x = 0, y = 0, w = 0, h = 0] = r.split(",").map(Number);
+        return { x, y, w, h };
+      });
 
 // A PNG's size is in its header, so the builder needs no image tool.
 function pngSize(path: string): { w: number; h: number } {
@@ -152,7 +210,7 @@ const records = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
 // One shot of diff.json: its changed areas (device px) and its changed tree measures.
-function changedOf(entry: Record<string, unknown>): Frame["changed"] {
+function changedOf(entry: Record<string, unknown>): Diff | null {
   const areas = records(entry.areas).map((a) => ({
     x: num(a.x),
     y: num(a.y),
@@ -167,8 +225,8 @@ function changedOf(entry: Record<string, unknown>): Frame["changed"] {
   return areas.length === 0 && changes.length === 0 ? null : { areas, changes };
 }
 
-function diffOf(run: string, prev: string): Map<string, Frame["changed"]> {
-  const diffs = new Map<string, Frame["changed"]>();
+function diffOf(run: string, prev: string): Map<string, Diff> {
+  const diffs = new Map<string, Diff>();
   const path = join(run, `diff-${prev}`, "diff.json");
   if (prev === "" || !existsSync(path)) return diffs;
   const value = readJson(path);
@@ -191,32 +249,130 @@ const blankFrame = (name: string, state: string, surface: string): Frame => ({
   screen: { w: 0, h: 0 },
   scale: 1,
   crop: { x: 0, y: 0, w: 0, h: 0 },
-  at: { x: 0, y: 0 },
   checks: [],
   checkError: false,
   failing: [],
+  masks: [],
   changed: null,
+  kind: "shot",
+  video: null,
 });
 
-function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]>): Frame {
-  const [journey = "", state = "", , still = "", fails = "", surface = ""] = row;
+// The frame's crop: its surface padded by PAD and clipped to the screen, else the whole screen.
+function cropOf(
+  tree: Record<string, unknown>,
+  screen: { w: number; h: number },
+  surface: string,
+): Rect {
+  if (surface === "") return { x: 0, y: 0, w: screen.w, h: screen.h };
+  const item = findSurface(tree.tree, surface) ?? fail(`a tree holds no ${surface}`);
+  const x = Math.max(0, item.x - PAD);
+  const y = Math.max(0, item.y - PAD);
+  return {
+    x,
+    y,
+    w: Math.min(screen.w, item.x + item.w + PAD) - x,
+    h: Math.min(screen.h, item.y + item.h + PAD) - y,
+  };
+}
+
+// Qt's own types say how an item is drawn, never which part of the shell it is.
+const GENERIC = new Set([
+  "Item",
+  "Rectangle",
+  "Row",
+  "Column",
+  "RowLayout",
+  "ColumnLayout",
+  "GridLayout",
+  "Flickable",
+  "Loader",
+  "MouseArea",
+  "FocusScope",
+  "Text",
+  "Image",
+  "MultiEffect",
+  "ShaderEffect",
+  "QGfxSourceProxyME",
+  "ProxyWindowContentItem",
+]);
+
+// Whether item R holds all of area A (logical px), with a pixel of slack for the rounding between
+// device and logical px.
+const holds = (r: Rect, a: Rect): boolean =>
+  r.w > 0 &&
+  r.h > 0 &&
+  a.x >= r.x - 1 &&
+  a.y >= r.y - 1 &&
+  a.x + a.w <= r.x + r.w + 1 &&
+  a.y + a.h <= r.y + r.h + 1;
+
+// An item named by the nearest shell component above it (OWNER), its own type unless Qt's, and
+// the first words of its text: PopoutRow › Prose "Wi-Fi".
+function itemName(at: Record<string, unknown>, owner: string): string {
+  const type = str(at.type);
+  const name =
+    owner === "" || owner === type ? type : GENERIC.has(type) ? owner : `${owner} › ${type}`;
+  const text = str(at.text).replaceAll(/\s+/gu, " ").trim();
+  if (text === "") return name;
+  return `${name} "${text.length > 28 ? `${text.slice(0, 27)}…` : text}"`;
+}
+
+// The deepest drawn item smaller than the screen that holds the whole area (logical px), by
+// itemName. The shell's layers each span the whole screen, so they hold every area and name none.
+// An item at opacity 0 (a hover layer at rest) draws nothing, nor do its children. A child may
+// stand outside its parent (QML does not clip), so every drawn branch is walked.
+const drawn = (at: unknown): at is Record<string, unknown> =>
+  isRecord(at) && at.opacity !== 0 && at.visible !== false;
+
+function itemAt(
+  tree: unknown,
+  screen: { w: number; h: number },
+  area: Rect,
+): { item: string; held: Rect | null } {
+  let best: { item: string; held: Rect | null; depth: number } = {
+    item: "",
+    held: null,
+    depth: -1,
+  };
+  const names = (r: Rect): boolean => holds(r, area) && (r.w < screen.w || r.h < screen.h);
+  const walk = (at: unknown, owner: string, depth: number): void => {
+    if (!drawn(at)) return;
+    const r = rectOf(at);
+    if (depth > best.depth && names(r)) best = { item: itemName(at, owner), held: r, depth };
+    const type = str(at.type);
+    const next = GENERIC.has(type) ? owner : type;
+    if (Array.isArray(at.children)) for (const child of at.children) walk(child, next, depth + 1);
+  };
+  walk(tree, "", 0);
+  return { item: best.item, held: best.held };
+}
+
+// A shot's diff with each area (device px) named by the shot's tree (logical px, SCALE apart).
+function namedChange(
+  diff: Diff | undefined,
+  tree: unknown,
+  screen: { w: number; h: number },
+  scale: number,
+): Frame["changed"] {
+  if (!diff) return null;
+  const areas = diff.areas.map((a) => ({
+    ...a,
+    ...itemAt(tree, screen, { x: a.x / scale, y: a.y / scale, w: a.w / scale, h: a.h / scale }),
+  }));
+  return { ...diff, areas };
+}
+
+function frameOf(run: string, row: string[], diffs: Map<string, Diff>): Frame {
+  const [journey = "", state = "", , still = "", fails = "", surface = "", masks = ""] = row;
   const name = `${journey}--${state}`;
   const tree = readJson(join(run, "trees", `${name}.json`));
   if (!isRecord(tree)) return fail(`the tree of ${name} is not an object`);
   const screen = { w: num(tree.width), h: num(tree.height) };
   const image = pngSize(join(run, "shots", `${name}.png`));
-  let crop: Rect = { x: 0, y: 0, w: screen.w, h: screen.h };
-  if (surface !== "") {
-    const item = findSurface(tree.tree, surface) ?? fail(`the tree of ${name} holds no ${surface}`);
-    const x = Math.max(0, item.x - PAD);
-    const y = Math.max(0, item.y - PAD);
-    crop = {
-      x,
-      y,
-      w: Math.min(screen.w, item.x + item.w + PAD) - x,
-      h: Math.min(screen.h, item.y + item.h + PAD) - y,
-    };
-  }
+  const crop = cropOf(tree, screen, surface);
+  const scale = screen.w > 0 ? image.w / screen.w : 1;
+  const changed = namedChange(diffs.get(name), tree.tree, screen, scale);
   const checkPath = join(run, "checks", `${name}.txt`);
   const checks = existsSync(checkPath)
     ? readFileSync(checkPath, "utf8")
@@ -228,13 +384,14 @@ function frameOf(run: string, row: string[], diffs: Map<string, Frame["changed"]
     journey,
     still,
     screen,
-    scale: screen.w > 0 ? image.w / screen.w : 1,
+    scale,
     crop,
     checks,
     // drive writes "error" when the check itself could not run.
     checkError: fails === "error",
     failing: failingOf(checks),
-    changed: diffs.get(name) ?? null,
+    masks: masksOf(masks),
+    changed,
   };
 }
 
@@ -254,7 +411,7 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   const sectionFor = (title: string): Section => {
     const found = sections.get(title);
     if (found) return found;
-    const made: Section = { title, at: { x: 0, y: 0 }, w: 0, frames: [] };
+    const made: Section = { title, frames: [] };
     sections.set(title, made);
     return made;
   };
@@ -273,45 +430,57 @@ function sectionsOf(frames: Frame[], todos: { surface: string; state: string }[]
   return [...sections.values()];
 }
 
-// One section's frames from its own corner: left to right, a row wraps after PER_ROW. Returns the
-// section's size.
-function placeFrames(section: Section): { w: number; h: number } {
-  let rowY = TITLE_H;
-  let w = 0;
-  for (let i = 0; i < section.frames.length; i += PER_ROW) {
-    const row = section.frames.slice(i, i + PER_ROW);
-    let x = 0;
-    for (const frame of row) {
-      frame.at = { x, y: rowY };
-      x += frame.crop.w + GAP_X;
-    }
-    w = Math.max(w, x - GAP_X);
-    rowY += Math.max(...row.map((f) => f.crop.h)) + GAP_Y;
-  }
-  return { w, h: rowY - GAP_Y };
+// recordings.tsv: journey, name, kind (record or mask), surface, frames, span, fps, max gap, slow.
+function recordingsOf(run: string): Recording[] {
+  const path = join(run, "recordings.tsv");
+  if (!existsSync(path)) return [];
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .filter((l) => l !== "")
+    .map((l) => {
+      const [journey = "", name = "", kind = "", surface = "", ...c] = l.split("\t");
+      const [frames = 0, span = 0, fps = 0, maxGap = 0, slow = 0] = c.map(Number);
+      return { journey, name, kind, surface, cadence: { frames, span, fps, maxGap, slow } };
+    });
 }
 
-// The builder places every frame, so the page draws and never lays out. Sections flow left to
-// right like blocks of text, a row of sections wrapping past ROW_W, so the canvas stays near square.
-function layout(sections: Section[]): void {
-  let x = 0;
-  let y = 0;
-  let rowH = 0;
-  for (const section of sections) {
-    const size = placeFrames(section);
-    // The title is 40 px at rest, about 26 px a character: a narrow section keeps room for it.
-    size.w = Math.max(size.w, section.title.length * TITLE_CHAR);
-    if (x > 0 && x + size.w > ROW_W) {
-      x = 0;
-      y += rowH + SECTION_GAP;
-      rowH = 0;
+// Each recording of RUN as the video of its frame: a masked shot's joins that shot, a record ...
+// stop is a frame of its own, cropped to its surface in the tree read when it stopped.
+function withRecordings(run: string, prev: string, frames: Frame[]): Frame[] {
+  const before = new Map(
+    (prev === "" ? [] : recordingsOf(join(dirname(run), prev))).map((r) => [
+      `${r.journey}--${r.name}`,
+      { src: `../${prev}/recordings/${r.journey}--${r.name}.webm`, cadence: r.cadence },
+    ]),
+  );
+  const made: Frame[] = [];
+  for (const r of recordingsOf(run)) {
+    const name = `${r.journey}--${r.name}`;
+    const video = {
+      src: `recordings/${name}.webm`,
+      cadence: r.cadence,
+      prev: before.get(name) ?? null,
+    };
+    if (r.kind === "mask") {
+      const shot =
+        frames.find((f) => f.name === name) ?? fail(`recording ${name} masks no shot of the run`);
+      shot.video = video;
+      continue;
     }
-    section.at = { x, y };
-    section.w = size.w;
-    for (const frame of section.frames) frame.at = { x: frame.at.x + x, y: frame.at.y + y };
-    x += size.w + SECTION_GAP;
-    rowH = Math.max(rowH, size.h);
+    const tree = readJson(join(run, "recordings", `${name}.json`));
+    if (!isRecord(tree)) return fail(`the tree of recording ${name} is not an object`);
+    const screen = { w: num(tree.width), h: num(tree.height) };
+    made.push({
+      ...blankFrame(name, r.name, r.surface),
+      journey: r.journey,
+      still: "recording",
+      screen,
+      crop: cropOf(tree, screen, r.surface),
+      kind: "recording",
+      video,
+    });
   }
+  return [...frames, ...made];
 }
 
 function build(run: string, prev: string): void {
@@ -322,9 +491,12 @@ function build(run: string, prev: string): void {
     .split("\n")
     .filter((l) => l !== "")
     .map((l) => l.split("\t"));
-  const frames = rows.map((row) => frameOf(run, row, diffs));
+  const frames = withRecordings(
+    run,
+    prev,
+    rows.map((row) => frameOf(run, row, diffs)),
+  );
   const sections = sectionsOf(frames, todosOf(join(run, "scenario")));
-  layout(sections);
   const scenarioDir = dirname(run);
   const board = {
     scenario: basename(scenarioDir),
@@ -395,9 +567,23 @@ function serve(scenarioDir: string): void {
   // be lost. The kernel drops the lock when this process exits.
   if (!tryFlock(openSync(join(scenarioDir, "comments.lock"), "a")))
     fail(`another drive atlas review already serves ${scenarioDir}`);
-  const server = Bun.serve({
+  const server = listen(scenarioDir, 40400);
+  process.stdout.write(`http://127.0.0.1:${server.port}/\n`);
+}
+
+// A fixed port, so the board's address survives a restart of the server.
+function listen(scenarioDir: string, port: number) {
+  try {
+    return boardServer(scenarioDir, port);
+  } catch {
+    return fail(`port ${port} is taken: stop whatever listens there (ss -ltnp 'sport = :${port}')`);
+  }
+}
+
+function boardServer(scenarioDir: string, port: number) {
+  return Bun.serve({
     hostname: "127.0.0.1",
-    port: 0,
+    port,
     routes: {
       "/": () => Response.redirect(`/${latestRun(scenarioDir)}/board.html`, 302),
       "/comments": {
@@ -418,13 +604,12 @@ function serve(scenarioDir: string): void {
     },
     fetch: (request) => fileRoute(scenarioDir, new URL(request.url).pathname),
   });
-  process.stdout.write(`http://127.0.0.1:${server.port}/\n`);
 }
 
-const [verb = "", target = "", prev = ""] = process.argv.slice(2);
+const [verb = "", target = "", prev = "", ...rest] = process.argv.slice(2);
 if (target === "")
   fail(
-    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH",
+    "usage: atlas-board build RUN [PREV] | serve SCENARIO_DIR | comments SCENARIO_DIR | surface TREE PATH | mask TREE SCALE PATH...",
   );
 const where = resolve(target);
 if (verb === "build") build(where, prev);
@@ -435,4 +620,5 @@ else if (verb === "comments")
 else if (verb === "surface") {
   const tree = readJson(where);
   process.exitCode = isRecord(tree) && findSurface(tree.tree, prev) ? 0 : 1;
-} else fail(`unknown verb ${verb} (build, serve, comments, surface)`);
+} else if (verb === "mask") mask(where, Number(prev), rest);
+else fail(`unknown verb ${verb} (build, serve, comments, surface, mask)`);

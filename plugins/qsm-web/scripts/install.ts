@@ -2,6 +2,8 @@
 // The shared install base compiles the one bin and writes its completion.
 import { installScript } from "../../../lib/install-base.ts";
 import type { InstallContext, Step } from "../../../lib/install-contract.ts";
+import { messageOf } from "../../../lib/outcome.ts";
+import { localInstance } from "../lib/searxng.ts";
 import {
   CONTEXT7_SETUP_LINE,
   claudeSkillsDir,
@@ -33,10 +35,10 @@ function browserDownloadNote(ctx: InstallContext): string {
   return "shot-scraper install ok (browser download)";
 }
 
-/** The search rung needs an instance, and the address comes from the environment. */
+/** The search rung needs an instance from the environment or local configuration. */
 function searchConfigured(env: InstallContext["env"]): boolean {
   const instance = env.QSM_SEARXNG_INSTANCE;
-  return instance !== undefined && instance.length > 0;
+  return (instance !== undefined && instance.trim().length > 0) || localInstance(env) !== undefined;
 }
 
 /** Report what the tier is still missing. */
@@ -50,11 +52,19 @@ function webTier(ctx: InstallContext): Step {
       detail: "would run shot-scraper install (browser download) if shot-scraper is on PATH",
     };
   }
+  let configured: boolean;
+  try {
+    configured = searchConfigured(ctx.env);
+  } catch (error) {
+    return { name, status: "error", detail: messageOf(error) };
+  }
   const notes = [
     runtime === undefined ? `no container runtime: ${RUNTIME_HINT}` : `${runtime} on PATH`,
-    ...(searchConfigured(ctx.env)
+    ...(configured
       ? []
-      : ["qsm-web searxng has no instance yet: set QSM_SEARXNG_INSTANCE"]),
+      : [
+          "qsm-web searxng has no instance yet: configure qsm-searxng/config.json or set QSM_SEARXNG_INSTANCE",
+        ]),
     browserDownloadNote(ctx),
   ];
   const detail = notes.join("; ");

@@ -117,6 +117,13 @@ instrument is the first task, and the work reports itself blocked instead of shi
 nobody can see. A changed source line is not a UI fix; a before and after measurement is. Owner
 acceptance still decides; the measurement is the evidence the owner judges with.
 
+Nothing a UI paints ever touches anything else: two bodies side by side (badges, pills, buttons,
+chips, cards, rows) keep a gap from the project's spacing scale, in every project, every surface
+and every tool page, an agent's own throwaway pages included. A flex row or a list of bodies gets
+its gap where it is declared, never from the whitespace between inline elements, which is zero
+for elements a script builds. The person in their words: "Nikdy nikde nesmi byt nic co se dotyka,
+v zadnem projektu nebo kodu ever."
+
 ## Clean before and after
 
 A tool leaves the machine as it found it, plus only what it was asked to add. Before it writes, an

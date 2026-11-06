@@ -71,7 +71,8 @@ qsm-web browserbox stop "$name"
 
 ## Caveats
 
-- Search needs an instance: `--instance <url>` or `QSM_SEARXNG_INSTANCE`. The instance owns the
+- Search reads its instance from `~/.config/qsm-searxng/config.json` (`{"instance":"<url>"}`),
+  local to the machine. `--instance` and `QSM_SEARXNG_INSTANCE` override it. The instance owns the
   engine and policy defaults; only the flags you pass are sent.
 - `--profile` selects a named set: `default` follows server defaults, `niche` searches personal
   sites and discussions, `academic` searches publications, `it` searches technical sources, `images`

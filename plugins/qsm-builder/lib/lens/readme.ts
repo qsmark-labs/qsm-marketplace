@@ -2,7 +2,7 @@
 // reads. Pure: text in, text out. `lens readme` in cli.ts reads and writes the files.
 
 import { QsmError } from "../../../../lib/qsm-error.ts";
-import { esc } from "./graph.ts";
+import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { firstSentence, type Marketplace, type Plugin } from "./model.ts";
 
 const START = "<!-- lens:start -->";

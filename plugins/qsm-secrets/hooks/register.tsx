@@ -517,16 +517,15 @@ function afterDelete({ listed, failed }: ReviewCache, id: string, code: string):
 }
 
 /**
- * `/qsm-secrets review`: a pane listing what the capture stored, where `d` or DEL then `y` deletes
+ * `/qsm-secrets-review`: a pane listing what the capture stored, where `d` or DEL then `y` deletes
  * one from the vault. The list is a `Client` (review.tsx); this module reads `qsm-secrets captures`
  * when the pane opens and deletes through `qsm-secrets rm`, so a shell and the pane run the same verbs.
  */
 function registerReview(on: On): void {
   on("session.start", async ($, e, next) => {
     await $.command.register({
-      name: "qsm-secrets",
-      description: "Review what the capture stored and delete an entry: /qsm-secrets review",
-      argumentHint: "review",
+      name: "qsm-secrets-review",
+      description: "Review what the capture stored and delete an entry",
     });
     return next(e);
   }).catch(($, e, next) => {
@@ -534,9 +533,9 @@ function registerReview(on: On): void {
     return next(e);
   });
 
-  on("command.run", { command: "qsm-secrets" }, async ($, e) => {
-    if (e.args.trim() !== "review") {
-      return { text: "qsm-secrets: the command takes one word, review: /qsm-secrets review" };
+  on("command.run", { command: "qsm-secrets-review" }, async ($, e) => {
+    if (e.args.trim() !== "") {
+      return { text: "qsm-secrets: /qsm-secrets-review takes no arguments" };
     }
     const listed = await listCaptures($);
     await update($, review, () => listed);
@@ -550,7 +549,7 @@ function registerReview(on: On): void {
   on("ui.render", { component: "Pane", requestId: REVIEW_PANE }, async ($, e) => {
     const elements = $.ui.resolve(e);
     const cached = await read($, review);
-    // A pane drawn before any /qsm-secrets review ran lists them itself; a render cannot write
+    // A pane drawn before /qsm-secrets-review ran lists them itself; a render cannot write
     // the cache, so it does until the command runs.
     const rows = reviewRows(cached.listed === null ? await listCaptures($) : cached);
     if (!("Client" in elements)) {
@@ -575,7 +574,7 @@ function registerReview(on: On): void {
   on("ui.message", { requestId: REVIEW_PANE }, async ($, e) => {
     const id = deleteRequestOf(e.data);
     const stored = await read($, review);
-    // A pane drawn before /qsm-secrets review ran has no cache: list now, as its render did.
+    // A pane drawn before /qsm-secrets-review ran has no cache: list now, as its render did.
     const cached = stored.listed === null ? await listCaptures($) : stored;
     // The post is code's word, not a fact: only an id the list holds is deleted.
     if (id === undefined || !listedIds(cached).includes(id)) {

@@ -311,8 +311,8 @@ drive — sudo-free computer use on Hyprland/Wayland
   ATLAS (the whole desktop, nested and sandboxed in a desktop slot per journey)
     slot start NAME --desktop QS_PATH [--hypr LUA] [--mock FILE]   one desktop slot; FILE reaches the shell as DRIVE_MOCK (NAME <= 6 chars under /run/user/1000)
     slot aquamarine          build the Aquamarine fix a nested Hyprland needs (once, into the cache)
-    atlas run SCENARIO       every journey in a fresh desktop slot; shots, trees, diff with the last run, index.html, board.html
-    atlas diff RUN [AGAINST] compare two kept runs of one scenario; rewrites index.html and board.html
+    atlas run SCENARIO       every journey in a fresh desktop slot; shots, trees, diff with the last run, board.html
+    atlas diff RUN [AGAINST] compare two kept runs of one scenario; rewrites board.html
     atlas review [SCENARIO]  serve the latest board on 127.0.0.1; notes pinned there land in comments.json
     atlas comments [SCENARIO] the open notes: shot<TAB>x,y<TAB>text
     atlas ls                 scenarios and their kept runs

@@ -1,6 +1,6 @@
 ---
 name: css-ui
-description: "Use when writing or fixing plain CSS and HTML for a page or component, or wiring Tailwind to a set of colours. Triggers: write the CSS for, style this card, CSS dark mode, CSS sticky header covers content, CSS layout shifts, no framework, vanilla CSS, container query, Tailwind colours consistent, Tailwind theme config, napis CSS, tmavy rezim, stylovani. Builds the design source in CSS; how to audit it is ui-audit, why the values are what they are is ui-design."
+description: "Use when writing or fixing plain CSS and HTML for a page or component. Triggers: write the CSS for, style this card, CSS dark mode, CSS sticky header covers content, CSS layout shifts, no framework, vanilla CSS, container query, napis CSS, tmavy rezim, stylovani. Builds the design source in CSS; palette roles and Tailwind are css-tokens, how to audit it is ui-audit, why the values are what they are is ui-design."
 ---
 
 # CSS UI
@@ -80,10 +80,10 @@ design source is the expected column), measuring the result (ui-audit), criteria
 
 ## Libraries
 
-Platform first: `dialog`, `popover`, `details`, `:has`, container queries and `color-scheme` need no
-package. Tailwind v4 carries tokens as utilities (below); the library picks are pick-ui-library's.
-No CSS-in-JS runtime for a static page. Touch and phone fixes (tap highlight, `dvh`, safe areas,
-input zoom) are mobile-native; motion is animate and review-animations.
+Platform first: `dialog`, `popover`, `details`, `:has` and container queries need no package.
+Tailwind and the palette's role aliases are css-tokens'; the library picks are pick-ui-library's. No
+CSS-in-JS runtime for a static page. Touch and phone fixes (tap highlight, `dvh`, safe areas, input
+zoom) are mobile-native; motion is animate and review-animations.
 
 ## Conventions
 
@@ -94,8 +94,9 @@ From the Vercel web interface guidelines, in our words:
   and `color`, and `theme-color` matches the page background.
 - Increase contrast on `:hover`, `:active` and `:focus`, never lower it. Make focus rings clear
   sticky bars (rule 10), and keep a visible replacement for any removed outline.
-- Layered shadows (an ambient one and a direct one), crisp edges from a semi-transparent border
-  plus a shadow (rule 14), nested radii where the child is never larger than the parent, and
+- On an overlay: layered shadows (an ambient one and a direct one) and a crisp edge from a
+  semi-transparent border plus a shadow (rule 14); a container's edge is ui-palette's one
+  separation mechanism, not this. Nested radii where the child is never larger than the parent, and
   borders and shadows tinted toward the background hue so greys do not look pasted on.
 - Text: `text-wrap: balance` on headings, `…` not `...`, a non-breaking space inside `10 MB` and
   `⌘ K`, curly quotes, `scroll-margin-top` on headings, and a skip link.
@@ -128,48 +129,19 @@ a test driver's accessibility snapshot or the browser's accessibility pane), and
 `getComputedStyle(el)` for colour, size and bounds per state. These are the introspection surface
 for ui-audit and a11y-audit; a UI that cannot be read this way is reported as not measured.
 
-## Tailwind
-
-Tailwind is the same tokens in another syntax; it adds nothing to the discipline.
-
-- Put tokens in `@theme` (v4) or `theme.extend` (v3) and nowhere else. Define the pair names
-  (`--color-primary`, `--color-on-primary`) so `bg-primary text-on-primary` is the only way
-  to colour a fill.
-- For themes, define the values as plain custom properties flipped by the
-  `prefers-color-scheme` block of rule 3, and reference them with `@theme inline { --color-canvas:
-  var(--canvas) }`. Then no `dark:` variant is needed on each element; a component with a
-  `dark:` colour is a second place the dark value lives.
-- No arbitrary values (`bg-[#1a1a1a]`, `p-[13px]`, `duration-[240ms]`): they are literals. A
-  missing step means a missing token; add it to the design source first.
-- `motion-reduce:` and `focus-visible:` on every animation and every control, as rules 4 and 7.
-- Build class names whole (`{ red: 'bg-red-500' }`), never `bg-${color}-500`: the scanner
-  cannot see the second.
-
 ## Red flags
 
-- A hex, `rgb()`, `ms`, or `z-index` number in a component rule: replace with a token, because
-  the next theme or density change will miss it.
-- `outline: none` or `outline: 0` with no `:focus-visible` rule: add the ring, because the
-  keyboard user loses their place.
-- A dark block that only swaps `#fff` and `#000`: design the values on their own, because
-  inverted greys wash out and borders vanish.
 - `transition: all`: name the properties, because layout properties will animate and shift.
 - `100vh`, or a `position: fixed` header with no `scroll-padding`: fix per mobile-native and
   rule 10, because the mobile address bar and the sticky header both hide content.
 - A hover that sets `width`, `border-width`, `margin`, `padding`, or `font-weight`: move to a
   non-layout property, because the target moves under the pointer.
-- `<div onclick>` or `<span role="button">`: use `button`, because role, name and keyboard
-  are then free.
 
 ## Say it in the reply
 
-Start with which tokens exist and which were added, then the two themes and the pair
-ratios you checked or could not measure (a measured number, or "not measured: no browser here";
-ui-audit measures it). List the states and what bounds they hold. Say which rules from the
-design source you could not apply because it was absent, and which you assumed. Never claim a
-contrast ratio you did not compute.
+Start with which tokens exist and which were added, then the two themes and the pair ratios you
+checked or could not measure ("not measured: no browser here"; ui-audit measures it). List the
+states and what bounds they hold. Say which rules from the design source you could not apply because
+it was absent, and which you assumed. Never claim a contrast ratio you did not compute.
 
-Sources: vercel-labs/web-interface-guidelines (MIT); emilkowalski/skills (MIT).
-Tailwind syntax: [theme variables](https://tailwindcss.com/docs/theme) and
-[class detection](https://tailwindcss.com/docs/detecting-classes-in-source-files).
-The token-only policy is ui-design's, not a Tailwind restriction.
+Sources: see the README.

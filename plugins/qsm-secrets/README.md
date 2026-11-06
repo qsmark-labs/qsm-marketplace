@@ -25,7 +25,7 @@ this plugin can go.
 | Hook | `tool.call` (use by id) | Runs a command holding `{{secret:<id>}}` with the value in one environment variable. |
 | Hook | `session.append` | Masks every stored value in every row the conversation keeps (tool results, file reads, responses) before it is stored; a row it cannot mask is withheld. |
 | Hook | `prompt.submit` | Stores a pasted secret under `cap_<hex>` (or under `<name>` for a pasted `name=value`), records its kind, time, session and working directory in the capture index, and gives the model a placeholder; a prompt it cannot check is not sent. |
-| Command | `/qsm-secrets review` | Opens a pane listing what the capture stored (kind, date, project, session; never a value): the arrows move, `d` or DEL then `y` within 3 seconds deletes the entry from the vault. |
+| Command | `/qsm-secrets-review` | Opens a pane listing what the capture stored (kind, date, project, session; never a value): the arrows move, `d` or DEL then `y` within 3 seconds deletes the entry from the vault. |
 | Hook | `session.end` | Scrubs every stored value from the transcript and its subagents' and removes rendered files. |
 | CLI | `qsm-secrets` | 21 verbs, see [USAGE.md](USAGE.md). |
 | Pane | `qml/askpass/` | A Quickshell pane that asks the person for a secret, a `sudo -A`, ssh or git answer, or an allow or deny, and returns it to the asker. |
@@ -66,7 +66,7 @@ instead of the value. Paste `deploy-key=<token>` and it is stored as the key `de
 never overwritten, the value gets a `cap_<hex>` and the toast says why.
 
 When the capture took something that was no secret (a certificate, a test value), run
-`/qsm-secrets review`: a pane lists every capture still stored, newest first, as kind, date,
+`/qsm-secrets-review`: a pane lists every capture still stored, newest first, as kind, date,
 project and the session's first eight characters. Move with the arrows, press `d` or DEL, and `y`
 within 3 seconds removes the entry from the vault and its row from the list; any other key, or the
 3 seconds, leaves it. A failed delete stays in the list with its outcome code. A key you named

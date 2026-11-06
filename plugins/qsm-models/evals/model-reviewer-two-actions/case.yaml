@@ -1,0 +1,7 @@
+---
+schema_version: "1.1"
+name: model-reviewer-two-actions
+tags: [scenario]
+runs: 3
+context:
+  scaffold_script: model-reviewer-two-actions.sh

@@ -19,14 +19,20 @@
 # fake machine changed while the desktop runs, see slot_mock),
 # shot NAME (taken once the screen is still), shot-now NAME (taken at once, for a state that times out);
 # either may end in @Type, the item type of the surface it shows, which the board crops to; @A/B
-# is the first B inside the first A, for a surface whose own type is generic.
+# is the first B inside the first A, for a surface whose own type is generic, and A[n] the nth A
+# (0 the first). ~@PATH after it masks an item that animates by design (a pulsing glyph): the shot
+# waits for the rest of the screen, the comparison skips its rect, and its node leaves the tree,
+# and the run records ATLAS_MASK_SECS of the screen right after the shot, so the board plays what
+# moves. record NAME [@Type] starts a real-frame recording of the screen and stop ends it; the
+# steps between them run as usual.
 # todo @Type STATE, anywhere: a state of that surface no journey shoots yet, an empty frame on the board.
 #
-# A run is <scenario>/<date>-<time>-<rng>/: index.html (everything on one page), board.html (the
-# review board, see scripts/atlas-board.ts), shots/ (the
-# captures as taken), trees/ (the item tree of each shot), logs/ (the shell's log per journey),
-# checks/ (what the scenario's check printed per shot),
-# diff-<run>/ (a comparison with that run, see atlas_compare).
+# A run is <scenario>/<date>-<time>-<rng>/: board.html (the review board, see
+# scripts/atlas-board.ts), shots/ (the captures as taken), trees/ (the item tree of each shot),
+# logs/ (the shell's log per journey), checks/ (what the scenario's check printed per shot),
+# recordings/ (NAME.webm and the item tree at its end) with recordings.tsv (journey, name, kind
+# record or mask, surface, then the cadence: frames, span s, effective fps, max gap ms, gaps over
+# 1.5 periods of 60 fps), diff-<run>/ (a comparison with that run, see atlas_compare).
 
 ATLAS_ROOT="${DRIVE_ATLAS_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/qsm/compuse/atlas}"
 # A changed pixel differs by more than this share in one channel; a changed area is a connected
@@ -85,16 +91,16 @@ atlas_wait_shell() {
   die "the shell in slot '$1' never answered (see $(slot_dir "$1")/qs.log)"
 }
 
-# Shoots OUT once two captures 150 ms apart show no changed area, so a shot never lands mid-animation;
-# the last capture is the shot. A screen that never stills (a looping animation) is shot after 5 s
-# and marked moving.
+# Shoots OUT once two captures 150 ms apart show no changed area outside MASKS, so a shot never
+# lands mid-animation; the last capture is the shot. A screen that never stills (a looping
+# animation) is shot after 5 s and marked moving.
 atlas_still() {
-  local out="$1" a="$1.still.png" i
+  local out="$1" masks="${2:-}" a="$1.still.png" i
   grim -o "$SLOT_OUTPUT" "$a" || die "grim failed in the atlas slot"
   for ((i = 0; i < 33; i++)); do
     sleep 0.15
     grim -o "$SLOT_OUTPUT" "$out" || die "grim failed in the atlas slot"
-    if [[ -z "$(atlas_areas "$a" "$out")" ]]; then
+    if [[ -z "$(atlas_areas "$a" "$out" "$masks")" ]]; then
       rm -f "$a"
       echo still
       return
@@ -103,6 +109,59 @@ atlas_still() {
   done
   command mv -f "$a" "$out"
   echo moving
+}
+
+ATLAS_MASK_SECS=2
+# The pause between keystrokes while a record ... stop runs.
+ATLAS_REC_KEY_MS=90
+
+# Starts wf-recorder on the slot's screen; it stamps each frame with its capture time and asks for
+# a frame only on damage (see drive-motion), so the file's timestamps are the real cadence. Sets
+# ATLAS_REC_PID in this shell, never in a subshell, so atlas_rec_save can wait for it.
+atlas_rec_begin() {
+  wf-recorder -y -o "$SLOT_OUTPUT" -f "$1" >/dev/null 2>&1 &
+  ATLAS_REC_PID=$!
+  # wf-recorder binds to the output before its first frame; a step taken sooner is not recorded.
+  sleep 0.3
+}
+
+# Ends the recording of NAME and keeps it: NAME.webm (VP9, the capture timestamps passed through,
+# since a browser plays no Matroska H.264 reliably), the item tree at its end (the board's crop),
+# and a recordings.tsv row with the cadence.
+atlas_rec_save() {
+  local slot="$1" run="$2" journey="$3" name="$4" kind="$5" surface="$6" base cadence
+  base="$run/recordings/$journey--$name"
+  kill -INT "$ATLAS_REC_PID" 2>/dev/null
+  # wf-recorder finalises the file on its next frame, and a still screen sends none.
+  slot_wake
+  local i
+  for ((i = 0; i < 100; i++)); do
+    kill -0 "$ATLAS_REC_PID" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "$ATLAS_REC_PID" 2>/dev/null; then
+    kill -KILL "$ATLAS_REC_PID" 2>/dev/null
+    wait "$ATLAS_REC_PID" 2>/dev/null
+    ATLAS_REC_PID=""
+    die "recording $journey--$name: wf-recorder did not finish within 10 s of its stop"
+  fi
+  wait "$ATLAS_REC_PID" 2>/dev/null
+  ATLAS_REC_PID=""
+  [[ -s "$base.mkv" ]] || die "recording $journey--$name: wf-recorder wrote no video"
+  slot_tree "$slot" >"$base.json"
+  [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$base.json" "$surface" >/dev/null ||
+    die "recording $journey--$name names @$surface, and its item tree holds no $surface with a size"
+  cadence="$(ffprobe -v error -select_streams v:0 -show_entries frame=pts_time -of csv=p=0 "$base.mkv" |
+    awk -F, -v fps=60 -f "$MOTION_DIR/cadence.awk" |
+    awk '{ for (i = 1; i <= NF; i++) { split($i, kv, "="); v[kv[1]] = kv[2] } }
+      END { printf "%d\t%.3f\t%.1f\t%.1f\t%d", v["frames"], v["span"], v["effective_fps"], v["max_gap"], v["gaps_over_1.5_periods"] }')"
+  # A screen that never changed while it recorded gives one frame: nothing moved that should have.
+  ((${cadence%%$'\t'*} >= 2)) ||
+    die "recording $journey--$name caught ${cadence%%$'\t'*} frames: the screen did not change while it recorded"
+  ffmpeg -v error -y -i "$base.mkv" -an -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -crf 34 -b:v 0 \
+    -fps_mode passthrough "$base.webm" || die "recording $journey--$name: ffmpeg could not write WebM"
+  rm -f "$base.mkv"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$journey" "$name" "$kind" "$surface" "$cadence" >>"$run/recordings.tsv"
 }
 
 # hyprctl exits 0 when the lua of a dispatch or eval fails and prints the error, so its output decides.
@@ -114,7 +173,8 @@ atlas_step() {
   local slot="$1" line="$2" verb a b rest
   read -r verb a b rest <<<"$line"
   case "$verb" in
-    type) slot_type "${line#type }" 0 ;;
+    # Inside a recording a person watches the text arrive, so it is typed at a person's pace.
+    type) slot_type "${line#type }" 0 "${ATLAS_KEY_MS:-}" ;;
     exec)
       [[ "$line" != *"]]"* ]] || die "an exec command must not hold ']]' (it is a lua long string): $line"
       atlas_hyprctl "$slot" dispatch "hl.dsp.exec_cmd([[${line#exec }]])"
@@ -134,17 +194,33 @@ atlas_step() {
 # Prints the count of failed laws, or "error".
 atlas_check() {
   local cmd="$1" run="$2" journey="$3" name="$4" slot="$5" rc
-  ATLAS_SHOT="$run/shots/$name.png" ATLAS_TREE="$run/trees/$name.json" GEOM_TREE="$run/trees/$name.json" \
+  # The check's `drive` is the one running this atlas, never another checkout's on PATH.
+  PATH="$MOTION_DIR:$PATH" ATLAS_SHOT="$run/shots/$name.png" ATLAS_TREE="$run/trees/$name.json" GEOM_TREE="$run/trees/$name.json" \
     ATLAS_JOURNEY="$journey" ATLAS_NAME="$name" DRIVE_SLOT="$slot" bash -c "$cmd" >"$run/checks/$name.txt" 2>&1
   rc=$?
   if ((rc > 1)); then echo error; else grep -c ': FAIL$' "$run/checks/$name.txt"; fi
 }
 
-# One journey in a fresh desktop slot; prints "journey<TAB>shot<TAB>step<TAB>still<TAB>fails<TAB>surface"
-# per shot.
+# A surface or mask path: types (letters, digits, underscore), each with an optional [n], joined by /.
+export ATLAS_PATH='^[A-Za-z0-9_]+(\[[0-9]+\])?(/[A-Za-z0-9_]+(\[[0-9]+\])?)*$'
+
+# Takes a shot's masked items out of its TREE and prints their rects in device px (the slot's scale).
+atlas_mask() {
+  local name="$1" tree="$2"
+  shift 2
+  bun "$MOTION_DIR/atlas-board.ts" mask "$tree" "$SLOT_SCALE" "$@" ||
+    die "shot $name masks $*, and its item tree holds no such item with a size"
+}
+
+# One journey in a fresh desktop slot; prints
+# "journey<TAB>shot<TAB>step<TAB>still<TAB>fails<TAB>surface<TAB>masks" per shot.
 atlas_journey() {
   local scenario="$1" journey="$2" run="$3" slot="$4" settle="$5" ready="$6" check="$7" n line shot surface name still fails
-  local -a steps
+  local rest word rects tree recording="" rec_surface=""
+  local -a steps words masks
+  # A recording shares no name with a shot or another recording of its journey: the board keys
+  # frames and notes by name, and a masked shot's recording already takes its shot's.
+  local -A named=()
   shift 7
   slot_start "$slot" "$@" >/dev/null
   export DRIVE_SLOT="$slot"
@@ -155,32 +231,73 @@ atlas_journey() {
   for ((n = 0; n < ${#steps[@]}; n++)); do
     line="${steps[n]}"
     if [[ "$line" == shot\ * || "$line" == shot-now\ * ]]; then
-      shot="${line#* }" surface=""
-      if [[ "$shot" == *" @"* ]]; then surface="${shot##* @}" shot="${shot% @*}"; fi
-      [[ -z "$surface" && "${line#* }" != *" @"* || "$surface" =~ ^[A-Za-z0-9_]+(/[A-Za-z0-9_]+)*$ ]] ||
-        die "shot $journey--$shot: @'$surface' is no item type (letters, digits, underscore; A/B for a path)"
-      name="$journey--$shot"
+      read -r _ shot rest <<<"$line"
+      read -ra words <<<"$rest"
+      name="$journey--$shot" surface="" masks=() rects=""
+      [[ "${named[$shot]:-}" != record ]] || die "shot $name has the name of a recording of its journey"
+      named[$shot]=shot
       [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "shot names are letters, digits, dot, dash and underscore: '$name'"
+      for word in "${words[@]}"; do
+        [[ "${word#*@}" =~ $ATLAS_PATH ]] ||
+          die "shot $name: '$word' names no item path (letters, digits, underscore, [n]; A/B for a path)"
+        case "$word" in
+          @*) [[ -z "$surface" ]] || die "shot $name names two surfaces"; surface="${word#@}" ;;
+          ~@*) masks+=("${word#~@}") ;;
+          *) die "shot $name: '$word' is neither @SURFACE nor ~@MASK" ;;
+        esac
+      done
+      tree="$run/trees/$name.json"
+      # A mask is found before the shot waits, so the wait ignores it from the first capture.
+      if ((${#masks[@]})); then
+        slot_tree "$slot" >"$tree"
+        # die in a command substitution ends only the subshell.
+        rects="$(atlas_mask "$name" "$tree" "${masks[@]}")" || exit 1
+      fi
       # shot-now catches a state that times out (an armed button), so it waits for nothing.
       if [[ "$line" == shot-now\ * ]]; then
         OUT_DIR="$run/shots" cmd_shot - "$name" >/dev/null
         still=now
       else
-        still="$(atlas_still "$run/shots/$name.png")" || exit 1
+        still="$(atlas_still "$run/shots/$name.png" "$rects" "$tree")" || exit 1
       fi
-      slot_tree "$slot" >"$run/trees/$name.json"
+      slot_tree "$slot" >"$tree"
+      if ((${#masks[@]})); then rects="$(atlas_mask "$name" "$tree" "${masks[@]}")" || exit 1; fi
       # The board crops the shot to this item; a renamed component must stop the run, not uncrop it.
       [[ -z "$surface" ]] || bun "$MOTION_DIR/atlas-board.ts" surface "$run/trees/$name.json" "$surface" >/dev/null ||
         die "shot $name names @$surface, and its item tree holds no $surface with a size"
       fails=""
       [[ -z "$check" ]] || fails="$(atlas_check "$check" "$run" "$journey" "$name" "$slot")"
-      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$journey" "$shot" "$((n + 1))" "$still" "$fails" "$surface"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$journey" "$shot" "$((n + 1))" "$still" "$fails" "$surface" "$rects"
+      if ((${#masks[@]})); then
+        [[ -z "$recording" ]] || die "shot $name masks an item while $recording records; a recording already holds it"
+        atlas_rec_begin "$run/recordings/$name.mkv"
+        sleep "$ATLAS_MASK_SECS"
+        atlas_rec_save "$slot" "$run" "$journey" "$shot" mask "$surface"
+      fi
+    elif [[ "$line" == record\ * ]]; then
+      read -r _ shot rest <<<"$line"
+      [[ -n "$shot" && "$shot" != @* ]] || die "journey $journey: record needs a NAME: '$line'"
+      [[ -z "${named[$shot]:-}" ]] || die "journey $journey: record $shot has the name of a shot or recording of it"
+      named[$shot]=record
+      [[ -z "$recording" ]] || die "journey $journey: record $shot starts while $recording records"
+      [[ "$journey--$shot" =~ ^[A-Za-z0-9._-]+$ ]] || die "recording names are letters, digits, dot, dash and underscore: '$shot'"
+      rec_surface="${rest#@}"
+      [[ -z "$rest" || ("$rest" == @* && "$rec_surface" =~ $ATLAS_PATH) ]] ||
+        die "record $shot: '$rest' is not @SURFACE"
+      recording="$journey--$shot"
+      ATLAS_KEY_MS="$ATLAS_REC_KEY_MS"
+      atlas_rec_begin "$run/recordings/$recording.mkv"
+    elif [[ "$line" == stop ]]; then
+      [[ -n "$recording" ]] || die "journey $journey: stop with no record before it"
+      atlas_rec_save "$slot" "$run" "$journey" "${recording#"$journey--"}" record "$rec_surface"
+      recording="" ATLAS_KEY_MS=""
     else
       atlas_step "$slot" "$line"
       # A step right before shot-now gets no settle, or the state it caught is already gone.
       [[ "${steps[n + 1]:-}" == shot-now\ * ]] || sleep "$settle"
     fi
   done
+  [[ -z "$recording" ]] || die "journey $journey ends while $recording records: a record needs its stop"
   # The shell's log is the one record of what it saw; the slot dir goes with the slot.
   command cp "$(slot_dir "$slot")/qs.log" "$run/logs/$journey.qs.log"
   slot_kill "$slot"
@@ -199,7 +316,7 @@ atlas_run() {
   check="$(atlas_path "$check")"
   [[ -n "$desktop" ]] || die "the scenario names no desktop"
   [[ -n "$(atlas_journeys "$scenario")" ]] || die "the scenario has no journey"
-  opt="$(awk '$1 == "todo" && !($2 ~ /^@[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)*$/ && NF >= 3) { print NR ": " $0; exit }' "$scenario")"
+  opt="$(awk '$1 == "todo" && !(substr($2, 1, 1) == "@" && substr($2, 2) ~ ENVIRON["ATLAS_PATH"] && NF >= 3) { print NR ": " $0; exit }' "$scenario")"
   [[ -z "$opt" ]] || die "a todo line is 'todo @Type STATE': line $opt"
   # A pause that sleep refuses would be no pause at all, and the race it covers would pass.
   for opt in settle ready; do
@@ -209,14 +326,17 @@ atlas_run() {
   prev="$(atlas_runs "$dir" | tail -1)"
   id="$(date +%Y%m%d-%H%M%S)-$(printf '%04x' "$RANDOM")"
   run="$dir/.$id"
-  mkdir -p "$run/shots" "$run/trees" "$run/logs" "$run/checks"
+  need wf-recorder
+  need ffprobe
+  need ffmpeg
+  mkdir -p "$run/shots" "$run/trees" "$run/logs" "$run/checks" "$run/recordings"
   command cp "$scenario" "$run/scenario"
   printf '%s\n' "$(git -C "$desktop" describe --always --dirty 2>/dev/null || echo unknown)" >"$run/desktop-version"
   slot="at$((RANDOM % 10000))"
   start=(--desktop "$desktop")
   [[ -z "$hypr" ]] || start+=(--hypr "$hypr")
   [[ -z "$mock" ]] || start+=(--mock "$mock")
-  trap 'slot_kill "'"$slot"'" 2>/dev/null; rm -rf "'"$run"'"' EXIT
+  trap '[[ -z "${ATLAS_REC_PID:-}" ]] || kill "$ATLAS_REC_PID" 2>/dev/null; slot_kill "'"$slot"'" 2>/dev/null; rm -rf "'"$run"'"' EXIT
   for journey in $(atlas_journeys "$scenario"); do
     printf 'journey %s\n' "$journey" >&2
     atlas_journey "$scenario" "$journey" "$run" "$slot" "$settle" "$ready" "$check" "${start[@]}" >>"$run/shots.tsv"
@@ -225,8 +345,6 @@ atlas_run() {
   command mv "$run" "$dir/$id"
   run="$dir/$id"
   if [[ -n "$prev" ]]; then atlas_compare "$dir/$prev" "$run"; fi
-  atlas_report "$run" "$prev"
-  printf '%s/index.html\n' "$run"
   atlas_board "$run" "$prev"
   printf '%s/board.html\n' "$run"
   # The run is kept either way; the exit code tells an agent a law failed.
@@ -237,12 +355,18 @@ atlas_run() {
 # The completed runs of one scenario dir, oldest first.
 atlas_runs() { find "$1" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' 2>/dev/null | sort; }
 
-# The changed areas of one shot: "x y w h" per connected region over the noise floor.
+# The changed areas of one shot: "x y w h" per connected region over the noise floor. An area
+# inside a mask (MASKS as x,y,w,h;... in device px, 2 px slack) is the animation it masks, not a
+# change.
 atlas_areas() {
   magick "$1" "$2" -compose difference -composite -separate -evaluate-sequence max \
     -threshold "$ATLAS_FUZZ%" -define connected-components:verbose=true \
     -define connected-components:area-threshold="$ATLAS_MIN_AREA" -connected-components 8 null: \
-    | awk '/gray\(255\)|#FFFFFF|white/ { split($2, g, /[x+]/); print g[3], g[4], g[1], g[2] }'
+    | awk -v masks="${3:-}" 'BEGIN { n = split(masks, m, ";") }
+      /gray\(255\)|#FFFFFF|white/ { split($2, g, /[x+]/); x = g[3]; y = g[4]; w = g[1]; h = g[2]
+        for (i = 1; i <= n; i++) { split(m[i], r, ",")
+          if (x >= r[1] - 2 && y >= r[2] - 2 && x + w <= r[1] + r[3] + 2 && y + h <= r[2] + r[4] + 2) next }
+        print x, y, w, h }'
 }
 
 # Every measure of a shot's item tree as "key<TAB>value", the key a path of types and same-type
@@ -270,17 +394,20 @@ atlas_measures() {
 
 # Run B against run A, per shot both hold, into B/diff-<A>/: NAME.png (run A beside run B, each
 # changed area boxed, B's changed pixels marked), NAME.areas (x y w h, device px), NAME.measures
-# (key, before, after for every measure that changed), summary.tsv (name, areas, measures) and
-# diff.json (the same per shot: areas and changes).
+# (key, before, after for every measure that changed) and diff.json (the same per shot: areas
+# and changes), which the board reads.
 atlas_compare() {
-  local a="$1" b="$2" out png name areas changed draw x y w h width
+  local a="$1" b="$2" out png name masks areas draw x y w h width
   out="$b/diff-$(basename "$a")"
   rm -rf "$out"
   mkdir -p "$out"
+  # Two runs may share no shot, and diff.json is then an empty list.
+  : >"$out/diff.jsonl"
   for png in "$b"/shots/*.png; do
     name="$(basename "$png" .png)"
     [[ -f "$a/shots/$name.png" ]] || continue
-    areas="$(atlas_areas "$a/shots/$name.png" "$png" | tee "$out/$name.areas" | wc -l)"
+    masks="$(awk -F'\t' -v n="$name" '$1 "--" $2 == n { print $7 }' "$b/shots.tsv")"
+    areas="$(atlas_areas "$a/shots/$name.png" "$png" "$masks" | tee "$out/$name.areas" | wc -l)"
     if ((areas > 0)); then
       width="$(magick identify -format '%w' "$png")"
       draw=""
@@ -292,9 +419,8 @@ atlas_compare() {
         -evaluate-sequence max -threshold "$ATLAS_FUZZ%" -fill '#ff3df0' -opaque white -transparent black \) \
         -compose over -composite \) +append -fill none -stroke '#ff3df0' -strokewidth 3 -draw "$draw" "$out/$name.png"
     fi
-    changed="$(join -t $'\t' -a1 -a2 -e GONE -o 0,1.2,2.2 <(atlas_measures "$a/trees/$name.json" | sort) \
-      <(atlas_measures "$b/trees/$name.json" | sort) | awk -F'\t' '$2 != $3' | tee "$out/$name.measures" | wc -l)"
-    printf '%s\t%s\t%s\n' "$name" "$areas" "$changed" >>"$out/summary.tsv"
+    join -t $'\t' -a1 -a2 -e GONE -o 0,1.2,2.2 <(atlas_measures "$a/trees/$name.json" | sort) \
+      <(atlas_measures "$b/trees/$name.json" | sort) | awk -F'\t' '$2 != $3' >"$out/$name.measures"
     jq -cn --arg name "$name" --rawfile areas "$out/$name.areas" --rawfile changes "$out/$name.measures" '{name: $name,
       areas: [$areas | splits("\n") | select(length > 0) | split(" ") | map(tonumber) | {x: .[0], y: .[1], w: .[2], h: .[3]}],
       changes: [$changes | splits("\n") | select(length > 0) | split("\t") | {key: .[0], before: .[1], after: .[2]}]}' >>"$out/diff.jsonl"
@@ -316,8 +442,6 @@ atlas_diff() {
   [[ "$(readlink -f "$(dirname "$against")")" == "$(readlink -f "$(dirname "$run")")" ]] ||
     die "AGAINST '$against' is a run of another scenario than RUN"
   atlas_compare "$against" "$run"
-  atlas_report "$run" "$(basename "$against")"
-  printf '%s/index.html\n' "$run"
   atlas_board "$run" "$(basename "$against")"
   printf '%s/board.html\n' "$run"
 }
@@ -350,62 +474,4 @@ cmd_atlas() {
     comments) d="$(atlas_dir "${1:-}")" && bun "$MOTION_DIR/atlas-board.ts" comments "$d" ;;
     *) die "atlas needs run SCENARIO | diff RUN [AGAINST] | review [SCENARIO] | comments [SCENARIO] | ls" ;;
   esac
-}
-
-atlas_html() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
-
-# One page per run: every shot by journey, its changed areas and measures against the run it was compared with.
-atlas_report() {
-  local run="$1" against="${2:-}" diff="" journey shot step still name img areas moved last=""
-  [[ -z "$against" ]] || diff="diff-$against"
-  {
-    cat <<HTML
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas $(basename "$(dirname "$run")")</title><style>
-:root{--bg:#120d1c;--card:#1d1629;--line:#2c2340;--text:#ece6f6;--muted:#a99cbf;--accent:#c5a5e9;--change:#ff3df0}
-body{margin:0;padding:24px 16px;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1280px;margin:0 auto}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:32px 0 12px;color:var(--accent)}
-p{margin:0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
-figure{margin:0;background:var(--card);border-radius:12px;overflow:hidden}figure img{display:block;width:100%;height:auto}
-figcaption{padding:10px 12px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}figcaption b{font-weight:600}
-.same{color:var(--muted)}.changed{color:var(--change);font-weight:600}a{color:var(--accent)}
-details{padding:0 12px 10px;color:var(--muted);font-size:13px}pre{white-space:pre-wrap;margin:6px 0 0}
-</style></head><body><main>
-<h1>Atlas $(basename "$(dirname "$run")") · $(basename "$run")</h1>
-<p>desktop $(atlas_html <"$run/desktop-version") · $(if [[ -n "$against" ]]; then printf 'compared with %s' "$against"; else printf 'first run, nothing to compare'; fi)</p>
-HTML
-    # Tab is IFS whitespace, so read would merge an empty fails column with the surface after it.
-    while IFS= read -r row && IFS=$'\x1f' read -r journey shot step still fails _ <<<"${row//$'\t'/$'\x1f'}"; do
-      [[ "$journey" == "$last" ]] || { [[ -z "$last" ]] || echo '</div>'; printf '<h2>%s</h2><div class="grid">\n' "$journey"; last="$journey"; }
-      name="$journey--$shot"
-      areas="" moved=""
-      [[ -z "$diff" ]] || read -r areas moved < <(awk -F'\t' -v n="$name" '$1 == n { print $2, $3 }' "$run/$diff/summary.tsv" 2>/dev/null)
-      img="shots/$name.png"
-      [[ -z "$diff" || ! -f "$run/$diff/$name.png" ]] || img="$diff/$name.png"
-      printf '<figure><a href="shots/%s.png"><img src="%s" alt="%s"></a><figcaption><b>%s</b><span class="same">step %s</span>' \
-        "$name" "$img" "$shot" "$shot" "$step"
-      [[ "$still" != moving ]] || printf '<span class="changed">never still</span>'
-      if [[ -z "$areas" ]]; then printf '<span class="same">new</span>'
-      elif ((areas == 0 && moved == 0)); then printf '<span class="same">unchanged</span>'
-      else printf '<span class="changed">areas changed: %s · measures changed: %s</span>' "$areas" "$moved"; fi
-      case "$fails" in
-        "") ;;
-        0) printf '<span class="same">checks ok</span>' ;;
-        error) printf '<span class="changed">check could not run</span>' ;;
-        *) printf '<span class="changed">checks: %s FAIL</span>' "$fails" ;;
-      esac
-      printf '</figcaption>'
-      [[ ! -s "$run/checks/$name.txt" ]] || printf '<details><summary>checks</summary><pre>%s</pre></details>' "$(atlas_html <"$run/checks/$name.txt")"
-      printf '<details><summary>surfaces</summary><pre>%s</pre></details>' \
-        "$(GEOM_TREE="$run/trees/$name.json" "$MOTION_DIR/geom" dump --depth 3 | atlas_html)"
-      if [[ -n "$diff" && -s "$run/$diff/$name.areas" ]]; then
-        printf '<details><summary>changed areas (x y w h, device px)</summary><pre>%s</pre></details>' "$(head -40 "$run/$diff/$name.areas" | atlas_html)"
-      fi
-      if [[ -n "$diff" && -s "$run/$diff/$name.measures" ]]; then
-        printf '<details><summary>measures that changed (before, after; GONE = absent)</summary><pre>%s</pre></details>' "$(head -40 "$run/$diff/$name.measures" | atlas_html)"
-      fi
-      printf '</figure>\n'
-    done <"$run/shots.tsv"
-    printf '</div></main></body></html>\n'
-  } >"$run/index.html"
 }

@@ -78,7 +78,7 @@ Each law is the short form; the skill named after it holds the detail.
 
 ```text
 .claude-plugin/marketplace.json   # one entry per plugin, source ./plugins/<name>
-lib/                              # layer 0: install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
+lib/                              # layer 0: install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, loopback.ts, html.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture, server: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
 plugins/<name>/                   # layer 1: one plugin
   .claude-plugin/plugin.json      # name = directory name, author {"name": "qsm"}
   qsm.json                        # bin + command descriptions, only when the plugin ships a CLI
@@ -120,6 +120,7 @@ what done means, ending in a `strict-reviewer` review.
 | `validate-no-private-helpers` | no private copy of a root helper, HOME and XDG read only in `lib/paths.ts`, no `process.env` spread in a test |
 | `validate-test-temp` | test code makes temp dirs through `sandboxDir` only |
 | `validate-no-data-deletion` | no plugin writes a `cleanupPeriodDays` below 36500: a tool never deletes what the person made |
+| `validate-no-docs-delete` | no skill, agent, command or hook calls `qsm-docs delete` or `$.docs.delete`: only the owner deletes a snapshot |
 | `typecheck-hooks` | every hooks module typechecks against the engine types |
 | `test-hooks` | `claude plugin validate` and the hooks tests of every plugin |
 | `plugin-eval` | `bun run eval <plugin>`: the skill and agent evals |

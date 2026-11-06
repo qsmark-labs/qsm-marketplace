@@ -7,6 +7,17 @@ value ever entering the agent's context or terminal output.
 
 ## Requirements
 
+### Requirement: Review captured secrets in a pane
+
+The `/qsm-secrets-review` command SHALL open the captures review pane without exposing values.
+Its name SHALL be distinct from the plugin's `qsm-secrets` skill, so Claude Code can register both.
+The command SHALL reject arguments and SHALL leave capture and masking hooks unchanged.
+
+#### Scenario: Review command is available at session start
+
+- **WHEN** an interactive session loads the plugin
+- **THEN** `/qsm-secrets-review` is registered and opens the captures pane
+
 ### Requirement: Run a command with the secret on its input
 
 The wrapper SHALL accept a stored key and a consumer command and SHALL deliver

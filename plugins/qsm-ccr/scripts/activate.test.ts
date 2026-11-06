@@ -56,13 +56,13 @@ describe("activation", () => {
     expect(r.steps.map((s) => s.status)).not.toContain("installed");
     expect(r.detail).toContain("would set profile default-claude-code, default-codex");
     expect(r.detail).toContain("would remove model_provider, model_catalog_json");
-    expect(r.detail).toContain("would write CLAUDE_CODE_TEAMMATE_COMMAND");
+    expect(r.detail).not.toContain("would write CLAUDE_CODE_TEAMMATE_COMMAND");
     expect(files(w)).toEqual(before);
     expect(readdirSync(w.codexHome).filter((f) => f.includes("bak"))).toEqual([]);
     expect(ccrCalls(w)).toEqual([]);
   });
 
-  test("activation guards, returns codex to native, writes the command; a second run is already everywhere", async () => {
+  test("activation guards, returns codex to native and leaves settings alone; a second run is already everywhere", async () => {
     const w = unguardedWorld();
     const first = await run(w);
     expect(first.status).toBe("installed");
@@ -71,10 +71,7 @@ describe("activation", () => {
     expect(readFileSync(`${toml(w)}.qsm-ccr.bak`, "utf8")).toBe(CCR_TOML);
     expect(first.detail).toContain("model_provider, model_catalog_json");
     expect(first.detail).toContain("[model_providers.claude-code-router]");
-    expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({
-      theme: "dark",
-      env: { CLAUDE_CODE_TEAMMATE_COMMAND: join(w.bin, "qsm-ccr") },
-    });
+    expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({ theme: "dark" });
     expect(activation.status(w.env)).toBe("activated");
     const before = files(w);
     const second = await run(w);
@@ -160,11 +157,9 @@ describe("activation", () => {
 
   test("a settings file that does not parse is an error naming it, left as it was", async () => {
     const w = makeWorld({ settings: "{ broken" });
-    const before = files(w);
-    const step = (await run(w)).steps.find((s) => s.name === "teammate command");
-    expect(step?.status).toBe("error");
-    expect(step?.detail).toContain(w.settingsPath);
-    expect(files(w)).toEqual(before);
+    const before = bytes(w.settingsPath);
+    await run(w);
+    expect(bytes(w.settingsPath)).toBe(before);
   });
 
   test("a CCR without the codex-api provider is missing-prereq naming CCR's own import", async () => {
@@ -199,11 +194,9 @@ describe("activation", () => {
     const w = makeWorld({ ccr: null, settings: { model: "opus" } });
     const r = await run(w);
     expect(r.steps.find((s) => s.name === "ccr profile guard")?.status).toBe("installed");
-    // the fake daemon applied its global claude-code profile; only the throwaway HOME saw it. The
-    // one key in user settings afterwards is the teammate command's own step.
+    // The fake daemon applies its global profile only in the throwaway HOME.
     expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({
       model: "opus",
-      env: { CLAUDE_CODE_TEAMMATE_COMMAND: join(w.bin, "qsm-ccr") },
     });
     expect(globalProfiles(readCcrValue(w.ccrDb))).toEqual([]);
     // it will hold the gateway key and, after a sync, codex's tokens

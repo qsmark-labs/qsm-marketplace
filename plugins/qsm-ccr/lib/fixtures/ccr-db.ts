@@ -17,6 +17,15 @@ export function createCcrDb(path: string, value: Json): void {
   db.run(
     "CREATE TABLE IF NOT EXISTS app_config (key TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at TEXT)",
   );
+  db.run(
+    "CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, encrypted_key TEXT, encryption TEXT, expires_at TEXT)",
+  );
+  const key = value.APIKEY;
+  if (typeof key === "string" && key !== "") {
+    db.query(
+      "INSERT OR REPLACE INTO api_keys (id, encrypted_key, encryption) VALUES (?, ?, ?)",
+    ).run("local-gateway", key, "plain");
+  }
   db.query(
     "INSERT OR REPLACE INTO app_config (key, value_json, updated_at) VALUES ('default', ?, datetime('now'))",
   ).run(JSON.stringify(value));

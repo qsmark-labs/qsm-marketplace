@@ -4,10 +4,11 @@ import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { sleep, spawn, spawnSync } from "bun";
+import { sleep, spawnSync } from "bun";
 import { isRecord, onPath } from "../../../../lib/outcome.ts";
 import { listOf } from "../guards.ts";
 import { sandboxDir, writeIn as write } from "../../../../lib/fixtures/sandbox.ts";
+import { startServer } from "../../../../lib/fixtures/server.ts";
 import { type Issue, issuesOf } from "./tasks.ts";
 
 const CLI = resolve(import.meta.dir, "../../scripts/cli.ts");
@@ -48,30 +49,9 @@ afterEach(async () => {
 
 /** Starts the binary and waits for the line that names its URL. */
 async function start(root: string): Promise<string> {
-  const proc = spawn(["bun", CLI, "lens", root, "--port", "0"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  running.push({
-    stop: async () => {
-      proc.kill("SIGINT");
-      await proc.exited;
-    },
-  });
-  const reader = proc.stderr.getReader();
-  let text = "";
-  for (let n = 0; n < 50 && !/http:\/\/127\.0\.0\.1:\d+\//.test(text); n += 1) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    text += new TextDecoder().decode(value);
-  }
-  const url = /http:\/\/127\.0\.0\.1:\d+\//.exec(text)?.[0];
-  if (url === undefined) {
-    throw new Error(`the server did not announce a URL: ${text}`);
-  }
-  return url;
+  const server = await startServer(["bun", CLI, "lens", root, "--port", "0"]);
+  running.push(server);
+  return server.url;
 }
 
 function streamOf(res: Response): ReadableStream<Uint8Array> {

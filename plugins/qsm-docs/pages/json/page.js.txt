@@ -1,0 +1,68 @@
+// The json kind's page: the document as text, and in edit mode a text editor that saves a
+// proposal through the server's API, only when the text parses.
+const view = document.getElementById("view");
+const editor = document.getElementById("editor");
+const text = document.getElementById("text");
+const save = document.getElementById("save");
+const status = document.getElementById("status");
+
+const params = () => new URLSearchParams(location.hash.slice(1));
+
+function say(message) {
+  status.textContent = message;
+}
+
+/** Where JSON.parse stopped: its message, and the line and column when it names a position. */
+function whereItFails(error) {
+  const at = /position (\d+)/.exec(error.message);
+  if (at === null) {
+    return error.message;
+  }
+  const before = text.value.slice(0, Number(at[1])).split("\n");
+  return `${error.message} (line ${before.length}, column ${before.at(-1).length + 1})`;
+}
+
+async function load() {
+  const id = params().get("id");
+  const editing = params().get("edit") === "1";
+  say("");
+  const res = await fetch(`/api/snapshots/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    const error = await res.json();
+    say(`${error.code}: ${error.message}`);
+    return;
+  }
+  const body = await res.text();
+  view.textContent = body;
+  text.value = body;
+  view.hidden = editing;
+  editor.hidden = !editing;
+}
+
+save.addEventListener("click", async () => {
+  try {
+    JSON.parse(text.value);
+  } catch (error) {
+    say(`not saved: the text is not JSON: ${whereItFails(error)}`);
+    return;
+  }
+  const res = await fetch("/api/snapshots", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind: "json", parent: params().get("id"), content: text.value }),
+  });
+  const answer = await res.json();
+  if (res.status !== 201) {
+    say(`not saved: ${answer.code}: ${answer.message}`);
+    return;
+  }
+  status.textContent = "saved as proposal ";
+  const link = document.createElement("a");
+  link.href = `/json/${encodeURIComponent(answer.id)}`;
+  link.target = "_top";
+  link.textContent = answer.id;
+  status.append(link);
+});
+
+addEventListener("hashchange", load);
+load();
