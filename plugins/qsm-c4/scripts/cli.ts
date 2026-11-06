@@ -26,6 +26,7 @@ if (import.meta.main) {
       },
       render: async (call) =>
         (await import("../lib/render.ts")).renderFile(graphArg(call), flagArg(call, "check")),
+      elements: async (call) => (await import("../lib/elements.ts")).listElements(graphArg(call)),
       pages: async (call) =>
         (await import("../lib/pages/pages.ts")).writePages(
           repoRoot("qsm-c4"),

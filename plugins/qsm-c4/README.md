@@ -19,6 +19,7 @@ exist if LikeC4 checked these rules and drew these pictures by itself.
 | --- | --- | --- |
 | Tool | `qsm-c4 lint` | `likec4 validate`, the vocabulary, the level rules and the actor colours on the C4 graph |
 | Tool | `qsm-c4 render` | One `.drawio.svg` per generated view beside the graph; `--check` writes nothing and names what is stale |
+| Tool | `qsm-c4 elements` | Every element's id, kind, title and tags, and an actor's colour: the one door another tool reads the graph through |
 | Tool | `qsm-c4 pages` | `c4.html` in `.qsm/c4/`: one file, nothing requested outside it |
 
 ## Install

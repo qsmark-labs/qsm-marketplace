@@ -7,6 +7,7 @@ import { writeAtomic } from "../../../../lib/fs.ts";
 import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
+import { c4Elements } from "../c4-ids.ts";
 import {
   c4Element,
   type Definitions,
@@ -67,21 +68,37 @@ function laneColours(
   return laneOf;
 }
 
-/** The colour of each C4 element the lanes of these processes link to. The C4 graph is qsm-c4's,
- * and qsm-bpmn does not read it yet, so a linked lane stops the layout. */
+/** The colour of each C4 element the lanes of these processes link to, read through qsm-c4; a
+ * link it cannot resolve fails here. */
 function linkedColours(file: string, defs: Definitions, todo: Process[]): Map<string, string> {
   const links = todo
     .flatMap(lanesOf)
     .map((l) => c4Element(l, defs))
     .filter((v) => v !== undefined);
-  if (links.length > 0) {
-    throw new QsmError(
-      "missing",
-      `${file}: a lane links to ${links[0] ?? ""}, and qsm-bpmn reads no C4 graph yet`,
-      { next: "drop the lane's c4:element" },
-    );
+  const out = new Map<string, string>();
+  if (links.length === 0) {
+    return out;
   }
-  return new Map();
+  const listed = c4Elements(file);
+  for (const link of links) {
+    const e = listed.get(link);
+    if (e === undefined) {
+      throw new QsmError(
+        "failed",
+        `${file}: a lane links c4:element="${link}", which names no element of the C4 graph`,
+        { next: "run qsm-bpmn lint" },
+      );
+    }
+    if (e.colour === undefined) {
+      throw new QsmError(
+        "failed",
+        `${file}: a lane links to ${link}, which is no actor with a palette colour`,
+        { next: "link the lane to a person or agent of the C4 graph" },
+      );
+    }
+    out.set(link, e.colour);
+  }
+  return out;
 }
 
 function paint(s: Shape, stroke: string, fill?: string): void {

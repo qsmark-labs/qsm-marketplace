@@ -10,6 +10,9 @@ export type C4 = {
     path?: string;
     check?: boolean;
   }): Promise<unknown>;
+  elements(options: {
+    path?: string;
+  }): Promise<unknown>;
   pages(options: {
     out?: string;
   }): Promise<unknown>;

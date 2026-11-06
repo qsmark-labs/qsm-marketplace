@@ -36,6 +36,17 @@
           }
         ]
       },
+      "qsm-c4 elements": {
+        "description": "List every element of the C4 graph: its id, kind, title and tags, and an actor's palette colour",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .c4 file, or the directory that holds the project's one graph (default models)"
+          }
+        ]
+      },
       "qsm-c4 pages": {
         "description": "Lint the C4 graph and write c4.html, one self-contained file",
         "args": [

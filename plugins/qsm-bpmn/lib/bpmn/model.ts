@@ -5,7 +5,7 @@ import { QsmError } from "../../../../lib/qsm-error.ts";
 
 /** The namespace of the one link a BPMN element may carry, `c4:element`: the home of the C4
  * notation the id belongs to, an identifier never fetched, so the link names no tool. */
-const C4_NS = "https://c4model.com";
+export const C4_NS = "https://c4model.com";
 
 export interface ModdleElement {
   readonly $type: string;
@@ -48,6 +48,7 @@ export interface Shape extends ModdleElement {
   bpmnElement?: ModdleElement;
   label?: ModdleElement & { set(name: string, value: string): void };
   set(name: string, value: string): void;
+  get(name: string): unknown;
   bounds?: { x: number; y: number; width: number; height: number };
   waypoint?: { x: number; y: number }[];
 }
@@ -156,4 +157,30 @@ export function c4Element(e: ModdleElement, defs: Definitions): string | undefin
     .filter(([k, v]) => k.startsWith("xmlns:") && v === C4_NS)
     .map(([k]) => k.slice("xmlns:".length));
   return prefixes.map((p) => e.$attrs?.[`${p}:element`]).find((v) => v !== undefined);
+}
+
+/** A property that points at an element owned elsewhere, so a walk does not enter it. */
+const REFERENCE = /Ref$|^bpmnElement$|^(incoming|outgoing)$/;
+
+/** Every element of a graph, each once, walked through the properties that own it. */
+export function everyElement(defs: Definitions): ModdleElement[] {
+  const out: ModdleElement[] = [];
+  const seen = new Set<ModdleElement>();
+  const stack: unknown[] = [defs];
+  for (let v = stack.pop(); v !== undefined || stack.length > 0; v = stack.pop()) {
+    if (Array.isArray(v)) {
+      for (const x of v as unknown[]) {
+        stack.push(x);
+      }
+    } else if (isModdle(v) && !seen.has(v)) {
+      seen.add(v);
+      out.push(v);
+      for (const [k, child] of Object.entries(v)) {
+        if (!k.startsWith("$") && !REFERENCE.test(k)) {
+          stack.push(child);
+        }
+      }
+    }
+  }
+  return out;
 }
