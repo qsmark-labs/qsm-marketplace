@@ -51,7 +51,7 @@ exclusive or inclusive split without a label, and a flow node in no lane or in t
 name a business role. Each finding SHALL name the file, the element id and the rule, and exit
 `worse`.
 
-#### Scenario: An unlabelled answer (path p-750c84)
+#### Scenario: An unlabelled answer (path p-c6dc7d)
 
 - **WHEN** a split gateway "Findings?" has two outgoing flows and one has no label, and once the
   graph is clean its cover path has no scenario yet
@@ -145,7 +145,7 @@ qsm-c4, with no fallback.
 and each lane linked to an actor whose colour is not that actor's colour. An absent id SHALL never
 be a finding.
 
-#### Scenario: A link that no longer resolves (path p-93184e)
+#### Scenario: A link that no longer resolves (path p-c6dc7d)
 
 - **WHEN** a change renames the C4 container `mp.tasks` and a BPMN task still carries
   `c4:element="mp.tasks"`
@@ -244,13 +244,13 @@ and lanes included, for each process of the file that has none, deterministicall
 SHALL write nothing and exit `worse` naming each picture that differs, and the skill `bpmn-model`
 SHALL run it before a commit.
 
-#### Scenario: A graph changed and its SVG did not (path p-30235a)
+#### Scenario: A graph changed and its SVG did not (path p-4ab902)
 
 - **WHEN** the agent edits the BPMN graph after it rendered the pictures and is about to commit
 - **THEN** `render --check` exits `worse` naming the stale SVG, nothing is committed, and the graph
   goes back to be edited, linted and rendered again
 
-#### Scenario: The picture is unreadable (path p-edf226)
+#### Scenario: The picture is unreadable (path p-66b9ca)
 
 - **WHEN** the agent looks at a rendered SVG and a label is cut or two shapes overlap
 - **THEN** it changes the graph and renders again before the graph reaches a spec
@@ -324,7 +324,7 @@ process.
 - **THEN** the skill has the agent change the build-task process, not the feature flow, run `lint`
   and `render`, and look at the picture before the graph reaches the spec
 
-#### Scenario: The owner asks for a change to a graph (path p-1d3d18)
+#### Scenario: The owner asks for a change to a graph (path p-24a9fb)
 
 - **WHEN** the owner reads a picture and it does not say what he wants
 - **THEN** his request goes back to the agent, and the graph is edited, linted with its C4 ids,
@@ -335,7 +335,7 @@ process.
 The plugin SHALL ship an agent `model-reviewer`, on sonnet, that reads each changed process picture
 and its source against the spec and the rules and returns findings, editing nothing.
 
-#### Scenario: The reviewer finds a graph unclear (path p-9108fb)
+#### Scenario: The reviewer finds a graph unclear (path p-416f5e)
 
 - **WHEN** a change passed lint and render, and the reviewer finds a split whose answers do not say
   what the spec says

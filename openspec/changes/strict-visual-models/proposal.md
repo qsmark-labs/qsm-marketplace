@@ -12,8 +12,8 @@
 
 The pictures are the ones `render` writes beside the one graph of each kind under the root
 `models/`; each `.drawio.svg` opens editable in draw.io. The C4 views draw the two plugins
-qsm-bpmn and qsm-c4; the gate process still draws the first build's commit gate, which tasks line
-23 redraws as the gate of decision 25 of the design.
+qsm-bpmn and qsm-c4, and the gate process the gate of decision 25 of the design: the lint and the
+reviewer before an edit is written into the graph.
 
 ## Why
 
