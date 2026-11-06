@@ -26,3 +26,7 @@ and enforceable.
 3. **Ghost mode holds** (2026-11-06): the bot is automation, not an AI: "to je bot ne AI, to je
    automatic static, deterministic code". Its name is the only trace; no text it posts mentions
    an AI.
+4. **The owner is the assignee, Macroscope and the owner the reviewers** (2026-11-06): "reviewer
+   je macroscope plus ja, a assignee jsem vzdycky ja. Na PRs, issues, vsude kde to explicitne
+   nevytvori nikdo jiny." `qsmark-bot` assigns him on everything it opens and requests his review
+   on every pull request, which it can because it is not the author.

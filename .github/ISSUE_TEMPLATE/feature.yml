@@ -1,6 +1,7 @@
 ---
 name: Feature request
 description: Something the marketplace should do that it does not do yet.
+assignees: [Questi0nM4rk]
 type: Feature
 body:
   - type: textarea

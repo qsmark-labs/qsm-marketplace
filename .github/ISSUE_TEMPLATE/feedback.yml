@@ -1,6 +1,7 @@
 ---
 name: Feedback
 description: How an agent or a tool of the marketplace behaved, and how it should behave.
+assignees: [Questi0nM4rk]
 labels: [feedback]
 body:
   - type: markdown
