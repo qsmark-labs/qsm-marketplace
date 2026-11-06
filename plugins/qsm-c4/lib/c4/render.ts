@@ -189,8 +189,8 @@ interface Label {
   readonly height: number;
 }
 
-const labelOf = (t: string): Label => {
-  const lines = wrap(t, 24);
+const labelOf = (t: string, chars = 24): Label => {
+  const lines = wrap(t, chars);
   return {
     lines,
     width: Math.max(...lines.map((l) => l.length)) * CH + 6,
@@ -246,7 +246,13 @@ function spots(l: Label, [u, v]: Seg): Spot[] {
 
 /** Where a label sits beside a segment of its own line: longest segment first, both sides, the
  * first spot that covers nothing and is nearer its own line than any other, else the least harm. */
-function placeLabel(l: Label, own: Seg[], others: Seg[], placed: Rect[]): Spot {
+function placeLabel(
+  l: Label,
+  own: Seg[],
+  others: Seg[],
+  placed: Rect[],
+  outlines: readonly Seg[],
+): { spot: Spot; harm: number } {
   const segs = own.toSorted(
     (a, b) =>
       Math.hypot(b[1].x - b[0].x, b[1].y - b[0].y) - Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y),
@@ -256,22 +262,47 @@ function placeLabel(l: Label, own: Seg[], others: Seg[], placed: Rect[]): Spot {
     const cx = p.x + l.width / 2;
     const cy = p.y + l.height / 2;
     const mine = Math.min(...own.map((s) => distTo(s, cx, cy)));
-    // a label nearer another line than its own reads as that line's label
-    return covered + (others.some((s) => distTo(s, cx, cy) < mine) ? 1e6 : 0);
+    // a label on or near an outline cuts the line; nearer another line than its own, it reads as
+    // that line's label
+    const cuts = outlines.some((s) => nearLine(p, s)) ? 1e5 : 0;
+    return covered + cuts + (others.some((s) => distTo(s, cx, cy) < mine) ? 1e6 : 0);
   };
   let best: Spot | null = null;
   let least = Infinity;
   for (const cand of segs.flatMap((seg) => spots(l, seg))) {
     const o = harm(cand);
     if (o === 0) {
-      return cand;
+      return { spot: cand, harm: 0 };
     }
     if (o < least) {
       least = o;
       best = cand;
     }
   }
-  return best ?? { x: 0, y: 0, w: l.width, h: l.height, end: false };
+  return { spot: best ?? { x: 0, y: 0, w: l.width, h: l.height, end: false }, harm: least };
+}
+
+/** A line's label where it sits clear: at its usual width, else on narrower lines, else the try
+ * that harms least. */
+function placeWrapped(
+  title: string,
+  own: Seg[],
+  others: Seg[],
+  placed: Rect[],
+  outlines: readonly Seg[],
+): { l: Label; p: Spot } {
+  let best: { l: Label; p: Spot; harm: number } | undefined;
+  for (const chars of [24, 16, 12]) {
+    const l = labelOf(title, chars);
+    const { spot, harm } = placeLabel(l, own, others, placed, outlines);
+    if (best === undefined || harm < best.harm) {
+      best = { l, p: spot, harm };
+    }
+    if (harm === 0) {
+      break;
+    }
+  }
+  return best ?? { l: labelOf(title), p: { x: 0, y: 0, w: 0, h: 0, end: false } };
 }
 
 /** The smallest gap two painted bodies keep: the spacing scale of the layout. */
@@ -282,6 +313,26 @@ const crosses = ([u, v]: Seg, r: Rect): boolean =>
   Math.min(u.x, v.x) <= r.x + r.w &&
   Math.max(u.y, v.y) >= r.y &&
   Math.min(u.y, v.y) <= r.y + r.h;
+
+/** The four sides of a box: the lines a boundary or a group draws. */
+function sidesOf(r: Rect): Seg[] {
+  const [a, b, c, d] = [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h },
+    { x: r.x, y: r.y + r.h },
+  ];
+  return [
+    [a, b],
+    [b, c],
+    [c, d],
+    [d, a],
+  ];
+}
+
+/** Whether a box comes within the gap of a line, or crosses it. */
+const nearLine = (box: Rect, s: Seg): boolean =>
+  crosses(s, { x: box.x - GAP, y: box.y - GAP, w: box.w + 2 * GAP, h: box.h + 2 * GAP });
 
 /** Two parallel segments side by side closer than the gap: both vertical or both horizontal,
  * overlapping along their run; how far apart they are and how long they run so. */
@@ -298,14 +349,37 @@ function sideBySide([a, b]: Seg, [c, d]: Seg): { apart: number; run: number } | 
   return hi > lo ? { apart, run: hi - lo } : null;
 }
 
+interface DrawnLine {
+  readonly title: string;
+  readonly segs: Seg[];
+  readonly label: Rect | undefined;
+}
+
+/** Whether a line's own label sits on or within the scale of an outline of the boundary or a
+ * group, where its background cuts the outline. */
+const labelOnOutline = (e: DrawnLine, outlines: readonly Seg[]): boolean => {
+  const own = e.label;
+  return own !== undefined && outlines.some((s) => nearLine(own, s));
+};
+
 /** Where a view breaks the rule that nothing painted touches anything else: a line through the
- * label of the view's boundary, or two lines side by side closer than the spacing scale. */
+ * label of the view's boundary, two lines side by side closer than the spacing scale, a line
+ * running beside an outline of the boundary or a group, or a line's label on such an outline. */
 function layoutDefects(
   label: Rect | null,
-  edges: readonly { title: string; segs: Seg[] }[],
+  edges: readonly DrawnLine[],
+  outlines: readonly Seg[],
 ): string[] {
   const out: string[] = [];
   for (const [i, e] of edges.entries()) {
+    if (e.segs.some((s) => outlines.some((o) => sideBySide(s, o) !== null))) {
+      out.push(
+        `the line "${e.title}" runs beside a boundary's or a group's line, closer than ${GAP} px`,
+      );
+    }
+    if (labelOnOutline(e, outlines)) {
+      out.push(`the label of "${e.title}" sits within ${GAP} px of a boundary's or a group's line`);
+    }
     if (label !== null && e.segs.some((s) => crosses(s, label))) {
       out.push(`the line "${e.title}" runs through the boundary's label`);
     }
@@ -428,13 +502,16 @@ const LAYOUT = {
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
 };
 
-/** Each relation's label beside its own line, on its own background; `placed` grows with each, so
- * the next label avoids it. */
+/** Each relation's label beside its own line, on its own background, kept off the `outlines` of
+ * the boundary and the groups; `placed` grows with each, so the next label avoids it, and `boxes`
+ * records where each went. */
 function edgeLabels(
   g: Graph4,
   drawn: readonly ElkExtendedEdge[],
   byEdge: ReadonlyMap<string, Edge>,
   placed: Rect[],
+  outlines: readonly Seg[],
+  boxes: Map<string, Rect>,
 ): string[] {
   const allSegs = drawn.map(segsOf);
   return drawn.flatMap((ed, k) => {
@@ -442,11 +519,11 @@ function edgeLabels(
     if (rel === undefined) {
       return [];
     }
-    const l = labelOf(rel.title);
     const own = allSegs[k] ?? [];
     const others = allSegs.filter((_, i) => i !== k).flat();
-    const p = placeLabel(l, own, others, placed);
+    const { l, p } = placeWrapped(rel.title, own, others, placed, outlines);
     placed.push(p);
+    boxes.set(ed.id, p);
     const c = g.lineColour(rel.from);
     const tx = p.end ? p.x + l.width - 2 : p.x + 3;
     return [
@@ -528,7 +605,8 @@ async function drawView(
               layoutOptions: {
                 "elk.partitioning.partition": "1",
                 ...SPACING,
-                "elk.padding": "[top=14,left=14,bottom=14,right=14]",
+                // two scale steps of room, so a line along the inside stays a scale step off the outline
+                "elk.padding": "[top=32,left=32,bottom=14,right=32]",
                 "elk.nodeLabels.placement": "[H_LEFT, V_BOTTOM, INSIDE]",
                 "elk.nodeLabels.padding": "[top=8,left=8,bottom=8,right=8]",
                 "elk.nodeSize.constraints": "[NODE_LABELS]",
@@ -643,7 +721,12 @@ async function drawView(
       cells.relation(rel.from, rel.to, rel.title, s.bendPoints ?? [], c, dash);
     }
   });
-  svg.push(...titles, ...edgeLabels(g, drawnEdges, byEdge, placed));
+  // the outlines of the boundary and its groups, which no line's label may sit on
+  const outlines = (boundary === null ? [] : [boundary.id, ...groups.map((_, k) => `group-${k}`)])
+    .map(at)
+    .flatMap(sidesOf);
+  const boxes = new Map<string, Rect>();
+  svg.push(...titles, ...edgeLabels(g, drawnEdges, byEdge, placed, outlines, boxes));
   const key = legendSvg(
     legendKeys(g, shown, lines, groups.length, shared.length),
     (out.height ?? 0) + 16,
@@ -670,7 +753,12 @@ async function drawView(
     body: svg.join(""),
     defects: layoutDefects(
       label,
-      drawnEdges.map((ed) => ({ title: byEdge.get(ed.id)?.title ?? ed.id, segs: segsOf(ed) })),
+      drawnEdges.map((ed) => ({
+        title: byEdge.get(ed.id)?.title ?? ed.id,
+        segs: segsOf(ed),
+        label: boxes.get(ed.id),
+      })),
+      outlines,
     ),
   };
 }
