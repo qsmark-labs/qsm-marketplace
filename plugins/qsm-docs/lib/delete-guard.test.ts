@@ -38,6 +38,7 @@ const DENY_DELETE = [
   `nohup command qsm-docs delete ${ID}`,
   `echo ${ID} | xargs -I {} qsm-docs delete {}`,
   `cat <<EOF\n$(qsm-docs delete ${ID})\nEOF`,
+  `cat <<EOF\nnote \`qsm-docs delete ${ID}\`\nEOF`,
 ];
 
 /** A write to a file of the store or a directory it lies in. */
@@ -83,6 +84,14 @@ const DENY_WRITE = [
   `find ~/.local/share -name x -exec rm {} +`,
   `rsync -a --delete /tmp/empty/ ${STORE}/`,
   `rsync -a --delete-after /tmp/empty/ ~/.local/share/`,
+  `cp -t ${STORE}/projects/demo /tmp/x.json`,
+  `cp --target-directory=${STORE}/projects/demo /tmp/x.json`,
+  `cp -t${STORE}/projects/demo /tmp/x.json`,
+  `install -m 644 /tmp/x ${STORE}/projects/demo/x.json`,
+  `install -o owner -g owner -m 0444 /tmp/x ${STORE}/projects/demo/x.json`,
+  `install -t ${STORE}/kinds/bpmn /tmp/manifest.json`,
+  `mv -t ${STORE}/projects/demo /tmp/x.json`,
+  `mv -t /tmp/elsewhere ${STORE}/projects/demo`,
 ];
 
 /** Ordinary work that only looks like one of the above. */
@@ -100,6 +109,11 @@ const MAY_RUN = [
   'git commit -m "qsm-docs: guard qsm-docs delete"',
   "git commit -m \"$(cat <<'EOF'\nqsm-docs: the guard denies qsm-docs delete <id>\nEOF\n)\"",
   "cat > /tmp/x/notes.md <<'EOF'\nrun qsm-docs delete <id>\nEOF",
+  "git commit -m \"$(cat <<'EOF'\nqsm-docs: two fixes: 1) the guard, 2) the store\n\nThe owner runs `qsm-docs delete <id>` himself.\nEOF\n)\"",
+  "git commit -m \"$(cat <<'EOF'\nqsm-docs: the store holds :) and more\n\nNever `rm ~/.local/share/qsm-docs/projects/x` by hand.\nEOF\n)\"",
+  'git commit -m "$(cat <<\'EOF\'\nqsm-docs: a lone " quote\nqsm-docs delete demo-main-1\nEOF\n)"',
+  `install -m 644 /tmp/x /tmp/y`,
+  `cp -t /tmp/out ${STORE}/projects/demo/x.json`,
   "cat <<-EOF\n\trun qsm-docs delete <id>\n\tEOF",
   'cat <<< "qsm-docs delete x"',
   "echo 'qsm-docs delete x' > note.txt",

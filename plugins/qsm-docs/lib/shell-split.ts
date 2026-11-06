@@ -13,15 +13,92 @@ export interface Split {
 
 const SEPARATORS = new Set([";", "&", "|", "(", ")", "\n"]);
 
-/** The index of the `)` closing a `$(` whose body starts at `from`, skipping quoted text; the
- * line's end when there is none. */
+/** A heredoc whose body starts after the current line: its delimiter, whether it was quoted (a
+ * literal body), and whether `<<-` strips leading tabs. */
+interface Heredoc {
+  readonly delimiter: string;
+  readonly quoted: boolean;
+  readonly tabs: boolean;
+}
+
+/** The heredoc whose `<<` or `<<-` stands at `i`, and the index of the last character of its
+ * delimiter word. */
+function heredocAt(text: string, i: number): { readonly doc: Heredoc; readonly last: number } {
+  const tabs = text[i + 2] === "-";
+  let at = tabs ? i + 3 : i + 2;
+  while (text[at] === " " || text[at] === "\t") {
+    at += 1;
+  }
+  let word = "";
+  while (at < text.length && !` \t\n;&|()<>`.includes(text[at] ?? "")) {
+    word += text[at] ?? "";
+    at += 1;
+  }
+  const delimiter = word.replaceAll(/['"\\]/g, "");
+  return { doc: { delimiter, quoted: delimiter !== word, tabs }, last: at - 1 };
+}
+
+/** The body of a heredoc whose operator's line ends at `newline`: where it starts and ends, and the
+ * index of the newline closing its delimiter line (the text's end when none closes it). */
+function bodyAfter(
+  text: string,
+  newline: number,
+  doc: Heredoc,
+): { readonly start: number; readonly end: number; readonly after: number } {
+  const start = newline + 1;
+  let line = start;
+  while (line < text.length) {
+    const stop = text.indexOf("\n", line);
+    const lineEnd = stop < 0 ? text.length : stop;
+    const content = text.slice(line, lineEnd);
+    if ((doc.tabs ? content.replace(/^\t+/, "") : content) === doc.delimiter) {
+      return { start, end: line, after: lineEnd };
+    }
+    line = lineEnd + 1;
+  }
+  return { start, end: text.length, after: text.length };
+}
+
+/** Past the bodies of the heredocs a line opened, from the newline that ends it; the index of the
+ * last newline read. */
+function pastBodies(text: string, newline: number, docs: readonly Heredoc[]): number {
+  let at = newline;
+  for (const doc of docs) {
+    at = bodyAfter(text, at, doc).after;
+  }
+  return at;
+}
+
+/** Whether a `<<` at `i` opens a heredoc, not a `<<<` here-string. */
+const opensHeredoc = (text: string, i: number): boolean =>
+  text[i] === "<" && text[i + 1] === "<" && text[i + 2] !== "<";
+
+/** The index past what a paren count skips at `i` (a quoted text, a heredoc operator, the bodies
+ * of the heredocs a line opened), or null when the character there counts. */
+function skipped(text: string, i: number, docs: Heredoc[]): number | null {
+  const c = text[i] ?? "";
+  if (c === "'" || c === '"') {
+    const end = text.indexOf(c, i + 1);
+    return end < 0 ? text.length : end;
+  }
+  if (opensHeredoc(text, i)) {
+    const { doc, last } = heredocAt(text, i);
+    docs.push(doc);
+    return last;
+  }
+  return c === "\n" && docs.length > 0 ? pastBodies(text, i, docs.splice(0)) - 1 : null;
+}
+
+/** The index of the `)` closing a `$(` whose body starts at `from`, skipping quoted text and
+ * heredoc bodies; the text's end when there is none. */
 function closingParen(text: string, from: number): number {
   let depth = 1;
+  const docs: Heredoc[] = [];
   for (let i = from; i < text.length; i += 1) {
     const c = text[i] ?? "";
-    if (c === "'" || c === '"') {
-      const end = text.indexOf(c, i + 1);
-      i = end < 0 ? text.length : end;
+    const past = skipped(text, i, docs);
+    if (past !== null) {
+      i = past;
     } else if (c === "(") {
       depth += 1;
     } else if (c === ")") {
@@ -34,30 +111,27 @@ function closingParen(text: string, from: number): number {
   return text.length;
 }
 
-/** The `$(...)` and backtick bodies of a text the shell expands but does not run itself: a double
- * quoted word, an unquoted heredoc. */
+/** Where the substitution starting at `i` (`$(` or a backtick) ends, and its body. */
+function substitutionAt(text: string, i: number): { readonly body: string; readonly end: number } {
+  const backtick = text[i] === "`";
+  const from = backtick ? i + 1 : i + 2;
+  const found = backtick ? text.indexOf("`", from) : closingParen(text, from);
+  const end = found < 0 ? text.length : found;
+  return { body: text.slice(from, end), end };
+}
+
+/** The `$(...)` and backtick bodies of an unquoted heredoc body, which the shell expands but does
+ * not run itself. */
 function substitutionsIn(text: string): string[] {
   const found: string[] = [];
   for (let i = 0; i < text.length; i += 1) {
-    if (text[i] === "$" && text[i + 1] === "(") {
-      const end = closingParen(text, i + 2);
-      found.push(text.slice(i + 2, end));
+    if ((text[i] === "$" && text[i + 1] === "(") || text[i] === "`") {
+      const { body, end } = substitutionAt(text, i);
+      found.push(body);
       i = end;
-    } else if (text[i] === "`") {
-      const end = text.indexOf("`", i + 1);
-      found.push(text.slice(i + 1, end < 0 ? text.length : end));
-      i = end < 0 ? text.length : end;
     }
   }
   return found;
-}
-
-/** A heredoc whose body starts after the current line: its delimiter, whether it was quoted (a
- * literal body), and whether `<<-` strips leading tabs. */
-interface Heredoc {
-  readonly delimiter: string;
-  readonly quoted: boolean;
-  readonly tabs: boolean;
 }
 
 class Splitter {
@@ -65,7 +139,6 @@ class Splitter {
   readonly substituted: string[] = [];
   private word: string | null = null;
   private quote: "'" | '"' | null = null;
-  private quoted = "";
   private readonly heredocs: Heredoc[] = [];
 
   constructor(private readonly line: string) {}
@@ -94,20 +167,27 @@ class Splitter {
     this.commands.push([]);
   }
 
+  /** A `$(...)` or backtick in a word, quoted or not: its body is a line of its own; the index of
+   * its last character. */
+  private substitution(i: number): number {
+    const { body, end } = substitutionAt(this.line, i);
+    this.substituted.push(body);
+    this.add("");
+    return end;
+  }
+
   /** One character inside quotes; the index of the last one it read. */
   private inQuote(i: number): number {
     const c = this.line[i] ?? "";
     if (c === this.quote) {
-      if (this.quote === '"') {
-        this.substituted.push(...substitutionsIn(this.quoted));
-      }
       this.quote = null;
       return i;
     }
+    if (this.quote === '"' && ((c === "$" && this.line[i + 1] === "(") || c === "`")) {
+      return this.substitution(i);
+    }
     const escaped = this.quote === '"' && c === "\\" && i + 1 < this.line.length;
-    const text = escaped ? (this.line[i + 1] ?? "") : c;
-    this.add(text);
-    this.quoted += text;
+    this.add(escaped ? (this.line[i + 1] ?? "") : c);
     return escaped ? i + 1 : i;
   }
 
@@ -117,7 +197,6 @@ class Splitter {
     const next = this.line[i + 1] ?? "";
     if (c === "'" || c === '"') {
       this.quote = c;
-      this.quoted = "";
       this.add("");
     } else if (c === "\\" && i + 1 < this.line.length) {
       this.add(next);
@@ -142,42 +221,16 @@ class Splitter {
     return i;
   }
 
-  /** A `$(...)` or backtick in a word: its body is a line of its own. */
-  private substitution(i: number): number {
-    const backtick = this.line[i] === "`";
-    const from = backtick ? i + 1 : i + 2;
-    const found = backtick ? this.line.indexOf("`", from) : closingParen(this.line, from);
-    const end = found < 0 ? this.line.length : found;
-    this.substituted.push(this.line.slice(from, end));
-    this.add("");
-    return end;
-  }
-
   /** `<<<` is a here-string, an ordinary word; `<<` or `<<-` names a heredoc delimiter. */
   private heredoc(i: number): number {
-    if (this.line[i + 2] === "<") {
+    if (!opensHeredoc(this.line, i)) {
       this.add("<<<");
       return i + 2;
     }
     this.endWord();
-    const tabs = this.line[i + 2] === "-";
-    let at = tabs ? i + 3 : i + 2;
-    while (this.line[at] === " " || this.line[at] === "\t") {
-      at += 1;
-    }
-    let delimiter = "";
-    let quoted = false;
-    while (at < this.line.length && !` \t\n;&|()<>`.includes(this.line[at] ?? "")) {
-      const c = this.line[at] ?? "";
-      if (c === "'" || c === '"' || c === "\\") {
-        quoted = true;
-      } else {
-        delimiter += c;
-      }
-      at += 1;
-    }
-    this.heredocs.push({ delimiter, quoted, tabs });
-    return at - 1;
+    const { doc, last } = heredocAt(this.line, i);
+    this.heredocs.push(doc);
+    return last;
   }
 
   /** At the end of a line, the bodies of its heredocs: skipped, or read for substitutions; the
@@ -185,24 +238,11 @@ class Splitter {
   private heredocBodies(newline: number): number {
     let at = newline;
     for (const doc of this.heredocs.splice(0)) {
-      const start = at + 1;
-      let line = start;
-      let end = this.line.length;
-      while (line < this.line.length) {
-        const stop = this.line.indexOf("\n", line);
-        const lineEnd = stop < 0 ? this.line.length : stop;
-        const text = this.line.slice(line, lineEnd);
-        if ((doc.tabs ? text.replace(/^\t+/, "") : text) === doc.delimiter) {
-          end = line;
-          at = lineEnd;
-          break;
-        }
-        line = lineEnd + 1;
-        at = this.line.length;
-      }
+      const body = bodyAfter(this.line, at, doc);
       if (!doc.quoted) {
-        this.substituted.push(...substitutionsIn(this.line.slice(start, end)));
+        this.substituted.push(...substitutionsIn(this.line.slice(body.start, body.end)));
       }
+      at = body.after;
     }
     return at === newline ? newline : at - 1;
   }

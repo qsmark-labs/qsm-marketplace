@@ -207,6 +207,69 @@ const each = (args: readonly string[], above: boolean): Target[] => args.map((w)
 const lastOf = (args: readonly string[], above: boolean): Target[] =>
   args.length > 0 ? [[args.at(-1) ?? "", above]] : [];
 
+/** The directory `-t DIR`, `-tDIR` or `--target-directory[=]DIR` names, which receives every
+ * source: cp's, mv's and install's destination when given. */
+function targetDirectory(rest: readonly string[]): string | null {
+  for (const [at, w] of rest.entries()) {
+    if (w === "-t" || w === "--target-directory") {
+      return rest[at + 1] ?? null;
+    }
+    if (w.startsWith("--target-directory=")) {
+      return w.slice("--target-directory=".length);
+    }
+    if (w.startsWith("-t") && !w.startsWith("--")) {
+      return w.slice(2);
+    }
+  }
+  return null;
+}
+
+/** cp's and install's destination: the target directory, else the last argument. */
+const copyTargets: Targets = (args, rest) => {
+  const dir = targetDirectory(rest);
+  return dir === null ? lastOf(args, false) : [[dir, false]];
+};
+
+/** mv's sources leave, with the store when it lies in one; its destination only receives. */
+const moveTargets: Targets = (args, rest) => {
+  const dir = targetDirectory(rest);
+  return dir === null
+    ? [...each(args.slice(0, -1), true), ...lastOf(args, false)]
+    : [...each(args, true), [dir, false]];
+};
+
+/** The flags of a writer that take a value, so the value is no file it writes. */
+const VALUED: Readonly<Record<string, readonly string[]>> = {
+  cp: ["-t", "--target-directory", "-S", "--suffix"],
+  mv: ["-t", "--target-directory", "-S", "--suffix"],
+  install: [
+    "-t",
+    "--target-directory",
+    "-m",
+    "--mode",
+    "-o",
+    "--owner",
+    "-g",
+    "--group",
+    "-S",
+    "--suffix",
+  ],
+};
+
+/** The words after a command that are no flag and no flag's value. */
+function argsOf(rest: readonly string[], valued: readonly string[]): string[] {
+  const args: string[] = [];
+  for (let at = 0; at < rest.length; at += 1) {
+    const w = rest[at] ?? "";
+    if (valued.includes(w)) {
+      at += 1;
+    } else if (!w.startsWith("-")) {
+      args.push(w);
+    }
+  }
+  return args;
+}
+
 const TARGETS: Readonly<Record<string, Targets>> = {
   rm: (args) => each(args, true),
   chmod: (args) => each(args, true),
@@ -214,9 +277,9 @@ const TARGETS: Readonly<Record<string, Targets>> = {
   shred: (args) => each(args, false),
   truncate: (args) => each(args, false),
   tee: (args) => each(args, false),
-  // the sources leave, with the store when it lies in one; the destination only receives
-  mv: (args) => [...each(args.slice(0, -1), true), ...lastOf(args, false)],
-  cp: (args) => lastOf(args, false),
+  mv: moveTargets,
+  cp: copyTargets,
+  install: copyTargets,
   ln: (args) => (args.length > 1 ? lastOf(args, false) : []),
   dd: (_args, rest) => rest.filter((w) => w.startsWith("of=")).map((w) => [w.slice(3), false]),
   sed: (args, rest) => (rest.some(inPlace) ? each(args, false) : []),
@@ -227,16 +290,10 @@ const TARGETS: Readonly<Record<string, Targets>> = {
 
 /** The words a command at `i` writes, each with whether a directory above the store counts. */
 function targetsOf(words: readonly string[], i: number): Target[] {
-  const targets = TARGETS[nameOf(words[i] ?? "")];
+  const name = nameOf(words[i] ?? "");
+  const targets = TARGETS[name];
   const rest = words.slice(i + 1);
-  return targets === undefined
-    ? []
-    : targets(
-        rest.filter((w) => !w.startsWith("-")),
-        rest,
-        words,
-        i,
-      );
+  return targets === undefined ? [] : targets(argsOf(rest, VALUED[name] ?? []), rest, words, i);
 }
 
 /** find's search roots when it deletes what it finds (`-delete`, or `-exec` of a remover). */
