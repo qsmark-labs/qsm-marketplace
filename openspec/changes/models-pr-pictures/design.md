@@ -1,9 +1,9 @@
 ## Context
 
-The structure is the Subgraph component of qsm-models in `models/marketplace.c4`; the behaviour is
-`pr_pictures_process` of `models/marketplace.bpmn`. It reads the base and the branch graph as
-`strict-visual-models` keeps them, diffs them with the kinds of `models-pages`, and draws with the
-renderer of `strict-visual-models`.
+The structure is the Subgraph components of qsm-bpmn and qsm-c4 in `models/marketplace.c4`; the
+behaviour is `pr_pictures_process` of `models/marketplace.bpmn`. It reads the base and the branch
+graph as `strict-visual-models` keeps them, diffs them with the kinds of `models-pages`, and draws
+with the renderer of `strict-visual-models`.
 
 ## Decisions
 

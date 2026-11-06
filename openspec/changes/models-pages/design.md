@@ -1,13 +1,13 @@
 ## Context
 
-The structure is the Kinds and Pages components of qsm-models in `models/marketplace.c4`; the
+The structure is the Kinds and Pages components of qsm-bpmn in `models/marketplace.c4`; the
 behaviour is `edit_graph_process` of `models/marketplace.bpmn`. It stands on the store, the kind
 manifest, the frame and the `/api/snapshots` API of change `qsm-docs`, and on the one graph and the
 static pages of `strict-visual-models`.
 
 ## Decisions
 
-1. **The page code lives in qsm-models, served by qsm-docs.** A kind brings its own page, and
+1. **The page code lives in qsm-bpmn, served by qsm-docs.** A kind brings its own page, and
    qsm-docs knows nothing of BPMN (epic). The first build's `pages/bpmn.html.txt` becomes the kind's
    `index.html`, reading the snapshot from `/api/snapshots/<id>` instead of an inlined graph.
 2. **The viewer, not the modeler.** The only edit is a step's text, and bpmn-js's Viewer reads and

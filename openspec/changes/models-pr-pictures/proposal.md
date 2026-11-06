@@ -2,7 +2,8 @@
 
 ![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
 
-The Subgraph component of qsm-models in `models/marketplace.c4` is this change.
+The Subgraph components of qsm-bpmn and qsm-c4 in `models/marketplace.c4` are this change, one per
+graph.
 
 ## Why
 

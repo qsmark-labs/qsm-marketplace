@@ -2,10 +2,11 @@
 
 ### Requirement: A pull request shows what its change does to the graphs
 
-Before spec-apply opens a pull request, the agent SHALL run `qsm-models subgraph --out
-<change>/models`, look at every picture, widen the subgraph until the pictures explain the change,
-and commit the pictures. The pull request body and one comment on the bound task SHALL link the
-before and the after of each touched graph, or say in one line that the change touches neither.
+Before spec-apply opens a pull request, the agent SHALL run
+`qsm-bpmn subgraph --out <change>/models` and `qsm-c4 subgraph --out <change>/models`, look at every
+picture, widen the subgraph until the pictures explain the change, and commit the pictures. The pull
+request body and one comment on the bound task SHALL link the before and the after of each touched
+graph, or say in one line that the change touches neither.
 
 #### Scenario: A change that touches the business process
 
@@ -15,9 +16,10 @@ before and the after of each touched graph, or say in one line that the change t
 
 ### Requirement: A change's pictures are its subgraph before and after
 
-The feature schema's models artifact SHALL be the pictures `qsm-models subgraph` writes into the
-change's `models/`, so a proposal opens with the before and the after of what it touches. A change
-that touches neither graph SHALL hold a `models/` with no picture and a proposal that says so.
+The feature schema's models artifact SHALL be the pictures `qsm-bpmn subgraph` and
+`qsm-c4 subgraph` write into the change's `models/`, so a proposal opens with the before and the
+after of what it touches. A change that touches neither graph SHALL hold a `models/` with no
+picture and a proposal that says so.
 
 #### Scenario: The proposal of a new change
 

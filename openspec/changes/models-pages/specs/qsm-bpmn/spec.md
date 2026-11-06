@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
-### Requirement: qsm-models installs the bpmn kind into qsm-docs
+### Requirement: qsm-bpmn installs the bpmn kind into qsm-docs
 
 The installer SHALL remove a `bpmn` kind an older install left, then install it with
-`qsm-docs kind add`, its manifest naming the plugin `qsm-models`, the media type, the extension
-`.bpmn`, its page assets and the commands `qsm-models convert bpmn {file}` and
-`qsm-models diff bpmn {a} {b}`.
+`qsm-docs kind add`, its manifest naming the plugin `qsm-bpmn`, the media type, the extension
+`.bpmn`, its page assets and the commands `qsm-bpmn convert bpmn {file}` and
+`qsm-bpmn diff bpmn {a} {b}`.
 
 #### Scenario: Installed twice
 
-- **WHEN** qsm-models is installed, then installed again
+- **WHEN** qsm-bpmn is installed, then installed again
 - **THEN** `qsm-docs kind list` shows `bpmn` once, and the second run names the kind it removed
 
 ### Requirement: convert turns a BPMN file into JSON
@@ -76,7 +76,7 @@ a step without them, and an unknown step id SHALL exit `failed` naming it.
 
 #### Scenario: One step's scenarios
 
-- **WHEN** `qsm-models gherkin models/marketplace.bpmn --task review_graph` runs on a step that
+- **WHEN** `qsm-bpmn gherkin models/marketplace.bpmn --task review_graph` runs on a step that
   holds two scenarios
 - **THEN** it prints the `Feature`, one `Rule: Review the graph` and the two scenarios as written
 

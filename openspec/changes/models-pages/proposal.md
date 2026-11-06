@@ -1,6 +1,6 @@
 ![The owner changes a graph on its page, BPMN](../../../models/marketplace.edit_graph_process.svg)
 
-The Kinds and Pages components of qsm-models in `models/marketplace.c4` are this change; the store
+The Kinds and Pages components of qsm-bpmn in `models/marketplace.c4` are this change; the store
 and page shell are `qsm-docs`.
 
 ## Why
@@ -13,27 +13,27 @@ proposal the agent applies through the gates. It is the third piece of epic qsm-
 
 ## What
 
-- **One kind, `bpmn`, installed into qsm-docs by qsm-models**: the full BPMN XML, its converter to
+- **One kind, `bpmn`, installed into qsm-docs by qsm-bpmn**: the full BPMN XML, its converter to
   JSON and its diff.
 - **The BPMN page**: the first build's viewer page (the main process, call activities that open the
   process they call, the breadcrumb, a step's details panel) as the kind's page.
 - **Gherkin on a step**: an optional field of the step, stored in its BPMN `documentation` with
   `textFormat` `text/x-gherkin`. The details panel shows it; in edit mode it is a text field, and
   save stores the whole edited XML as a proposal.
-- **`qsm-models gherkin <graph> [--task <id>]`** prints a graph's scenarios as `.feature` text.
+- **`qsm-bpmn gherkin <graph> [--task <id>]`** prints a graph's scenarios as `.feature` text.
 - **Apply**: the skill `model` says how the agent takes a proposal's scenarios into
   `models/<project>.bpmn` and records the applied snapshot.
 
 ## Not in this feature
 
 Editing anything but a step's scenarios: no move, rename, add, remove or comment, no lane rules. No
-C4 on qsm-docs: the C4 graph stays the first build's static page. No other project's graph, no
+C4 on qsm-docs: the C4 graph stays qsm-c4's static page. No other project's graph, no
 verified counts, no notice that the checkout is newer. No link from Gherkin to tests: no tags, no
 results, no generation. The PR and task export is `models-pr-pictures`.
 
 ## Decisions of the owner
 
-1. **Pages on qsm-docs, kinds from qsm-models** (2026-11-04, epic qsm-vgw0): "qsm-docs knows
+1. **Pages on qsm-docs, kinds from qsm-bpmn** (2026-11-04, epic qsm-vgw0): "qsm-docs knows
    nothing of BPMN or C4".
 2. **Gherkin is an optional field of a step, edited on its details page** (2026-11-06): "se pisou
    jako optional field k tomu stepu. A potom se budou moct updatovat v tom detail page tady
