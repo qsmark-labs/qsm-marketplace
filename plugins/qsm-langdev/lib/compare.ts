@@ -1387,15 +1387,21 @@ export interface StructuralCheckerStatus {
   patched: boolean;
 }
 
+/** The version `sentrux/wiring.patch` gives the build; bumped with the patch, so an older build is rebuilt. */
+export const PATCHED_SENTRUX_VERSION = "0.5.7-qsm.3";
+
 /**
- * Whether the structural checker (sentrux) on PATH reports a qsm-patched version, distinguishing
- * that from an unpatched upstream `sentrux` and from none present at all.
+ * Whether the structural checker (sentrux) on PATH reports exactly the version the patch builds,
+ * distinguishing that from an older qsm build, an unpatched upstream `sentrux` and none at all.
+ * `binary` is the command to probe.
  */
-export async function structuralCheckerStatus(): Promise<StructuralCheckerStatus> {
-  const result = await spawnAsync(tmpdir(), "sentrux", ["--version"], PROBE_MS);
+export async function structuralCheckerStatus(
+  binary = "sentrux",
+): Promise<StructuralCheckerStatus> {
+  const result = await spawnAsync(tmpdir(), binary, ["--version"], PROBE_MS);
   if (spawnFailure(result, "sentrux") !== null) {
     return { present: false, patched: false };
   }
-  const version = `${result.stdout ?? ""}${result.stderr ?? ""}`;
-  return { present: true, patched: /-qsm(\.|\b)/.test(version) };
+  const words = `${result.stdout ?? ""}${result.stderr ?? ""}`.split(/\s+/);
+  return { present: true, patched: words.includes(PATCHED_SENTRUX_VERSION) };
 }
