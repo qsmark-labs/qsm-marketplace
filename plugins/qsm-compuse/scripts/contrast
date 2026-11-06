@@ -3,7 +3,8 @@
 # A region is a geom selector (median colour of its rect, shrunk 2 physical px) or
 # a logical "X,Y" point. Append @ink to a selector to take the pixel farthest from
 # the median instead (the glyph colour inside a rect that is mostly background).
-#   contrast each SEL --min R [--shot PNG]: every visible match's ink against its own rect's median.
+#   contrast each SEL --min R [--shot PNG] [--over SEL]: every visible match's ink against the median
+#   of its own rect, leaving out the pixels under the --over matches (a cover by design).
 # --shot reads a capture with the tree in GEOM_TREE instead of the live screen (an atlas check).
 set -uo pipefail
 
@@ -22,7 +23,8 @@ pick() {
   gawk -v mode="$1" -v ref="${2:-}" -f "$here/pick.awk"
 }
 
-# Logical rect "x y w h" -> physical crop "WxH+X+Y", shrunk by 2 physical px per side (never below 1).
+# Logical rect "x y w h" -> physical crop "WxH+X+Y", shrunk by 2 physical px per side unless the
+# third argument is 1 (a point, or a whole rect); never below 1 px.
 crop_of() {
   awk -v s="$2" -v pt="${3:-0}" '{
     x = $1 * s; y = $2 * s; w = $3 * s; h = $4 * s
@@ -57,21 +59,26 @@ sample() {
 }
 
 # Prints "ink<TAB>ground" of one logical rect "x y w h" in a capture; nothing when it lies outside.
-# The ground is the median of a ring RING px wide just outside the rect, because inside a small
-# text rect the glyph's own antialiased pixels pull the median toward the ink. The ink is the
+# The ground is the median of the rect's own pixels: a text or glyph rect is mostly what it is drawn
+# on, and a label that fills its body (the count in a badge) has no other ground; its strokes pull
+# the median slightly toward the ink, which errs low. $5 lists logical rects "x y w h ..." that lie
+# over it by design (a count badge on its glyph): their pixels are not its ground. The ink is the
 # node's own opaque colour ($4, "#rrggbb" or "#ffrrggbb") when it has one, because a 12 px stroke
 # never reaches its full colour on screen (text declared at 4.50:1 measured 4.35); otherwise the
 # pixel inside the rect farthest from the ground.
-RING=3
 ink_on() {
-  local x y w h px ground
+  local crop px ground
   px="$(magick "$2" -crop "$(crop_of "$1" "$3")" +repage -depth 8 txt:- 2>/dev/null \
     | sed -n 's/.*(\([0-9]*\),\([0-9]*\),\([0-9]*\).*/\1 \2 \3/p')"
   [[ -n "$px" ]] || return 0
-  read -r x y w h <<<"$(awk -v r="$RING" -v s="$3" '{ printf "%d %d %d %d\n", $1 * s - r, $2 * s - r, $3 * s + 2 * r, $4 * s + 2 * r }' <<<"$1")"
-  ground="$(magick "$2" -crop "${w}x${h}+${x}+${y}" +repage -alpha set -region "$((w - 2 * RING))x$((h - 2 * RING))+${RING}+${RING}" \
-    -alpha transparent +region -depth 8 txt:- 2>/dev/null \
-    | sed -n '/,255)/s/.*(\([0-9]*\),\([0-9]*\),\([0-9]*\).*/\1 \2 \3/p' | pick median)"
+  # The whole rect, not the shrunk crop: inside a 16 px glyph's inner box its strokes are the median.
+  crop="$(crop_of "$1" "$3" 1)"
+  ground="$(magick "$2" -crop "$crop" +repage -depth 8 txt:- 2>/dev/null | awk -v s="$3" -v crop="$crop" -v over="${5:-}" '
+      BEGIN { split(crop, c, /[x+]/); n = split(over, line, "\n")
+        for (i = 1; i <= n; i++) if (split(line[i], f, " ") >= 4) {
+          k++; ax[k] = f[1] * s - c[3]; ay[k] = f[2] * s - c[4]; bx[k] = ax[k] + f[3] * s; by[k] = ay[k] + f[4] * s } }
+      /^[0-9]+,[0-9]+:/ { split($1, p, /[,:]/); for (i = 1; i <= k; i++) if (p[1] >= ax[i] && p[1] < bx[i] && p[2] >= ay[i] && p[2] < by[i]) next
+        match($0, /\(([0-9]+),([0-9]+),([0-9]+)/, m); print m[1], m[2], m[3] }' | pick median)"
   [[ -n "$ground" ]] || return 0
   local ink
   if [[ "$4" =~ ^#(ff)?([0-9a-f]{6})$ ]]; then
@@ -83,7 +90,7 @@ ink_on() {
 }
 
 each() {
-  local sel="$1" min="$2" shot="$3" screen="$4" png scale rects pair
+  local sel="$1" min="$2" shot="$3" screen="$4" over="$5" png scale rects pair overs=
   [[ -n "$min" ]] || die "each needs --min RATIO"
   if [[ -n "$shot" ]]; then
     [[ -f "$shot" && -f "${GEOM_TREE:-}" ]] || die "--shot needs a capture and its tree in GEOM_TREE"
@@ -95,28 +102,30 @@ each() {
     png="$("$here/drive" shot "$screen" contrast)" || exit 2
   fi
   rects="$("$here/geom" rects "$sel" ${screen:+--screen "$screen"})" || exit 2
+  if [[ -n "$over" ]]; then overs="$("$here/geom" rects "$over" ${screen:+--screen "$screen"})" || exit 2; fi
   local x y w h type colour
   while read -r x y w h type colour; do
     [[ -n "$x" ]] || continue
-    pair="$(ink_on "$x $y $w $h" "$png" "$scale" "${colour,,}")"
+    pair="$(ink_on "$x $y $w $h" "$png" "$scale" "${colour,,}" "$overs")"
     [[ -z "$pair" ]] || printf '%s\t%s\n' "$x $y $w $h $type" "$pair"
   done <<<"$rects" | gawk -v min="$min" -f "$here/lum.awk" -f "$here/each.awk"
 }
 
 main() {
-  local pos=() screen="" min="" shot=""
+  local pos=() screen="" min="" shot="" over=""
   while (($#)); do
     case "$1" in
       --screen) screen="${2:?--screen needs a value}" && shift 2 ;;
       --min) min="${2:?--min needs a value}" && shift 2 ;;
       --shot) shot="${2:?--shot needs a capture}" && shift 2 ;;
+      --over) over="${2:?--over needs a selector}" && shift 2 ;;
       -h | --help) usage && return 0 ;;
       *) pos+=("$1") && shift ;;
     esac
   done
   command -v magick >/dev/null 2>&1 || die "missing magick (ImageMagick)"
   if [[ "${pos[0]:-}" == each && ${#pos[@]} == 2 ]]; then
-    each "${pos[1]}" "$min" "$shot" "$screen"
+    each "${pos[1]}" "$min" "$shot" "$screen" "$over"
     return
   fi
   ((${#pos[@]} == 2)) || {
