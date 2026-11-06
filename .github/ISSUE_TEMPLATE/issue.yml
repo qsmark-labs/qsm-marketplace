@@ -38,10 +38,3 @@ body:
       description: The test, output or number that shows the problem is gone.
     validations:
       required: true
-  - type: textarea
-    id: budget
-    attributes:
-      label: Budget
-      description: How much time and code the fix is worth.
-    validations:
-      required: true

@@ -143,12 +143,12 @@ Apply SHALL require the design and track no file. A feature's change SHALL name 
 - **WHEN** a feature change has proposal, models, specs and design and no tasks.md
 - **THEN** `openspec validate <id> --strict` passes
 
-### Requirement: Issue forms ask the six questions
+### Requirement: Issue forms ask the five questions
 
 The repository SHALL offer two issue forms, a feature request and an issue, the feedback template of
 qsm-tasks, and no blank issue. Each of the two forms SHALL have one required field per question of
 the implementation rule's "First: why": who it is for, the problem and why now, what is not done,
-what exists, what proves it works, and the budget. The feature request SHALL set the issue type
+what exists, and what proves it works. The feature request SHALL set the issue type
 Feature and the issue form the type Bug.
 
 #### Scenario: The owner files a feature

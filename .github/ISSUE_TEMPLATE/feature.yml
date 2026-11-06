@@ -38,10 +38,3 @@ body:
       description: What must be true for it to work, and the test, output or number that shows it.
     validations:
       required: true
-  - type: textarea
-    id: budget
-    attributes:
-      label: Budget
-      description: How much time and code it is worth.
-    validations:
-      required: true
