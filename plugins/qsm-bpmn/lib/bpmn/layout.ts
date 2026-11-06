@@ -4,10 +4,12 @@
 import { readFileSync } from "node:fs";
 import { layoutProcess } from "bpmn-auto-layout";
 import { writeAtomic } from "../../../../lib/fs.ts";
+import { type Finding, lintOutcome } from "../../../../lib/model-graph.ts";
 import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { c4Elements } from "../c4-ids.ts";
+import { lintFile } from "../lint.ts";
 import {
   c4Element,
   type Definitions,
@@ -147,7 +149,15 @@ function colour(
 const undrawn = (defs: Definitions): Process[] =>
   processesOf(defs).filter((p) => diagramOf(defs, p.id ?? "") === undefined);
 
-export async function layoutFile(file: string): Promise<Outcome<{ laidOut: string[] }>> {
+/** Lays out each undrawn process of a file, after the full lint passes but for `no-bpmndi`, the one
+ * finding layout exists to fix. */
+export async function layoutFile(
+  file: string,
+): Promise<Outcome<{ laidOut: string[] } | { findings: Finding[] }>> {
+  const findings = (await lintFile(file)).filter((f) => f.rule !== "no-bpmndi");
+  if (findings.length > 0) {
+    return lintOutcome(file, findings);
+  }
   const xml = readFileSync(file, "utf8");
   const defs = await parseXml(xml, file);
   const todo = undrawn(defs);

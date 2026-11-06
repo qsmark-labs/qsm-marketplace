@@ -19,8 +19,8 @@ on the repository the working directory is in.
 | Verb | Does | Exit |
 | --- | --- | --- |
 | `lint` | bpmnlint's recommended rules, warnings raised to errors, and this plugin's rules (below) | `worse` (3) per finding, each naming the file, the element and the rule |
-| `layout` | Writes the geometry, pool and lanes included, of each process that has none, by bpmn-auto-layout | `blocked` (5) and nothing written when a process already has geometry |
-| `render` | `<project>.<process>.svg` per process, beside the graph; `--check` writes nothing | `worse` (3) under `--check`, naming each picture that differs |
+| `layout` | Runs `lint` but for `no-bpmndi`, then writes the geometry, pool and lanes included, of each process that has none, by bpmn-auto-layout | as `lint` and nothing written on a finding; `blocked` (5) and nothing written when a process already has geometry |
+| `render` | Runs `lint`, then `<project>.<process>.svg` per process, beside the graph; `--check` writes nothing | as `lint` and nothing written on a finding; `worse` (3) under `--check`, naming each picture that differs |
 | `paths` | The cover of each process, `--process` of one, `--all` every path; `--specs` names each cover path no scenario under the directory cites, and each cited id the graph lacks | `worse` (3) for a step with no way to an end, or a `--specs` finding |
 | `pages` | Runs `lint`, then writes `bpmn.html` into `.qsm/bpmn/`, replacing an earlier run | `worse` (3) and no page written when lint fails; `failed` (1) when `models/` holds no BPMN graph |
 

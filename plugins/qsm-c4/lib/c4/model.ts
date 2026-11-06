@@ -148,7 +148,3 @@ export function modelOrThrow(file: string, read: C4Read): C4Model {
   }
   return read.model;
 }
-
-export async function readC4OrThrow(file: string): Promise<C4Model> {
-  return modelOrThrow(file, await readC4(file));
-}

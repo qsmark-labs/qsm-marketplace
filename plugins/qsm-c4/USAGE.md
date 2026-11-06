@@ -18,8 +18,8 @@ repository the working directory is in.
 | Verb | Does | Exit |
 | --- | --- | --- |
 | `lint` | `likec4 validate` with the vocabulary the tool supplies, then the vocabulary, the levels and the colours (below) | `worse` (3) per finding, each naming the file, the element and the rule |
-| `render` | `<project>.<view>.drawio.svg` per generated view, beside the graph; `--check` writes nothing | `worse` (3) under `--check`, naming each view that differs |
-| `elements` | Every element: its id, kind, title and tags, and for an actor its palette colour by name and hex; the one door another tool reads the graph through | `worse` (3) when LikeC4 refuses the source |
+| `render` | Runs `lint`, then `<project>.<view>.drawio.svg` per generated view, beside the graph; `--check` writes nothing | as `lint` and nothing written on a finding; `worse` (3) under `--check`, naming each view that differs |
+| `elements` | Runs `lint`, then lists every element: its id, kind, title and tags, and for an actor its palette colour by name and hex; the one door another tool reads the graph through | as `lint` and nothing listed on a finding |
 | `pages` | Runs `lint`, then writes `c4.html` into `.qsm/c4/`, replacing an earlier run | `worse` (3) and no page written when lint fails; `failed` (1) when `models/` holds no C4 graph |
 
 ## The rules

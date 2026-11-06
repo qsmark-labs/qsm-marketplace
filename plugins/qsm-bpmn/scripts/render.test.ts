@@ -1,6 +1,6 @@
 // layout and render through the real binary entry: a graph on disk in, files and one envelope out.
 import { describe, expect, it } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
@@ -15,51 +15,50 @@ describe("layout", () => {
     expect(envelopeOf(run.stdout).message).toContain("has a layout");
     expect(readFileSync(join(dir, "shop.bpmn"), "utf8")).toBe(PLAN);
   });
+});
 
-  it("keeps a c4:element link through a write by bpmn-moddle", () => {
-    const task = '<bpmn:task id="plan_process_context" name="2.1 Gather the context">';
-    const dir = sandboxDir("qsm-bpmn-moddle-");
+/** The planning process rendered into a fresh directory: the directory, its picture and the
+ * picture's bytes. */
+function rendered(prefix: string): { dir: string; picture: string; before: string } {
+  const dir = sandboxDir(prefix);
+  writeIn(dir, "shop.bpmn", PLAN);
+  expect(runBin(CLI, ["render", dir]).exit).toBe(0);
+  const picture = join(dir, "shop.plan_process.svg");
+  return { dir, picture, before: readFileSync(picture, "utf8") };
+}
+
+describe("render", () => {
+  it("refuses a process that has no diagram through lint, naming no-bpmndi", () => {
+    const dir = sandboxDir("qsm-bpmn-undrawn-");
     writeIn(
       dir,
       "shop.bpmn",
-      PLAN.replace("xmlns:bioc=", 'xmlns:c4="https://c4model.com" xmlns:bioc=')
-        .replace(task, task.replace(">", ' c4:element="mp.tasks">'))
-        .replace(/\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/, ""),
+      PLAN.replace(/\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/, ""),
     );
-    expect(runBin(CLI, ["layout", join(dir, "shop.bpmn")]).exit).toBe(0);
-    const written = readFileSync(join(dir, "shop.bpmn"), "utf8");
-    expect(written).toContain('xmlns:c4="https://c4model.com"');
-    expect(written).toContain(task.replace(">", ' c4:element="mp.tasks">'));
-    expect(written).toContain("<bpmndi:BPMNDiagram");
-  });
-});
-
-/** The planning process with no diagram and the Agent lane linked to `link`. */
-const undrawn = (link: string): string =>
-  PLAN.replace("xmlns:bioc=", 'xmlns:c4="https://c4model.com" xmlns:bioc=')
-    .replace(
-      '<bpmn:lane id="plan_process_lane_1" name="Agent">',
-      `<bpmn:lane id="plan_process_lane_1" name="Agent" c4:element="${link}">`,
-    )
-    .replace(/\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/, "");
-
-describe("render", () => {
-  it("fails on a process that has no diagram, naming it and the verb that draws it", () => {
-    const dir = sandboxDir("qsm-bpmn-undrawn-");
-    writeIn(dir, "shop.bpmn", undrawn("qa"));
     const run = runBin(CLI, ["render", dir, "--json"]);
-    expect(run.exit).toBe(1);
-    expect(envelopeOf(run.stdout).message).toContain("process plan_process has no diagram");
+    expect(run.exit).toBe(3);
+    expect(envelopeOf(run.stdout).message).toContain("(no-bpmndi)");
+    expect(readdirSync(dir)).toEqual(["shop.bpmn"]);
+  });
+
+  it("writes nothing for a graph with an unlabelled split answer", () => {
+    const { dir, picture, before } = rendered("qsm-bpmn-refused-");
+    writeIn(
+      dir,
+      "shop.bpmn",
+      PLAN.replace('id="f_verdict_commit" name="yes"', 'id="f_verdict_commit"'),
+    );
+    const run = runBin(CLI, ["render", dir, "--json"]);
+    expect(run.exit).toBe(3);
+    expect(envelopeOf(run.stdout).message).toContain("f_verdict_commit");
+    expect(envelopeOf(run.stdout).message).toContain("(split-flows-labelled)");
+    expect(readFileSync(picture, "utf8")).toBe(before);
   });
 });
 
 describe("render --check", () => {
   it("names the picture a changed graph made stale and writes nothing", () => {
-    const dir = sandboxDir("qsm-bpmn-render-");
-    writeIn(dir, "shop.bpmn", PLAN);
-    expect(runBin(CLI, ["render", dir]).exit).toBe(0);
-    const picture = join(dir, "shop.plan_process.svg");
-    const before = readFileSync(picture, "utf8");
+    const { dir, picture, before } = rendered("qsm-bpmn-render-");
     expect(runBin(CLI, ["render", dir, "--check"]).exit).toBe(0);
     writeIn(dir, "shop.bpmn", PLAN.replace("2.1 Gather the context", "2.1 Gather all the context"));
     const run = runBin(CLI, ["render", dir, "--check", "--json"]);

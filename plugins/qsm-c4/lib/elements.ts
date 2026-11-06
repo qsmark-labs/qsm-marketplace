@@ -1,9 +1,11 @@
 // elements: the one door through which another tool reads the C4 graph, every element with its
-// id, kind, title and tags, and an actor's palette colour by name and hex.
+// id, kind, title and tags, and an actor's palette colour by name and hex, once the full lint
+// passes.
+import { type Finding, lintOutcome } from "../../../lib/model-graph.ts";
 import { ok, type Outcome } from "../../../lib/outcome.ts";
 import { PALETTE } from "../../../lib/palette.ts";
-import { isActor } from "./c4/lint.ts";
-import { type C4Element, readC4OrThrow } from "./c4/model.ts";
+import { isActor, lintRead } from "./c4/lint.ts";
+import { type C4Element, modelOrThrow, readC4 } from "./c4/model.ts";
 
 interface Listed {
   readonly id: string;
@@ -30,7 +32,15 @@ const line = (e: Listed): string =>
     .join("\t")
     .trimEnd();
 
-export async function listElements(file: string): Promise<Outcome<{ elements: Listed[] }>> {
-  const elements = (await readC4OrThrow(file)).elements.map(listed);
+/** A source lint refuses lists nothing and exits as the lint did. */
+export async function listElements(
+  file: string,
+): Promise<Outcome<{ elements: Listed[] } | { findings: Finding[] }>> {
+  const read = await readC4(file);
+  const findings = lintRead(file, read);
+  if (findings.length > 0) {
+    return lintOutcome(file, findings);
+  }
+  const elements = modelOrThrow(file, read).elements.map(listed);
   return ok({ elements }, elements.map(line).join("\n"));
 }

@@ -37,7 +37,7 @@
         ]
       },
       "qsm-c4 elements": {
-        "description": "List every element of the C4 graph: its id, kind, title and tags, and an actor's palette colour",
+        "description": "Lint the C4 graph and list every element: its id, kind, title and tags, and an actor's palette colour",
         "args": [
           {
             "name": "path",
