@@ -120,14 +120,16 @@ new work.
       `lib/render.ts`, `lib/pages/pages.ts`, `plugins/qsm-bpmn/lib/bpmn/layout.ts`,
       `plugins/qsm-c4/lib/elements.ts`. Proof: `runBin` tests of the two "A render of a graph lint
       refuses" scenarios, the pictures' bytes unchanged on disk. Blocked by 19.
-- [ ] 21. **Moved.** The skill `model` and `model-reviewer` split by kind: the skill becomes
+- [x] 21. **Moved.** The skill `model` and `model-reviewer` split by kind: the skill becomes
       `bpmn-model` in qsm-bpmn and `c4-model` in qsm-c4, each plugin with its own `model-reviewer`;
       the reviewer's step before an edit reaches the model file, `render --check` before a commit,
       and `--accept` left to the owner in each skill; the evals moved with them
       (`model-where-a-change-goes` to qsm-bpmn, a C4 case beside it). Files:
       `plugins/qsm-bpmn/skills/bpmn-model/`, `plugins/qsm-bpmn/agents/`, `plugins/qsm-bpmn/evals/`,
       `plugins/qsm-c4/skills/c4-model/`, `plugins/qsm-c4/agents/`, `plugins/qsm-c4/evals/`. Proof:
-      `bun run eval qsm-bpmn` and `bun run eval qsm-c4`, each skill under 12 KB. Blocked by 20.
+      each skill and agent under 12 KB, and each `model-reviewer` run on this change's own graph
+      change (lines 22, 23). The evals moved but prove nothing until the owner has reviewed the
+      cases (2026-11-06: "evals jsou ted useless, ja si je potom musim projit sam"). Blocked by 20.
 - [x] 22. **New.** `models/marketplace.c4` draws qsm-models as two containers, qsm-bpmn and qsm-c4,
       each with its components and its relations (qsm-bpmn's tool to qsm-c4's tool, `exec, stdio`,
       reading element ids and colours), and loses the relations of what was removed (the commit
