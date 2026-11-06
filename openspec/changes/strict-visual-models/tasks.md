@@ -36,8 +36,9 @@ new work.
       `plugins/qsm-c4/lib/c4/drawio.ts`. Proof: design Verify 5, then the same bytes on two
       renders, the pictures read as PNG, and a reordered lane refused by `render` with lane jumps
       named. **First build (done, moves by lines 15 and 16):** `layout` and `render` without hints
-      or measure. **Waits:** the hints and Verify 5 (qsm-c4); the measure and `--accept`, one per
-      plugin. Blocked by 20.
+      or measure. **Waits:** the hints and Verify 5 (qsm-c4); the measure and `--accept <measure>`,
+      one per plugin, each skill saying the flag is the owner's to type, never the agent's. Blocked
+      by 20.
 - [ ] 6. `paths` per process, `--process`, `--specs`, `--compare`. Files:
       `plugins/qsm-bpmn/lib/paths.ts`. Proof: the cover of every migrated process equals the
       measured one. **First build (done, moves by line 16):** `paths` without `--compare`.
@@ -54,17 +55,19 @@ new work.
 - Line 9, **removed 2026-11-06**: the commit gate in qsm-langdev. The checks live in the generators
       (design decision 25, line 20).
 - Line 10, **removed 2026-11-06**: the spec-propose and spec-archive change in qsm-openspec.
-- [ ] 11. The skill `model`, `model-reviewer`, `model-simplifier`. Files:
-      `plugins/qsm-bpmn/skills/model/`, `plugins/qsm-bpmn/agents/`, `plugins/qsm-c4/skills/model/`,
-      `plugins/qsm-c4/agents/`. Proof: `bun run eval qsm-bpmn` and `bun run eval qsm-c4`. **First
-      build (done in qsm-models, split by line 21):** the skill `model` and `model-reviewer`.
+- [ ] 11. The skills `bpmn-model` and `c4-model`, `model-reviewer`, `model-simplifier`. Files:
+      `plugins/qsm-bpmn/skills/bpmn-model/`, `plugins/qsm-bpmn/agents/`,
+      `plugins/qsm-c4/skills/c4-model/`, `plugins/qsm-c4/agents/`. Proof: `bun run eval qsm-bpmn`
+      and `bun run eval qsm-c4`. **First build (done in qsm-models, split by line 21):** the skill
+      `model` and `model-reviewer`.
       **Waits (qsm-bpmn):** `model-simplifier`. Blocked by 21.
-- [ ] 12. `pages`: `bpmn.html` and `c4.html` in `.qsm/models/`, `.qsm/` in `.gitignore`. **Moved**
-      by lines 15 and 16 to `plugins/qsm-bpmn/lib/pages/`, `plugins/qsm-c4/lib/pages/` and each
-      plugin's `pages/` template. Proof: design Verify 7, then the scenarios of each plugin's pages
-      requirements: a scripted browser opens each file from disk, drills a call activity and a C4
-      level, and records no request outside the file; a PNG of each page is looked at. **First
-      build (built in qsm-models).**
+- [ ] 12. `pages`: `bpmn.html` in `.qsm/bpmn/` and `c4.html` in `.qsm/c4/`, `.qsm/` in `.gitignore`.
+      **Moved** by lines 15 and 16, each writing its own directory, to
+      `plugins/qsm-bpmn/lib/pages/`, `plugins/qsm-c4/lib/pages/` and each plugin's `pages/`
+      template. Proof: design Verify 7, then the scenarios of each plugin's pages requirements: a
+      scripted browser opens each file from disk, drills a call activity and a C4 level, and records
+      no request outside the file; a PNG of each page is looked at.
+      **First build (built in qsm-models).**
 - Line 13, **removed 2026-11-06**: local mode and links to other projects, with the dependency on
       qsm-docs.
 
@@ -117,16 +120,20 @@ new work.
       `lib/render.ts`, `lib/pages/pages.ts`, `plugins/qsm-bpmn/lib/bpmn/layout.ts`,
       `plugins/qsm-c4/lib/elements.ts`. Proof: `runBin` tests of the two "A render of a graph lint
       refuses" scenarios, the pictures' bytes unchanged on disk. Blocked by 19.
-- [ ] 21. **Moved.** The skill `model` and `model-reviewer` split by kind, one of each per plugin,
-      the reviewer's step before an edit reaches the model file and `render --check` before a
-      commit in each skill; the evals moved with them (`model-where-a-change-goes` to qsm-bpmn, a
-      C4 case beside it). Files: `plugins/qsm-bpmn/skills/model/`, `plugins/qsm-bpmn/agents/`,
-      `plugins/qsm-bpmn/evals/`, the same under `plugins/qsm-c4/`. Proof: `bun run eval qsm-bpmn`
-      and `bun run eval qsm-c4`, each skill under 12 KB. Blocked by 20.
+- [ ] 21. **Moved.** The skill `model` and `model-reviewer` split by kind: the skill becomes
+      `bpmn-model` in qsm-bpmn and `c4-model` in qsm-c4, each plugin with its own `model-reviewer`;
+      the reviewer's step before an edit reaches the model file, `render --check` before a commit,
+      and `--accept` left to the owner in each skill; the evals moved with them
+      (`model-where-a-change-goes` to qsm-bpmn, a C4 case beside it). Files:
+      `plugins/qsm-bpmn/skills/bpmn-model/`, `plugins/qsm-bpmn/agents/`, `plugins/qsm-bpmn/evals/`,
+      `plugins/qsm-c4/skills/c4-model/`, `plugins/qsm-c4/agents/`, `plugins/qsm-c4/evals/`. Proof:
+      `bun run eval qsm-bpmn` and `bun run eval qsm-c4`, each skill under 12 KB. Blocked by 20.
 - [ ] 22. **New.** `models/marketplace.c4` draws qsm-models as two containers, qsm-bpmn and qsm-c4,
       each with its components and its relations (qsm-bpmn's tool to qsm-c4's tool, `exec, stdio`,
       reading element ids and colours), and loses the relations of what was removed (the commit
-      gate, the conform component, the spec-propose relation). The proposals that link the
+      gate, the conform component, the spec-propose relation). The relation that says qsm-models
+      installs "the bpmn, c4 and c4-change kinds" into qsm-docs becomes qsm-bpmn installing the
+      `bpmn` kind, the only kind `models-pages` has. The proposals that link the
       qsm-models views link the new ones. Files: `models/marketplace.c4`, `models/*.drawio.svg`,
       `openspec/changes/{strict-visual-models,models-pages,models-pr-pictures}/proposal.md`.
       Proof: `qsm-c4 lint` and `qsm-c4 render` clean, the two component views read as PNG,

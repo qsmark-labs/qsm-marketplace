@@ -3,8 +3,8 @@
 ### Requirement: subgraph finds what a change touches in the C4 graph
 
 `qsm-c4 subgraph [--base <ref>] [--widen <id>...] --out <dir>` SHALL compare the C4 graph of the
-branch with the same graph at the merge base of the branch and `--base` (default `main`): the file
-under `models/` in repo mode, the newest snapshot of each branch in local mode. The touched subgraph
+branch with the same graph at the merge base of the branch and `--base` (default `main`), the file
+under `models/` at each, diffed by qsm-c4 itself by element id and relation. The touched subgraph
 SHALL be every element added, changed or removed, plus every element one relation away in either
 version, plus each `--widen` element and its own one hop.
 

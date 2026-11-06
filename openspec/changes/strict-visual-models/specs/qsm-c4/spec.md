@@ -145,7 +145,7 @@ write nothing and exit as the lint did.
 
 ### Requirement: An edit reaches the graph file only after the reviewer
 
-The skill `model` SHALL write an edit into `models/<project>.c4`, the agent's own or one applied
+The skill `c4-model` SHALL write an edit into `models/<project>.c4`, the agent's own or one applied
 from a page's proposal, only after the full lint passes and `model-reviewer` returns no finding. A
 binary cannot run an agent, so the skill holds this step.
 
@@ -161,13 +161,15 @@ binary cannot run an agent, so the skill holds this step.
 `render` SHALL measure each view from its geometry: edge crossings, segments two edges share, total
 and longest edge length, bends per edge, labels that touch a line or a box, and area per element,
 each divided by the element count, and SHALL exit `worse` writing nothing when a measure grew
-against the view it replaces, unless `--accept` names that measure.
+against the view it replaces. Only `--accept <measure>` SHALL pass it, and the skill `c4-model`
+SHALL leave that flag to the owner to type, never the agent.
 
 #### Scenario: A new relation crosses the view
 
 - **WHEN** a change adds a relation and edge crossings per element in the container view grow from
   0.2 to 0.5
-- **THEN** `render` exits `worse` naming edge crossings and both numbers, and writes nothing
+- **THEN** `render` exits `worse` naming edge crossings and both numbers, and writes nothing, and
+  the agent restructures the source or asks the owner, never typing `--accept` itself
 
 ### Requirement: An applied move survives the next render
 
@@ -186,7 +188,7 @@ element, so a move the owner made and the agent applied stays where it was put.
 `render` SHALL write one `models/<project>.<view>.drawio.svg` per generated view: the picture, with
 the view's draw.io diagram, its shapes carrying draw.io's C4 attributes, in the root element's
 `content` attribute. `render --check` SHALL write nothing and exit `worse` naming each view that
-differs, and the skill `model` SHALL run it before a commit.
+differs, and the skill `c4-model` SHALL run it before a commit.
 
 #### Scenario: A source changed and its view did not
 
@@ -196,7 +198,7 @@ differs, and the skill `model` SHALL run it before a commit.
 
 ### Requirement: The model skill takes any piece of work to a checked structure
 
-The plugin SHALL ship a skill `model`: structure goes into the project's C4 graph, and the scale
+The plugin SHALL ship a skill `c4-model`: structure goes into the project's C4 graph, and the scale
 decides where. A plugin gets a container, with components when its parts matter; the project gets
 its context and container views; a task changes the graph only when a relation or a part changes.
 
@@ -222,15 +224,15 @@ source against the spec and the rules and returns findings, editing nothing.
 ### Requirement: pages writes one self-contained C4 page
 
 `pages [--out <dir>]` SHALL run the full lint and, when it passes, write `c4.html` into
-`<repo>/.qsm/models/`, which the repository's `.gitignore` names, replacing only the `c4.html` an
-earlier run wrote. The page SHALL hold the generated views inside the file and SHALL request nothing
-outside it.
+`<repo>/.qsm/c4/`, under the `.qsm/` the repository's `.gitignore` names, replacing what an earlier
+run wrote there and touching nothing else under `.qsm/`. The page SHALL hold the generated views
+inside the file and SHALL request nothing outside it.
 
 #### Scenario: The page from a clean checkout
 
 - **WHEN** `qsm-c4 pages` runs in a checkout with `models/marketplace.c4`, then a scripted browser
   opens the file from disk and records its requests
-- **THEN** `.qsm/models/c4.html` exists, opens, and the browser made no request except for the file
+- **THEN** `.qsm/c4/c4.html` exists, opens, and the browser made no request except for the file
   itself
 
 #### Scenario: A project with no C4 graph

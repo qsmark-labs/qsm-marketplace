@@ -11,8 +11,8 @@ The revision of 2026-11-06 splits the built plugin `plugins/qsm-models` into `pl
 and `plugins/qsm-c4`, keeps one neutral link between them, moves every check into the verbs that
 write, and drops the code check, the decision links, the verified commit, the stray-model check,
 the links into other projects, the commit gate and the spec-propose change. The owner's words are
-in the proposal, decision 9. Decisions it settled are 23 to 25; decisions it left to this revision
-are marked "proposed 2026-11-06", each waiting for the owner's yes.
+in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it left open are marked
+"decided 2026-11-06, the main agent, craft", each with the options it was chosen from.
 
 ## Decisions
 
@@ -68,9 +68,10 @@ are marked "proposed 2026-11-06", each waiting for the owner's yes.
    or per plugin drifts, and the research found models kept only where one model lives next to the
    code and a check backs it. A change works on the graph on its branch, so the archive moves
    nothing. Local mode, a graph kept only in the qsm-docs store when no file is committed, is
-   removed (proposed 2026-11-06): the MVP serves one project, the marketplace, whose graphs are
-   committed ("Currently in MVP build currently for one project - qsm marketplace - only"); the
-   history of a graph is the snapshots of its qsm-docs page (`models-pages`). The check that
+   removed (decided 2026-11-06, the main agent, craft; the other option was to keep it as later
+   work): the MVP serves one project, the marketplace, whose graphs are committed ("Currently in
+   MVP build currently for one project - qsm marketplace - only"); the history of a graph is the
+   snapshots of its qsm-docs page (`models-pages`). The check that
    refused a model file outside `models/` is removed (2026-11-06). Reopens when: two changes in
    flight conflict in the one XML file more than the agent can resolve, or a second project needs
    a graph it does not commit.
@@ -103,8 +104,9 @@ are marked "proposed 2026-11-06", each waiting for the owner's yes.
     notations, so a lane linked to a C4 actor takes its colour, read through qsm-c4 (decision 24);
     the GitHub Action as a lane, not a black-box pool, because it runs our own workflow file; at
     most 10 activities a level (Silver), not 7 plus or minus 2. The six colours are one table both
-    plugins need, so it moves to root `lib/palette.ts` (proposed 2026-11-06; AGENTS.md: code two
-    plugins need goes to `lib/`), and an unlinked lane takes from it without qsm-c4.
+    plugins need, so it moves to root `lib/palette.ts` (decided 2026-11-06, the main agent, craft;
+    the other option was a copy in each plugin; AGENTS.md: code two plugins need goes to `lib/`),
+    and an unlinked lane takes from it without qsm-c4.
 14. **Rules taken from the sources**: BPMN, Silver's Method and Style (verb-object activities,
     named end states, split answers, a loop back through a merge gateway, call activities for
     levels, matching split and join types); C4, Brown's notation and checklist (title, legend, type
@@ -119,13 +121,15 @@ are marked "proposed 2026-11-06", each waiting for the owner's yes.
     signature is kept only after `model-reviewer` reads the changed activities. It is also what the
     owner's test case needs: merging "Close the tasks the PR names" with "Tasks still open?" drops
     the answers, and both `one-flow-out` and the signatures refuse it.
-16. **Review always, simplify on request, each agent where its work lives** (placement proposed
-    2026-11-06). Each plugin ships its own `model-reviewer`, on sonnet, which reads only its kind,
-    because a plugin that works alone must review alone and the "in" gate of decision 25 needs a
-    reviewer in each (a review is never haiku). `model-simplifier`, on opus, ships in qsm-bpmn
-    only: it walks processes and keeps a rewrite by `paths --compare`, which only BPMN has. It runs
-    only when asked, because a pass costs several times a review. The skill `model` is one per
-    plugin, the same name in each, told apart by the plugin's prefix.
+16. **Review always, simplify on request, each agent where its work lives** (placement and names
+    decided 2026-11-06, the main agent, craft). Each plugin ships its own `model-reviewer`, on
+    sonnet, which reads only its kind, because a plugin that works alone must review alone and the
+    "in" gate of decision 25 needs a reviewer in each (a review is never haiku); the other option
+    was one reviewer in one plugin. `model-simplifier`, on opus, ships in qsm-bpmn only: it walks
+    processes and keeps a rewrite by `paths --compare`, which only BPMN has. It runs only when
+    asked, because a pass costs several times a review. The skills are `bpmn-model` in qsm-bpmn and
+    `c4-model` in qsm-c4, so a skill list names the notation without the prefix; the other option
+    was `model` in both.
 17. **Revised 2026-11-06: the only link is a C4 id on a BPMN element.** BPMN 2.0 allows attributes
     of another namespace on any element, so the link is an attribute (decision 24). The decision
     links (`qsm:decision`, C4 `decision`, `design:` and `commit:`), the `<project>:` call activity
@@ -178,58 +182,64 @@ are marked "proposed 2026-11-06", each waiting for the owner's yes.
     Viewer pinned and inlined with the graph, the drill-down through call activities, and a details
     panel that shows a task's Gherkin notes as text; qsm-c4's `c4.html` is the generated SVG views
     inlined, a click on an element opening its child view, the committed picture's zoom links
-    rewritten to in-page links. Both go to `<repo>/.qsm/models/`, gitignored, each plugin
-    replacing only its own file (proposed 2026-11-06: one directory keeps the lens export's
-    convention, `.qsm/lens.html`). Each plugin's qsm-docs page later replaces its verb's output
+    rewritten to in-page links. qsm-bpmn writes into `<repo>/.qsm/bpmn/` and qsm-c4 into
+    `<repo>/.qsm/c4/`, both under the gitignored `.qsm/` (decided 2026-11-06, the main agent,
+    craft: a directory per plugin, so neither run touches the other's output; the other option was
+    one `.qsm/models/` for both). Each plugin's qsm-docs page later replaces its verb's output
     (`models-pages` for BPMN). Reopens when: a page file passes 2 MB (measure in Verify 7).
 23. **Two plugins, `qsm-bpmn` and `qsm-c4`, each self-contained** (2026-11-06). The owner: "Chci 2
     separate tools, ktere mi zobrazi grafy modelu podle nasich rules ... The two tools are
     selfcontained, only with some options for connections between them". Options: one plugin with
     two binaries (refused by Iron Law 8, one plugin one binary), the one plugin as built, two
-    plugins. Choice: two plugins, each with its binary, verbs, skill `model`, `model-reviewer`,
-    page and checks, each installed and run alone. The code is moved, not rewritten: `lib/bpmn/`,
-    `lib/paths.ts` and `pages/bpmn.html.txt` go to qsm-bpmn; `lib/c4/` and `pages/c4.html.txt` to
-    qsm-c4; `lib/graphs.ts`, `lib/lint.ts`, `lib/render.ts` and `lib/pages/pages.ts` split by kind,
-    each plugin keeping its own five-line `repoRoot`. Neither plugin imports the other (gate
-    `validate-no-cross-plugin-import`). Reopens when: a third notation needs the same verbs.
-24. **The link is a neutral C4 id, read through qsm-c4's CLI** (2026-11-06; the attribute's name
-    proposed 2026-11-06). The owner: "using c4 ids or something in the bpmn, that is not qsm tool
-    specific". Attribute options: `c4:element` under `https://c4model.com`, the home of the C4
-    notation the id belongs to; `urn:c4model:bpmn`, an unregistered URN namespace (RFC 8141 asks
-    for a registered one); a URI under this repository, which is qsm-specific. Choice: `c4:element`
-    under `https://c4model.com`. An XML namespace name is an identifier, never fetched (Namespaces
-    in XML 1.0, section 2.2), so naming the notation's home says what the id is without naming our
-    tool; the cost is a URI on a domain we do not own, unverified whether any published convention
-    already exists (checked in line 17). qsm-bpmn reads it under whatever prefix the file binds to
-    that URI, and a `c4` prefix bound to another URI is a lint finding, so a typo is loud. The door:
-    a new verb `qsm-c4 elements --json` (proposed 2026-11-06), which lists every element's id,
-    kind, title, tags and actor colour, because AGENTS.md lets a plugin reach another only through
-    its contract and no verb printed this. Options were that verb, `qsm-c4 lint --json` carrying
-    the elements (a lint that returns data it does not judge), or a `get <id>` call per id (one
-    process per lane). qsm-bpmn starts qsm-c4 only when the graph carries an id; then a missing
-    binary is `missing` with no fallback. qsm-c4 is no `plugin.json` dependency (proposed
-    2026-11-06): a dependency installs with the plugin, and the owner wants a BPMN with no ids to
-    need no qsm-c4. The migration of `models/marketplace.bpmn` from `qsm:c4` rewrites nothing:
-    measured 2026-11-06, the graph carries no `qsm:` attribute and binds no `urn:qsm:models`.
-25. **The checks live in the generators** (2026-11-06). The owner: "Ten check co je v langdev ma
-    byt v tech generatorech samotnych, kdyz to chcec vygenerovat in or out, or for the web, musi to
+    plugins. Choice: two plugins, each with its binary, verbs, skill (`bpmn-model`, `c4-model`),
+    `model-reviewer`, page and checks, each installed and run alone. The code is moved, not
+    rewritten: `lib/bpmn/`, `lib/paths.ts` and `pages/bpmn.html.txt` go to qsm-bpmn; `lib/c4/` and
+    `pages/c4.html.txt` to qsm-c4; `lib/graphs.ts`, `lib/lint.ts`, `lib/render.ts` and
+    `lib/pages/pages.ts` split by kind, each plugin keeping its own five-line `repoRoot`. Neither
+    plugin imports the other (gate `validate-no-cross-plugin-import`). Reopens when: a third
+    notation needs the same verbs.
+24. **The link is a neutral C4 id, read through qsm-c4's CLI** (2026-11-06; the attribute, the door
+    and the optional reach decided 2026-11-06, the main agent, craft). The owner: "using c4 ids or
+    something in the bpmn, that is not qsm tool specific". Attribute options: `c4:element` under
+    `https://c4model.com`, the home of the C4 notation the id belongs to; `urn:c4model:bpmn`, an
+    unregistered URN namespace (RFC 8141 asks for a registered one); a URI under this repository,
+    which is qsm-specific. Choice: `c4:element` under `https://c4model.com`, unless the search of
+    tasks line 17 finds a published convention, which then wins. An XML namespace name is an
+    identifier, never fetched (Namespaces in XML 1.0, section 2.2), so naming the notation's home
+    says what the id is without naming our tool; the cost is a URI on a domain we do not own.
+    qsm-bpmn reads it under whatever prefix the file binds to that URI, and a `c4` prefix bound to
+    another URI is a lint finding, so a typo is loud. The door: a new verb `qsm-c4 elements --json`,
+    which lists every element's id, kind, title, tags and actor colour, because AGENTS.md lets a
+    plugin reach another only through its contract and no verb printed this. Options were that verb,
+    `qsm-c4 lint --json` carrying the elements (a lint that returns data it does not judge), or a
+    `get <id>` call per id (one process per lane). qsm-c4 is an optional reach and no `plugin.json`
+    dependency of qsm-bpmn; against AGENTS.md law 2: qsm-c4 is reached only for a graph that carries
+    C4 ids, and it fails `missing` there with no fallback. The other option, a declared dependency,
+    would install qsm-c4 with every qsm-bpmn. The migration of `models/marketplace.bpmn` from
+    `qsm:c4` rewrites nothing: measured 2026-11-06, the graph carries no `qsm:` attribute and binds
+    no `urn:qsm:models`.
+25. **The checks live in the generators** (2026-11-06; the fold of `check` and the way past a worse
+    layout decided 2026-11-06, the main agent, craft). The owner: "Ten check co je v langdev ma byt
+    v tech generatorech samotnych, kdyz to chcec vygenerovat in or out, or for the web, musi to
     projit vsema kontrolama, vcetne agents, teda web nemusi agents". Every verb that writes or
     converts a graph (`layout`, `render`, `pages`, `elements`, and what later changes add) runs the
-    plugin's full lint first and writes nothing on a finding; `layout` leaves out `no-bpmndi`,
-    the one finding it exists to fix. The verb `check` is removed (proposed 2026-11-06): of its
-    checks only a C4 id and a call to a missing process survive, and both become lint rules of
-    qsm-bpmn, so "the full lint" is one verb. "In", an edit written into the model file, the
-    agent's own or a page's proposal applied, also needs `model-reviewer`'s pass. A binary cannot
-    start an agent, so this half of the gate lives in the skill `model`, which runs the reviewer
-    and stops the write on a finding; a skipped review is caught by nothing but the skill, and the
-    spec says so. "For the web", the PR picture (`models-pr-pictures`), is drawn read-only from the
-    committed graph, which already passed both, so it needs the lint and no agent. The commit gate
-    of qsm-langdev is removed with its requirement: a stale picture is found by `render --check`,
-    which the skill runs before a commit. The layout measure compared a picture at the commit and
-    let the commit message name a growth; it moves into `render`, which refuses a worse picture
-    unless `--accept <measure>` names it, and the skill has the reason written in the commit
-    message (proposed 2026-11-06). Options were that flag, no way past a worse measure, or a
-    measure that only reports.
+    plugin's full lint first and writes nothing on a finding; `layout` leaves out `no-bpmndi`, the
+    one finding it exists to fix. There is no `check` verb: it is folded into each plugin's lint. Of
+    its checks only a C4 id and a call to a missing process survive, both lint rules of qsm-bpmn;
+    its C4 half held only the links the owner removed, so qsm-c4's lint gains no rule. The other
+    option was a `check` verb every generator also runs. "In", an edit written into the model file,
+    the agent's own or a page's proposal applied, also needs `model-reviewer`'s pass. A binary
+    cannot start an agent, so this half of the gate lives in each plugin's skill (`bpmn-model`,
+    `c4-model`), which runs the reviewer and stops the write on a finding; a skipped review is
+    caught by nothing but the skill, and the spec says so. "For the web", the PR picture
+    (`models-pr-pictures`), is drawn read-only from the committed graph, which already passed both,
+    so it needs the lint and no agent. The commit gate of qsm-langdev is removed with its
+    requirement: a stale picture is found by `render --check`, which the skill runs before a commit.
+    The layout measure compared a picture at the commit and let the commit message name a growth; it
+    moves into `render`, which refuses a worse picture. Only `--accept <measure>` passes it, and the
+    skill says that flag is the owner's to type, never the agent's, because accepting a worse
+    picture is the owner's choice. The other options were no way past a worse measure, or a measure
+    that only reports.
 
 ## Verify, each proved before the first task that depends on it
 
@@ -272,11 +282,6 @@ are marked "proposed 2026-11-06", each waiting for the owner's yes.
 
 1. **Layout pin**: bpmn-auto-layout 2.0.0-alpha.2 exactly (recommended: 1.3.0 drops lane geometry,
    measured; the alpha is deterministic, measured), or lanes drawn by us on 1.3.0.
-2. **The choices this revision proposed**, each marked "proposed 2026-11-06" above and listed with
-   its options in the proposal's decision 9: local mode removed (7), the palette in root lib (13),
-   one reviewer per plugin and the skill's name (16), the attribute, the `elements` verb and no
-   `plugin.json` dependency (24), `check` folded into lint and `render --accept` (25), one pages
-   directory (22). Each holds until the owner answers.
 
 ## Critiques
 

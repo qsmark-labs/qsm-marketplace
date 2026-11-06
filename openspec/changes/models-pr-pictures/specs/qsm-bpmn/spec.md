@@ -2,11 +2,10 @@
 
 ### Requirement: subgraph finds what a change touches in the BPMN graph
 
-`qsm-bpmn subgraph [--base <ref>] [--widen <id>...] --out <dir>` SHALL compare the BPMN graph of
-the branch with the same graph at the merge base of the branch and `--base` (default `main`): the
-file under `models/` in repo mode, the newest snapshot of each branch in local mode. The touched
-subgraph SHALL be every element added, changed or removed, plus every element one flow away in
-either version, plus each `--widen` element and its own one hop.
+`qsm-bpmn subgraph [--base <ref>] [--widen <id>...] --out <dir>` SHALL compare the BPMN graph of the
+branch with the same graph at the merge base of the branch and `--base` (default `main`), the file
+under `models/` at each. The touched subgraph SHALL be every element added, changed or removed, plus
+every element one flow away in either version, plus each `--widen` element and its own one hop.
 
 #### Scenario: A step added to the task loop
 

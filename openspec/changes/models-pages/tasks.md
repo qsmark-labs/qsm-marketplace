@@ -14,7 +14,7 @@ Each line can be shown working alone; the proof is the run named after it.
   `plugins/qsm-bpmn/pages/bpmn/`. Proof: design Verify 1, then a scripted browser run that drills
   into a called process, writes two scenarios under a step, saves, and `qsm-docs list --open` names
   the proposal; no new connection leaves 127.0.0.1. Blocked by 1.
-- [ ] 4. Apply: the skill `model` says how to apply a `bpmn` proposal (diff, copy the scenarios,
-  gates, commit, the applied snapshot with `--parent`). Files: `plugins/qsm-bpmn/skills/model/`.
-  Proof: a real apply of the proposal from line 3, then `qsm-bpmn gherkin` prints the scenarios
-  from `models/marketplace.bpmn`. Blocked by 2, 3.
+- [ ] 4. Apply: the skill `bpmn-model` says how to apply a `bpmn` proposal (diff, copy the
+      scenarios, gates, commit, the applied snapshot with `--parent`). Files:
+      `plugins/qsm-bpmn/skills/bpmn-model/`. Proof: a real apply of the proposal from line 3, then
+      `qsm-bpmn gherkin` prints the scenarios from `models/marketplace.bpmn`. Blocked by 2, 3.

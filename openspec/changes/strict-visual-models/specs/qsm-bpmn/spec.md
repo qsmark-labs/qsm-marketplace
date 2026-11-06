@@ -201,9 +201,9 @@ on a finding SHALL write nothing and exit as the lint did. `layout` SHALL leave 
 
 ### Requirement: An edit reaches the graph file only after the reviewer
 
-The skill `model` SHALL write an edit into `models/<project>.bpmn`, the agent's own or one applied
-from a page's proposal, only after the full lint passes and `model-reviewer` returns no finding. A
-binary cannot run an agent, so the skill holds this step.
+The skill `bpmn-model` SHALL write an edit into `models/<project>.bpmn`, the agent's own or one
+applied from a page's proposal, only after the full lint passes and `model-reviewer` returns no
+finding. A binary cannot run an agent, so the skill holds this step.
 
 #### Scenario: The reviewer returns a finding on a clean graph
 
@@ -217,13 +217,15 @@ binary cannot run an agent, so the skill holds this step.
 `render` SHALL measure each picture from its geometry: edge crossings, segments two edges share,
 total and longest edge length, bends per edge, lane jumps per flow, labels that touch a line or a
 box, and area per element, each divided by the element count, and SHALL exit `worse` writing
-nothing when a measure grew against the picture it replaces, unless `--accept` names that measure.
+nothing when a measure grew against the picture it replaces. Only `--accept <measure>` SHALL pass
+it, and the skill `bpmn-model` SHALL leave that flag to the owner to type, never the agent.
 
 #### Scenario: A reordered lane makes flows jump further
 
 - **WHEN** a change moves the QA lane above the Owner lane and lane jumps per flow grow from 0.6 to
   1.1
-- **THEN** `render` exits `worse` naming lane jumps and both numbers, and writes nothing
+- **THEN** `render` exits `worse` naming lane jumps and both numbers, and writes nothing, and the
+  agent restructures the graph or asks the owner, never typing `--accept` itself
 
 ### Requirement: layout never overwrites a drawn diagram
 
@@ -239,8 +241,8 @@ and lanes included, for each process of the file that has none, deterministicall
 ### Requirement: render commits a picture beside the graph
 
 `render` SHALL write `models/<project>.<process>.svg` per process of the graph. `render --check`
-SHALL write nothing and exit `worse` naming each picture that differs, and the skill `model` SHALL
-run it before a commit.
+SHALL write nothing and exit `worse` naming each picture that differs, and the skill `bpmn-model`
+SHALL run it before a commit.
 
 #### Scenario: A graph changed and its SVG did not (path p-30235a)
 
@@ -311,9 +313,10 @@ answer does not. Keeping every signature SHALL NOT be enough to keep a rewrite.
 
 ### Requirement: The model skill takes any piece of work to a checked process
 
-The plugin SHALL ship a skill `model`: behaviour goes into the project's BPMN graph, and the scale
-decides where. A task changes a process only when it changes behaviour; a feature gets a process of
-at most 10 activities and a called process per call activity; the project gets its main process.
+The plugin SHALL ship a skill `bpmn-model`: behaviour goes into the project's BPMN graph, and the
+scale decides where. A task changes a process only when it changes behaviour; a feature gets a
+process of at most 10 activities and a called process per call activity; the project gets its main
+process.
 
 #### Scenario: A feature changes how a task is reviewed
 
@@ -368,15 +371,16 @@ the changed activities.
 ### Requirement: pages writes one self-contained BPMN page
 
 `pages [--out <dir>]` SHALL run the full lint and, when it passes, write `bpmn.html` into
-`<repo>/.qsm/models/`, which the repository's `.gitignore` names, replacing only the `bpmn.html` an
-earlier run wrote. The page SHALL hold the bpmn-js Viewer at its pinned version, its styles and the
-graph inside the file, and SHALL request nothing outside it.
+`<repo>/.qsm/bpmn/`, under the `.qsm/` the repository's `.gitignore` names, replacing what an
+earlier run wrote there and touching nothing else under `.qsm/`. The page SHALL hold the bpmn-js
+Viewer at its pinned version, its styles and the graph inside the file, and SHALL request nothing
+outside it.
 
 #### Scenario: The page from a clean checkout
 
 - **WHEN** `qsm-bpmn pages` runs in a checkout with `models/marketplace.bpmn`, then a scripted
   browser opens the file from disk and records its requests
-- **THEN** `.qsm/models/bpmn.html` exists, opens, and the browser made no request except for the
+- **THEN** `.qsm/bpmn/bpmn.html` exists, opens, and the browser made no request except for the
   file itself
 
 #### Scenario: A project with no BPMN graph

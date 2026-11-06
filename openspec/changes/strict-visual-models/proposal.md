@@ -26,7 +26,8 @@ alone, and one graph of each per project that every change works on.
 ## What
 
 - **Two plugins, `qsm-bpmn` and `qsm-c4`, each one binary**, its verbs the ones described in its
-  own `qsm.json`, its own skill `model`, its own `model-reviewer`, its own page, its own checks.
+  own `qsm.json`, its own skill (`bpmn-model`, `c4-model`), its own `model-reviewer`, its own
+  page, its own checks.
   The first build shipped both as one plugin, `qsm-models`; the split moves that code.
 - **One graph per kind per project**: `models/<project>.bpmn` and `models/<project>.c4`, committed,
   never a copy per change or per plugin. The marketplace's existing models migrated once into its
@@ -46,15 +47,16 @@ alone, and one graph of each per project that every change works on.
   also needs `model-reviewer`'s pass, which the skill enforces because a binary cannot run an
   agent; the PR picture needs no agent.
 - **The first build shows the models**: `qsm-bpmn pages` and `qsm-c4 pages` each write one
-  self-contained HTML into `.qsm/models/`, a BPMN page with drill-down and a C4 page with levels.
+  self-contained HTML, into `.qsm/bpmn/` and `.qsm/c4/`, a BPMN page with drill-down and a C4
+  page with levels.
 - **An applied move survives**: BPMN keeps its own geometry, a C4 element carries layout hints.
 - **Rendered and committed**: an SVG per process, a `.drawio.svg` per C4 view, beside the graph;
   `render --check` names a stale picture, and `render` refuses a picture whose layout measures got
-  worse.
+  worse unless the owner types `--accept <measure>`.
 - **The cover becomes scenarios**: `qsm-bpmn paths` lists the cover of each process, with stable
   ids; every cover path has a spec scenario, and QA runs the scenarios.
-- **Drawn to rules, not by hand**, with a skill `model` and a reviewer per plugin, and a simplifier
-  in qsm-bpmn on request.
+- **Drawn to rules, not by hand**, with a skill and a reviewer per plugin, and a simplifier in
+  qsm-bpmn on request.
 
 ## Not in this feature
 
@@ -65,7 +67,7 @@ Gherkin notes), any link between Gherkin and tests, the before and after picture
 (`models-pr-pictures`), and the lens showing models. Removed by the owner on 2026-11-06: the check
 of C4 against the code, decision links (`qsm:decision`, C4 `decision`, `design:` and `commit:`),
 the verified commit, the check for model files outside `models/`, links into other projects, the
-commit gate in qsm-langdev, the spec-propose and spec-archive change in qsm-openspec, and, proposed
+commit gate in qsm-langdev, the spec-propose and spec-archive change in qsm-openspec, and, decided
 with this revision, local mode.
 
 ## Decisions of the owner
@@ -110,17 +112,18 @@ with this revision, local mode.
    `models-pr-pictures`, which the owner revises next. This revision split the plugin, kept one
    link, moved the checks and removed what the "Not in this feature" section lists. It invalidated
    design decisions 1, 9, 17 and 18, Verify 1, the qsm-langdev and qsm-openspec capabilities, and
-   tasks lines 2, 7, 9, 10 and 13. Choices the words left open, each proposed with its options in
-   the design and waiting for the owner's yes:
-   - local mode removed, not kept as later work (design 7);
-   - the six palette colours in root `lib/palette.ts`, not a copy in each plugin (design 13);
-   - a `model-reviewer` in each plugin, `model-simplifier` in qsm-bpmn only, the skill named
-     `model` in both (design 16);
-   - the attribute `c4:element` under `https://c4model.com`; the door `qsm-c4 elements --json`;
-     qsm-c4 no `plugin.json` dependency of qsm-bpmn (design 24);
-   - `check` folded into qsm-bpmn's lint, and `render --accept <measure>` for a worse layout
-     (design 25);
-   - both pages in one `.qsm/models/` (design 22).
+   tasks lines 2, 7, 9, 10 and 13. Choices the words left open were decided on 2026-11-06 by the
+   main agent as craft, each with its options in the design:
+   - local mode removed (design 7);
+   - the six palette colours in root `lib/palette.ts` (design 13);
+   - a `model-reviewer` in each plugin, `model-simplifier` in qsm-bpmn only, the skills
+     `bpmn-model` and `c4-model` (design 16);
+   - the attribute `c4:element` under `https://c4model.com` unless tasks line 17 finds a published
+     convention; the door `qsm-c4 elements --json`; qsm-c4 an optional reach, no `plugin.json`
+     dependency of qsm-bpmn (design 24);
+   - no `check` verb, folded into each plugin's lint; `render` refuses a worse layout and only the
+     owner types `--accept <measure>` (design 25);
+   - the pages in `.qsm/bpmn/` and `.qsm/c4/` (design 22).
 
 ## Critiques
 
@@ -156,10 +159,10 @@ layout decision); they still hold, the split halves the binary sizes, and the re
 - **Scope sniper: the new verb `qsm-c4 elements`.** Kept: the owner's colour rule and link check
   need the C4 graph's ids and colours, and no verb printed them; it is one verb over the parse
   `lint` already does. Rejected: reading the `.c4` file from qsm-bpmn.
-- **Scope sniper: `render --accept`.** A flag the owner did not name. Kept for now: the commit
-  message that let a worse measure through went with the commit gate, and without a way past it
-  the measure blocks every honest growth; the owner may choose a measure that only reports
-  instead (design decision 25).
+- **Scope sniper: `render --accept`.** A flag the owner did not name. Kept: the commit message
+  that let a worse measure through went with the commit gate, and without a way past it the
+  measure blocks every honest growth. The skill leaves the flag to the owner, so an agent cannot
+  wave its own worse picture through (design decision 25).
 - **Scope sniper: tasks line 23, the gate process redrawn.** Kept: this change's own pictures show
   a commit gate the change no longer has, and the scenarios cite its paths.
 - **Scope sniper: the subgraph requirements of `models-pr-pictures` written once per plugin.**

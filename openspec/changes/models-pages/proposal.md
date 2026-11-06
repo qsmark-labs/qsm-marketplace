@@ -21,7 +21,7 @@ proposal the agent applies through the gates. It is the third piece of epic qsm-
   `textFormat` `text/x-gherkin`. The details panel shows it; in edit mode it is a text field, and
   save stores the whole edited XML as a proposal.
 - **`qsm-bpmn gherkin <graph> [--task <id>]`** prints a graph's scenarios as `.feature` text.
-- **Apply**: the skill `model` says how the agent takes a proposal's scenarios into
+- **Apply**: the skill `bpmn-model` says how the agent takes a proposal's scenarios into
   `models/<project>.bpmn` and records the applied snapshot.
 
 ## Not in this feature
