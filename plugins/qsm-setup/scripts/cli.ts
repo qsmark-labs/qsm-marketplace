@@ -72,9 +72,14 @@ function usageOffer(json: boolean): string[] {
   ];
 }
 
-function rememberInstalled(outcomes: readonly { plugin: string; status: string }[]): void {
+/** Records the plugins installed now beside those recorded before, less any name the marketplace no
+ * longer lists, so a retired plugin leaves the record with its last install. */
+function rememberInstalled(
+  outcomes: readonly { plugin: string; status: string }[],
+  known: readonly string[],
+): void {
   const path = join(stateDir(env), "installed.json");
-  const kept = new Set(readInstalled(path));
+  const kept = new Set(readInstalled(path).filter((name) => known.includes(name)));
   for (const o of outcomes) {
     if (o.status === "installed" || o.status === "already" || o.status === "suggested") {
       kept.add(o.plugin);
@@ -127,7 +132,7 @@ const install: Handler = (call) =>
       requiredBy: requiredBy(nodes, order, selected),
     });
     if (!dryRun) {
-      rememberInstalled(outcomes);
+      rememberInstalled(outcomes, known);
     }
     const left = dryRun ? purged : purgeMachine(nodes, root, true);
     const lines = [

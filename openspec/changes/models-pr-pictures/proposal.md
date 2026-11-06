@@ -1,6 +1,8 @@
 ![A PR shows what its change does to the graphs, BPMN](../../../models/marketplace.pr_pictures_process.svg)
 
-![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
+![qsm-bpmn, C4 components, what depends on what](../../../models/marketplace.components-bpmn-depends.drawio.svg)
+
+![qsm-c4, C4 components](../../../models/marketplace.components-c4.drawio.svg)
 
 The Subgraph components of qsm-bpmn and qsm-c4 in `models/marketplace.c4` are this change, one per
 graph.

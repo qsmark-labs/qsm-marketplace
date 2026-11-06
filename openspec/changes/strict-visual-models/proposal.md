@@ -4,15 +4,16 @@
 
 ![One try of the simplify pass, BPMN](../../../models/marketplace.try_rewrite_process.svg)
 
-![qsm-models, C4 components, who uses what](../../../models/marketplace.components-models-uses.drawio.svg)
+![qsm-bpmn, C4 components, who uses what](../../../models/marketplace.components-bpmn-uses.drawio.svg)
 
-![qsm-models, C4 components, what depends on what](../../../models/marketplace.components-models-depends.drawio.svg)
+![qsm-bpmn, C4 components, what depends on what](../../../models/marketplace.components-bpmn-depends.drawio.svg)
+
+![qsm-c4, C4 components](../../../models/marketplace.components-c4.drawio.svg)
 
 The pictures are the ones `render` writes beside the one graph of each kind under the root
-`models/`; each `.drawio.svg` opens editable in draw.io. They still draw the first build: one
-qsm-models container, and a gate process with a commit gate. Tasks lines 22 and 23 redraw them as
-the two plugins qsm-bpmn and qsm-c4 and the gate of decision 25 of the design, and rewrite these
-links.
+`models/`; each `.drawio.svg` opens editable in draw.io. The C4 views draw the two plugins
+qsm-bpmn and qsm-c4, and the gate process the gate of decision 25 of the design: the lint and the
+reviewer before an edit is written into the graph.
 
 ## Why
 

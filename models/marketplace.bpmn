@@ -670,10 +670,9 @@
         <bpmn:flowNodeRef>paths</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>covered</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>scenario</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>links</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>linksOk</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>commit</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>gateOk</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>model_gate_process_save</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>model_gate_process_check</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>current</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="model_gate_process_lane_1" name="Review agent">
         <bpmn:flowNodeRef>review</bpmn:flowNodeRef>
@@ -692,9 +691,8 @@
       <bpmn:incoming>f_start_writeJoin</bpmn:incoming>
       <bpmn:incoming>f_lintOk_writeJoin</bpmn:incoming>
       <bpmn:incoming>f_readable_writeJoin</bpmn:incoming>
-      <bpmn:incoming>f_linksOk_writeJoin</bpmn:incoming>
-      <bpmn:incoming>f_gateOk_writeJoin</bpmn:incoming>
       <bpmn:incoming>f_findings_writeJoin</bpmn:incoming>
+      <bpmn:incoming>f_current_writeJoin</bpmn:incoming>
       <bpmn:incoming>f_clear_writeJoin</bpmn:incoming>
       <bpmn:outgoing>f_writeJoin_write</bpmn:outgoing>
     </bpmn:exclusiveGateway>
@@ -736,41 +734,36 @@
     <bpmn:exclusiveGateway id="covered" name="Every cover path cited?">
       <bpmn:incoming>f_paths_covered</bpmn:incoming>
       <bpmn:outgoing>f_covered_scenario</bpmn:outgoing>
-      <bpmn:outgoing>f_covered_links</bpmn:outgoing>
+      <bpmn:outgoing>f_covered_review</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:task id="scenario" name="Write the scenario for the path">
       <bpmn:incoming>f_covered_scenario</bpmn:incoming>
       <bpmn:outgoing>f_scenario_specJoin</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="links" name="Check the links">
-      <bpmn:incoming>f_covered_links</bpmn:incoming>
-      <bpmn:outgoing>f_links_linksOk</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="linksOk" name="Every link resolves?">
-      <bpmn:incoming>f_links_linksOk</bpmn:incoming>
-      <bpmn:outgoing>f_linksOk_writeJoin</bpmn:outgoing>
-      <bpmn:outgoing>f_linksOk_commit</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="commit" name="Commit the graph">
-      <bpmn:incoming>f_linksOk_commit</bpmn:incoming>
-      <bpmn:outgoing>f_commit_gateOk</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:exclusiveGateway id="gateOk" name="Gate passes?">
-      <bpmn:incoming>f_commit_gateOk</bpmn:incoming>
-      <bpmn:outgoing>f_gateOk_writeJoin</bpmn:outgoing>
-      <bpmn:outgoing>f_gateOk_review</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
     <bpmn:task id="review" name="Review the graph and its pictures">
-      <bpmn:incoming>f_gateOk_review</bpmn:incoming>
+      <bpmn:incoming>f_covered_review</bpmn:incoming>
       <bpmn:outgoing>f_review_findings</bpmn:outgoing>
     </bpmn:task>
     <bpmn:exclusiveGateway id="findings" name="Findings?">
       <bpmn:incoming>f_review_findings</bpmn:incoming>
       <bpmn:outgoing>f_findings_writeJoin</bpmn:outgoing>
-      <bpmn:outgoing>f_findings_read</bpmn:outgoing>
+      <bpmn:outgoing>f_findings_save</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="model_gate_process_save" name="Write the edit into the graph">
+      <bpmn:incoming>f_findings_save</bpmn:incoming>
+      <bpmn:outgoing>f_save_check</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="model_gate_process_check" name="Check the pictures">
+      <bpmn:incoming>f_save_check</bpmn:incoming>
+      <bpmn:outgoing>f_check_current</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="current" name="Pictures current?">
+      <bpmn:incoming>f_check_current</bpmn:incoming>
+      <bpmn:outgoing>f_current_writeJoin</bpmn:outgoing>
+      <bpmn:outgoing>f_current_read</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:userTask id="model_gate_process_read" name="Read the picture">
-      <bpmn:incoming>f_findings_read</bpmn:incoming>
+      <bpmn:incoming>f_current_read</bpmn:incoming>
       <bpmn:outgoing>f_read_clear</bpmn:outgoing>
     </bpmn:userTask>
     <bpmn:exclusiveGateway id="clear" name="Clear what we want?">
@@ -794,17 +787,15 @@
     <bpmn:sequenceFlow id="f_specJoin_paths" sourceRef="specJoin" targetRef="paths" />
     <bpmn:sequenceFlow id="f_paths_covered" sourceRef="paths" targetRef="covered" />
     <bpmn:sequenceFlow id="f_covered_scenario" name="no" sourceRef="covered" targetRef="scenario" />
-    <bpmn:sequenceFlow id="f_covered_links" name="yes" sourceRef="covered" targetRef="links" />
-    <bpmn:sequenceFlow id="f_links_linksOk" sourceRef="links" targetRef="linksOk" />
-    <bpmn:sequenceFlow id="f_linksOk_writeJoin" name="no" sourceRef="linksOk" targetRef="writeJoin" />
-    <bpmn:sequenceFlow id="f_linksOk_commit" name="yes" sourceRef="linksOk" targetRef="commit" />
+    <bpmn:sequenceFlow id="f_covered_review" name="yes" sourceRef="covered" targetRef="review" />
     <bpmn:sequenceFlow id="f_scenario_specJoin" sourceRef="scenario" targetRef="specJoin" />
-    <bpmn:sequenceFlow id="f_commit_gateOk" sourceRef="commit" targetRef="gateOk" />
-    <bpmn:sequenceFlow id="f_gateOk_writeJoin" name="no" sourceRef="gateOk" targetRef="writeJoin" />
-    <bpmn:sequenceFlow id="f_gateOk_review" name="yes" sourceRef="gateOk" targetRef="review" />
     <bpmn:sequenceFlow id="f_review_findings" sourceRef="review" targetRef="findings" />
     <bpmn:sequenceFlow id="f_findings_writeJoin" name="some" sourceRef="findings" targetRef="writeJoin" />
-    <bpmn:sequenceFlow id="f_findings_read" name="none" sourceRef="findings" targetRef="model_gate_process_read" />
+    <bpmn:sequenceFlow id="f_findings_save" name="none" sourceRef="findings" targetRef="model_gate_process_save" />
+    <bpmn:sequenceFlow id="f_save_check" sourceRef="model_gate_process_save" targetRef="model_gate_process_check" />
+    <bpmn:sequenceFlow id="f_check_current" sourceRef="model_gate_process_check" targetRef="current" />
+    <bpmn:sequenceFlow id="f_current_writeJoin" name="no" sourceRef="current" targetRef="writeJoin" />
+    <bpmn:sequenceFlow id="f_current_read" name="yes" sourceRef="current" targetRef="model_gate_process_read" />
     <bpmn:sequenceFlow id="f_read_clear" sourceRef="model_gate_process_read" targetRef="clear" />
     <bpmn:sequenceFlow id="f_clear_writeJoin" name="no" sourceRef="clear" targetRef="writeJoin" />
     <bpmn:sequenceFlow id="f_clear_end" name="yes" sourceRef="clear" targetRef="model_gate_process_end" />
@@ -2401,282 +2392,261 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_model_gate_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_model_gate_collab" bpmnElement="model_gate_collab">
       <bpmndi:BPMNShape id="BPMNShape_model_gate_pool" bpmnElement="model_gate_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="4633.200000000001" height="1144" />
+        <dc:Bounds x="80" y="80" width="3282" height="880" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_lane_0" bpmnElement="model_gate_process_lane_0" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dcd3f2" color:background-color="#dcd3f2" color:border-color="#6b4fbb">
-        <dc:Bounds x="110" y="80" width="4603.200000000001" height="520" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_lane_0" bpmnElement="model_gate_process_lane_0" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dcd3f2" color:background-color="#dcd3f2" color:border-color="#6b4fbb">
+        <dc:Bounds x="110" y="80" width="3252" height="400" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_lane_1" bpmnElement="model_gate_process_lane_1" isHorizontal="true" bioc:stroke="#c2410c" bioc:fill="#f4d2c1" color:background-color="#f4d2c1" color:border-color="#c2410c">
-        <dc:Bounds x="110" y="600" width="4603.200000000001" height="312" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_lane_1" bpmnElement="model_gate_process_lane_1" isHorizontal="true" bioc:stroke="#c2410c" bioc:fill="#f4d2c1" color:background-color="#f4d2c1" color:border-color="#c2410c">
+        <dc:Bounds x="110" y="480" width="3252" height="240" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_2" bpmnElement="lane_2" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c3d4e7" color:background-color="#c3d4e7" color:border-color="#08427b">
-        <dc:Bounds x="110" y="912" width="4603.200000000001" height="312" />
+        <dc:Bounds x="110" y="720" width="3252" height="240" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_start" bpmnElement="model_gate_process_start" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="180.8" y="218" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_start" bpmnElement="model_gate_process_start" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="155.97500000000002" y="272.20000000000005" width="87" height="42" />
+          <dc:Bounds x="125" y="223" width="87" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_writeJoin" bpmnElement="writeJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="366.85" y="211" width="50" height="50" />
+        <dc:Bounds x="286" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_write" bpmnElement="write" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="578.1" y="196" width="100" height="80" />
+        <dc:Bounds x="436" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lint" bpmnElement="lint" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="848.1" y="196" width="100" height="80" />
+        <dc:Bounds x="636" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lintOk" bpmnElement="lintOk" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="1109.3500000000001" y="211" width="50" height="50" />
+        <dc:Bounds x="836" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1012" y="184.8" width="80" height="14" />
+          <dc:Bounds x="821" y="156" width="80" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_render" bpmnElement="render" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1320.6000000000001" y="196" width="100" height="80" />
+        <dc:Bounds x="986" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_look" bpmnElement="model_gate_process_look" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1590.6000000000001" y="196" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_look" bpmnElement="model_gate_process_look" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1186" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_readable" bpmnElement="readable" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="1851.8500000000001" y="211" width="50" height="50" />
+        <dc:Bounds x="1386" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1767.4250000000002" y="184.8" width="69" height="14" />
+          <dc:Bounds x="1377" y="156" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_specJoin" bpmnElement="specJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="2054.3500000000004" y="211" width="50" height="50" />
+        <dc:Bounds x="1536" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_paths" bpmnElement="paths" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2265.6000000000004" y="196" width="100" height="80" />
+        <dc:Bounds x="1686" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_covered" bpmnElement="covered" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="2526.8500000000004" y="211" width="50" height="50" />
+        <dc:Bounds x="1886" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2429.5" y="168.7" width="80" height="28" />
+          <dc:Bounds x="1871" y="142" width="80" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_scenario" bpmnElement="scenario" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2738.1000000000004" y="404" width="100" height="80" />
+        <dc:Bounds x="2036" y="320" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_links" bpmnElement="links" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2738.1000000000004" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_linksOk" bpmnElement="linksOk" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="2999.3500000000004" y="211" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2910.2250000000004" y="168.7" width="73" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_commit" bpmnElement="commit" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="3210.6000000000004" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_gateOk" bpmnElement="gateOk" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="3471.8500000000004" y="211" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3366.275" y="184.8" width="87" height="14" />
-        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_review" bpmnElement="review" bioc:stroke="#742707" bioc:fill="#c2410c" color:background-color="#c2410c" color:border-color="#742707">
-        <dc:Bounds x="3683.1000000000004" y="716" width="100" height="80" />
+        <dc:Bounds x="2036" y="560" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_findings" bpmnElement="findings" isMarkerVisible="true" bioc:stroke="#c2410c" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#c2410c">
-        <dc:Bounds x="3944.3500000000004" y="731" width="50" height="50" />
+        <dc:Bounds x="2236" y="575" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="3859.925" y="704.8000000000001" width="69" height="14" />
+          <dc:Bounds x="2227" y="556" width="69" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_read" bpmnElement="model_gate_process_read" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
-        <dc:Bounds x="4155.6" y="1028" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_save" bpmnElement="model_gate_process_save" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="2386" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_check" bpmnElement="model_gate_process_check" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="2586" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_current" bpmnElement="current" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="2786" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2780" y="142" width="62" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_read" bpmnElement="model_gate_process_read" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="2936" y="800" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_clear" bpmnElement="clear" isMarkerVisible="true" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="4416.85" y="1043" width="50" height="50" />
+        <dc:Bounds x="3136" y="815" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="4324.200000000001" y="1000.7" width="76" height="28" />
+          <dc:Bounds x="3123" y="782" width="76" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="model_gate_process_BPMNShape_end" bpmnElement="model_gate_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="4616.900000000001" y="1050" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_model_gate_process_end" bpmnElement="model_gate_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="3286" y="822" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="4591.075000000001" y="1100" width="89" height="14" />
+          <dc:Bounds x="3260" y="863" width="89" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_f_start_writeJoin" bpmnElement="f_start_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="216.8" y="236" />
-        <di:waypoint x="366.85" y="236" />
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_writeJoin_write" bpmnElement="f_writeJoin_write" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="416.85" y="236" />
-        <di:waypoint x="578.1" y="236" />
+        <di:waypoint x="336" y="200" />
+        <di:waypoint x="436" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_write_lint" bpmnElement="f_write_lint" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="678.1" y="236" />
-        <di:waypoint x="848.1" y="236" />
+        <di:waypoint x="536" y="200" />
+        <di:waypoint x="636" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_lint_lintOk" bpmnElement="f_lint_lintOk" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="948.1" y="236" />
-        <di:waypoint x="1109.3500000000001" y="236" />
+        <di:waypoint x="736" y="200" />
+        <di:waypoint x="836" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_lintOk_render" bpmnElement="f_lintOk_render" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1159.3500000000001" y="236" />
-        <di:waypoint x="1320.6000000000001" y="236" />
+        <di:waypoint x="886" y="200" />
+        <di:waypoint x="986" y="200" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1223.775" y="209.5" width="25" height="14" />
+          <dc:Bounds x="924" y="178" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_render_look" bpmnElement="f_render_look" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1420.6000000000001" y="236" />
-        <di:waypoint x="1590.6000000000001" y="236" />
+        <di:waypoint x="1086" y="200" />
+        <di:waypoint x="1186" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_look_readable" bpmnElement="f_look_readable" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1690.6000000000001" y="236" />
-        <di:waypoint x="1851.8500000000001" y="236" />
+        <di:waypoint x="1286" y="200" />
+        <di:waypoint x="1386" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_readable_specJoin" bpmnElement="f_readable_specJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1901.8500000000001" y="236" />
-        <di:waypoint x="2054.3500000000004" y="236" />
+        <di:waypoint x="1436" y="200" />
+        <di:waypoint x="1536" y="200" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1966.275" y="209.5" width="25" height="14" />
+          <dc:Bounds x="1474" y="178" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_specJoin_paths" bpmnElement="f_specJoin_paths" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2104.3500000000004" y="236" />
-        <di:waypoint x="2265.6000000000004" y="236" />
+        <di:waypoint x="1586" y="200" />
+        <di:waypoint x="1686" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_paths_covered" bpmnElement="f_paths_covered" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2365.6000000000004" y="236" />
-        <di:waypoint x="2526.8500000000004" y="236" />
+        <di:waypoint x="1786" y="200" />
+        <di:waypoint x="1886" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_covered_links" bpmnElement="f_covered_links" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2576.8500000000004" y="236" />
-        <di:waypoint x="2738.1000000000004" y="236" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_covered_review" bpmnElement="f_covered_review" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1911" y="225" />
+        <di:waypoint x="1911" y="600" />
+        <di:waypoint x="2036" y="600" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2641.275" y="209.5" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_links_linksOk" bpmnElement="f_links_linksOk" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2838.1000000000004" y="236" />
-        <di:waypoint x="2999.3500000000004" y="236" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_linksOk_commit" bpmnElement="f_linksOk_commit" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3049.3500000000004" y="236" />
-        <di:waypoint x="3210.6000000000004" y="236" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3113.775" y="209.5" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_gateOk" bpmnElement="f_commit_gateOk" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3310.6000000000004" y="236" />
-        <di:waypoint x="3471.8500000000004" y="236" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_gateOk_review" bpmnElement="f_gateOk_review" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3521.8500000000004" y="236" />
-        <di:waypoint x="3733.1000000000004" y="236" />
-        <di:waypoint x="3733.1000000000004" y="716" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3620.025" y="209.5" width="25" height="14" />
+          <dc:Bounds x="1916" y="493" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_review_findings" bpmnElement="f_review_findings" bioc:stroke="#c2410c" color:border-color="#c2410c">
-        <di:waypoint x="3783.1000000000004" y="756" />
-        <di:waypoint x="3944.3500000000004" y="756" />
+        <di:waypoint x="2136" y="600" />
+        <di:waypoint x="2236" y="600" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_findings_read" bpmnElement="f_findings_read" bioc:stroke="#c2410c" color:border-color="#c2410c">
-        <di:waypoint x="3994.3500000000004" y="756" />
-        <di:waypoint x="4205.6" y="756" />
-        <di:waypoint x="4205.6" y="1028" />
+      <bpmndi:BPMNEdge id="BPMNEdge_f_findings_save" bpmnElement="f_findings_save" bioc:stroke="#c2410c" color:border-color="#c2410c">
+        <di:waypoint x="2286" y="600" />
+        <di:waypoint x="2436" y="600" />
+        <di:waypoint x="2436" y="240" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="4088.3500000000004" y="729.5" width="32" height="14" />
+          <dc:Bounds x="2345" y="578" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_save_check" bpmnElement="f_save_check" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2486" y="200" />
+        <di:waypoint x="2586" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_check_current" bpmnElement="f_check_current" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2686" y="200" />
+        <di:waypoint x="2786" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_current_read" bpmnElement="f_current_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2836" y="200" />
+        <di:waypoint x="2986" y="200" />
+        <di:waypoint x="2986" y="800" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2899" y="178" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_read_clear" bpmnElement="f_read_clear" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="4255.6" y="1068" />
-        <di:waypoint x="4416.85" y="1068" />
+        <di:waypoint x="3036" y="840" />
+        <di:waypoint x="3136" y="840" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_clear_end" bpmnElement="f_clear_end" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="4466.85" y="1068" />
-        <di:waypoint x="4616.900000000001" y="1068" />
+        <di:waypoint x="3186" y="840" />
+        <di:waypoint x="3286" y="840" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="4531.275000000001" y="1041.5" width="25" height="14" />
+          <dc:Bounds x="3224" y="818" width="25" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_covered_scenario" bpmnElement="f_covered_scenario" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2551.8500000000004" y="261" />
-        <di:waypoint x="2551.8500000000004" y="444" />
-        <di:waypoint x="2738.1000000000004" y="444" />
+        <di:waypoint x="1911" y="225" />
+        <di:waypoint x="1911" y="360" />
+        <di:waypoint x="2036" y="360" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2563.1000000000004" y="349.90000000000003" width="18" height="14" />
+          <dc:Bounds x="1965" y="338" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_lintOk_writeJoin" bpmnElement="f_lintOk_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1134.3500000000001" y="261" />
-        <di:waypoint x="1134.3500000000001" y="314" />
-        <di:waypoint x="391.85" y="314" />
-        <di:waypoint x="391.85" y="261" />
+        <di:waypoint x="861" y="225" />
+        <di:waypoint x="861" y="260" />
+        <di:waypoint x="311" y="260" />
+        <di:waypoint x="311" y="225" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1145.6000000000001" y="284.9" width="18" height="14" />
+          <dc:Bounds x="867" y="236" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_readable_writeJoin" bpmnElement="f_readable_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1876.8500000000001" y="261" />
-        <di:waypoint x="1876.8500000000001" y="314" />
-        <di:waypoint x="391.85" y="314" />
-        <di:waypoint x="391.85" y="261" />
+        <di:waypoint x="1411" y="225" />
+        <di:waypoint x="1411" y="260" />
+        <di:waypoint x="311" y="260" />
+        <di:waypoint x="311" y="225" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1496.6000000000001" y="287.5" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_linksOk_writeJoin" bpmnElement="f_linksOk_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3024.3500000000004" y="261" />
-        <di:waypoint x="3024.3500000000004" y="522" />
-        <di:waypoint x="391.85" y="522" />
-        <di:waypoint x="391.85" y="261" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1226.6000000000001" y="495.5" width="18" height="14" />
+          <dc:Bounds x="1417" y="236" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_scenario_specJoin" bpmnElement="f_scenario_specJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2761.1000000000004" y="484" />
-        <di:waypoint x="2761.1000000000004" y="522" />
-        <di:waypoint x="2079.3500000000004" y="522" />
-        <di:waypoint x="2079.3500000000004" y="261" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_gateOk_writeJoin" bpmnElement="f_gateOk_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3496.8500000000004" y="261" />
-        <di:waypoint x="3496.8500000000004" y="548" />
-        <di:waypoint x="391.85" y="548" />
-        <di:waypoint x="391.85" y="261" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1935.3500000000001" y="560.5" width="18" height="14" />
-        </bpmndi:BPMNLabel>
+        <di:waypoint x="2086" y="400" />
+        <di:waypoint x="2086" y="420" />
+        <di:waypoint x="1561" y="420" />
+        <di:waypoint x="1561" y="225" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_findings_writeJoin" bpmnElement="f_findings_writeJoin" bioc:stroke="#c2410c" color:border-color="#c2410c">
-        <di:waypoint x="3969.3500000000004" y="781" />
-        <di:waypoint x="3969.3500000000004" y="834" />
-        <di:waypoint x="391.85" y="834" />
-        <di:waypoint x="391.85" y="261" />
+        <di:waypoint x="2261" y="625" />
+        <di:waypoint x="2261" y="660" />
+        <di:waypoint x="311" y="660" />
+        <di:waypoint x="311" y="225" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2163.775" y="807.5" width="35" height="14" />
+          <dc:Bounds x="1269" y="638" width="35" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_current_writeJoin" bpmnElement="f_current_writeJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2811" y="225" />
+        <di:waypoint x="2811" y="260" />
+        <di:waypoint x="311" y="260" />
+        <di:waypoint x="311" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2102" y="238" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_f_clear_writeJoin" bpmnElement="f_clear_writeJoin" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="4441.85" y="1093" />
-        <di:waypoint x="4441.85" y="1146" />
-        <di:waypoint x="391.85" y="1146" />
-        <di:waypoint x="391.85" y="261" />
+        <di:waypoint x="3161" y="865" />
+        <di:waypoint x="3161" y="900" />
+        <di:waypoint x="311" y="900" />
+        <di:waypoint x="311" y="225" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2407.8500000000004" y="1119.5" width="18" height="14" />
+          <dc:Bounds x="1727" y="878" width="18" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>

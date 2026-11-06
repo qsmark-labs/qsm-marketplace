@@ -18,7 +18,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { fishCompletion, writeCompletion } from "./completions.ts";
+import { fishCompletion, MARKER, writeCompletion } from "./completions.ts";
 import {
   cliMain,
   type InstallContext,
@@ -150,6 +150,47 @@ export function removeOwnedLinks(
         detail: `${verb} the stale link ${join(dir, n)}`,
       };
     });
+}
+
+/** Removes what an older install left under `bin`, a name no plugin ships any more: the binary
+ * and its line in the build record, when the record says an install compiled it, and the
+ * completion, when it carries the generated marker, because a file of that name that is neither
+ * may be the person's. Each removal is a step, and a second run finds none. */
+export function removeRetiredBin(ctx: InstallContext, bin: string): Step[] {
+  const steps: Step[] = [];
+  /** Removes one thing unless this is a dry run, and names it as a step either way. */
+  const remove = (what: string, act: () => void): void => {
+    if (!ctx.dryRun) {
+      act();
+    }
+    steps.push({
+      name: `retired ${bin}`,
+      status: ctx.dryRun ? "skipped" : "installed",
+      detail: `${ctx.dryRun ? "would remove" : "removed"} ${what}`,
+    });
+  };
+  const recordPath = buildRecordPath(ctx.env);
+  const record = readRecord(recordPath);
+  if (record?.bins[bin] !== undefined) {
+    const binFile = join(binDir(ctx.env), bin);
+    if (existsSync(binFile)) {
+      remove(`${binFile}, which no plugin ships any more`, () => {
+        unlinkSync(binFile);
+      });
+    }
+    remove(`${bin} from ${recordPath}`, () => {
+      writeRecord(recordPath, {
+        bins: Object.fromEntries(Object.entries(record.bins).filter(([b]) => b !== bin)),
+      });
+    });
+  }
+  const completion = join(fishCompletionDir(ctx.env), `${bin}.fish`);
+  if (existsSync(completion) && readFileSync(completion, "utf8").includes(MARKER)) {
+    remove(completion, () => {
+      unlinkSync(completion);
+    });
+  }
+  return steps;
 }
 
 /** The one line for a plugin that installs nothing, dry run or real. */

@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { type Envelope, isRecord, OUTCOME_CODES, type OutcomeCode } from "../outcome.ts";
+import type { Finding } from "../model-graph.ts";
 import { sandboxDir } from "./sandbox.ts";
 
 /** What a child needs to run and nothing the machine owns: PATH and TMPDIR from this run, HOME and
@@ -74,4 +75,22 @@ export function envelopeOf(stdout: string): Envelope {
 /** The `data` of the envelope a CLI printed under `--json`. */
 export function dataOf(stdout: string): unknown {
   return envelopeOf(stdout).data;
+}
+
+/** One finding a lint printed: the element, the rule and what is wrong. */
+export type PrintedFinding = Pick<Finding, "id" | "rule" | "message">;
+
+const isFinding = (v: unknown): v is PrintedFinding =>
+  isRecord(v) &&
+  typeof v.id === "string" &&
+  typeof v.rule === "string" &&
+  typeof v.message === "string";
+
+/** The findings in the `data` of the envelope a CLI printed under `--json`; no list fails the test. */
+export function findingsOf(stdout: string): PrintedFinding[] {
+  const data = dataOf(stdout);
+  if (!isRecord(data) || !Array.isArray(data.findings)) {
+    throw new Error(`no findings in ${JSON.stringify(data)}`);
+  }
+  return data.findings.filter(isFinding);
 }
