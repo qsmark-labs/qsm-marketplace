@@ -124,7 +124,7 @@ function makeDirs(): Dirs {
     home: at("home"),
     claudeHome: at("claude"),
     codexHome: at("codex"),
-    ccrHome: at("ccr"),
+    ccrHome: at("ccr/.claude-code-router"),
     xdgState: at("state"),
   };
 }
@@ -193,7 +193,7 @@ export function makeWorld(opts: WorldOptions = {}): World {
     HOME: d.home,
     CLAUDE_CONFIG_DIR: d.claudeHome,
     CODEX_HOME: d.codexHome,
-    CCR_INTERNAL_HOME_DIR: d.ccrHome,
+    CCR_INTERNAL_HOME_DIR: join(d.root, "ccr"),
     XDG_STATE_HOME: d.xdgState,
     // the fake daemon starts and stops in well under these; settle outlasts its 300 ms late write
     QSM_CCR_START_WAIT_MS: "3000",

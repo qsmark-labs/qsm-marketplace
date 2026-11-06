@@ -27,7 +27,7 @@
         "description": "Report each web bin's health, and whether the Tavily CLI, the Tavily skills and the Context7 skill are present, naming the fix for each that is not"
       },
       "qsm-web searxng search": {
-        "description": "Search the instance named by --instance or QSM_SEARXNG_INSTANCE and print the results as one JSON array",
+        "description": "Search the configured SearXNG instance and print the results as one JSON array",
         "args": [
           {
             "name": "query",
@@ -85,7 +85,7 @@
           {
             "name": "instance",
             "type": "string",
-            "description": "the instance to query (default $QSM_SEARXNG_INSTANCE)"
+            "description": "the instance to query (default: environment or local config)"
           },
           {
             "name": "timeout",

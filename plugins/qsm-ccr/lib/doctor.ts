@@ -2,6 +2,7 @@
 import { accessSync, constants } from "node:fs";
 import { basename } from "node:path";
 import {
+  binPath,
   checkTools,
   fail,
   messageOf,
@@ -12,7 +13,7 @@ import {
 } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
 import { readCatalog } from "./catalog.ts";
-import { claudeTraffic, gatewayOf, modelsFrom, oauthCopies, readCcrConfig } from "./ccr-config.ts";
+import { claudeTraffic, gatewayIn, modelsFrom, oauthCopies, readCcrConfig } from "./ccr-config.ts";
 import { authPath, catalogOverrideIn, configTomlPath, readCodexTokens } from "./codex.ts";
 import { daemonState, foreign, guards } from "./daemon.ts";
 import type { Json } from "./parse.ts";
@@ -171,14 +172,17 @@ async function daemonRow(places: Places, gateway: Gateway | undefined): Promise<
   };
 }
 
-function teammateCommandRow(s: Json): Row {
-  const path = teammateCommandOf(s);
-  const rerun = "run qsm-setup activate qsm-ccr";
+function teammateCommandRow(s: Json, env: Env): Row {
+  const path = env[TEAMMATE_COMMAND] ?? teammateCommandOf(s);
+  const rerun = `set ${TEAMMATE_COMMAND} to the qsm-ccr executable for this session`;
   if (path === undefined) {
-    return {
-      code: "missing",
-      detail: `user settings env has no ${TEAMMATE_COMMAND}; ${rerun}`,
-    };
+    const binary = binPath("qsm-ccr", env);
+    return binary === null
+      ? { code: "missing", detail: `qsm-ccr is not on PATH; ${rerun}` }
+      : {
+          code: "ok",
+          detail: `${binary}; lead sets it, for a Claude lead ${rerun}`,
+        };
   }
   try {
     accessSync(path, constants.X_OK);
@@ -212,6 +216,8 @@ function settingsChecks(
   config: Json | null,
   settings: Outcome<UserSettings>,
   broken: Broken,
+  env: Env,
+  gatewayCheck: Check,
 ): Promise<Check>[] {
   const read = settings.data;
   if (read === undefined) {
@@ -226,7 +232,14 @@ function settingsChecks(
   return [
     // doctor reports damage as failed: the file is wrong; only a start refuses it
     one("router values in user settings", () =>
-      verdictRow(damage === undefined ? undefined : { ...damage, code: "failed" }, "none"),
+      verdictRow(
+        damage === undefined
+          ? gatewayCheck.code === "ok"
+            ? undefined
+            : { code: "failed", detail: "not fully checked: CCR gateway could not be read" }
+          : { ...damage, code: "failed" },
+        "none",
+      ),
     ),
     one("user settings model", () => {
       const model = routerModel(read.json, routerSlugs(places.codexHome, config));
@@ -240,7 +253,7 @@ function settingsChecks(
         "not a router model",
       );
     }),
-    one("teammate command", () => teammateCommandRow(read.json)),
+    one("teammate command", () => teammateCommandRow(read.json, env)),
   ];
 }
 
@@ -263,20 +276,32 @@ export async function doctor(env: Env): Promise<Outcome<{ readonly checks: reado
   let config = null as Json | null;
   const configRow = await one("CCR config", () => {
     config = readCcrConfig(places.ccrDb);
-    return verdictRow(
-      guards(places, config, settings).find((v) => v.name === "CCR config"),
-      places.ccrDb,
-    );
+    return config === null
+      ? {
+          code: "missing",
+          detail: `no CCR config at ${places.ccrDb}; run qsm-setup activate qsm-ccr`,
+        }
+      : { code: "ok", detail: places.ccrDb };
   });
-  const violations = guards(places, config, settings);
+  let gateway: Gateway | undefined;
+  const gatewayCheck = await one("CCR gateway", () => {
+    try {
+      gateway = config === null ? undefined : gatewayIn(places.ccrDb);
+    } catch (error) {
+      return { code: "failed", detail: `${places.ccrDb}: ${messageOf(error)}` };
+    }
+    return gateway === undefined && config !== null
+      ? { code: "missing", detail: `no usable gateway key or address in ${places.ccrDb}` }
+      : { code: "ok", detail: gateway === undefined ? "no CCR config" : "address and key found" };
+  });
+  const violations = guards(places, config, settings, gateway);
   const broken: Broken = (name) => violations.find((v) => v.name === name);
-  const gateway = config === null ? undefined : gatewayOf(config);
   const tools = await Promise.all(toolChecks(env));
   const rest = await Promise.all([
     ...(config === null ? [] : ccrChecks(places, config, broken)),
-    ...settingsChecks(places, config, settings, broken),
+    ...settingsChecks(places, config, settings, broken, env, gatewayCheck),
     ...codexChecks(places, config),
     one("daemon", () => daemonRow(places, gateway)),
   ]);
-  return verdict([...tools, configRow, ...rest]);
+  return verdict([...tools, configRow, gatewayCheck, ...rest]);
 }

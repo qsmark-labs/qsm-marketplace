@@ -14,7 +14,9 @@ is idempotent; `--dry-run` prints the plan.
 
 It does not do these, run them yourself when needed:
 
-- search instance: set `QSM_SEARXNG_INSTANCE` (or pass `--instance <url>` per call)
+- search instance: store `{"instance":"<url>"}` in the machine-local
+  `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default `~/.config/qsm-searxng/config.json`), or set
+  `QSM_SEARXNG_INSTANCE` or pass `--instance <url>`
 - container runtime: install docker or podman (only the browser rung needs one)
 - Context7: `npx ctx7 setup --claude` (interactive sign-in; installs the Context7 skill)
 - Tavily key: `qsm-secrets set tavily-api-key`, then

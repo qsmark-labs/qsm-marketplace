@@ -30,6 +30,16 @@ export function claudeDir(env: Env): string {
   return nonEmpty(env.CLAUDE_CONFIG_DIR) ?? join(home(env), ".claude");
 }
 
+/** A child environment using a particular Claude home without changing its other variables. */
+export function withClaudeDirAt(env: Env, dir: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value !== undefined) out[key] = value;
+  }
+  out.CLAUDE_CONFIG_DIR = dir;
+  return out;
+}
+
 /** The person's Claude Code settings, `settings.json` in the Claude home. */
 export function claudeSettingsPath(env: Env): string {
   return join(claudeDir(env), "settings.json");

@@ -1,147 +1,65 @@
+![How the Action derives a feature's Status, BPMN](../../../models/marketplace.feature_status_process.svg)
+
+Where this sits in the whole flow: `../../../models/marketplace.build_task_process.svg` (the GitHub
+lane).
+
 ## Why
 
-Epic #3 moves the project's tasks from a file in git to GitHub issues and a board. An agent that
-works on that board with raw `gh`, `jq` and GraphQL composes several calls per step (a sub-issue
-needs a node id fetched first, a field write needs a project id, a field id and an option id), gets
-the flow wrong in a different way each session, and posts whatever it improvised. This change makes
-the task tool a plugin with its own binary, `qsm-tasks`, whose verbs cover the whole flow from a
-business request to an accepted epic, so the agent never composes a backend call and a gap is fixed
-by extending the binary, never by a skill telling the agent to call a raw API. It replaces the two
-qsm-forge changes that tried to do part of it (`forge-issue-verbs`, `forge-board-verbs`): the task
-tool serves the marketplace's "task" port, qsm-forge stays pull requests and review threads, and
-neither knows the other.
+Tasks move from a file in git to GitHub issues and the org board. An agent that drives the board
+with raw `gh`, `jq` and GraphQL composes several calls per step and gets the flow wrong in a new way
+each session. The owner: "i still want my one tasks tool". This feature gives the task port its
+own binary, `qsm-tasks`, so the agent never composes a backend call, and an Action that keeps a
+feature's Status true to its tasks.
 
-## What Changes
+## What
 
-- **A binary `qsm-tasks`** in `plugins/qsm-tasks/` (one plugin, one binary named after it), noun
-  `$.tasks`, verbs described in `qsm.json`, text output for the agent and the `--json` envelope of
-  `lib/cli-base.ts` for hooks and scripts. Thirty-four verbs in six groups:
-  - read: `ready`, `list`, `show`, `tree`, `search`, `notes`, `board`;
-  - create: `epic`, `add`, `feedback`, `finding`;
-  - edit: `edit`, `move`, `after`, `unblock`, `assign`, `spec`, `find-spec`, `note`;
-  - task flow: `claim`, `release`, `review`, `human`, `reopen`, `close`, `drop`, `defer`;
-  - epic flow: `plan`, `qa`, `accept`, `reject` (and `finding`, listed under create);
-  - admin: `doctor`, `setup`, `flow`.
-- **The flow is code, not prose.** Both flows (a task by Status, an epic by Epic stage), their
-  definitions of done and the guard of every move are one table in `lib/flow.ts`; the verbs, `flow`,
-  `doctor` and `setup` read it. A verb that would break the flow fails `blocked` naming the rule.
-- **The backend is GitHub and stays behind one interface.** `lib/backend.ts` is the port, backend
-  neutral (items, kinds, Status, Epic stage); `lib/github/` is the only code that knows `gh`, issue
-  types, sub-issues, `blockedBy` and the project fields. No verb output carries a node id, a field
-  id or a GraphQL shape.
-- **A GitHub Action carried over** from `forge-board-verbs`: `.github/workflows/epic-stage.yml`
-  moves an epic to Ready For Test when its last open sub-issue closes (also from Blocked after a fix
-  task closes). `gh` only, the secret `PROJECT_TOKEN`, nothing posted.
-- **Done for a task is GitHub's**: merge with `Closes #N` closes it and the board's "Item closed"
-  workflow sets Done. No verb marks a merged task Done.
-- **The QA stage replaces the test-it task.** `qa`, `finding`, `accept` and `reject` are its verbs.
-- **`doctor` and `setup`** check and create everything the API allows (fields, options with
-  definitions, issue types, labels, the feedback epic) and name the rest (views, built-in workflows,
-  the secret) with the one place to set each.
-- **Ghost mode.** The binary adds no footer, marker, label or trailer of its own to anything it
-  posts; the text is what the caller passed.
+- **A binary `qsm-tasks`**, nineteen verbs, noun `$.tasks`: reads, create and edit, the task
+  flow, `plan` and `qa` for a feature, `feedback`, `flow`, `doctor`, `setup`. A flag wherever
+  GitHub already models the thing.
+- **GitHub's defaults**: a feature is the issue type Feature, a task a sub-issue of type Task, one
+  Status field, Priority P0 to P2, feedback a plain issue from a template, labelled `feedback`,
+  `area:`, `kind:`, `from:`.
+- **A change binds to its feature** by the label `change:<id>`.
+- **One Action, `.github/workflows/qsm-tasks.yml`**: it derives a feature's Status (the model
+  above): In Dev when the split adds the first task; when the last task closes it brings
+  `feature/<n>` up to date with main and sets Ready For Test, or files a conflict task. It also
+  closes the issues a pull request names when it merges into `feature/*`, which GitHub does itself
+  only for the default branch.
+- **The owner's merge of the feature pull request into main is the accept**; GitHub closes the
+  feature and the board sets Done. No verb accepts.
+- **`doctor` and `setup`** check and create what the API allows and name the rest.
+- **Ghost mode**: the binary adds nothing of its own to what it posts.
 
-Replaces `forge-issue-verbs` and `forge-board-verbs`, both deleted. Moved from them: the Action and
-its token (decision 9), "Done is GitHub's" (decision 8), the two board fields with their option
-names and definitions (now `lib/flow.ts`), `ready` as one search (decision 4), the "refused call
-fails loud, does nothing else" rule, and body text on stdin. Left behind and not carried: the `gh`
-and `gl` sub-command shape, `--owner --project` on every call (the board is resolved from the
-repository, decision 3), a guard hook that refuses raw `gh issue` calls.
+## Not in this feature
 
-Not in this change: pull requests, review threads, git (qsm-forge), GitLab, a second backend, the
-QA agent itself, the GitHub App bot that opens pull requests, the skills that call the verbs and the
-migration of `br` tasks (`tasks-on-github-issues`, which depends on this change), and views and
-built-in workflows, which the API cannot create.
+Pull requests and review threads (qsm-forge), git, GitLab, the skills that call the verbs and the
+move off `br` (`tasks-on-github-issues`), views and built-in workflows (the API cannot create
+them), the QA agent, the release train (`release-train`).
 
-## Capabilities
+The owner sets up the existing board once, in the web UI: issue #3 gets the type Feature; the
+Status options In Progress, In Review and Ready For Human Review are renamed In Dev, Agent Review
+and Human Review; Ready For Test, In Test and Blocked are added; the built-in workflow "Pull
+request linked to issue" sets Agent Review; the field Epic stage and the issue type Epic are
+deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters `-type:Feature
+-label:feedback`. `doctor` reports each leftover with its fix.
 
-### New Capabilities
+## Decisions of the owner
 
-None. Every requirement lands in the existing `qsm-tasks` capability.
-
-### Modified Capabilities
-
-- `qsm-tasks`: a binary with the verbs of the whole task flow, the flow table, the backend boundary,
-  `doctor` and `setup`, the Action, and the install that compiles the binary; the `br` install and
-  the no-binary requirements are removed.
-
-## Impact
-
-- `plugins/qsm-tasks/`: `qsm.json`, `scripts/{cli,install}.ts`, `lib/` (flow, backend, github,
-  verbs), `types/index.d.ts` and `hooks/noun.generated.ts` (generated), `INSTALL.md`, `USAGE.md`,
-  `README.md`, `.claude-plugin/plugin.json`.
-- `.github/workflows/epic-stage.yml` in this repository and the repository secret `PROJECT_TOKEN`
-  (the owner sets it).
-- The token needs the `project` scope; `doctor` says so.
-- Consumers: `qsm-builder`, `qsm-openspec`, `qsm-plan` and the skills reach the verbs through the
-  skill `task-tool` and `$.tasks`; their edits are `tasks-on-github-issues`.
-- Proof runs on `qsmark-labs/qsm-marketplace` and org Project #1 with issues titled `test: ...`,
-  all closed afterwards.
-
-## Decisions of 2026-10-29
-
-1. **`close` stays.** `close <id> --reason "<what was done>"` finishes a task that no merge closes,
-   such as a decision or a spec-only task: task only, state completed.
-2. **Ghost mode wins over the feedback labels.** A label such as `source:main-agent` names an agent
-   on a public repository, which ghost mode forbids, and one value such as `source:me` on every
-   issue says nothing. So `feedback` writes no source label and takes no `--source`; a feedback
-   task is found by its parent, the feedback epic.
-
-## Critiques
-
-Devil's advocate:
-
-- Thirty-four verbs is a CLI nobody remembers, and each is a contract forever. Waived with the
-  reason: the agent does not remember them, it reads `qsm-tasks --help` and the skill's flow table,
-  and a verb is a flow step. Every verb earns its place by a step of the epic's flow that otherwise
-  becomes a raw call; the spec's scenarios name that step, and a verb with none was cut (a `status`
-  verb duplicates `show`, an `unclaim` is `release`, an epic is never reopened: new work is a new
-  epic).
-- The guard "who may move what" cannot be enforced: the owner and the agent share one `gh` login.
-  Fixed in part: the verbs enforce state (`accept` only from In Test with no open sub-issue,
-  `qa` only from Ready For Test, `human` only from In Review), so an agent cannot skip a stage; the
-  owner's yes is a rule in the skill and the reply, not in the binary. Waived for the person: no
-  per-person gate exists without a second identity, which is the App bot's piece.
-- `reject` sends an epic back to Building, but the Action fires only on a close, so an epic at
-  Building with every task closed would wait forever. Fixed: `reject` and `finding` each create the
-  fix task that carries the reason, and the Action moves the epic when that task closes.
-- `doctor` wants to read the board's built-in workflows and views; the GraphQL schema may not expose
-  them. Unmeasured; task 0 measures it. If unreadable, `doctor` reports those checks as `manual`
-  with the web-UI place and exits `partial`, never green on a guess.
-- A second backend behind `lib/backend.ts` is speculation: one implementation makes an interface
-  decoration. Waived with the reason: the interface is how the verbs are tested without `gh` (a
-  recording backend in the flow tests) and it is where "extended in one place" is true; no
-  registry, no config switch, no second implementation is built.
-- `ready` lists Todo only, so a new session cannot see the task it already claimed. Fixed: the
-  skill starts a session with `ready` and `list --mine`; the two together are the old ready list.
-- One token for the owner and for the Action; a leaked `PROJECT_TOKEN` writes the org board.
-  Waived until the App bot piece; stored as a repository secret, never printed.
-
-Future archaeologist:
-
-- Why is there a flow table in code and also a skill? Fixed: the design says the table owns names,
-  definitions and guards, and the skill owns who acts and when; the skill says to run
-  `qsm-tasks flow` instead of copying definitions.
-- Why does `reject` take a reason as a task? Fixed: decision 7 names the Action-fires-on-close
-  gap in one paragraph.
-- Why no `--owner --project` flags, when the old change had them? Fixed: decision 3 says the board
-  moved once and a repository has one linked board; `--project owner/number` overrides for the case
-  of two.
-- Why does `find-spec` search bodies at all? Fixed: decision 6, an issue has no external reference,
-  so the first body line is the binding and the verb is its only reader and writer.
-- Why is the Action in this repository's `.github/` and not in the plugin? Fixed: GitHub runs only
-  that directory, the trigger is a close in the browser where no verb runs, and the field names in
-  it are checked against `lib/flow.ts` by `doctor`.
-
-Scope sniper:
-
-- `setup` for a new repository is speculative with one repository. Waived: the person asked for it
-  so a second project is one command, it is the only way the field options and their definitions
-  are not typed by hand twice, and `doctor` already needs the same table.
-- `tree`, `board`, `notes`, `search` are reads `gh` can do. Fixed the other way: the agent never
-  composes a backend call, so a read it needs is a verb; each is one call and one table of output.
-- `plan`, `release` and `unblock` could be flags. Waived: each is one flow step with a guard, a
-  flag would hide the step from `--help` and from the noun.
-- No unit tests beyond the flow table: proof is a real run per group on this repository, plus one
-  `bun test` through `runBin` with a recording fake `gh` for what a real run cannot show (a usage
-  error or a refusal runs nothing further, a guard refusal runs no write).
+1. **`close` stays** (2026-10-29): it finishes a task no merge closes, such as a decision.
+2. **Feedback is a plain issue from a template, with labels** (2026-10-30, the type dropped
+   2026-11-04: what happened, where, how to reproduce it in the abstract, what it should do): "i
+   want area, kind, from/who noticed, some basic log of things that lead to that, WITHOUT ANY
+   PERSONAL OR SYSTEM INFO, just abstract stuff, and than the rest. Ideally no suggested fix, but
+   how i want it to behave." The `from:` label on a public repository: "its an AI marketplace, im
+   okay with keeping this there."
+3. **Priority is a field, P0 to P2** (2026-10-30).
+4. **GitHub's defaults** (2026-10-30): "Cannot we use features instead of epics, than stack tasks
+   under them, and than qa test the feature instead of the epic? So we dont overengineer and
+   destroy the github ecosystem?"
+5. **Each kind uses its own part of one Status** (2026-10-30): "tasku staci review, nepotrebuje
+   qa, a feature zase nepotrebuje review, ma test."
+6. **One door, nothing duplicated** (2026-10-30): "i dont want to duplicate anything that github
+   already has a way to do normally" and "i still want my one tasks tool".
+7. **The feature branch and the accept** (2026-11-01): task pull requests target `feature/<n>`,
+   the Action closes what they name, and the owner's merge of the feature pull request into main
+   is the accept; the spec binds to the feature; tasks are created at the split, not at planning.

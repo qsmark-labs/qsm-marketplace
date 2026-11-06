@@ -1,13 +1,14 @@
 // qsm-ccr lead: an interactive Claude Code on a routed model, whose teammates route by name
 // because CLAUDE_CODE_TEAMMATE_COMMAND names this binary: the running one when compiled, else the
-// qsm-ccr on PATH. It never writes user settings; a lead
-// that did (startup discovery or a /model pick) is named after it exits, never undone.
+// qsm-ccr on PATH. Routed sessions have a private settings copy.
 import { binPath, fail, type Outcome, ok } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
+import { fromThrown } from "../../../lib/qsm-error.ts";
+import { isolatedHome } from "./claude-home.ts";
 import { loadModels, prepareRouted, runClaude } from "./launch.ts";
-import { type Places, placesOf } from "./places.ts";
+import { placesOf } from "./places.ts";
 import { launchArgs, launchEnv, type RoutedLaunch, resolveLead } from "./route.ts";
-import { snapshotOf, TEAMMATE_COMMAND } from "./settings.ts";
+import { TEAMMATE_COMMAND } from "./settings.ts";
 
 const DISCOVERY = "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY";
 
@@ -15,31 +16,6 @@ const DISCOVERY = "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY";
  * null: run from source, the running file is bun's and no teammate command. */
 function compiledBinary(): string | null {
   return import.meta.dir.startsWith("/$bunfs") ? process.execPath : null;
-}
-
-/** The guarded keys of user settings, as settings.ts snapshots them for a daemon start. */
-function guardedKeys(places: Places): Readonly<Record<string, string>> {
-  return snapshotOf([places.userSettings]).get(places.userSettings) ?? {};
-}
-
-/** What follows claude's exit: user settings `model` as the lead found it, then claude's code. */
-function afterLead(places: Places, wasModel: string | undefined, exit: number, model: string) {
-  const after = guardedKeys(places);
-  if ("(text)" in after) {
-    return fail(
-      "failed",
-      `${places.userSettings} no longer parses after the lead exited, so its model cannot be checked; it was left as it was: repair it by hand`,
-    );
-  }
-  if (after.model !== wasModel) {
-    return fail(
-      "failed",
-      `model changed while the lead ran, in ${places.userSettings}, from ${wasModel} to ${after.model} (the lead, or another session's /model); a subscription session would start on it; set it back by hand`,
-    );
-  }
-  return exit === 0
-    ? ok({ exit, model }, `lead on ${model} exited 0`)
-    : fail("failed", `lead on ${model}: claude exited ${exit}`);
 }
 
 export async function runLead(
@@ -69,16 +45,20 @@ export async function runLead(
   }
   const launch: RoutedLaunch = prepared.data;
   // discovery makes Claude Code write the gateway's model list into user settings
-  const childEnv: Record<string, string> = {
-    ...launchEnv(env, launch),
-    [TEAMMATE_COMMAND]: self,
-  };
+  let childEnv: Record<string, string>;
+  try {
+    childEnv = { ...isolatedHome(launchEnv(env, launch), places), [TEAMMATE_COMMAND]: self };
+  } catch (error) {
+    return fromThrown(error);
+  }
   delete childEnv[DISCOVERY];
-  const wasModel = guardedKeys(places).model;
   const exit = await runClaude(claude, launchArgs(rest, launch), childEnv);
+  const model = `${route.provider},${route.slug}`;
   // the lib passes a signal's exit through and gives every other failure its own code's
   return {
-    ...afterLead(places, wasModel, exit, `${route.provider},${route.slug}`),
-    exit,
+    ...(exit === 0
+      ? ok({ exit, model }, `lead on ${model} exited 0`)
+      : fail("failed", `lead on ${model}: claude exited ${exit}`)),
+    ...(exit >= 128 ? { exit } : {}),
   };
 }

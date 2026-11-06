@@ -1,189 +1,82 @@
 ## Context
 
-Today `qsm-tasks` serves the task port with `br` (beads_rust): one skill holds the model and a table
-of `br` commands, an install script probes `br`, and the tracker is `.beads/issues.jsonl` in git.
-Five other plugins touch it directly: worktrunk writes `.beads/redirect` into each new workspace,
-memory's `orient` runs `br show` and `br list`, cockpit runs `br list` for a card, builder's lens
-runs `br list` and `br create`, and toolbox lists `br` as a tool. The skills of plan, openspec,
-essentials and review already say "the task tool" and name no binary, which is the one thing that
-makes this change small for them.
-
-Epic #3 settles the direction: GitHub Issues is the main task tool, reached through the verbs of the
-`qsm-tasks` binary (sibling change `qsm-tasks-cli`, which also holds the flow table, `doctor`,
-`setup` and the Action `epic-stage.yml`), `tasks.md` holds the steps of one change, `br` goes, one
-board per repository, an epic is an issue of the issue type `Epic` whose tasks (type `Task`) are
-sub-issues. A verb GitHub refuses fails loud and does nothing else. The board is org Project #1 of
-`qsmark-labs` with a Status field for tasks and an Epic stage field for epics, set up by the owner
-(`qsm-tasks flow` prints the options and their definitions).
-
-## Goals / Non-Goals
-
-**Goals:**
-
-- One answer to "which tool is the main task tool", written in one skill, with the verb for every
-  step the old table covered.
-- No file in the marketplace reads or writes `.beads`, or names `br`, when this is applied.
-- The skills keep working in the roles they already use ("the task tool"), unchanged.
-
-**Non-Goals:**
-
-- The binary, its verbs, the flow table, the board, the organization: `qsm-tasks-cli` and the
-  maintainer.
-- Triage of the open `br` tasks and untracking `.beads/`: the migration piece, run after this.
-- A replacement for the removed readers (orient lines, cockpit card, lens task list).
-- Pull requests, review threads and GitLab (qsm-forge): untouched.
+Today `qsm-tasks` serves the task port with `br`: a skill, an install probe and
+`.beads/issues.jsonl` in git. worktrunk writes `.beads/redirect`, memory's `orient` and cockpit run
+`br list`, the lens runs `br list` and `br create`, toolbox lists `br`. The skills of plan,
+openspec, essentials and review already say "the task tool".
 
 ## Decisions
 
-### 1. The skill is the model and the flow; the binary is `qsm-tasks-cli`'s
+### 1. The skill holds who acts and when; the binary holds the names
 
-The `task-tool` skill keeps its model rules (the fourth, the test-it task, becomes the QA stage;
-see decision 3) and the working rules, and its `br` table becomes the verbs of `qsm-tasks`. The
-plugin gains no code here: the binary, `qsm.json`, the install and `doctor` come from
-`qsm-tasks-cli`, and this change deletes the `br` text and the old install probe's remnants. The
-plugin declares no plug-in dependency. The contract other plugins use is unchanged: they say "the
-task tool" and the skill is the one place that names verbs. The old requirement "One skill names br"
-becomes "One skill names the verbs", the same ownership with the new tool.
-
-The skill says what the binary cannot: who acts and when. `qsm-tasks flow` prints the names, the
-definitions and each verb's guard from the binary's own table, so the skill copies none of them (a
-renamed option edits one file), and holds the table below.
+`qsm-tasks flow` prints the options, definitions and guards, so the skill copies none of them.
 
 | Step | Verb | Who and when |
 | --- | --- | --- |
-| session start | `qsm-tasks ready`, `qsm-tasks list --mine` | the agent, first thing: the two lists are the old ready list |
-| epic | `qsm-tasks epic "<goal>" --intent <file>` | the main agent after grilling, with the person's yes |
-| task of a change | `qsm-tasks add "<change>" --epic <id> --spec <change-id>` | spec-propose, once the spec is written, never before |
-| order | `qsm-tasks after <task> <blocker>` | the planner |
-| claim | `qsm-tasks claim <task>` | the agent that builds; spec-apply at start |
-| pull request open, CI and bots running | `qsm-tasks review <task>` | the builder, when it opens the pull request |
-| CI green, every finding fixed | `qsm-tasks human <task>` | the builder, only then; the owner tests and approves |
-| merge | nothing: `Closes #N` closes the task, the board sets Done | the owner merges |
-| decision or spec-only task | `qsm-tasks close <task> --reason` | the main agent with the owner's word |
-| not doing it | `qsm-tasks drop <task> --reason` | the main agent with the owner's word |
-| epic ready for QA | nothing: the Action sets Ready For Test | GitHub |
-| QA takes the epic | `qsm-tasks qa <epic>` | the QA agent only |
-| QA finds something | `qsm-tasks finding <epic> "<title>"` | the QA agent only |
-| QA finds nothing | report to the owner; the stage stays In Test | the QA agent |
-| owner accepts | `qsm-tasks accept <epic>` | only on the owner's explicit word in the conversation |
-| owner rejects | `qsm-tasks reject <epic> --reason` | only on the owner's explicit word |
-| progress | `qsm-tasks note <id> "<text>"` | anyone, in the owner's name |
-| work for later | `qsm-tasks defer <id> --until <date>` | the main agent |
-| epic check | `qsm-tasks tree <epic>`, `qsm-tasks show <epic>` | after each task closes |
-| feedback | `qsm-tasks feedback "<title>"` | any agent, a subagent's one permitted create |
+| session start | `ready`, `list --mine` | the agent, first thing |
+| planning | `edit <n> --spec <change-id>`, `edit <n> --body-file <summary>` | the planning session, on the filed feature |
+| a feature the owner asks for in chat | `feature "<goal>" --intent <file>` | the main agent, on the owner's word |
+| split | `add "<task>" --feature <n>`, `edit <task> --after <blocker>` | the owner and the agent; the first task makes the feature In Dev |
+| claim, give back, defer | `claim`, `unclaim`, `unclaim --until <date>` | the session that builds; the main agent |
+| pull request open | nothing, or `review <task>` when the workflow lags or after a finding | GitHub; the builder |
+| CI green, every finding fixed | `human <task>` | the builder, only then |
+| task merged into `feature/<n>` | nothing: the Action closes it | the owner merges |
+| last task closed | nothing: the Action updates `feature/<n>` from main, sets Ready For Test or files a conflict task | GitHub |
+| decision or spec-only task | `close <task> --reason` | the main agent, on the owner's word |
+| not doing it | `close <n> --not-planned --reason` | the main agent, on the owner's word |
+| QA | `ready --qa`, `qa <feature>`, `add --feature <feature> "<finding>"`, `note <feature> "QA passed ..."` | the QA agent only |
+| step 9 | spec-archive on `feature/<n>`, then the feature pull request | the agent, after `QA passed` |
+| accept | nothing: the owner merges the feature pull request into main | the owner |
+| progress | `note <id> "<text>"` | anyone, in the owner's name |
+| feedback | `feedback "<title>" --area <a> --kind <k> --from <f>` | any agent; a subagent's one create |
 
-Alternative rejected: keep `task-tool` free of verb names and point at the binary's own help. The
-agent would learn the flow from two places; one skill that names its verbs is one place to read.
+### 2. A change is bound to its feature
 
-### 2. Binding a change to its task: a first line in the body
+The filed feature carries `change:<change-id>`; spec-propose looks it up with `list --spec` before
+it writes. Tasks carry no label: they are sub-issues of the bound feature, created at the split.
 
-`br` had an external-reference field; an issue does not. The task for a change carries the first
-body line `openspec: <change-id>`, written by `qsm-tasks add --spec` or `spec` and read by
-`find-spec`, which filters for the exact first line. spec-propose runs `find-spec` before it creates
-anything. The exactness proof and the fallback to a label are the binary's (`qsm-tasks-cli` design
-6 and its task 0.3), so this change adds no proof of its own and the skill relies on the verb.
+### 3. QA's verdict is a note with a fixed first line
 
-### 3. Two flows: a task by Status, an epic by Epic stage, and QA instead of test-it
+The QA agent that finds nothing posts `note <feature>` whose first line is `QA passed`, with one
+line per cover scenario. No Status says it, because the agreed board has none between In Test and
+Done; spec-archive reads the latest QA note and starts step 9 only on it.
 
-A task's flow is Todo, In Progress, In Review, Ready For Human Review, Done. The owner tests tasks
-himself, with automatic tests and the review bots, so no agent sits between a task and him. A task
-closes by the merge of a pull request with `Closes #N`, and the board's "Item closed" sets Done; a
-task whose work has no pull request (a decision, a deferred item closed as won't-do) is closed with
-the explicit `close` verb and a reason a reader in a month understands.
+### 4. The readers go, apart from one write
 
-An epic's flow is Planning, Building, Ready For Test, In Test, Blocked, Done. Its first claimed task
-makes it Building (`claim` does it), the last closing sub-issue makes it Ready For Test (an Action,
-not a step), the QA agent makes it In Test, a finding makes it Blocked with a fix task under the
-epic, and the fix task closing sends it back to Ready For Test by the same Action. The owner
-accepts the QA result, and only then is the epic Done and its issue closed. The agent never closes
-an epic on its own word.
-
-This replaces the final test-it sub-issue. Reason: test-it was a task made to look like a stage, it
-had to be blocked by every other task by hand, and it could be ticked by the same agent that built
-the epic. A stage with its own agent, one that did not build the work and tests against the business
-request and the acceptance criteria on the real path, is a stronger proof and costs no per-epic
-issue. The QA agent runs in a Claude Code session on the owner's machine for now and on a
-dedicated machine later; it is not built here, this change only states what the skills say about it.
-Everything the skills post to GitHub is written in the owner's name and names no agent.
-
-### 4. Deferred work is a label and a comment, not a status
-
-GitHub issues have open and closed only; a board column could say `Deferred`, but the board is a
-view the maintainer owns. The rule is one label `deferred` and a comment that holds the date or
-condition, and the ready list excludes the label. A task is never silently closed or left open.
-
-### 5. The feedback epic is found by its title
-
-The instruction file and the web-research agent name the issue `Feedback on agents and tools` of
-type `Epic` and the verb `qsm-tasks feedback`, never a number: a number in an instruction file is
-the literal that goes stale (the `qsm-i1u` it replaces). The verb finds the epic by exact title in
-the marketplace repository (the checkout `QSM_MARKETPLACE` names, so a subagent in another project
-does not file into that project), comments on an open issue with the same title instead of making a
-second. Feedback tasks keep the rules of today: the title names
-where, a subagent creates only this kind. What the verb does is `qsm-tasks-cli`'s; the instruction
-file says when.
-
-### 6. The readers outside qsm-tasks go, apart from one write
-
-| Reader or writer | Decision | Reason |
+| Reader | Decision | Files |
 | --- | --- | --- |
-| worktrunk `.beads/redirect` | removed | the store is on GitHub, a workspace has nothing to point at |
-| memory `orient` task lines | removed (question 1) | session start must not need the network |
-| cockpit Tasks card, `tasks` verb | removed (question 2) | a polled network read; GitHub's board is the view |
-| lens open-task reads | removed (question 3) | same reason as the card |
-| lens pen edit | kept, through `qsm-tasks add` (no epic) | it is a write of one loose task, the same verb the skill uses |
-| toolbox `br` row, knip `br` | removed | no `br` |
+| worktrunk redirect | removed | `lib/task-store.ts` and its test, `StoreIo` in `lib/node-io.ts`, the call in `hooks/worktree-create.ts`, the redirect test, README |
+| memory `orient` task lines | removed: session start needs no network | `lib/beads.ts`, the tracker part of `lib/orient.ts` and its tests, the `orient` description, README, the `plugin.json` dependency |
+| cockpit Tasks card | removed: the board is the view | `lib/tasks.ts`, the Tasks state and CLOSE text of `lib/cockpit.ts`, the card in `hooks/register.tsx`, the `plugin.json` dependency |
+| lens task reads | removed | `lib/lens/tasks.ts`, `brief.ts`, the task fields of `model.ts`, `page.ts`, `view.ts`, `serve.ts`, the `.beads` carve-out of `watch.ts` |
+| lens pen edit | kept, one `qsm-tasks add` with no feature | `lib/lens/edits.ts`, `pull.ts` |
+| toolbox and knip `br` | removed | `lib/catalog.ts` row, `skills/toolbox/SKILL.md`, README, root `knip.jsonc` |
 
-Removing a reader removes its dependency on qsm-tasks (memory, cockpit). The lens keeps it, for the
-one write.
+Readers go first and qsm-tasks last, so every state builds; a test of a removed behaviour goes with
+it. The word epic is replaced in every file `grep -rniw 'epics\?' plugins/*/skills plugins/*/agents
+plugins/qsm-setup/instructions AGENTS.md README.md` finds.
 
-### 7. Order of work
+### 5. Evals use a fake `qsm-tasks`
 
-Readers first, qsm-tasks last. `br` stays usable until nothing calls it, so every intermediate state
-builds and every test that passed before still passes. Each reader removal is also the place its
-test is deleted or rewritten: a test of a removed behaviour is removed with it, never kept green by
-a fake `br`.
+One recording stub in root `lib/fixtures/` for the evals of qsm-tasks, qsm-openspec, qsm-plan and
+qsm-review; real issues per eval run would be noise on the public repository.
 
-### 8. Evals use a fake `qsm-tasks`
+### 6. The instruction file names the tools
 
-The evals of qsm-tasks (`task-tool-last-child-of-epic`, whose grader reads `.beads/issues.jsonl`),
-qsm-openspec, qsm-plan and qsm-review scaffold a repository with `br init` and `br create`. They get
-a `qsm-tasks` stub on PATH that records its arguments to a file and prints a canned answer for the
-reads (`ready`, `list`, `show`, `find-spec`); the graders read that file. The real verbs against
-real GitHub are proved once by `qsm-tasks-cli` and by the epic's QA stage. Alternative: real
-`test:` issues per eval run, rejected as noise on the public repository (question 4).
-
-### 9. The instruction file names the tools, in the same three columns
-
-`plugins/qsm-setup/instructions/CLAUDE.md`, table "Where things live", is the one place an agent
-learns on every task which binary serves a role; skills and agents keep saying "the task tool". The
-table keeps its three columns (Place, Answers, Changes): a fourth column for verbs would be empty on
-five of the seven rows, and the daily verbs fit the Answers cell of the two rows that have them. Two
-rows change, verbatim:
+Two rows of "Where things live" change, three columns kept:
 
 ```text
-| the task tool, `qsm-tasks` | what is unfinished, in what order, and who has it, never a TODO in prose; an epic holds the intent and acceptance criteria of a piece of work and a task is one spec change under it; daily verbs `qsm-tasks ready`, `list --mine`, `show <id>`, `claim <id>`, `note <id> "<text>"`, and `--help` for the rest | daily |
+| the task tool, `qsm-tasks` | what is unfinished, in what order, and who has it, never a TODO in prose; a feature holds the intent, the models and the spec of a piece of work, and a task is one pull request under it; daily verbs `qsm-tasks ready`, `list --mine`, `show <id>`, `claim <id>`, `note <id> "<text>"`, and `--help` for the rest | daily |
 | the memory tool, `qsm-memory` | what a person and the model said in every earlier main session on this machine, saved by a hook and searched by full text, never acceptance criteria; plus one short-term note for the next session, which expires; daily verbs `qsm-memory search "<words>"`, `show <id>`, `note "<text>"` | never by hand, except the note |
 ```
 
-The row in group 10 of tasks.md replaces the two existing rows `the task tool` and `the session
-archive (qsm-memory)`; the sentence "never by hand, except the note" stays the Changes cell of the
-memory row.
+## Open decisions
 
-## Risks / Trade-offs
+1. **Does the lens keep "a pen edit becomes a task"?** Recommended yes, through one `qsm-tasks
+   add`; whichever of this and `marketplace-lens` archives second reconciles.
 
-- **Offline, tracking stops.** One path, no fallback. The skill's caveats say so.
-- **The verb names come from `qsm-tasks-cli`.** Group 1 of tasks.md reads that change as applied
-  and fixes any name that moved; the spec's scenarios describe results, not flags.
-- **`marketplace-lens` is an active change** whose requirement "An edit becomes one task in the task
-  tool" is not in the main spec yet. If it archives first, this change modifies it; if not, its
-  tasks 3.3 and its design 14 are reconciled when it is applied. Recorded in tasks.md.
-- **A rate limit or a missing `project` scope** surfaces as the verb's failure with the cause; the
-  skill names `gh auth refresh -s project` as the fix.
+## Critiques
 
-## Migration Plan
-
-This change adds no data migration. The 98 `br` tasks become issues in the migration piece, which
-needs the `.beads/` file readable until it finishes, so `.beads/` and the `br` binary stay on the
-maintainer's machine until the triage is confirmed. Group 11 of tasks.md, the sweep that confirms
-nothing names `br`, is applied after that. Nothing here deletes `.beads/` itself.
+- Offline, tracking stops: one path, no fallback; the skill's caveats say so.
+- One login for owner and agent makes "the owner merges" a rule, not a gate, until
+  `agent-identity`.

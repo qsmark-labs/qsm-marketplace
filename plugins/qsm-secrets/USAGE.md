@@ -37,7 +37,7 @@ listing the backend cannot give (a locked vault, a Secret Service that does not 
 still answers ok, with a warning naming the index file; `doctor` checks that the index reads as
 rows and that its lock is free.
 
-`/qsm-secrets review` in a session opens a pane over the same rows (kind, local date and time, the
+`/qsm-secrets-review` in a session opens a pane over the same rows (kind, local date and time, the
 working directory's last segment, the session's first eight characters). The arrows move, `d` or
 DEL arms a row (`y to delete`), and `y` within 3 seconds runs `qsm-secrets rm` for it; any other
 key or 3 seconds disarms. A failed delete keeps the row with its outcome code and a toast (an

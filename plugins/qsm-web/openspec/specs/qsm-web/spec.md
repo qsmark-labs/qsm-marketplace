@@ -8,10 +8,13 @@ qsm-web owns web research: one loop, a skill for each tool it uses, and the CLI 
 
 ### Requirement: qsm-web searxng queries the configured instance
 
-The `search` verb SHALL select its instance from `--instance`, then `QSM_SEARXNG_INSTANCE`, and
-SHALL NOT read or write a client config file. It SHALL return one result array as its outcome
-data, retaining URL, title, content, engine, engines, category, score and published date, with
-optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
+The `search` verb SHALL select its instance from `--instance`, then `QSM_SEARXNG_INSTANCE`, then the
+`instance` field of the machine-local `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default
+`~/.config/qsm-searxng/config.json`). It SHALL NOT write that file or read search-policy defaults
+from it. An unreadable, invalid or malformed selected config SHALL fail without echoing its
+contents. Explicit inputs SHALL not read the local file. It SHALL return one result array as its
+outcome data, retaining URL, title, content, engine, engines, category, score and published date,
+with optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
 
 #### Scenario: Server defaults are used without overrides
 
@@ -22,8 +25,8 @@ optional `img_src`, `thumbnail_src` and `iframe_src` values when supplied.
 
 #### Scenario: Missing or invalid address
 
-- **WHEN** neither address input is present
-- **THEN** the verb SHALL return `missing` naming the two supported inputs
+- **WHEN** no address input or local config is present
+- **THEN** the verb SHALL return `missing` naming the supported inputs
 - **WHEN** an explicit address is not absolute HTTP(S) or contains credentials, query or fragment
 - **THEN** the verb SHALL return `usage` without making a request or exposing those values
 

@@ -1,0 +1,9 @@
+{
+  "name": "qsm-models",
+  "description": "Strict visual models: one BPMN graph of the business and one C4 graph of the architecture per project, linted by bpmnlint and LikeC4 with our rules, rendered to committed pictures, walked into test paths, their links checked, and shown as two self-contained pages.",
+  "keywords": ["bpmn", "c4", "likec4", "models", "diagrams", "lint", "paths"],
+  "author": {
+    "name": "qsm"
+  },
+  "types": "./types/index.d.ts"
+}

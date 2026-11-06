@@ -3,6 +3,7 @@
 import { binPath, exitOf, fail, type Outcome, ok, renderText } from "../../../lib/outcome.ts";
 import { fromThrown } from "../../../lib/qsm-error.ts";
 import type { Env } from "../../../lib/paths.ts";
+import { isolatedHome, isIsolated } from "./claude-home.ts";
 import { appendLaunchLog, loadModels, prepareRouted, runClaude } from "./launch.ts";
 import { placesOf } from "./places.ts";
 import { retag } from "./retag.ts";
@@ -45,7 +46,9 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
       model: flagValue(argv, "--model") ?? "-",
       launch: ok({
         args: launchArgs(argv, CLAUDE),
-        env: launchEnv(env, CLAUDE),
+        env: isIsolated(env)
+          ? isolatedHome(launchEnv(env, CLAUDE), places)
+          : launchEnv(env, CLAUDE),
       }),
     };
   }
@@ -64,7 +67,7 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
     launch:
       launch === undefined
         ? retag(prepared)
-        : ok({ args: launchArgs(argv, launch), env: launchEnv(env, launch) }),
+        : ok({ args: launchArgs(argv, launch), env: isolatedHome(launchEnv(env, launch), places) }),
   };
 }
 

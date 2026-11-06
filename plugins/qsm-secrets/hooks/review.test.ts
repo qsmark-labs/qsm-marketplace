@@ -1,4 +1,4 @@
-// `claude plugin test plugins/qsm-secrets` drives the review pane: /qsm-secrets review opens it, the
+// `claude plugin test plugins/qsm-secrets` drives the review pane: /qsm-secrets-review opens it, the
 // list is drawn from `qsm-secrets captures`, and keys reach the review.tsx Client as the person's
 // would. process.run stands for the bin: captures answers the rows it holds, rm removes one or fails.
 import type { On } from "claude-code";
@@ -21,7 +21,7 @@ const PANE = {
 } as const;
 
 const RUN = {
-  command: "qsm-secrets",
+  command: "qsm-secrets-review",
   origin: { kind: "composer" },
   presentation: { isFullscreen: true, columns: 160 },
 } as const;
@@ -141,9 +141,9 @@ function bin(on: On, rows: Listed[] = ROWS): Bin {
 const mountPane = ($: Engine, surface: (typeof SURFACES)[number]) =>
   $.ui.mount({ ...PANE, surface });
 
-/** /qsm-secrets review, which lists the captures, then the pane it opened, drawn. */
+/** /qsm-secrets-review, which lists the captures, then the pane it opened, drawn. */
 async function openPane($: Engine, surface: (typeof SURFACES)[number]): Promise<Mounted> {
-  await $.command.run({ ...RUN, args: "review" });
+  await $.command.run({ ...RUN, args: "" });
   return mountPane($, surface);
 }
 
@@ -160,7 +160,7 @@ const press = async (ui: Mounted, ...keys: string[]): Promise<void> => {
   }
 };
 
-test("/qsm-secrets is registered at the session start, and review lists the captures and opens the pane with the focus", async ($, on) => {
+test("/qsm-secrets-review is registered at session start and opens the captures pane", async ($, on) => {
   const registered: string[] = [];
   const host = bin(on);
   on("command.register", (_$, e) => {
@@ -170,11 +170,11 @@ test("/qsm-secrets is registered at the session start, and review lists the capt
   on("session.start", (_$, e) => ({ cwd: e.cwd }));
 
   await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
-  const usage = await $.command.run({ ...RUN, args: "" });
-  const run = await $.command.run({ ...RUN, args: "review" });
+  const usage = await $.command.run({ ...RUN, args: "unexpected" });
+  const run = await $.command.run({ ...RUN, args: "" });
 
-  expect(registered).toEqual(["qsm-secrets"]);
-  expect(usage.text).toContain("/qsm-secrets review");
+  expect(registered).toEqual(["qsm-secrets-review"]);
+  expect(usage.text).toContain("/qsm-secrets-review takes no arguments");
   expect(run.text).toBeUndefined();
   expect(host.opened).toEqual([{ id: "qsm-secrets-review", focus: true }]);
   expect(host.verbs).toEqual(["captures"]);
@@ -322,7 +322,7 @@ test("a post naming no listed capture deletes nothing and says so", async ($, on
   await ui.unmount();
 });
 
-test("a delete from a pane drawn before /qsm-secrets review lists again and keeps the other rows", async ($, on) => {
+test("a delete from a pane drawn before /qsm-secrets-review lists again and keeps the other rows", async ($, on) => {
   const host = bin(on);
   const ui = await mountPane($, "terminal");
 
@@ -335,7 +335,7 @@ test("a delete from a pane drawn before /qsm-secrets review lists again and keep
   await ui.unmount();
 });
 
-test("a pane drawn before any /qsm-secrets review lists the captures itself", async ($, on) => {
+test("a pane drawn before /qsm-secrets-review lists the captures itself", async ($, on) => {
   const host = bin(on);
   const ui = await mountPane($, "terminal");
 

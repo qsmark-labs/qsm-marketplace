@@ -1,7 +1,10 @@
 // The search rung: one instance, one query, one JSON array on stdout. The server owns the search
 // policy; the client sends the query, the format and only the overrides it was asked for.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
-import { messageOf, UsageError } from "../../../lib/outcome.ts";
+import { isRecord, messageOf, UsageError } from "../../../lib/outcome.ts";
+import { configDir, type Env } from "../../../lib/paths.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 
 const SEARCH_PROFILE = z.enum([
@@ -171,6 +174,25 @@ export function resolveInstance(flag?: string, env?: string): string | undefined
     return env;
   }
   return undefined;
+}
+
+/** Only the instance address is local; engine policy stays with the server and search flags. */
+export function localInstance(env: Env): string | undefined {
+  const path = join(configDir(env), "qsm-searxng", "config.json");
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
+    throw new QsmError("failed", `cannot read local SearXNG config at ${path}`);
+  }
+  try {
+    const value: unknown = JSON.parse(text);
+    if (!isRecord(value) || typeof value.instance !== "string") throw new Error("missing instance");
+    return parseInstance(value.instance);
+  } catch {
+    throw new QsmError("failed", `local SearXNG config at ${path} needs a valid instance URL`);
+  }
 }
 
 /**

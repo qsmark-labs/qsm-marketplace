@@ -18,7 +18,9 @@ qsm-web browserbox view <name>
 
 `qsm-web <verb> --help` lists the rest; `--dry-run` shows the commands without running them.
 
-- Search instance: `--instance`, then `QSM_SEARXNG_INSTANCE`. The instance owns the engine and
+- Search instance: `--instance`, then `QSM_SEARXNG_INSTANCE`, then the `instance` field in
+  `$XDG_CONFIG_HOME/qsm-searxng/config.json` (default `~/.config/qsm-searxng/config.json`), kept
+  on this machine. The instance owns the engine and
   policy defaults: only the flags you pass are sent. `--num-results` keeps 10 results by default
   and `--timeout` gives the entire exchange 10000 ms, including a profile's catalog lookup.
 - Sources from `opensrc get` land in `QSM_OPENSRC_DIR` (default `~/Clonned`). `versionMatched` is
