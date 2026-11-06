@@ -1,0 +1,46 @@
+---
+name: Feature request
+description: Something the marketplace should do that it does not do yet.
+type: Feature
+body:
+  - type: textarea
+    id: who
+    attributes:
+      label: Who is it for
+      description: Who uses it, specifically, and what they do with it.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and why now
+      description: What problem it solves, why now, and what happens if we do not build it.
+    validations:
+      required: true
+  - type: textarea
+    id: not-doing
+    attributes:
+      label: What we are not doing
+    validations:
+      required: true
+  - type: textarea
+    id: exists
+    attributes:
+      label: What exists
+      description: What already does this, and why this is better than using it.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: What proves it works
+      description: What must be true for it to work, and the test, output or number that shows it.
+    validations:
+      required: true
+  - type: textarea
+    id: budget
+    attributes:
+      label: Budget
+      description: How much time and code it is worth.
+    validations:
+      required: true

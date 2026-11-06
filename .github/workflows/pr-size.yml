@@ -1,0 +1,35 @@
+---
+name: PR size
+
+on:
+  pull_request:
+
+jobs:
+  pr-size:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      # A pull request a person reads in one sitting: past 400 changed lines review stops finding
+      # defects (Cisco's review study). A file the base's .gitattributes marks linguist-generated is
+      # not read, so it does not count; the base decides, so a pull request cannot exempt itself.
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          LIMIT: 400
+        run: |
+          total=0
+          while IFS=$'\t' read -r added deleted file; do
+            [ "$added" = "-" ] && continue
+            [ "$(git check-attr --source "$BASE" linguist-generated -- "$file" | sed 's/.*: //')" = "true" ] && continue
+            total=$((total + added + deleted))
+            echo "$((added + deleted)) $file"
+          done < <(git diff --numstat --no-renames "$BASE...$HEAD")
+          echo "changed lines: $total of $LIMIT"
+          if [ "$total" -gt "$LIMIT" ]; then
+            echo "::error::$total changed lines, past the $LIMIT a person reviews in one sitting: split the task."
+            exit 1
+          fi
