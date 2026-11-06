@@ -125,10 +125,6 @@
       "source": "./plugins/qsm-worktrunk"
     },
     {
-      "name": "qsm-models",
-      "source": "./plugins/qsm-models"
-    },
-    {
       "name": "qsm-bpmn",
       "source": "./plugins/qsm-bpmn"
     },

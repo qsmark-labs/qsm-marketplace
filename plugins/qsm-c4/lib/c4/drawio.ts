@@ -74,6 +74,6 @@ export class Cells {
 
   /** The view's draw.io file, for the root element's `content` attribute. */
   file(name: string): string {
-    return `<mxfile host="qsm-models"><diagram name="${esc(name)}" id="${esc(name)}"><mxGraphModel grid="1" gridSize="10" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${this.cells.join("")}</root></mxGraphModel></diagram></mxfile>`;
+    return `<mxfile host="qsm-c4"><diagram name="${esc(name)}" id="${esc(name)}"><mxGraphModel grid="1" gridSize="10" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${this.cells.join("")}</root></mxGraphModel></diagram></mxfile>`;
   }
 }

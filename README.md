@@ -32,7 +32,7 @@ to verify or shorter to read, it has no reason to exist.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/lens-banner-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/lens-banner-light.svg">
-  <img alt="qsm-marketplace: A minimal marketplace of specialist plugins for Claude Code. 34 plugins." src="assets/lens-banner-light.svg">
+  <img alt="qsm-marketplace: A minimal marketplace of specialist plugins for Claude Code. 33 plugins." src="assets/lens-banner-light.svg">
 </picture>
 <!-- markdownlint-enable MD013 MD033 -->
 
@@ -75,8 +75,7 @@ flowchart LR
 
 These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm-ccr`,
 `qsm-book-to-skill`, `qsm-index`, `qsm-opencode`, `qsm-secrets`, `qsm-statusline`, `qsm-usage`,
-`qsm-toolbox`, `qsm-uix`, `qsm-web`, `qsm-worktrunk`, `qsm-models`, `qsm-bpmn`, `qsm-c4`,
-`qsm-docs`.
+`qsm-toolbox`, `qsm-uix`, `qsm-web`, `qsm-worktrunk`, `qsm-bpmn`, `qsm-c4`, `qsm-docs`.
 
 ## Catalog
 
@@ -134,7 +133,6 @@ These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm
 | [qsm-toolbox](plugins/qsm-toolbox/README.md) | Every agent should know the same set of command-line tools this machine has, and a tool nobody names is a tool nobody uses. | 1 skill, CLI |
 | [qsm-uix](plugins/qsm-uix/README.md) | A UI made by taste and judged by looking ships defects nobody measured, and some of them lock people out entirely. | 26 skills, 1 agent, CLI |
 | [qsm-worktrunk](plugins/qsm-worktrunk/README.md) | The harness's own worktree is a bare checkout: it carries only what git tracks, while a project also runs on the env file, the local docs and the generated config that never enter the repository. | 1 skill, CLI, 8 hooks |
-| [qsm-models](plugins/qsm-models/README.md) | A model an agent can draw but nobody checks is a picture that drifts, and a spec in text alone leaves every reader to imagine the process and the architecture differently. | |
 | [qsm-bpmn](plugins/qsm-bpmn/README.md) | A process an agent can draw but nobody checks is a picture that drifts, and a spec in text alone leaves every reader to imagine the process differently. | 1 skill, 1 agent, CLI |
 | [qsm-c4](plugins/qsm-c4/README.md) | An architecture an agent can draw but nobody checks is a picture that drifts, and a spec in text alone leaves every reader to imagine the structure differently. | 1 skill, 1 agent, CLI |
 | [qsm-docs](plugins/qsm-docs/README.md) | A generated page is written once and thrown away, and an edit the owner makes in a browser reaches nobody, so every plugin that wants a page builds its own server and its own store. | CLI, 3 hooks |

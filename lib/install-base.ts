@@ -18,7 +18,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { fishCompletion, writeCompletion } from "./completions.ts";
+import { fishCompletion, MARKER, writeCompletion } from "./completions.ts";
 import {
   cliMain,
   type InstallContext,
@@ -150,6 +150,42 @@ export function removeOwnedLinks(
         detail: `${verb} the stale link ${join(dir, n)}`,
       };
     });
+}
+
+/** Removes what an older install left under `bin`, a name no plugin ships any more: the binary
+ * and its line in the build record, when the record says an install compiled it, and the
+ * completion, when it carries the generated marker, because a file of that name that is neither
+ * may be the person's. Each removal is a step, and a second run finds none. */
+export function removeRetiredBin(ctx: InstallContext, bin: string): Step[] {
+  const verb = ctx.dryRun ? "would remove" : "removed";
+  const status: InstallStatus = ctx.dryRun ? "skipped" : "installed";
+  const name = `retired ${bin}`;
+  const steps: Step[] = [];
+  const recordPath = buildRecordPath(ctx.env);
+  const record = readRecord(recordPath);
+  if (record?.bins[bin] !== undefined) {
+    const binFile = join(binDir(ctx.env), bin);
+    if (existsSync(binFile)) {
+      if (!ctx.dryRun) {
+        unlinkSync(binFile);
+      }
+      steps.push({ name, status, detail: `${verb} ${binFile}, which no plugin ships any more` });
+    }
+    if (!ctx.dryRun) {
+      writeRecord(recordPath, {
+        bins: Object.fromEntries(Object.entries(record.bins).filter(([b]) => b !== bin)),
+      });
+    }
+    steps.push({ name, status, detail: `${verb} ${bin} from ${recordPath}` });
+  }
+  const completion = join(fishCompletionDir(ctx.env), `${bin}.fish`);
+  if (existsSync(completion) && readFileSync(completion, "utf8").includes(MARKER)) {
+    if (!ctx.dryRun) {
+      unlinkSync(completion);
+    }
+    steps.push({ name, status, detail: `${verb} ${completion}` });
+  }
+  return steps;
 }
 
 /** The one line for a plugin that installs nothing, dry run or real. */
