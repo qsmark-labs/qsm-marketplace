@@ -192,7 +192,7 @@ const EDGE_NODE = 3 * STEP;
 /** The room inside a boundary or a group around what it holds: a line ELK routes along the inside
  * keeps the gap from what it passes, and so the gap from the outline too. */
 const PADDING = 2 * GAP;
-/** ELK sets a label the gap from its line; a measure this much farther is rounding, not a stray. */
+/** A measure this far past a spacing ELK was given is rounding, not a defect. */
 const ROUNDING = 1;
 
 /** A label's text, in lines of at most `chars`, and the box it takes at `px`: as wide as its widest
@@ -344,8 +344,8 @@ interface DrawnLine {
   readonly label: Rect;
 }
 
-/** Why a line's label does not read as that line's: farther than the gap from it, or nearer
- * another line than its own; nothing when it reads right. */
+/** Why a line's label does not read as that line's: farther than a step from it, or not a step
+ * nearer it than to any other line; nothing when it reads right. */
 function labelStrays(e: DrawnLine, edges: readonly DrawnLine[]): string | undefined {
   const mine = Math.min(...e.segs.map((s) => gapBetween(e.label, spanOf(s))));
   const other = Math.min(
@@ -353,11 +353,11 @@ function labelStrays(e: DrawnLine, edges: readonly DrawnLine[]): string | undefi
       .filter((f) => f !== e)
       .flatMap((f) => f.segs.map((s) => gapBetween(e.label, spanOf(s)))),
   );
-  if (Math.round(mine) > GAP + ROUNDING) {
-    return `the label of "${e.title}" sits ${Math.round(mine)} px from its own line, farther than ${GAP} px`;
+  if (Math.round(mine) > STEP + ROUNDING) {
+    return `the label of "${e.title}" sits ${Math.round(mine)} px from its own line, farther than ${STEP} px`;
   }
-  return other < mine
-    ? `the label of "${e.title}" sits nearer another line (${Math.round(other)} px) than its own (${Math.round(mine)} px)`
+  return other - mine < STEP - ROUNDING
+    ? `the label of "${e.title}" sits ${Math.round(other)} px from another line and ${Math.round(mine)} px from its own, not ${STEP} px nearer its own`
     : undefined;
 }
 
@@ -438,7 +438,9 @@ const SPACING = {
   "elk.layered.spacing.edgeEdgeBetweenLayers": String(2 * GAP),
   // ELK gives each end of a line a port of its own on the box, this far from the next
   "elk.spacing.portPort": String(GAP),
-  "elk.spacing.edgeLabel": String(GAP),
+  // a label sits a step from its own line, while every other line keeps at least the gap from it,
+  // so it reads as that line's
+  "elk.spacing.edgeLabel": String(STEP),
   "elk.spacing.labelLabel": String(GAP),
   "elk.spacing.labelNode": String(GAP),
 };
