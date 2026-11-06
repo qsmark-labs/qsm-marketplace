@@ -1,7 +1,7 @@
 // render for C4: one view per level, generated from the graph, laid out by ELK layered in tiers
 // (actors, the system in scope with its groups, external systems), drawn as an SVG that carries
 // the view's draw.io diagram, with links that zoom in and out between the views.
-import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
+import ELK, { type ElkExtendedEdge, type ElkNode, type ElkShape } from "elkjs/lib/elk.bundled.js";
 import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
@@ -29,7 +29,6 @@ const GREY_LINE = "#7a7a7a";
 const RELATION_LIMIT = 15;
 const W = 200;
 const H = 84;
-const CH = 5.9;
 
 /** A relation as a view draws it: lifted to the elements the view shows. */
 interface Edge {
@@ -183,42 +182,59 @@ class Graph4 {
   }
 }
 
+/** The spacing scale: every gap a view keeps is a multiple of one step. */
+const STEP = 8;
+/** The smallest gap two painted bodies keep. */
+const GAP = 2 * STEP;
+/** The room ELK keeps between a line and a box. */
+const EDGE_NODE = 3 * STEP;
+/** The room inside a boundary or a group around what it holds: a line ELK routes along the inside
+ * keeps the gap from what it passes, and so the gap from the outline too. */
+const PADDING = 2 * GAP;
+/** ELK sets a label the gap from its line; a measure this much farther is rounding, not a stray. */
+const ROUNDING = 1;
+
+/** A label's text, in lines of at most `chars`, and the box it takes at `px`: an average glyph is
+ * 0.59 em wide, a line 1.2 em high, with 0.3 em of room on each side and 0.2 em below. */
 interface Label {
   readonly lines: string[];
+  readonly px: number;
   readonly width: number;
   readonly height: number;
 }
 
-const labelOf = (t: string): Label => {
-  const lines = wrap(t, 24);
+const labelOf = (text: string, px: number, chars = 24): Label => {
+  const lines = wrap(text, chars);
   return {
     lines,
-    width: Math.max(...lines.map((l) => l.length)) * CH + 6,
-    height: lines.length * 12 + 2,
+    px,
+    width: Math.max(...lines.map((l) => l.length)) * px * 0.59 + px * 0.6,
+    height: lines.length * px * 1.2 + px * 0.2,
   };
 };
 
 type Seg = [{ x: number; y: number }, { x: number; y: number }];
 
+/** The straight stretches of a line. ELK splits a stretch where it crosses into a boundary and may
+ * shift it by a fraction of a pixel there; a point within a pixel of the run through its neighbours
+ * is no bend, so the stretch stays one. */
 function segsOf(ed: ElkExtendedEdge): Seg[] {
   return (ed.sections ?? []).flatMap((s) => {
     const q = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint];
-    return q.slice(1).map((v, i): Seg => [q[i] ?? v, v]);
+    const bends = q.filter((p, i) => {
+      const [a, b] = [q[i - 1], q[i + 1]];
+      return (
+        a === undefined ||
+        b === undefined ||
+        !(
+          (Math.abs(a.x - p.x) < 1 && Math.abs(b.x - p.x) < 1) ||
+          (Math.abs(a.y - p.y) < 1 && Math.abs(b.y - p.y) < 1)
+        )
+      );
+    });
+    return bends.slice(1).map((v, i): Seg => [bends[i] ?? v, v]);
   });
 }
-
-const overlapArea = (p: Rect, q: Rect): number =>
-  Math.max(0, Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x)) *
-  Math.max(0, Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y));
-
-/** The smallest gap two painted bodies keep: the spacing scale of the layout. */
-const GAP = 16;
-
-const crosses = ([u, v]: Seg, r: Rect): boolean =>
-  Math.max(u.x, v.x) >= r.x &&
-  Math.min(u.x, v.x) <= r.x + r.w &&
-  Math.max(u.y, v.y) >= r.y &&
-  Math.min(u.y, v.y) <= r.y + r.h;
 
 /** The four sides of a box: the lines a boundary or a group draws. */
 function sidesOf(r: Rect): Seg[] {
@@ -236,127 +252,97 @@ function sidesOf(r: Rect): Seg[] {
   ];
 }
 
-/** Whether a box comes within the gap of a line, or crosses it. */
-const nearLine = (box: Rect, s: Seg): boolean =>
-  crosses(s, { x: box.x - GAP, y: box.y - GAP, w: box.w + 2 * GAP, h: box.h + 2 * GAP });
+/** The box a segment spans. */
+const spanOf = ([u, v]: Seg): Rect => ({
+  x: Math.min(u.x, v.x),
+  y: Math.min(u.y, v.y),
+  w: Math.abs(v.x - u.x),
+  h: Math.abs(v.y - u.y),
+});
 
-/** Two parallel segments side by side closer than the gap: both vertical or both horizontal,
- * overlapping along their run; how far apart they are and how long they run so. */
-function sideBySide([a, b]: Seg, [c, d]: Seg): { apart: number; run: number } | null {
-  const vertical = (p: Seg[0], q: Seg[0]): boolean => p.x === q.x;
-  const [along, across] =
-    vertical(a, b) && vertical(c, d) ? (["y", "x"] as const) : (["x", "y"] as const);
-  const apart = Math.abs(a[across] - c[across]);
-  if (a[across] !== b[across] || c[across] !== d[across] || apart >= GAP) {
-    return null;
-  }
-  const lo = Math.max(Math.min(a[along], b[along]), Math.min(c[along], d[along]));
-  const hi = Math.min(Math.max(a[along], b[along]), Math.max(c[along], d[along]));
-  return hi > lo ? { apart, run: hi - lo } : null;
-}
-
-interface DrawnLine {
-  readonly title: string;
-  readonly segs: Seg[];
-  readonly label: Rect | undefined;
-}
-
-/** Whether a line's own label sits on or within the scale of an outline of the boundary or a
- * group, where its background cuts the outline. */
-const labelOnOutline = (e: DrawnLine, outlines: readonly Seg[]): boolean => {
-  const own = e.label;
-  return own !== undefined && outlines.some((s) => nearLine(own, s));
-};
-
-/** The gap between a box and an axis-aligned segment, 0 where they touch. */
-const gapTo = (r: Rect, [u, v]: Seg): number =>
+/** The gap between two boxes, 0 where they touch or overlap. */
+const gapBetween = (p: Rect, q: Rect): number =>
   Math.hypot(
-    Math.max(0, Math.min(u.x, v.x) - (r.x + r.w), r.x - Math.max(u.x, v.x)),
-    Math.max(0, Math.min(u.y, v.y) - (r.y + r.h), r.y - Math.max(u.y, v.y)),
+    Math.max(0, q.x - (p.x + p.w), p.x - (q.x + q.w)),
+    Math.max(0, q.y - (p.y + p.h), p.y - (q.y + q.h)),
   );
 
-/** Why a line's label does not read as that line's: farther than the scale from it, or nearer
- * another line than its own; nothing when it reads right. */
-function labelStrays(e: DrawnLine, edges: readonly DrawnLine[]): string | undefined {
-  const own = e.label;
-  if (own === undefined) {
-    return undefined;
+/** How far apart two stretches run side by side: both upright or both flat and overlapping along
+ * their run. Stretches that cross, meet or only pass each other's ends do not run side by side;
+ * crossings are a measure of the layout, not a touch. */
+function besideGap(s: Seg, t: Seg): number {
+  const [p, q] = [spanOf(s), spanOf(t)];
+  const upright = p.w < 1 && q.w < 1;
+  const flat = p.h < 1 && q.h < 1;
+  const overlap = upright
+    ? Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y)
+    : Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x);
+  if (!(upright || flat) || overlap <= 0) {
+    return Infinity;
   }
-  const mine = Math.min(...e.segs.map((s) => gapTo(own, s)));
-  const other = Math.min(
-    ...edges.filter((f) => f !== e).flatMap((f) => f.segs.map((s) => gapTo(own, s))),
-  );
-  // ELK sets a label at the scale from its line; a pixel more is rounding, more than that a stray
-  if (mine > GAP + 1) {
-    return `${Math.round(mine)} px from its own line, farther than ${GAP} px`;
-  }
-  return other < mine
-    ? `nearer another line (${Math.round(other)} px) than its own (${Math.round(mine)} px)`
-    : undefined;
-}
-/** Whether a line's own label covers a box or another line's label. */
-const labelCovers = (
-  e: DrawnLine,
-  edges: readonly DrawnLine[],
-  bodies: readonly Rect[],
-): boolean => {
-  const own = e.label;
-  const others = edges.flatMap((f) => (f === e || f.label === undefined ? [] : [f.label]));
-  return own !== undefined && [...bodies, ...others].some((b) => overlapArea(own, b) > 0);
-};
-
-/** What a line's own label touches or how it fails to read as that line's. */
-function labelDefects(
-  e: DrawnLine,
-  edges: readonly DrawnLine[],
-  outlines: readonly Seg[],
-  bodies: readonly Rect[],
-): string[] {
-  const strayed = labelStrays(e, edges);
-  return [
-    ...(labelOnOutline(e, outlines)
-      ? [`the label of "${e.title}" sits within ${GAP} px of a boundary's or a group's line`]
-      : []),
-    ...(labelCovers(e, edges, bodies)
-      ? [`the label of "${e.title}" covers a box or another label`]
-      : []),
-    ...(strayed === undefined ? [] : [`the label of "${e.title}" sits ${strayed}`]),
-  ];
+  return upright ? Math.abs(p.x - q.x) : Math.abs(p.y - q.y);
 }
 
-/** Where a view breaks the rule that nothing painted touches anything else: a line through the
- * label of the view's boundary, two lines side by side closer than the spacing scale, a line
- * running beside an outline of the boundary or a group, or a line's label that touches an outline,
- * a box or another label, or does not read as its own line's. */
-function layoutDefects(
-  label: Rect | null,
-  edges: readonly DrawnLine[],
-  outlines: readonly Seg[],
-  bodies: readonly Rect[],
-): string[] {
+/** One thing a view paints, as a touch sees it: a box or a straight stretch of line, what to call
+ * it, who drew it, and the boxes a line may touch because it starts or ends there. */
+interface Painted {
+  readonly what: string;
+  readonly owner: string;
+  readonly shape: Rect | Seg;
+  readonly ends?: readonly string[];
+}
+
+const isSeg = (s: Rect | Seg): s is Seg => Array.isArray(s);
+
+/** The gap between two painted things: beside each other for two stretches, else between the
+ * boxes they span. */
+const gapOf = (a: Rect | Seg, b: Rect | Seg): number =>
+  isSeg(a) && isSeg(b)
+    ? besideGap(a, b)
+    : gapBetween(isSeg(a) ? spanOf(a) : a, isSeg(b) ? spanOf(b) : b);
+
+/** Whether two painted things may touch: the parts of one owner (a line's stretches and its label,
+ * an outline and its title), and a line and the boxes at its ends. */
+const mayTouch = (a: Painted, b: Painted): boolean =>
+  a.owner === b.owner || a.ends?.includes(b.owner) === true || b.ends?.includes(a.owner) === true;
+
+/** Every pair of painted things closer than the gap, less a pixel of rounding, that may not
+ * touch. */
+function touchDefects(painted: readonly Painted[]): string[] {
   const out: string[] = [];
-  for (const [i, e] of edges.entries()) {
-    if (e.segs.some((s) => outlines.some((o) => sideBySide(s, o) !== null))) {
-      out.push(
-        `the line "${e.title}" runs beside a boundary's or a group's line, closer than ${GAP} px`,
-      );
-    }
-    out.push(...labelDefects(e, edges, outlines, bodies));
-    if (label !== null && e.segs.some((s) => crosses(s, label))) {
-      out.push(`the line "${e.title}" runs through the boundary's label`);
-    }
-    for (const f of edges.slice(i + 1)) {
-      const near = e.segs
-        .flatMap((s) => f.segs.map((t) => sideBySide(s, t)))
-        .find((x) => x !== null);
-      if (near !== undefined && near !== null) {
-        out.push(
-          `the lines "${e.title}" and "${f.title}" run ${Math.round(near.run)} px side by side ${Math.round(near.apart)} px apart, closer than ${GAP} px`,
-        );
+  for (const [i, a] of painted.entries()) {
+    for (const b of painted.slice(i + 1)) {
+      const gap = gapOf(a.shape, b.shape);
+      if (gap < GAP - ROUNDING && !mayTouch(a, b)) {
+        out.push(`${a.what} and ${b.what} are ${Math.round(gap)} px apart, closer than ${GAP} px`);
       }
     }
   }
   return out;
+}
+
+/** A line as drawn: its title, its stretches and its label. */
+interface DrawnLine {
+  readonly title: string;
+  readonly segs: Seg[];
+  readonly label: Rect;
+}
+
+/** Why a line's label does not read as that line's: farther than the gap from it, or nearer
+ * another line than its own; nothing when it reads right. */
+function labelStrays(e: DrawnLine, edges: readonly DrawnLine[]): string | undefined {
+  const mine = Math.min(...e.segs.map((s) => gapBetween(e.label, spanOf(s))));
+  const other = Math.min(
+    ...edges
+      .filter((f) => f !== e)
+      .flatMap((f) => f.segs.map((s) => gapBetween(e.label, spanOf(s)))),
+  );
+  if (Math.round(mine) > GAP + ROUNDING) {
+    return `the label of "${e.title}" sits ${Math.round(mine)} px from its own line, farther than ${GAP} px`;
+  }
+  return other < mine
+    ? `the label of "${e.title}" sits nearer another line (${Math.round(other)} px) than its own (${Math.round(mine)} px)`
+    : undefined;
 }
 
 function rectSvg(b: Rect, fill: string, stroke: string, dash: boolean, rx: number): string {
@@ -425,34 +411,18 @@ function legendSvg(keys: [string, string][], ly: number): { svg: string; height:
   return { svg: out.join(""), height: lh };
 }
 
-/** The size of a boundary's label: its title and its kind in brackets, on its own background. */
-const LABEL_SIZE = (title: string): { width: number; height: number } => ({
-  width: title.length * 8 + 112,
-  height: 20,
-});
-
-/** The boundary's label where ELK placed it, inside the boundary at `b`, or nothing. */
-function labelAt(out: ElkNode, id: string, b: Rect): Rect | null {
-  const l = (out.children ?? []).find((n) => n.id === id)?.labels?.[0];
-  return l === undefined
-    ? null
-    : { x: b.x + (l.x ?? 0), y: b.y + (l.y ?? 0), w: l.width ?? 0, h: l.height ?? 0 };
-}
-
-/** The gaps between lines, at the spacing scale; ELK reads them per graph, so every compound node
- * carries them too, or the lines inside it keep ELK's 10 px defaults. */
+/** The gaps of the scale as ELK reads them; it reads them per graph, so every compound node carries
+ * them too, or the lines inside it keep ELK's own smaller defaults. */
 const SPACING = {
   "elk.spacing.edgeEdge": String(GAP),
-  "elk.spacing.edgeNode": "24",
-  "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+  "elk.spacing.edgeNode": String(EDGE_NODE),
+  "elk.layered.spacing.edgeNodeBetweenLayers": String(EDGE_NODE),
   "elk.layered.spacing.edgeEdgeBetweenLayers": String(GAP),
+  // ELK gives each end of a line a port of its own on the box, this far from the next
   "elk.spacing.portPort": String(GAP),
   "elk.spacing.edgeLabel": String(GAP),
   "elk.spacing.labelLabel": String(GAP),
   "elk.spacing.labelNode": String(GAP),
-  "elk.edgeLabels.inline": "false",
-  "elk.edgeLabels.placement": "CENTER",
-  "elk.layered.edgeLabels.sideSelection": "SMART_DOWN",
 };
 
 const LAYOUT = {
@@ -469,33 +439,111 @@ const LAYOUT = {
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
 };
 
-/** Each relation's label where ELK placed it, on its own background; `boxes` records where each
- * went. */
-function edgeLabels(
-  g: Graph4,
-  drawn: readonly ElkExtendedEdge[],
-  byEdge: ReadonlyMap<string, Edge>,
-  boxes: Map<string, Rect>,
-): string[] {
-  return drawn.flatMap((ed) => {
-    const rel = byEdge.get(ed.id);
-    if (rel === undefined) {
-      return [];
+/** A boundary or a group: the scale's gaps, the padding all round, and its title as a label ELK
+ * places inside at `where` and keeps the room for. */
+const compound = (where: "V_TOP" | "V_BOTTOM"): Record<string, string> => ({
+  ...SPACING,
+  "elk.padding": `[top=${PADDING},left=${PADDING},bottom=${PADDING},right=${PADDING}]`,
+  "elk.nodeLabels.placement": `[H_LEFT, ${where}, INSIDE]`,
+  "elk.nodeLabels.padding": `[top=${STEP},left=${STEP},bottom=${STEP},right=${STEP}]`,
+  "elk.nodeSize.constraints": "[NODE_LABELS]",
+});
+
+/** A label's text in its box, each line centred, the first line's baseline one em down. */
+function textIn(l: Label, r: Rect, ink: string, extra = ""): string {
+  const cx = r.x + r.w / 2;
+  return `<text x="${cx}" y="${r.y + l.px}" font-size="${l.px}" fill="${ink}" text-anchor="middle"${extra}>${l.lines.map((t, i) => `<tspan x="${cx}" dy="${i === 0 ? 0 : l.px * 1.2}">${esc(t)}</tspan>`).join("")}</text>`;
+}
+
+/** A boundary or a group as a touch sees it: its title, and its four sides, which may touch the
+ * title they hold. */
+const outlined = (owner: string, what: string, box: Rect, title: Rect): Painted[] => [
+  { what: `the title of ${owner}`, owner, shape: title },
+  ...sidesOf(box).map((s) => ({ what, owner, shape: s })),
+];
+
+/** A shape ELK placed, as a box in the coordinates of the view, its parent at `ox`, `oy`. */
+const rectOf = (s: ElkShape, ox: number, oy: number): Rect => ({
+  x: ox + (s.x ?? 0),
+  y: oy + (s.y ?? 0),
+  w: s.width ?? 0,
+  h: s.height ?? 0,
+});
+
+/** Where ELK put each node and each node label, in the view's own coordinates. */
+function placesOf(out: ElkNode): { box: Map<string, Rect>; label: Map<string, Rect> } {
+  const box = new Map<string, Rect>();
+  const label = new Map<string, Rect>();
+  const walk = (n: ElkNode, ox: number, oy: number): void => {
+    const r = rectOf(n, ox, oy);
+    box.set(n.id, r);
+    const l = n.labels?.[0];
+    if (l !== undefined) {
+      label.set(n.id, rectOf(l, r.x, r.y));
     }
-    const l = labelOf(rel.title);
-    const at = ed.labels?.[0];
-    const p: Rect = { x: at?.x ?? 0, y: at?.y ?? 0, w: l.width, h: l.height };
-    boxes.set(ed.id, p);
+    for (const c of n.children ?? []) {
+      walk(c, r.x, r.y);
+    }
+  };
+  walk(out, 0, 0);
+  return { box, label };
+}
+
+/** A line's label where ELK put it; a line ELK gave no label is a layout this renderer cannot
+ * draw. */
+function lineLabel(ed: ElkExtendedEdge): Rect {
+  const l = ed.labels?.[0];
+  if (l === undefined) {
+    throw new QsmError("failed", `ELK placed no label for the line ${ed.id}`);
+  }
+  return rectOf(l, 0, 0);
+}
+
+/** A line ELK routed, with the relation it draws, its label's text and where ELK put that label. */
+interface RoutedLine {
+  readonly ed: ElkExtendedEdge;
+  readonly rel: Edge;
+  readonly label: Label;
+  readonly segs: Seg[];
+  readonly at: Rect;
+}
+
+/** Draws each line into `svg` and the diagram, adds what it paints to `painted`, and returns its
+ * labels, which go on top of everything else. */
+function paintLines(
+  g: Graph4,
+  lines: readonly RoutedLine[],
+  svg: string[],
+  cells: Cells,
+  painted: Painted[],
+): string[] {
+  const labels: string[] = [];
+  for (const [k, { ed, rel, label, segs, at: spot }] of lines.entries()) {
     const c = g.lineColour(rel.from);
-    // a label left of its line ends at the line's side, so the text sits next to its line
-    const nearest = segsOf(ed).toSorted((s, t) => gapTo(p, s) - gapTo(p, t))[0];
-    const end = nearest !== undefined && nearest[0].x === nearest[1].x && nearest[0].x >= p.x + p.w;
-    const tx = end ? p.x + p.w - 3 : p.x + 3;
-    return [
-      `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="2" fill="#ffffff"/>`,
-      `<text x="${tx}" y="${p.y + 10}" font-size="10" fill="${c}"${end ? ' text-anchor="end"' : ""}>${l.lines.map((t, i) => `<tspan x="${tx}" dy="${i === 0 ? 0 : 12}">${esc(t)}</tspan>`).join("")}</text>`,
-    ];
-  });
+    const dash = g.actorColour(rel.from) === undefined;
+    for (const s of ed.sections ?? []) {
+      const pts = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint];
+      svg.push(
+        `<polyline points="${pts.map((p) => `${p.x},${p.y}`).join(" ")}" fill="none" stroke="${c}" stroke-width="2.4"${dash ? ' stroke-dasharray="5 3"' : ""} marker-end="url(#a${c.slice(1)})"/>`,
+      );
+      cells.relation(rel.from, rel.to, rel.title, s.bendPoints ?? [], c, dash);
+    }
+    labels.push(
+      `<rect x="${spot.x}" y="${spot.y}" width="${spot.w}" height="${spot.h}" rx="2" fill="#ffffff"/>`,
+      textIn(label, spot, c),
+    );
+    const owner = `line ${k}`;
+    painted.push(
+      { what: `the label of "${rel.title}"`, owner, shape: spot },
+      ...segs.map((s) => ({
+        what: `the line "${rel.title}"`,
+        owner,
+        shape: s,
+        ends: [rel.from, rel.to],
+      })),
+    );
+  }
+  return labels;
 }
 
 async function drawView(
@@ -549,7 +597,13 @@ async function drawView(
     height: H + (noteOf(e).length > 0 ? 14 : 0),
   });
   const lines = edges.filter((r) => !shared.some((s) => s.id === r.from || s.id === r.to));
-  const byEdge = new Map(lines.map((r, k) => [`e${k}`, r]));
+  const byEdge = new Map(lines.map((r, k) => [`e${k}`, { rel: r, label: labelOf(r.title, 10) }]));
+  const kind = boundary?.kind === "system" ? "software system" : "container";
+  const framed =
+    boundary === null
+      ? null
+      : { el: boundary, title: labelOf(`${boundary.title} [${kind}]`, 13, 99) };
+  const groupTitles = groups.map((grp) => ({ grp, label: labelOf(grp, 11, 99) }));
   const graph: ElkNode = {
     id: "root",
     layoutOptions: LAYOUT,
@@ -558,31 +612,20 @@ async function drawView(
         ...leaf(e),
         layoutOptions: { "elk.partitioning.partition": String(g.tier(e)) },
       })),
-      ...(boundary === null
+      ...(framed === null
         ? []
         : [
             {
-              id: boundary.id,
-              // the boundary's title is a label ELK places and keeps clear of the lines
+              id: framed.el.id,
               labels: [
-                { id: `${boundary.id}-label`, text: boundary.title, ...LABEL_SIZE(boundary.title) },
+                { text: framed.el.title, width: framed.title.width, height: framed.title.height },
               ],
-              layoutOptions: {
-                "elk.partitioning.partition": "1",
-                ...SPACING,
-                // two scale steps of room, so a line along the inside stays a scale step off the outline
-                "elk.padding": "[top=32,left=32,bottom=14,right=32]",
-                "elk.nodeLabels.placement": "[H_LEFT, V_BOTTOM, INSIDE]",
-                "elk.nodeLabels.padding": "[top=8,left=8,bottom=8,right=8]",
-                "elk.nodeSize.constraints": "[NODE_LABELS]",
-              },
+              layoutOptions: { "elk.partitioning.partition": "1", ...compound("V_BOTTOM") },
               children: [
-                ...groups.map((grp, k) => ({
+                ...groupTitles.map(({ grp, label }, k) => ({
                   id: `group-${k}`,
-                  layoutOptions: {
-                    ...SPACING,
-                    "elk.padding": "[top=28,left=32,bottom=32,right=32]",
-                  },
+                  labels: [{ text: grp, width: label.width, height: label.height }],
+                  layoutOptions: compound("V_TOP"),
                   children: inside.filter((e) => e.metadata.group === grp).map(leaf),
                 })),
                 ...inside.filter((e) => e.metadata.group === undefined).map(leaf),
@@ -591,22 +634,12 @@ async function drawView(
           ]),
     ],
     edges: [
-      ...lines.map((r, k) => {
-        const l = labelOf(r.title);
-        return {
-          id: `e${k}`,
-          sources: [r.from],
-          targets: [r.to],
-          labels: [
-            {
-              text: r.title,
-              width: l.width,
-              height: l.height,
-              layoutOptions: { "elk.edgeLabels.inline": "false" },
-            },
-          ],
-        };
-      }),
+      ...[...byEdge].map(([id, { rel, label }]) => ({
+        id,
+        sources: [rel.from],
+        targets: [rel.to],
+        labels: [{ text: rel.title, width: label.width, height: label.height }],
+      })),
       // an external system sits beside the containers that use it, even where those relations are
       // not drawn: they enter the layout as hints and are never drawn
       ...g.rels
@@ -620,45 +653,46 @@ async function drawView(
     ],
   };
   const out = await new ELK().layout(graph);
-  const drawnEdges = (out.edges ?? []).filter((e) => byEdge.has(e.id));
-  const abs = new Map<string, Rect>();
-  const walk = (n: ElkNode, ox: number, oy: number): void => {
-    const r = { x: ox + (n.x ?? 0), y: oy + (n.y ?? 0), w: n.width ?? 0, h: n.height ?? 0 };
-    abs.set(n.id, r);
-    for (const c of n.children ?? []) {
-      walk(c, r.x, r.y);
-    }
-  };
-  walk(out, 0, 0);
-  const at = (id: string): Rect => abs.get(id) ?? { x: 0, y: 0, w: 0, h: 0 };
+  const places = placesOf(out);
+  const at = (id: string): Rect => places.box.get(id) ?? { x: 0, y: 0, w: 0, h: 0 };
+  const titleAt = (id: string): Rect => places.label.get(id) ?? { x: 0, y: 0, w: 0, h: 0 };
+  const drawnLines = (out.edges ?? []).flatMap((ed) => {
+    const line = byEdge.get(ed.id);
+    return line === undefined ? [] : [{ ed, ...line, segs: segsOf(ed), at: lineLabel(ed) }];
+  });
 
   const svg: string[] = [];
   const cells = new Cells();
   // titles are drawn after the lines, each on its own background, so a line passes under a title
   const titles: string[] = [];
-  // what a line's label may not cover: the boxes, the boundary's label and the group titles
-  const bodies: Rect[] = shown.map((e) => at(e.id));
-  const label = boundary === null ? null : labelAt(out, boundary.id, at(boundary.id));
-  if (boundary !== null && label !== null) {
-    bodies.push(label);
-    const b = at(boundary.id);
+  const painted: Painted[] = shown.map((e) => ({
+    what: `the box of ${e.id}`,
+    owner: e.id,
+    shape: at(e.id),
+  }));
+  if (framed !== null) {
+    const { el } = framed;
+    const b = at(el.id);
+    const t = titleAt(el.id);
     svg.push(rectSvg(b, "none", "#555555", true, 12));
     titles.push(
-      `<rect x="${label.x}" y="${label.y}" width="${label.w}" height="${label.h}" fill="#ffffff"/>`,
-      `<text x="${label.x + 4}" y="${label.y + 15}" font-size="13" font-weight="bold" fill="#222222">${esc(boundary.title)} <tspan font-size="9" font-weight="normal">[${boundary.kind === "system" ? "software system" : "container"}]</tspan></text>`,
+      `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="#ffffff"/>`,
+      `<text x="${t.x + t.w / 2}" y="${t.y + framed.title.px}" font-size="13" font-weight="bold" fill="#222222" text-anchor="middle">${esc(el.title)} <tspan font-size="9" font-weight="normal">[${kind}]</tspan></text>`,
     );
-    cells.boundary(boundary, b);
-    groups.forEach((grp, k) => {
+    cells.boundary(el, b);
+    painted.push(...outlined(el.id, `the outline of ${el.id}`, b, t));
+    for (const [k, { grp, label }] of groupTitles.entries()) {
       const gb = at(`group-${k}`);
+      const gt = titleAt(`group-${k}`);
       const [fill, stroke] = tint(grp);
       svg.push(rectSvg(gb, fill, stroke, false, 10));
       titles.push(
-        `<rect x="${gb.x + 6}" y="${gb.y + 5}" width="${grp.length * 6.2 + 10}" height="17" rx="3" fill="${fill}"/>`,
-        `<text x="${gb.x + 10}" y="${gb.y + 18}" font-size="11" fill="#333333">${esc(grp)}</text>`,
+        `<rect x="${gt.x}" y="${gt.y}" width="${gt.w}" height="${gt.h}" rx="3" fill="${fill}"/>`,
+        textIn(label, gt, "#333333"),
       );
       cells.group(grp, gb, fill, stroke);
-      bodies.push({ x: gb.x + 6, y: gb.y + 5, w: grp.length * 6.2 + 10, h: 17 });
-    });
+      painted.push(...outlined(`group-${k}`, `the outline of the group ${grp}`, gb, gt));
+    }
   }
   for (const e of shown) {
     const b = at(e.id);
@@ -671,27 +705,8 @@ async function drawView(
     );
     cells.element(e, b, { fill: base, stroke: base, ink: g.ink(e) });
   }
-  drawnEdges.forEach((ed) => {
-    const rel = byEdge.get(ed.id);
-    if (rel === undefined) {
-      return;
-    }
-    const c = g.lineColour(rel.from);
-    const dash = g.actorColour(rel.from) === undefined;
-    for (const s of ed.sections ?? []) {
-      const pts = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint];
-      svg.push(
-        `<polyline points="${pts.map((p) => `${p.x},${p.y}`).join(" ")}" fill="none" stroke="${c}" stroke-width="2.4"${dash ? ' stroke-dasharray="5 3"' : ""} marker-end="url(#a${c.slice(1)})"/>`,
-      );
-      cells.relation(rel.from, rel.to, rel.title, s.bendPoints ?? [], c, dash);
-    }
-  });
-  // the outlines of the boundary and its groups, which no line or line's label may sit on
-  const outlines = (boundary === null ? [] : [boundary.id, ...groups.map((_, k) => `group-${k}`)])
-    .map(at)
-    .flatMap(sidesOf);
-  const boxes = new Map<string, Rect>();
-  svg.push(...titles, ...edgeLabels(g, drawnEdges, byEdge, boxes));
+  const labels = paintLines(g, drawnLines, svg, cells, painted);
+  svg.push(...titles, ...labels);
   const key = legendSvg(
     legendKeys(g, shown, lines, groups.length, shared.length),
     (out.height ?? 0) + 16,
@@ -706,6 +721,7 @@ async function drawView(
     .join("");
   const wt = Math.max(out.width ?? 0, 330) + 20;
   const ht = (out.height ?? 0) + key.height + 66;
+  const drawn = drawnLines.map((l) => ({ title: l.rel.title, segs: l.segs, label: l.at }));
   return {
     name,
     title,
@@ -716,16 +732,7 @@ async function drawView(
     content: cells.file(name),
     defs,
     body: svg.join(""),
-    defects: layoutDefects(
-      label,
-      drawnEdges.map((ed) => ({
-        title: byEdge.get(ed.id)?.title ?? ed.id,
-        segs: segsOf(ed),
-        label: boxes.get(ed.id),
-      })),
-      outlines,
-      bodies,
-    ),
+    defects: [...touchDefects(painted), ...drawn.flatMap((l) => labelStrays(l, drawn) ?? [])],
   };
 }
 
