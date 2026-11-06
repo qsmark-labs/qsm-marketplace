@@ -61,6 +61,18 @@ describe("deleteRefusal", () => {
       "sed -Ei.bak 's/a/b/' ~/.local/share/qsm-docs/projects/demo/x.json",
       "sudo rm -rf ~/.local/share/qsm-docs",
       "bash -c 'rm -rf ~/.local/share/qsm-docs'",
+      "echo x | tee ~/.local/share/qsm-docs/projects/demo/ledger.jsonl",
+      "echo x | tee -a /home/u/.local/share/qsm-docs/projects/demo/ledger.jsonl",
+      "dd if=/dev/zero of=~/.local/share/qsm-docs/projects/demo/x.json bs=1 count=1",
+      "ln -sf /tmp/forged.json ~/.local/share/qsm-docs/projects/demo/x.json",
+      "ln -s /tmp/elsewhere $HOME/.local/share/qsm-docs/kinds/bpmn",
+      "rm -rf ~/.local/share",
+      "rm -rf ~/.local/share/",
+      "mv $XDG_DATA_HOME /tmp/old",
+      "rm -rf /srv/data",
+      "chmod -R 777 ~/.local",
+      "rm -rf ~",
+      "rm -rf /",
     ]) {
       expect(refused(line)).toContain(FILES);
     }
@@ -88,6 +100,14 @@ describe("deleteRefusal", () => {
       "rm -rf ~/.local/share/qsm-docs-old /tmp/qsm-docs",
       "echo x > /tmp/qsm-docs/ledger.jsonl",
       "wc -l < ~/.local/share/qsm-docs/projects/demo/ledger.jsonl",
+      "cat ~/.local/share/qsm-docs/projects/demo/x.json | tee /tmp/x.json",
+      "dd if=~/.local/share/qsm-docs/projects/demo/x.json of=/tmp/x.json",
+      "ln -s ~/.local/share/qsm-docs/projects/demo/x.json /tmp/x.json",
+      "ln -s ~/.local/share/qsm-docs",
+      "rm -rf ~/.local/share/other-app",
+      "cp -r ~/.local/share /tmp/backup",
+      "ls ~/.local/share",
+      "chmod 644 ~/.local/share/other-app/x",
     ]) {
       expect([line, deleteRefusal(line, HOMES)]).toEqual([line, null]);
     }

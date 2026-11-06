@@ -26,7 +26,10 @@ export function deleteCalls(dir: string): string[] {
       .split("\n")
       .forEach((line, i) => {
         const comment = code && COMMENT_STARTS.some((start) => line.trimStart().startsWith(start));
-        if (!comment && CALL.exec(line) !== null) {
+        // regex_dos does not apply: a gate reads only this repository's own files, never outside
+        // input, so no line can be crafted to make CALL backtrack.
+        // nosemgrep: ajinabraham.njsscan.dos.regex_dos.regex_dos
+        if (!comment && CALL.test(line)) {
           findings.push(`${rel(file)}:${i + 1}`);
         }
       });

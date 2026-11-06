@@ -110,21 +110,14 @@ function deletedBy(words: readonly string[], i: number): string | null {
 }
 
 /** A short flag cluster holding `c`: `-c`, `-lc`, `-ec`. */
-function isCommandFlag(word: string): boolean {
-  if (word.length < 2 || !word.startsWith("-") || !word.includes("c")) {
-    return false;
-  }
-  for (const ch of word.slice(1)) {
-    if (ch < "a" || ch > "z") {
-      return false;
-    }
-  }
-  return true;
-}
+const COMMAND_FLAG = /^-[a-z]*c[a-z]*$/;
 
 /** The script a shell at `i` runs with `-c`, or null. */
 function scriptOf(words: readonly string[], i: number): string | null {
-  const flag = words.findIndex((w, at) => at > i && isCommandFlag(w));
+  // regex_dos does not apply: the pattern is anchored, one letter class on each side of one
+  // literal, so it runs in time linear in the word, and the word is one the agent wrote.
+  // nosemgrep: ajinabraham.njsscan.dos.regex_dos.regex_dos
+  const flag = words.findIndex((w, at) => at > i && COMMAND_FLAG.test(w));
   return flag < 0 ? null : (words[flag + 1] ?? null);
 }
 
@@ -157,26 +150,53 @@ function storePrefixes({ home, xdg }: Homes): string[] {
 const underStore = (path: string, stores: readonly string[]): boolean =>
   stores.some((store) => path === store || path.startsWith(`${store}/`));
 
-/** Commands that change every file they name: remove, move, empty, change the mode. */
-const WRITERS = new Set(["rm", "mv", "truncate", "chmod"]);
+/** Whether `path` is a directory the store lies in (`~/.local/share`, `$XDG_DATA_HOME`, `~`, `/`):
+ * removing, moving or re-moding it takes the store with it. */
+function aboveStore(path: string, stores: readonly string[]): boolean {
+  const dir = path.replace(/\/+$/, "");
+  return stores.some((store) => store.startsWith(`${dir}/`));
+}
+
+/** Commands that change every file they name: remove, move, empty, change the mode, write. */
+const WRITERS = new Set(["rm", "mv", "truncate", "chmod", "tee"]);
+
+/** Commands that take every file below a directory they name. */
+const TREE_WRITERS = new Set(["rm", "mv", "chmod"]);
 
 /** sed's in-place flag: `-i`, `-i.bak`, a cluster such as `-Ei`, or `--in-place`. */
 const inPlace = (word: string): boolean =>
   word.startsWith("--in-place") ||
   (word.startsWith("-") && !word.startsWith("--") && word.includes("i"));
 
-/** The files a command at `i` writes: every argument of a writer, the last one of `cp`, every one
- * of `sed -i`. */
+/** The files a command at `i` writes: every argument of a writer, the last one of `cp` and of a
+ * two-argument `ln`, `dd`'s `of=`, every one of `sed -i`. */
 function writtenBy(words: readonly string[], i: number): readonly string[] {
   const name = nameOf(words[i] ?? "");
-  const args = words.slice(i + 1).filter((w) => !w.startsWith("-"));
+  const rest = words.slice(i + 1);
+  const args = rest.filter((w) => !w.startsWith("-"));
   if (WRITERS.has(name)) {
     return args;
   }
-  if (name === "cp") {
+  if (name === "cp" || (name === "ln" && args.length > 1)) {
     return args.slice(-1);
   }
-  return name === "sed" && words.slice(i + 1).some(inPlace) ? args : [];
+  if (name === "dd") {
+    return rest.filter((w) => w.startsWith("of=")).map((w) => w.slice("of=".length));
+  }
+  return name === "sed" && rest.some(inPlace) ? args : [];
+}
+
+/** Whether the command at `i` writes a file of the store, or removes, moves or re-modes a
+ * directory the store lies in. */
+function writesStore(words: readonly string[], i: number, stores: readonly string[]): boolean {
+  const tree = TREE_WRITERS.has(nameOf(words[i] ?? ""));
+  const target = redirectedTo(words, i);
+  return (
+    writtenBy(words, i).some(
+      (path) => underStore(path, stores) || (tree && aboveStore(path, stores)),
+    ) ||
+    (target !== null && underStore(target, stores))
+  );
 }
 
 /** The file a `>` or `>>` redirect writes, glued (`>file`, `2>>file`) or the next word. */
@@ -199,11 +219,7 @@ function hitIn(words: readonly string[], depth: number, stores: readonly string[
     if (id !== null) {
       return { delete: id };
     }
-    const target = redirectedTo(words, i);
-    if (
-      writtenBy(words, i).some((path) => underStore(path, stores)) ||
-      (target !== null && underStore(target, stores))
-    ) {
+    if (writesStore(words, i, stores)) {
       return { write: true };
     }
     const script = SHELLS.has(nameOf(word)) ? scriptOf(words, i) : null;

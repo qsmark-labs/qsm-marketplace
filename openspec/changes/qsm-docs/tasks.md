@@ -19,10 +19,12 @@ Each line can be shown working alone; the proof is the run named after it.
   `plugins/qsm-docs/lib/serve/`, `plugins/qsm-docs/pages/json/`. Proof: design Verify 1, then a
   scripted browser run that edits a `json` snapshot, saves, and finds the proposal in
   `list --open`. Blocked by 3.
-- [x] 5. The hooks: the proposal line at session start and on a prompt, the per-session state and
+- [ ] 5. The hooks: the proposal line at session start and on a prompt, the per-session state and
   its removal, the delete guard in `lib/`. Files: `plugins/qsm-docs/hooks/`,
   `plugins/qsm-docs/lib/delete-guard.ts`. Proof: `bun run test:hooks`, and a real session where a
-  save in the browser shows one line on the next prompt. Blocked by 4.
+  save in the browser shows one line on the next prompt. Blocked by 4. Note: the hook tests under
+  `claude plugin test` cover the next-prompt line; the real two-prompt run belongs to test-it
+  (qsm-vgw0.5).
 - [x] 6. The gate that no skill, agent, command or hook calls `qsm-docs delete` or `$.docs.delete`.
       Files: `.gates/validate-no-docs-delete.ts`, `package.json` validate script. Proof: the gate
       fails on a fixture skill that holds the line, and passes on the tree, where the guard's own
