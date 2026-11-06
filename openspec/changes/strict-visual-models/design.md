@@ -204,13 +204,17 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     `https://c4model.com`, the home of the C4 notation the id belongs to; `urn:c4model:bpmn`, an
     unregistered URN namespace (RFC 8141 asks for a registered one); a URI under this repository,
     which is qsm-specific. Choice: `c4:element` under `https://c4model.com`, unless the search of
-    tasks line 17 finds a published convention, which then wins. An XML namespace name is an
-    identifier, never fetched (Namespaces in XML 1.0, section 2.2), so naming the notation's home
-    says what the id is without naming our tool; the cost is a URI on a domain we do not own.
-    qsm-bpmn reads it under whatever prefix the file binds to that URI, and a `c4` prefix bound to
-    another URI is a lint finding, so a typo is loud. The door: a new verb `qsm-c4 elements --json`,
-    which lists every element's id, kind, title, tags and actor colour, because AGENTS.md lets a
-    plugin reach another only through its contract and no verb printed this. Options were that verb,
+    tasks line 17 finds a published convention, which then wins. The search found none (2026-11-06:
+    three SearXNG queries and one Tavily query for a C4 id, a C4 link or C4 traceability on a BPMN
+    element returned BPMN's general extension mechanism, the bpmn.io forum and Open BPMN on
+    extension attributes, and the C4 notation pages, none naming a namespace or an attribute for
+    it), so `c4:element` under `https://c4model.com` stands. An XML namespace name is an identifier,
+    never fetched (Namespaces in XML 1.0, section 2.2), so naming the notation's home says what the
+    id is without naming our tool; the cost is a URI on a domain we do not own. qsm-bpmn reads it
+    under whatever prefix the file binds to that URI, and a `c4` prefix bound to another URI is a
+    lint finding, so a typo is loud. The door: a new verb `qsm-c4 elements --json`, which lists
+    every element's id, kind, title, tags and actor colour, because AGENTS.md lets a plugin reach
+    another only through its contract and no verb printed this. Options were that verb,
     `qsm-c4 lint --json` carrying the elements (a lint that returns data it does not judge), or a
     `get <id>` call per id (one process per lane). qsm-c4 is an optional reach and no `plugin.json`
     dependency of qsm-bpmn; against AGENTS.md law 2: qsm-c4 is reached only for a graph that carries

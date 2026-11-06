@@ -15,14 +15,31 @@ describe("layout", () => {
     expect(envelopeOf(run.stdout).message).toContain("has a layout");
     expect(readFileSync(join(dir, "shop.bpmn"), "utf8")).toBe(PLAN);
   });
+
+  it("keeps a c4:element link through a write by bpmn-moddle", () => {
+    const task = '<bpmn:task id="plan_process_context" name="2.1 Gather the context">';
+    const dir = sandboxDir("qsm-bpmn-moddle-");
+    writeIn(
+      dir,
+      "shop.bpmn",
+      PLAN.replace("xmlns:bioc=", 'xmlns:c4="https://c4model.com" xmlns:bioc=')
+        .replace(task, task.replace(">", ' c4:element="mp.tasks">'))
+        .replace(/\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/, ""),
+    );
+    expect(runBin(CLI, ["layout", join(dir, "shop.bpmn")]).exit).toBe(0);
+    const written = readFileSync(join(dir, "shop.bpmn"), "utf8");
+    expect(written).toContain('xmlns:c4="https://c4model.com"');
+    expect(written).toContain(task.replace(">", ' c4:element="mp.tasks">'));
+    expect(written).toContain("<bpmndi:BPMNDiagram");
+  });
 });
 
 /** The planning process with no diagram and the Agent lane linked to `link`. */
 const undrawn = (link: string): string =>
-  PLAN.replace("xmlns:bioc=", 'xmlns:qsm="urn:qsm:models" xmlns:bioc=')
+  PLAN.replace("xmlns:bioc=", 'xmlns:c4="https://c4model.com" xmlns:bioc=')
     .replace(
       '<bpmn:lane id="plan_process_lane_1" name="Agent">',
-      `<bpmn:lane id="plan_process_lane_1" name="Agent" qsm:c4="${link}">`,
+      `<bpmn:lane id="plan_process_lane_1" name="Agent" c4:element="${link}">`,
     )
     .replace(/\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/, "");
 

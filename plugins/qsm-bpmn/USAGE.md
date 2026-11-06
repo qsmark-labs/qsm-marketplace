@@ -39,6 +39,11 @@ on the repository the working directory is in.
 | `no-dead-end` | a step with no way to an end event |
 | `no-code-in-name` | a name with a path or a command in backticks |
 
+## The C4 link
+
+A BPMN element may name an element of the project's C4 graph, and nothing else outside the graph:
+`c4:element="<id>"`, the prefix bound to the namespace `https://c4model.com`. The link is optional.
+
 With `--json`, stdout is one envelope `{ code, exit, reason, message, warnings, data }`; `data`
 holds the findings, the written files or the paths.
 

@@ -3,8 +3,9 @@
 import { BpmnModdle } from "bpmn-moddle";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 
-/** The namespace of this plugin's link attributes, `qsm:c4` and `qsm:decision`. */
-const QSM_NS = "urn:qsm:models";
+/** The namespace of the one link a BPMN element may carry, `c4:element`: the home of the C4
+ * notation the id belongs to, an identifier never fetched, so the link names no tool. */
+const C4_NS = "https://c4model.com";
 
 export interface ModdleElement {
   readonly $type: string;
@@ -148,11 +149,11 @@ export function newLabel(): Label {
   return label;
 }
 
-/** The value of a `qsm:` link attribute on an element, whatever prefix the file gives the
+/** The C4 id an element names in `c4:element`, whatever prefix the file binds to the
  * namespace. */
-export function qsmAttr(e: ModdleElement, name: string, defs: Definitions): string | undefined {
+export function c4Element(e: ModdleElement, defs: Definitions): string | undefined {
   const prefixes = Object.entries(defs.$attrs ?? {})
-    .filter(([k, v]) => k.startsWith("xmlns:") && v === QSM_NS)
+    .filter(([k, v]) => k.startsWith("xmlns:") && v === C4_NS)
     .map(([k]) => k.slice("xmlns:".length));
-  return prefixes.map((p) => e.$attrs?.[`${p}:${name}`]).find((v) => v !== undefined);
+  return prefixes.map((p) => e.$attrs?.[`${p}:element`]).find((v) => v !== undefined);
 }

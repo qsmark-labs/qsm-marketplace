@@ -8,6 +8,7 @@ import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import {
+  c4Element,
   type Definitions,
   type Diagram,
   diagramOf,
@@ -17,7 +18,6 @@ import {
   parseXml,
   type Process,
   processesOf,
-  qsmAttr,
   type Shape,
   toXml,
 } from "./model.ts";
@@ -50,14 +50,14 @@ function laneColours(
   const free = COLOURS.filter((c) => !taken.has(c));
   let next = 0;
   for (const l of lanesOf(p)) {
-    const link = qsmAttr(l, "c4", defs);
+    const link = c4Element(l, defs);
     const linked = link === undefined ? undefined : actors.get(link);
     const c = linked ?? free[next++];
     if (c === undefined) {
       throw new QsmError(
         "failed",
         `${p.id ?? "a process"}: lane ${l.name ?? l.id ?? ""} has no palette colour left, the ${free.length} free ones are taken`,
-        { next: "link a lane to its C4 actor with qsm:c4, so it shares the actor's colour" },
+        { next: "link a lane to its C4 actor with c4:element, so it shares the actor's colour" },
       );
     }
     for (const id of [l.id, ...(l.flowNodeRef ?? []).map((n) => n.id)]) {
@@ -72,13 +72,13 @@ function laneColours(
 function linkedColours(file: string, defs: Definitions, todo: Process[]): Map<string, string> {
   const links = todo
     .flatMap(lanesOf)
-    .map((l) => qsmAttr(l, "c4", defs))
+    .map((l) => c4Element(l, defs))
     .filter((v) => v !== undefined);
   if (links.length > 0) {
     throw new QsmError(
       "missing",
       `${file}: a lane links to ${links[0] ?? ""}, and qsm-bpmn reads no C4 graph yet`,
-      { next: "drop the lane's qsm:c4" },
+      { next: "drop the lane's c4:element" },
     );
   }
   return new Map();
@@ -152,7 +152,7 @@ export async function layoutFile(file: string): Promise<Outcome<{ laidOut: strin
         { laidOut: [] },
       );
     }
-    // the lanes are read from the file as written, which keeps their qsm: links
+    // the lanes are read from the file as written, which keeps their c4:element links
     colour(p, d, defs, actors);
     defs.diagrams = [...(defs.diagrams ?? []), d];
   }
