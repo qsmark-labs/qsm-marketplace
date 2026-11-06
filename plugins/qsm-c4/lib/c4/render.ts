@@ -7,6 +7,7 @@ import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import type { Picture } from "../../../../lib/model-graph.ts";
 import { Cells, type Rect } from "./drawio.ts";
+import { textWidth } from "./font.ts";
 import { isActor, isExternal } from "./lint.ts";
 import type { C4Element, C4Model, C4Relation } from "./model.ts";
 import { hasTag, TAGS } from "./style.ts";
@@ -194,8 +195,8 @@ const PADDING = 2 * GAP;
 /** ELK sets a label the gap from its line; a measure this much farther is rounding, not a stray. */
 const ROUNDING = 1;
 
-/** A label's text, in lines of at most `chars`, and the box it takes at `px`: an average glyph is
- * 0.59 em wide, a line 1.2 em high, with 0.3 em of room on each side and 0.2 em below. */
+/** A label's text, in lines of at most `chars`, and the box it takes at `px`: as wide as its widest
+ * line is drawn, a line 1.2 em high, with 0.2 em below. */
 interface Label {
   readonly lines: string[];
   readonly px: number;
@@ -208,7 +209,7 @@ const labelOf = (text: string, px: number, chars = 24): Label => {
   return {
     lines,
     px,
-    width: Math.max(...lines.map((l) => l.length)) * px * 0.59 + px * 0.6,
+    width: Math.max(...lines.map((l) => textWidth(l, px))),
     height: lines.length * px * 1.2 + px * 0.2,
   };
 };
@@ -621,7 +622,14 @@ async function drawView(
   const framed =
     boundary === null
       ? null
-      : { el: boundary, title: labelOf(`${boundary.title} [${kind}]`, 13, 99) };
+      : {
+          el: boundary,
+          // drawn as the title in bold and its kind in a smaller regular face
+          title: {
+            ...labelOf(boundary.title, 13, 99),
+            width: textWidth(`${boundary.title} `, 13, true) + textWidth(`[${kind}]`, 9),
+          },
+        };
   const groupTitles = groups.map((grp) => ({ grp, label: labelOf(grp, 11, 99) }));
   const graph: ElkNode = {
     id: "root",
