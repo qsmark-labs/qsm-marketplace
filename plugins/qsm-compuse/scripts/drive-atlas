@@ -194,7 +194,8 @@ atlas_step() {
 # Prints the count of failed laws, or "error".
 atlas_check() {
   local cmd="$1" run="$2" journey="$3" name="$4" slot="$5" rc
-  ATLAS_SHOT="$run/shots/$name.png" ATLAS_TREE="$run/trees/$name.json" GEOM_TREE="$run/trees/$name.json" \
+  # The check's `drive` is the one running this atlas, never another checkout's on PATH.
+  PATH="$MOTION_DIR:$PATH" ATLAS_SHOT="$run/shots/$name.png" ATLAS_TREE="$run/trees/$name.json" GEOM_TREE="$run/trees/$name.json" \
     ATLAS_JOURNEY="$journey" ATLAS_NAME="$name" DRIVE_SLOT="$slot" bash -c "$cmd" >"$run/checks/$name.txt" 2>&1
   rc=$?
   if ((rc > 1)); then echo error; else grep -c ': FAIL$' "$run/checks/$name.txt"; fi
