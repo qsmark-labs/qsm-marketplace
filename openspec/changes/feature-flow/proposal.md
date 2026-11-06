@@ -2,6 +2,10 @@
 
 ![Step 2, planning, BPMN level 2](../../../models/marketplace.plan_process.svg)
 
+![Step 2.8, the approved plan is recorded, BPMN level 3](../../../models/marketplace.record_plan_process.svg)
+
+![Step 2.11, a feature too big for one is decoupled, BPMN level 3](../../../models/marketplace.decouple_process.svg)
+
 ![Step 3, the split, BPMN level 2](../../../models/marketplace.split_process.svg)
 
 ![Steps 4 to 6, every open task built, BPMN level 2](../../../models/marketplace.build_task_process.svg)
@@ -34,9 +38,13 @@ one feature pull request whose merge into main is the owner's accept.
   (decisions only). It has no tasks artifact.
 - **Step 1, the request**: two issue forms, feature request and issue, whose fields are the six
   questions of the implementation rule.
-- **Step 2, planning** writes the change models first; after the owner's yes in the session it
-  commits the change onto the local branch `feature/<n>` and updates the feature issue with a
-  one-screen summary. It opens no pull request and creates no task.
+- **Step 2, planning** writes the change models first, and its plan opens with a Feasibility
+  section: what can be done, what cannot and why, and an estimate against the budget the request
+  named, which the owner reads before his yes. After the yes in the session it commits the change
+  onto the local branch `feature/<n>` and updates the feature issue with a one-screen summary. A
+  request too big for one feature ends in a proposed split: after the yes the agent files one new
+  feature issue per part, each planned on its own, and closes the original with a comment linking
+  them. It opens no pull request and creates no task.
 - **Step 3, the split**: the owner and the agent cut the feature into tasks, each a reviewable
   pull request, with fakes that let each part run; `feature/<n>` is pushed first.
 - **Step 4, a task is built in one session**: context first, a whiteboard in the chat, the code,

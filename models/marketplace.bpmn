@@ -16,6 +16,7 @@
         <bpmn:flowNodeRef>plan</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>planned</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_dropped</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>feature_flow_process_decoupled</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>split</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>buildJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_build</bpmn:flowNodeRef>
@@ -46,9 +47,13 @@
       <bpmn:incoming>f_plan_planned</bpmn:incoming>
       <bpmn:outgoing>f_planned_split</bpmn:outgoing>
       <bpmn:outgoing>f_planned_dropped</bpmn:outgoing>
+      <bpmn:outgoing>f_planned_decoupled</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:endEvent id="feature_flow_process_dropped" name="Feature not planned">
       <bpmn:incoming>f_planned_dropped</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="feature_flow_process_decoupled" name="Feature closed as decoupled">
+      <bpmn:incoming>f_planned_decoupled</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:callActivity id="split" name="3 Split the feature into tasks" calledElement="split_process">
       <bpmn:incoming>f_planned_split</bpmn:incoming>
@@ -108,6 +113,7 @@
     <bpmn:sequenceFlow id="f_request_plan" sourceRef="request" targetRef="plan" />
     <bpmn:sequenceFlow id="f_plan_planned" sourceRef="plan" targetRef="planned" />
     <bpmn:sequenceFlow id="f_planned_split" name="Plan approved" sourceRef="planned" targetRef="split" />
+    <bpmn:sequenceFlow id="f_planned_decoupled" name="Feature closed as decoupled" sourceRef="planned" targetRef="feature_flow_process_decoupled" />
     <bpmn:sequenceFlow id="f_planned_dropped" name="Feature not planned" sourceRef="planned" targetRef="feature_flow_process_dropped" />
     <bpmn:sequenceFlow id="f_split_buildJoin" sourceRef="split" targetRef="buildJoin" />
     <bpmn:sequenceFlow id="f_buildJoin_build" sourceRef="buildJoin" targetRef="feature_flow_process_build" />
@@ -142,11 +148,12 @@
         <bpmn:flowNodeRef>plan_process_ask</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>models</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>specs</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>plan_process_commit</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>update</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>plan_process_record</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_approved</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_close</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_dropped</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>plan_process_decouple</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>plan_process_decoupled</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:startEvent id="plan_process_filed" name="Feature request filed">
@@ -156,7 +163,7 @@
       <bpmn:incoming>f_filed_context</bpmn:incoming>
       <bpmn:outgoing>f_context_intent</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="intent" name="2.2 Write the intent">
+    <bpmn:task id="intent" name="2.2 Write the intent and the feasibility">
       <bpmn:incoming>f_context_intent</bpmn:incoming>
       <bpmn:outgoing>f_intent_askJoin</bpmn:outgoing>
     </bpmn:task>
@@ -190,17 +197,14 @@
       <bpmn:outgoing>f_verdict_commit</bpmn:outgoing>
       <bpmn:outgoing>f_verdict_askJoin</bpmn:outgoing>
       <bpmn:outgoing>f_verdict_close</bpmn:outgoing>
+      <bpmn:outgoing>f_verdict_decouple</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="plan_process_commit" name="2.8 Commit the change">
+    <bpmn:callActivity id="plan_process_record" name="2.8 Record the approved plan" calledElement="record_plan_process">
       <bpmn:incoming>f_verdict_commit</bpmn:incoming>
-      <bpmn:outgoing>f_commit_update</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:task id="update" name="2.9 Update the feature issue">
-      <bpmn:incoming>f_commit_update</bpmn:incoming>
-      <bpmn:outgoing>f_update_approved</bpmn:outgoing>
-    </bpmn:task>
+      <bpmn:outgoing>f_record_approved</bpmn:outgoing>
+    </bpmn:callActivity>
     <bpmn:endEvent id="plan_process_approved" name="Plan approved">
-      <bpmn:incoming>f_update_approved</bpmn:incoming>
+      <bpmn:incoming>f_record_approved</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:task id="plan_process_close" name="2.10 Close the feature as not planned">
       <bpmn:incoming>f_verdict_close</bpmn:incoming>
@@ -208,6 +212,13 @@
     </bpmn:task>
     <bpmn:endEvent id="plan_process_dropped" name="Feature not planned">
       <bpmn:incoming>f_close_dropped</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:callActivity id="plan_process_decouple" name="2.11 Decouple the feature" calledElement="decouple_process">
+      <bpmn:incoming>f_verdict_decouple</bpmn:incoming>
+      <bpmn:outgoing>f_decouple_decoupled</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="plan_process_decoupled" name="Feature closed as decoupled">
+      <bpmn:incoming>f_decouple_decoupled</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="f_filed_context" sourceRef="plan_process_filed" targetRef="plan_process_context" />
     <bpmn:sequenceFlow id="f_context_intent" sourceRef="plan_process_context" targetRef="intent" />
@@ -218,12 +229,73 @@
     <bpmn:sequenceFlow id="f_models_specs" sourceRef="models" targetRef="specs" />
     <bpmn:sequenceFlow id="f_specs_read" sourceRef="specs" targetRef="plan_process_read" />
     <bpmn:sequenceFlow id="plan_process_f_read_verdict" sourceRef="plan_process_read" targetRef="plan_process_verdict" />
-    <bpmn:sequenceFlow id="f_verdict_commit" name="yes" sourceRef="plan_process_verdict" targetRef="plan_process_commit" />
-    <bpmn:sequenceFlow id="f_commit_update" sourceRef="plan_process_commit" targetRef="update" />
-    <bpmn:sequenceFlow id="f_update_approved" sourceRef="update" targetRef="plan_process_approved" />
+    <bpmn:sequenceFlow id="f_verdict_commit" name="yes" sourceRef="plan_process_verdict" targetRef="plan_process_record" />
+    <bpmn:sequenceFlow id="f_record_approved" sourceRef="plan_process_record" targetRef="plan_process_approved" />
     <bpmn:sequenceFlow id="f_verdict_askJoin" name="changes" sourceRef="plan_process_verdict" targetRef="askJoin" />
     <bpmn:sequenceFlow id="f_verdict_close" name="dropped" sourceRef="plan_process_verdict" targetRef="plan_process_close" />
     <bpmn:sequenceFlow id="f_close_dropped" sourceRef="plan_process_close" targetRef="plan_process_dropped" />
+    <bpmn:sequenceFlow id="f_verdict_decouple" name="split" sourceRef="plan_process_verdict" targetRef="plan_process_decouple" />
+    <bpmn:sequenceFlow id="f_decouple_decoupled" sourceRef="plan_process_decouple" targetRef="plan_process_decoupled" />
+  </bpmn:process>
+  <bpmn:collaboration id="record_plan_collab">
+    <bpmn:participant id="record_plan_pool" name="2.8 Record the approved plan" processRef="record_plan_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="record_plan_process" name="2.8 Record the approved plan" isExecutable="false">
+    <bpmn:laneSet id="record_plan_process_laneset">
+      <bpmn:lane id="record_plan_process_lane_0" name="Agent">
+        <bpmn:flowNodeRef>record_plan_process_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>record_plan_process_commit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>record_plan_process_update</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>record_plan_process_end</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="record_plan_process_start" name="Owner said yes to the plan">
+      <bpmn:outgoing>record_plan_process_f_start_commit</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="record_plan_process_commit" name="2.8.1 Commit the change">
+      <bpmn:incoming>record_plan_process_f_start_commit</bpmn:incoming>
+      <bpmn:outgoing>record_plan_process_f_commit_update</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="record_plan_process_update" name="2.8.2 Update the feature issue">
+      <bpmn:incoming>record_plan_process_f_commit_update</bpmn:incoming>
+      <bpmn:outgoing>record_plan_process_f_update_end</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="record_plan_process_end" name="Plan recorded">
+      <bpmn:incoming>record_plan_process_f_update_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="record_plan_process_f_start_commit" sourceRef="record_plan_process_start" targetRef="record_plan_process_commit" />
+    <bpmn:sequenceFlow id="record_plan_process_f_commit_update" sourceRef="record_plan_process_commit" targetRef="record_plan_process_update" />
+    <bpmn:sequenceFlow id="record_plan_process_f_update_end" sourceRef="record_plan_process_update" targetRef="record_plan_process_end" />
+  </bpmn:process>
+  <bpmn:collaboration id="decouple_collab">
+    <bpmn:participant id="decouple_pool" name="2.11 Decouple the feature" processRef="decouple_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="decouple_process" name="2.11 Decouple the feature" isExecutable="false">
+    <bpmn:laneSet id="decouple_process_laneset">
+      <bpmn:lane id="decouple_process_lane_0" name="Agent">
+        <bpmn:flowNodeRef>decouple_process_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decouple_process_file</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decouple_process_close</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decouple_process_end</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="decouple_process_start" name="Owner said split">
+      <bpmn:outgoing>decouple_process_f_start_file</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="decouple_process_file" name="2.11.1 File the new feature issues">
+      <bpmn:incoming>decouple_process_f_start_file</bpmn:incoming>
+      <bpmn:outgoing>decouple_process_f_file_close</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="decouple_process_close" name="2.11.2 Close the feature with links to the new issues">
+      <bpmn:incoming>decouple_process_f_file_close</bpmn:incoming>
+      <bpmn:outgoing>decouple_process_f_close_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="decouple_process_end" name="Feature closed as decoupled">
+      <bpmn:incoming>decouple_process_f_close_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="decouple_process_f_start_file" sourceRef="decouple_process_start" targetRef="decouple_process_file" />
+    <bpmn:sequenceFlow id="decouple_process_f_file_close" sourceRef="decouple_process_file" targetRef="decouple_process_close" />
+    <bpmn:sequenceFlow id="decouple_process_f_close_end" sourceRef="decouple_process_close" targetRef="decouple_process_end" />
   </bpmn:process>
   <bpmn:collaboration id="split_collab">
     <bpmn:participant id="split_pool" name="3 Split the feature into tasks" processRef="split_process" />
@@ -1292,375 +1364,6 @@
     <bpmn:sequenceFlow id="f_open_read" sourceRef="open" targetRef="read" />
     <bpmn:sequenceFlow id="f_read_end" sourceRef="read" targetRef="end" />
   </bpmn:process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_feature_flow_collab">
-    <bpmndi:BPMNPlane id="BPMNPlane_feature_flow_collab" bpmnElement="feature_flow_collab">
-      <bpmndi:BPMNShape id="BPMNShape_feature_flow_pool" bpmnElement="feature_flow_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="3283.2000000000003" height="1814.8" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_lane_0" bpmnElement="feature_flow_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c3d4e7" color:background-color="#c3d4e7" color:border-color="#08427b">
-        <dc:Bounds x="110" y="80" width="3253.2000000000003" height="312" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_lane_1" bpmnElement="feature_flow_process_lane_1" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dcd3f2" color:background-color="#dcd3f2" color:border-color="#6b4fbb">
-        <dc:Bounds x="110" y="392" width="3253.2000000000003" height="462.80000000000007" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_lane_2" bpmnElement="feature_flow_process_lane_2" isHorizontal="true" bioc:stroke="#4b5563" bioc:fill="#d4d7dc" color:background-color="#d4d7dc" color:border-color="#4b5563">
-        <dc:Bounds x="110" y="854.8000000000001" width="3253.2000000000003" height="519.9999999999999" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_lane_3" bpmnElement="feature_flow_process_lane_3" isHorizontal="true" bioc:stroke="#15803d" bioc:fill="#c7e5d2" color:background-color="#c7e5d2" color:border-color="#15803d">
-        <dc:Bounds x="110" y="1374.8" width="3253.2000000000003" height="520" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_need" bpmnElement="need" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="180.8" y="218" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="171.97500000000002" y="270.1" width="55" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_request" bpmnElement="request" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
-        <dc:Bounds x="375.6" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_plan" bpmnElement="plan" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="645.6" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_planned" bpmnElement="planned" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="906.85" y="523" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="824.7750000000001" y="480.7" width="67" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_dropped" bpmnElement="feature_flow_process_dropped" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="1150.1000000000001" y="709.4" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1128.1000000000001" y="761.5" width="80" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_split" bpmnElement="split" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1118.1000000000001" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_buildJoin" bpmnElement="buildJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="1379.3500000000001" y="523" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_build" bpmnElement="feature_flow_process_build" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1590.6000000000001" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_sync" bpmnElement="feature_flow_process_sync" bioc:stroke="#2d333b" bioc:fill="#4b5563" color:background-color="#4b5563" color:border-color="#2d333b">
-        <dc:Bounds x="1860.6000000000001" y="970.8000000000001" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_conflict" bpmnElement="feature_flow_process_conflict" isMarkerVisible="true" bioc:stroke="#4b5563" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#4b5563">
-        <dc:Bounds x="2121.85" y="985.8000000000001" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2037.4250000000002" y="959.6" width="69" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_conflictTask" bpmnElement="feature_flow_process_conflictTask" bioc:stroke="#2d333b" bioc:fill="#4b5563" color:background-color="#4b5563" color:border-color="#2d333b">
-        <dc:Bounds x="2333.1000000000004" y="1178.8" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_qa" bpmnElement="qa" bioc:stroke="#0d4d25" bioc:fill="#15803d" color:background-color="#15803d" color:border-color="#0d4d25">
-        <dc:Bounds x="2333.1000000000004" y="1490.8" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_holds" bpmnElement="holds" isMarkerVisible="true" bioc:stroke="#15803d" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#15803d">
-        <dc:Bounds x="2594.3500000000004" y="1505.8" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2509.925" y="1463.5" width="69" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_fixTask" bpmnElement="feature_flow_process_fixTask" bioc:stroke="#0d4d25" bioc:fill="#15803d" color:background-color="#15803d" color:border-color="#0d4d25">
-        <dc:Bounds x="2805.6000000000004" y="1698.8" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_land" bpmnElement="land" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
-        <dc:Bounds x="2805.6000000000004" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_accepted" bpmnElement="feature_flow_process_accepted" isMarkerVisible="true" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="3066.8500000000004" y="211" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2984.775" y="168.7" width="67" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="feature_flow_process_BPMNShape_done" bpmnElement="feature_flow_process_done" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="3266.9" y="218" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3252.9" y="272.20000000000005" width="64" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_need_request" bpmnElement="f_need_request" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="216.8" y="236" />
-        <di:waypoint x="375.6" y="236" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_request_plan" bpmnElement="f_request_plan" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="475.6" y="236" />
-        <di:waypoint x="695.6" y="236" />
-        <di:waypoint x="695.6" y="508" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_plan_planned" bpmnElement="f_plan_planned" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="745.6" y="548" />
-        <di:waypoint x="906.85" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_split" bpmnElement="f_planned_split" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="956.85" y="548" />
-        <di:waypoint x="1118.1000000000001" y="548" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1003.0999999999999" y="509.29999999999995" width="60" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_split_buildJoin" bpmnElement="f_split_buildJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1218.1000000000001" y="548" />
-        <di:waypoint x="1379.3500000000001" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_buildJoin_build" bpmnElement="f_buildJoin_build" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1429.3500000000001" y="548" />
-        <di:waypoint x="1590.6000000000001" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_build_sync" bpmnElement="f_build_sync" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1690.6000000000001" y="548" />
-        <di:waypoint x="1910.6000000000001" y="548" />
-        <di:waypoint x="1910.6000000000001" y="970.8000000000001" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="feature_flow_process_BPMNEdge_f_sync_conflict" bpmnElement="feature_flow_process_f_sync_conflict" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="1960.6000000000001" y="1010.8000000000001" />
-        <di:waypoint x="2121.85" y="1010.8000000000001" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_qa" bpmnElement="f_conflict_qa" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="2146.85" y="1035.8000000000002" />
-        <di:waypoint x="2146.85" y="1530.8" />
-        <di:waypoint x="2333.1000000000004" y="1530.8" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2158.1000000000004" y="1393.8" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_qa_holds" bpmnElement="f_qa_holds" bioc:stroke="#15803d" color:border-color="#15803d">
-        <di:waypoint x="2433.1000000000004" y="1530.8" />
-        <di:waypoint x="2594.3500000000004" y="1530.8" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_holds_land" bpmnElement="f_holds_land" bioc:stroke="#15803d" color:border-color="#15803d">
-        <di:waypoint x="2644.3500000000004" y="1530.8" />
-        <di:waypoint x="2855.6000000000004" y="1530.8" />
-        <di:waypoint x="2855.6000000000004" y="276" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2742.525" y="1504.3" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_land_accepted" bpmnElement="f_land_accepted" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2905.6000000000004" y="236" />
-        <di:waypoint x="3066.8500000000004" y="236" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_done" bpmnElement="f_accepted_done" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="3116.8500000000004" y="236" />
-        <di:waypoint x="3266.9" y="236" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3188.1000000000004" y="155.2" width="64" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_dropped" bpmnElement="f_planned_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="931.85" y="573" />
-        <di:waypoint x="931.85" y="727.4" />
-        <di:waypoint x="1150.1000000000001" y="727.4" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="952.6" y="640.6" width="80" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="feature_flow_process_BPMNEdge_f_conflict_conflictTask" bpmnElement="feature_flow_process_f_conflict_conflictTask" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="2146.85" y="1035.8000000000002" />
-        <di:waypoint x="2146.85" y="1218.8" />
-        <di:waypoint x="2333.1000000000004" y="1218.8" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2218.7250000000004" y="1192.3" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_holds_fixTask" bpmnElement="f_holds_fixTask" bioc:stroke="#15803d" color:border-color="#15803d">
-        <di:waypoint x="2619.3500000000004" y="1555.8" />
-        <di:waypoint x="2619.3500000000004" y="1738.8" />
-        <di:waypoint x="2805.6000000000004" y="1738.8" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2630.6000000000004" y="1644.7" width="18" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_buildJoin" bpmnElement="f_conflictTask_buildJoin" bioc:stroke="#4b5563" color:border-color="#4b5563">
-        <di:waypoint x="2356.1000000000004" y="1258.8" />
-        <di:waypoint x="2356.1000000000004" y="1296.8" />
-        <di:waypoint x="1404.3500000000001" y="1296.8" />
-        <di:waypoint x="1404.3500000000001" y="573" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_fixTask_buildJoin" bpmnElement="f_fixTask_buildJoin" bioc:stroke="#15803d" color:border-color="#15803d">
-        <di:waypoint x="2828.6000000000004" y="1778.8" />
-        <di:waypoint x="2828.6000000000004" y="1816.8" />
-        <di:waypoint x="1404.3500000000001" y="1816.8" />
-        <di:waypoint x="1404.3500000000001" y="573" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_buildJoin" bpmnElement="f_accepted_buildJoin" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="3091.8500000000004" y="261" />
-        <di:waypoint x="3091.8500000000004" y="606.5" />
-        <di:waypoint x="1404.3500000000001" y="606.5" />
-        <di:waypoint x="1404.3500000000001" y="573" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2221.275" y="567.8" width="55" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_plan_collab">
-    <bpmndi:BPMNPlane id="BPMNPlane_plan_collab" bpmnElement="plan_collab">
-      <bpmndi:BPMNShape id="BPMNShape_plan_pool" bpmnElement="plan_pool" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="3215.7000000000003" height="832" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_lane_0" bpmnElement="plan_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c3d4e7" color:background-color="#c3d4e7" color:border-color="#08427b">
-        <dc:Bounds x="110" y="80" width="3185.7000000000003" height="312" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_lane_1" bpmnElement="plan_process_lane_1" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dcd3f2" color:background-color="#dcd3f2" color:border-color="#6b4fbb">
-        <dc:Bounds x="110" y="392" width="3185.7000000000003" height="520" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_filed" bpmnElement="plan_process_filed" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="180.8" y="530" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="171.97500000000002" y="584.2" width="55" height="42" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_context" bpmnElement="plan_process_context" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="375.6" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_intent" bpmnElement="intent" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="645.6" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_askJoin" bpmnElement="askJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="906.85" y="523" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_ask" bpmnElement="plan_process_ask" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1118.1000000000001" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_answer" bpmnElement="answer" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
-        <dc:Bounds x="1388.1000000000001" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_models" bpmnElement="models" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1658.1000000000001" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_specs" bpmnElement="specs" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="1928.1000000000001" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_read" bpmnElement="plan_process_read" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
-        <dc:Bounds x="2198.1000000000004" y="196" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_verdict" bpmnElement="plan_process_verdict" isMarkerVisible="true" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
-        <dc:Bounds x="2459.3500000000004" y="211" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2377.275" y="168.7" width="67" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_commit" bpmnElement="plan_process_commit" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2670.6000000000004" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_update" bpmnElement="update" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2940.6000000000004" y="508" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_approved" bpmnElement="plan_process_approved" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="3199.4" y="530" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3187.4" y="582.1" width="60" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_close" bpmnElement="plan_process_close" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
-        <dc:Bounds x="2670.6000000000004" y="716" width="100" height="80" />
-        <bpmndi:BPMNLabel color:color="#ffffff" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="plan_process_BPMNShape_dropped" bpmnElement="plan_process_dropped" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
-        <dc:Bounds x="2972.6000000000004" y="738" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2950.6000000000004" y="790.1" width="80" height="28" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_filed_context" bpmnElement="f_filed_context" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="216.8" y="548" />
-        <di:waypoint x="375.6" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_context_intent" bpmnElement="f_context_intent" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="475.6" y="548" />
-        <di:waypoint x="645.6" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_intent_askJoin" bpmnElement="f_intent_askJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="745.6" y="548" />
-        <di:waypoint x="906.85" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_askJoin_ask" bpmnElement="f_askJoin_ask" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="956.85" y="548" />
-        <di:waypoint x="1118.1000000000001" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_answer" bpmnElement="f_ask_answer" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1218.1000000000001" y="548" />
-        <di:waypoint x="1438.1000000000001" y="548" />
-        <di:waypoint x="1438.1000000000001" y="276" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_answer_models" bpmnElement="f_answer_models" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="1488.1000000000001" y="236" />
-        <di:waypoint x="1708.1000000000001" y="236" />
-        <di:waypoint x="1708.1000000000001" y="508" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_models_specs" bpmnElement="f_models_specs" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="1758.1000000000001" y="548" />
-        <di:waypoint x="1928.1000000000001" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_specs_read" bpmnElement="f_specs_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2028.1000000000001" y="548" />
-        <di:waypoint x="2248.1000000000004" y="548" />
-        <di:waypoint x="2248.1000000000004" y="276" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="plan_process_BPMNEdge_f_read_verdict" bpmnElement="plan_process_f_read_verdict" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2298.1000000000004" y="236" />
-        <di:waypoint x="2459.3500000000004" y="236" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_commit" bpmnElement="f_verdict_commit" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2509.3500000000004" y="236" />
-        <di:waypoint x="2720.6000000000004" y="236" />
-        <di:waypoint x="2720.6000000000004" y="508" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2607.525" y="209.5" width="25" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_commit_update" bpmnElement="f_commit_update" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2770.6000000000004" y="548" />
-        <di:waypoint x="2940.6000000000004" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_update_approved" bpmnElement="f_update_approved" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="3040.6000000000004" y="548" />
-        <di:waypoint x="3199.4" y="548" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_close" bpmnElement="f_verdict_close" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2484.3500000000004" y="261" />
-        <di:waypoint x="2484.3500000000004" y="756" />
-        <di:waypoint x="2670.6000000000004" y="756" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2500.375" y="674.9" width="53" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_close_dropped" bpmnElement="f_close_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
-        <di:waypoint x="2770.6000000000004" y="756" />
-        <di:waypoint x="2972.6000000000004" y="756" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_askJoin" bpmnElement="f_verdict_askJoin" bioc:stroke="#08427b" color:border-color="#08427b">
-        <di:waypoint x="2484.3500000000004" y="261" />
-        <di:waypoint x="2484.3500000000004" y="606.5" />
-        <di:waypoint x="931.85" y="606.5" />
-        <di:waypoint x="931.85" y="573" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1682.275" y="619" width="53" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
   <bpmndi:BPMNDiagram id="BPMNDiagram_split_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_split_collab" bpmnElement="split_collab">
       <bpmndi:BPMNShape id="BPMNShape_split_pool" bpmnElement="split_pool" isHorizontal="true">
@@ -3451,6 +3154,487 @@
         <di:waypoint x="1883.6000000000001" y="1042" />
         <di:waypoint x="898.1" y="1042" />
         <di:waypoint x="898.1" y="781" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_feature_flow_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_feature_flow_collab" bpmnElement="feature_flow_collab">
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_pool" bpmnElement="feature_flow_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="2432" height="1512" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_lane_0" bpmnElement="feature_flow_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+        <dc:Bounds x="110" y="80" width="2402" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_lane_1" bpmnElement="feature_flow_process_lane_1" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dbd5ef" color:background-color="#dbd5ef" color:border-color="#6b4fbb">
+        <dc:Bounds x="110" y="320" width="2402" height="472" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_lane_2" bpmnElement="feature_flow_process_lane_2" isHorizontal="true" bioc:stroke="#c2410c" bioc:fill="#f0d1c5" color:background-color="#f0d1c5" color:border-color="#c2410c">
+        <dc:Bounds x="110" y="792" width="2402" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_lane_3" bpmnElement="feature_flow_process_lane_3" isHorizontal="true" bioc:stroke="#15803d" bioc:fill="#c7e1d0" color:background-color="#c7e1d0" color:border-color="#15803d">
+        <dc:Bounds x="110" y="1192" width="2402" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_need" bpmnElement="need" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="141" y="223" width="55" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_request" bpmnElement="request" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="286" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan" bpmnElement="plan" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="486" y="516" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_planned" bpmnElement="planned" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="686" y="531" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="638" y="586" width="67" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_dropped" bpmnElement="feature_flow_process_dropped" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="868" y="400" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="846" y="441" width="80" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_decoupled" bpmnElement="feature_flow_process_decoupled" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="868" y="676" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="853" y="717" width="67" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_split" bpmnElement="split" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="836" y="516" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_buildJoin" bpmnElement="buildJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="1036" y="531" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_build" bpmnElement="feature_flow_process_build" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1186" y="516" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_sync" bpmnElement="feature_flow_process_sync" bioc:stroke="#742707" bioc:fill="#c2410c" color:background-color="#c2410c" color:border-color="#742707">
+        <dc:Bounds x="1386" y="872" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_conflict" bpmnElement="feature_flow_process_conflict" isMarkerVisible="true" bioc:stroke="#c2410c" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#c2410c">
+        <dc:Bounds x="1586" y="887" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1577" y="868" width="69" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_conflictTask" bpmnElement="feature_flow_process_conflictTask" bioc:stroke="#742707" bioc:fill="#c2410c" color:background-color="#c2410c" color:border-color="#742707">
+        <dc:Bounds x="1736" y="1032" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_qa" bpmnElement="qa" bioc:stroke="#0d4d25" bioc:fill="#15803d" color:background-color="#15803d" color:border-color="#0d4d25">
+        <dc:Bounds x="1736" y="1272" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_holds" bpmnElement="holds" isMarkerVisible="true" bioc:stroke="#15803d" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#15803d">
+        <dc:Bounds x="1936" y="1287" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1927" y="1254" width="69" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_fixTask" bpmnElement="feature_flow_process_fixTask" bioc:stroke="#0d4d25" bioc:fill="#15803d" color:background-color="#15803d" color:border-color="#0d4d25">
+        <dc:Bounds x="2086" y="1432" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_land" bpmnElement="land" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="2086" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_accepted" bpmnElement="feature_flow_process_accepted" isMarkerVisible="true" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="2286" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2278" y="142" width="67" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_feature_flow_process_done" bpmnElement="feature_flow_process_done" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="2436" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2422" y="223" width="64" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_need_request" bpmnElement="f_need_request" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_request_plan" bpmnElement="f_request_plan" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="386" y="200" />
+        <di:waypoint x="536" y="200" />
+        <di:waypoint x="536" y="516" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_plan_planned" bpmnElement="f_plan_planned" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="586" y="556" />
+        <di:waypoint x="686" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_split" bpmnElement="f_planned_split" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="736" y="556" />
+        <di:waypoint x="836" y="556" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="756" y="523" width="60" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_split_buildJoin" bpmnElement="f_split_buildJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="936" y="556" />
+        <di:waypoint x="1036" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_buildJoin_build" bpmnElement="f_buildJoin_build" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1086" y="556" />
+        <di:waypoint x="1186" y="556" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_build_sync" bpmnElement="f_build_sync" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1286" y="556" />
+        <di:waypoint x="1436" y="556" />
+        <di:waypoint x="1436" y="872" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_feature_flow_process_f_sync_conflict" bpmnElement="feature_flow_process_f_sync_conflict" bioc:stroke="#c2410c" color:border-color="#c2410c">
+        <di:waypoint x="1486" y="912" />
+        <di:waypoint x="1586" y="912" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflict_qa" bpmnElement="f_conflict_qa" bioc:stroke="#c2410c" color:border-color="#c2410c">
+        <di:waypoint x="1611" y="937" />
+        <di:waypoint x="1611" y="1312" />
+        <di:waypoint x="1736" y="1312" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1617" y="1205" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_qa_holds" bpmnElement="f_qa_holds" bioc:stroke="#15803d" color:border-color="#15803d">
+        <di:waypoint x="1836" y="1312" />
+        <di:waypoint x="1936" y="1312" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_holds_land" bpmnElement="f_holds_land" bioc:stroke="#15803d" color:border-color="#15803d">
+        <di:waypoint x="1986" y="1312" />
+        <di:waypoint x="2136" y="1312" />
+        <di:waypoint x="2136" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2049" y="1290" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_land_accepted" bpmnElement="f_land_accepted" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2186" y="200" />
+        <di:waypoint x="2286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_done" bpmnElement="f_accepted_done" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2336" y="200" />
+        <di:waypoint x="2436" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2374" y="133" width="64" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_decoupled" bpmnElement="f_planned_decoupled" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="711" y="581" />
+        <di:waypoint x="711" y="694" />
+        <di:waypoint x="868" y="694" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="716" y="617" width="67" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_planned_dropped" bpmnElement="f_planned_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="711" y="531" />
+        <di:waypoint x="711" y="418" />
+        <di:waypoint x="868" y="418" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="716" y="461" width="80" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_feature_flow_process_f_conflict_conflictTask" bpmnElement="feature_flow_process_f_conflict_conflictTask" bioc:stroke="#c2410c" color:border-color="#c2410c">
+        <di:waypoint x="1611" y="937" />
+        <di:waypoint x="1611" y="1072" />
+        <di:waypoint x="1736" y="1072" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1661" y="1050" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_holds_fixTask" bpmnElement="f_holds_fixTask" bioc:stroke="#15803d" color:border-color="#15803d">
+        <di:waypoint x="1961" y="1337" />
+        <di:waypoint x="1961" y="1472" />
+        <di:waypoint x="2086" y="1472" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1967" y="1398" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_conflictTask_buildJoin" bpmnElement="f_conflictTask_buildJoin" bioc:stroke="#c2410c" color:border-color="#c2410c">
+        <di:waypoint x="1786" y="1112" />
+        <di:waypoint x="1786" y="1132" />
+        <di:waypoint x="1061" y="1132" />
+        <di:waypoint x="1061" y="581" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_fixTask_buildJoin" bpmnElement="f_fixTask_buildJoin" bioc:stroke="#15803d" color:border-color="#15803d">
+        <di:waypoint x="2136" y="1512" />
+        <di:waypoint x="2136" y="1532" />
+        <di:waypoint x="1061" y="1532" />
+        <di:waypoint x="1061" y="581" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_accepted_buildJoin" bpmnElement="f_accepted_buildJoin" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="2311" y="225" />
+        <di:waypoint x="2311" y="601" />
+        <di:waypoint x="1061" y="601" />
+        <di:waypoint x="1061" y="581" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1659" y="568" width="55" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_plan_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_plan_collab" bpmnElement="plan_collab">
+      <bpmndi:BPMNShape id="BPMNShape_plan_pool" bpmnElement="plan_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="2182" height="800" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_lane_0" bpmnElement="plan_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+        <dc:Bounds x="110" y="80" width="2152" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_lane_1" bpmnElement="plan_process_lane_1" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dbd5ef" color:background-color="#dbd5ef" color:border-color="#6b4fbb">
+        <dc:Bounds x="110" y="320" width="2152" height="560" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_filed" bpmnElement="plan_process_filed" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="150" y="582" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="141" y="623" width="55" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_context" bpmnElement="plan_process_context" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="286" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_intent" bpmnElement="intent" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="486" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_askJoin" bpmnElement="askJoin" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="686" y="575" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_ask" bpmnElement="plan_process_ask" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="836" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_answer" bpmnElement="answer" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="1036" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_models" bpmnElement="models" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1236" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_specs" bpmnElement="specs" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1436" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_read" bpmnElement="plan_process_read" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="1636" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_verdict" bpmnElement="plan_process_verdict" isMarkerVisible="true" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="1836" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1828" y="142" width="67" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_record" bpmnElement="plan_process_record" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1986" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_approved" bpmnElement="plan_process_approved" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="2186" y="582" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2174" y="623" width="60" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_close" bpmnElement="plan_process_close" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1986" y="720" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_dropped" bpmnElement="plan_process_dropped" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="2186" y="742" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2164" y="783" width="80" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_decouple" bpmnElement="plan_process_decouple" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1986" y="400" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_plan_process_decoupled" bpmnElement="plan_process_decoupled" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="2186" y="422" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2171" y="463" width="67" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_filed_context" bpmnElement="f_filed_context" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="186" y="600" />
+        <di:waypoint x="286" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_context_intent" bpmnElement="f_context_intent" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="386" y="600" />
+        <di:waypoint x="486" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_intent_askJoin" bpmnElement="f_intent_askJoin" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="586" y="600" />
+        <di:waypoint x="686" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_askJoin_ask" bpmnElement="f_askJoin_ask" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="736" y="600" />
+        <di:waypoint x="836" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_ask_answer" bpmnElement="f_ask_answer" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="936" y="600" />
+        <di:waypoint x="1086" y="600" />
+        <di:waypoint x="1086" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_answer_models" bpmnElement="f_answer_models" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1136" y="200" />
+        <di:waypoint x="1286" y="200" />
+        <di:waypoint x="1286" y="560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_models_specs" bpmnElement="f_models_specs" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1336" y="600" />
+        <di:waypoint x="1436" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_specs_read" bpmnElement="f_specs_read" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1536" y="600" />
+        <di:waypoint x="1686" y="600" />
+        <di:waypoint x="1686" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_plan_process_f_read_verdict" bpmnElement="plan_process_f_read_verdict" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1736" y="200" />
+        <di:waypoint x="1836" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_commit" bpmnElement="f_verdict_commit" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1861" y="225" />
+        <di:waypoint x="1861" y="600" />
+        <di:waypoint x="1986" y="600" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1911" y="578" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_record_approved" bpmnElement="f_record_approved" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2086" y="600" />
+        <di:waypoint x="2186" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_close" bpmnElement="f_verdict_close" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1861" y="225" />
+        <di:waypoint x="1861" y="760" />
+        <di:waypoint x="1986" y="760" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1866" y="696" width="53" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_decouple" bpmnElement="f_verdict_decouple" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1861" y="225" />
+        <di:waypoint x="1861" y="440" />
+        <di:waypoint x="1986" y="440" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1904" y="418" width="39" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_close_dropped" bpmnElement="f_close_dropped" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2086" y="760" />
+        <di:waypoint x="2186" y="760" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_decouple_decoupled" bpmnElement="f_decouple_decoupled" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="2086" y="440" />
+        <di:waypoint x="2186" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_verdict_askJoin" bpmnElement="f_verdict_askJoin" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="1861" y="225" />
+        <di:waypoint x="1861" y="645" />
+        <di:waypoint x="711" y="645" />
+        <di:waypoint x="711" y="625" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1260" y="653" width="53" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_record_plan_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_record_plan_collab" bpmnElement="record_plan_collab">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_pool" bpmnElement="record_plan_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="682" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_lane_0" bpmnElement="record_plan_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+        <dc:Bounds x="110" y="80" width="652" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_start" bpmnElement="record_plan_process_start" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="130" y="223" width="76" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_commit" bpmnElement="record_plan_process_commit" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="286" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_update" bpmnElement="record_plan_process_update" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="486" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_end" bpmnElement="record_plan_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="686" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="674" y="223" width="60" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_start_commit" bpmnElement="record_plan_process_f_start_commit" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_commit_update" bpmnElement="record_plan_process_f_commit_update" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="386" y="200" />
+        <di:waypoint x="486" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_update_end" bpmnElement="record_plan_process_f_update_end" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="586" y="200" />
+        <di:waypoint x="686" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_decouple_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_decouple_collab" bpmnElement="decouple_collab">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_pool" bpmnElement="decouple_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="682" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_lane_0" bpmnElement="decouple_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+        <dc:Bounds x="110" y="80" width="652" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_start" bpmnElement="decouple_process_start" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="130" y="223" width="76" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_file" bpmnElement="decouple_process_file" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="286" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_close" bpmnElement="decouple_process_close" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+        <dc:Bounds x="486" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_end" bpmnElement="decouple_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+        <dc:Bounds x="686" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="671" y="223" width="67" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_start_file" bpmnElement="decouple_process_f_start_file" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_file_close" bpmnElement="decouple_process_f_file_close" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="386" y="200" />
+        <di:waypoint x="486" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_close_end" bpmnElement="decouple_process_f_close_end" bioc:stroke="#08427b" color:border-color="#08427b">
+        <di:waypoint x="586" y="200" />
+        <di:waypoint x="686" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

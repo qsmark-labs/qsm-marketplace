@@ -19,13 +19,20 @@ describe("paths", () => {
   it("prints the cover of each process, the same ids on every run", () => {
     const first = paths(PLAN);
     expect(first.exit).toBe(0);
-    expect(ids(first.message)).toEqual(["p-3e8866", "p-3ddc2c"]);
-    expect(ids(paths(PLAN).message)).toEqual(["p-3e8866", "p-3ddc2c"]);
+    expect(ids(first.message)).toEqual(["p-72bc2c", "p-3ddc2c", "p-a65734"]);
+    expect(ids(paths(PLAN).message)).toEqual(["p-72bc2c", "p-3ddc2c", "p-a65734"]);
   });
 
   it("prints every path under --all, each with its signature", () => {
     const run = paths(PLAN, "--all", "--process", "plan");
-    expect(ids(run.message)).toEqual(["p-9a622c", "p-3e8866", "p-ef7fe5", "p-3ddc2c"]);
+    expect(ids(run.message)).toEqual([
+      "p-3d2a52",
+      "p-72bc2c",
+      "p-ef7fe5",
+      "p-af99b9",
+      "p-3ddc2c",
+      "p-a65734",
+    ]);
     expect(run.message).toContain("p-3ddc2c  Plan approved? dropped; -> Feature not planned");
   });
 
@@ -44,12 +51,12 @@ describe("paths", () => {
     writeIn(
       dir,
       "x/spec.md",
-      "#### Scenario: approved (path p-3e8866)\n#### Scenario: gone (path p-000000)\n",
+      "#### Scenario: approved (path p-72bc2c)\n#### Scenario: gone (path p-000000)\n",
     );
     const run = paths(PLAN, "--specs", dir);
     expect(run.exit).toBe(3);
     expect(run.message).toContain("p-3ddc2c of plan_process");
     expect(run.message).toContain("p-000000, cited in");
-    expect(run.message).not.toContain("p-3e8866 of plan_process");
+    expect(run.message).not.toContain("p-72bc2c of plan_process");
   });
 });

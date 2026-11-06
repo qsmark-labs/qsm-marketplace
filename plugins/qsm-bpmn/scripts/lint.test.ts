@@ -60,8 +60,8 @@ describe("lint", () => {
           '<bpmn:complexGateway id="plan_process_verdict" name="Plan approved?">',
         ],
         [
-          '</bpmn:exclusiveGateway>\n    <bpmn:serviceTask id="plan_process_commit"',
-          '</bpmn:complexGateway>\n    <bpmn:serviceTask id="plan_process_commit"',
+          '</bpmn:exclusiveGateway>\n    <bpmn:callActivity id="plan_process_record"',
+          '</bpmn:complexGateway>\n    <bpmn:callActivity id="plan_process_record"',
         ],
       ),
     );
@@ -136,7 +136,7 @@ describe("lint", () => {
     const r = lint(
       plan(
         [
-          '<bpmn:task id="intent" name="2.2 Write the intent">',
+          '<bpmn:task id="intent" name="2.2 Write the intent and the feasibility">',
           '<bpmn:task id="extra" name="2.2a Read the request"><bpmn:incoming>f_extra</bpmn:incoming><bpmn:outgoing>f_extra2</bpmn:outgoing></bpmn:task>\n    <bpmn:task id="intent" name="2.2 Write the intent">',
         ],
         [

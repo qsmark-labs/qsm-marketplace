@@ -27,4 +27,6 @@ export const PLAN = [
   "</bpmn:definitions>\n",
 ]
   .join("\n")
-  .replace('calledElement="model_gate_process"', 'calledElement="plan_process"');
+  .replace('calledElement="model_gate_process"', 'calledElement="plan_process"')
+  .replace('calledElement="record_plan_process"', 'calledElement="plan_process"')
+  .replace('calledElement="decouple_process"', 'calledElement="plan_process"');

@@ -25,6 +25,12 @@ path of every diagram SHALL have a scenario here.
 - **WHEN** the owner answers "Plan approved?" with no
 - **THEN** the feature ends as not planned and no branch reaches GitHub
 
+#### Scenario: The plan ends in a split (path p-614e67)
+
+- **WHEN** the owner answers "Plan approved?" with split
+- **THEN** the feature ends closed as decoupled, linking the new feature issues, and no branch
+  reaches GitHub
+
 #### Scenario: The owner asks for changes on the feature PR (path p-52253d)
 
 - **WHEN** QA passed and the owner does not accept the feature pull request
@@ -34,20 +40,37 @@ path of every diagram SHALL have a scenario here.
 ### Requirement: Planning ends in the owner's yes
 
 Step 2 SHALL follow `plan_process` of `models/marketplace.bpmn`: the agent gathers the context,
-writes the intent, asks the open questions, draws the models and writes the specs; the owner reads
-the plan. The session works in its own worktree on the local branch `feature/<n>`, and the change is
-committed there only after the owner's yes. No pull request is opened in this step.
+writes the intent and the feasibility, asks the open questions, draws the models and writes the
+specs; the owner reads the plan. The change is committed on the local branch `feature/<n>` only
+after the owner's yes (`record_plan_process`). Answering split, the owner has the agent file the new
+feature issues and close the original with links (`decouple_process`). No pull request is opened.
 
-#### Scenario: The owner asks for changes, then approves (path p-3e8866)
+#### Scenario: The owner asks for changes, then approves (path p-72bc2c)
 
 - **WHEN** the owner reads the plan and asks for changes
 - **THEN** the agent asks the open questions again and revises; after the owner's yes the change is
   committed onto `feature/<n>` and the feature issue is updated
 
+#### Scenario: The approved plan is recorded (path p-f77c56)
+
+- **WHEN** the owner says yes to the plan
+- **THEN** the agent commits the change onto `feature/<n>`, then updates the feature issue
+
 #### Scenario: The owner drops the feature (path p-3ddc2c)
 
 - **WHEN** the owner reads the plan and drops it
 - **THEN** the agent closes the feature as not planned and nothing is committed
+
+#### Scenario: The owner splits the feature (path p-a65734)
+
+- **WHEN** the owner reads a plan that proposes a split and answers split
+- **THEN** the agent decouples the feature and nothing is committed onto `feature/<n>`
+
+#### Scenario: The feature is decoupled into new features (path p-ab5c6d)
+
+- **WHEN** the agent decouples a feature after the owner's split
+- **THEN** it files one new feature issue per part, each linking the original, then closes the
+  original with a comment linking every new issue, so the feature ends closed as decoupled
 
 ### Requirement: The split pushes the branch and files the tasks
 
