@@ -61,6 +61,11 @@ the only place that names it. The store is `.beads/` at the repository root: `is
 tracked source of truth and `beads.db` is a cache `br` rebuilds. Commit `.beads/`, never the
 cache. Add `--json` when a program reads the result.
 
+Tasks are read and written only through `br`, and read as a graph through `bv --agents`: never a
+script, never `bd`, and never a hand edit of `issues.jsonl`, because a hand edit diverges from the
+database and `br` stops importing it for every session that pulls the file. The person in their
+words: "pro tasks mam br/bv --agents nikdy ne python, nebo bd."
+
 | Step | Command |
 | --- | --- |
 | start | `br ready --json` |
@@ -78,6 +83,7 @@ cache. Add `--json` when a program reads the result.
 | defer | `br update <id> --status deferred --defer <date>` |
 | hygiene | `br stale --days 30`, `br list -s open --json`, `br show <id> --json` |
 | worktree | write the main checkout's `.beads` path, absolute, as the single line of `<worktree>/.beads/redirect` |
+| duplicate id after a git merge | take the other side's file, `git checkout <their commit> -- .beads/issues.jsonl`, then `br sync --merge --force-jsonl`, then `br create` again for each of yours it dropped |
 
 `br epic status` reports an epic eligible when its children are closed; that is the task part of
 rule 8 only, so read the criteria yourself. With a redirect, `br sync` in the worktree only
