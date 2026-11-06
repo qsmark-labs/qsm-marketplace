@@ -22,13 +22,15 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
           LIMIT: 400
         run: |
+          # A file, not a process substitution, so a failed diff stops the step under bash -e.
+          git --attr-source="$BASE" diff --numstat -z --no-renames "$BASE...$HEAD" > "$RUNNER_TEMP/numstat"
           total=0
           while IFS=$'\t' read -r -d '' added deleted file; do
             [ "$added" = "-" ] && continue
             [ "$(git check-attr --source "$BASE" linguist-generated -- "$file" | sed 's/.*: //')" = "true" ] && continue
             total=$((total + added + deleted))
             echo "$((added + deleted)) $file"
-          done < <(git --attr-source="$BASE" diff --numstat -z --no-renames "$BASE...$HEAD")
+          done < "$RUNNER_TEMP/numstat"
           echo "changed lines: $total of $LIMIT"
           if [ "$total" -gt "$LIMIT" ]; then
             echo "::error::$total changed lines, past the $LIMIT a person reviews in one sitting: split the task."
