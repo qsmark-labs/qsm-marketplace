@@ -21,6 +21,8 @@ exist if LikeC4 checked these rules and drew these pictures by itself.
 | Tool | `qsm-c4 render` | One `.drawio.svg` per generated view beside the graph; `--check` writes nothing and names what is stale |
 | Tool | `qsm-c4 elements` | Every element's id, kind, title and tags, and an actor's colour: the one door another tool reads the graph through |
 | Tool | `qsm-c4 pages` | `c4.html` in `.qsm/c4/`: one file, nothing requested outside it |
+| Skill | `c4-model` | How a piece of work becomes a checked structure, from one relation to a whole project, the reviewer before the graph file |
+| Agent | `model-reviewer` | Reads each changed view and its source against the spec and the rules, on sonnet |
 
 ## Install
 

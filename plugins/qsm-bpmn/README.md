@@ -22,6 +22,8 @@ if bpmnlint and bpmn-js checked these rules and drew these pictures by themselve
 | Tool | `qsm-bpmn render` | One SVG per process beside the graph; `--check` writes nothing and names what is stale |
 | Tool | `qsm-bpmn paths` | The cover of each process: start-to-end paths with stable ids, and which of them no spec scenario cites |
 | Tool | `qsm-bpmn pages` | `bpmn.html` in `.qsm/bpmn/`: one file, nothing requested outside it |
+| Skill | `bpmn-model` | How a piece of work becomes a checked process, from one task to a whole project, the reviewer before the graph file |
+| Agent | `model-reviewer` | Reads each changed process picture and its source against the spec and the rules, on sonnet |
 
 ## Install
 
