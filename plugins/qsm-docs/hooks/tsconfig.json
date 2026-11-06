@@ -7,6 +7,7 @@
     "noun.generated.ts",
     "host.generated.ts",
     "../lib/delete-guard.ts",
+    "../lib/shell-split.ts",
     "../lib/store/layout.ts",
     "../types"
   ]
