@@ -6,7 +6,7 @@ diff --git a/Cargo.lock b/Cargo.lock
  [[package]]
  name = "sentrux"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  dependencies = [
   "clap",
   "eframe",
@@ -15,7 +15,7 @@ diff --git a/Cargo.lock b/Cargo.lock
  [[package]]
  name = "sentrux-core"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  dependencies = [
   "crossbeam-channel",
   "dashmap",
@@ -26,7 +26,7 @@ diff --git a/sentrux-bin/Cargo.toml b/sentrux-bin/Cargo.toml
  [package]
  name = "sentrux"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  edition = "2021"
  description = "Live codebase visualization and structural quality gate for AI-agent-written code"
  license = "MIT"
@@ -87,14 +87,14 @@ diff --git a/sentrux-core/Cargo.toml b/sentrux-core/Cargo.toml
  [package]
  name = "sentrux-core"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  edition = "2021"
  description = "Core library for sentrux — structural quality analysis engine"
  license = "MIT"
 diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_utils.rs
 --- a/sentrux-core/src/core/path_utils.rs
 +++ b/sentrux-core/src/core/path_utils.rs
-@@ -4,7 +4,45 @@
+@@ -4,7 +4,41 @@
  //! depth heuristics. Handles depth-2 and depth-3 boundaries, dominant
  //! directory stripping (src/, lib/), and extension removal. Used throughout
  //! the metrics and analysis layers to assign files to logical modules.
@@ -124,10 +124,6 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +    *WHOLE_DIRS.write().unwrap() = dirs;
 +}
 +
-+fn is_whole_dir(top: &str) -> bool {
-+    WHOLE_DIRS.read().unwrap().iter().any(|d| d == top)
-+}
-+
 +/// The directory depth at which a path becomes a module, for this process.
 +pub fn module_depth() -> usize {
 +    MODULE_DEPTH.load(Ordering::Relaxed)
@@ -141,7 +137,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
  
  /// Adaptive module boundary detection.
  ///
-@@ -49,14 +87,21 @@
+@@ -49,14 +83,21 @@
      strip_extension(path)
  }
  
@@ -170,7 +166,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
  }
  
  /// Source dirs aggregated from all plugins. Cached at first access.
-@@ -89,16 +134,25 @@
+@@ -89,16 +130,30 @@
      }
  }
  
@@ -182,12 +178,17 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +
 +/// Extract the module name from a file path, grouping directories at `depth`.
 +pub fn module_of_at(path: &str, depth: usize) -> &str {
++    module_of_in(path, depth, &WHOLE_DIRS.read().unwrap())
++}
++
++/// `module_of_at` with the whole-module directories given, not read from the process.
++fn module_of_in<'a>(path: &'a str, depth: usize, whole: &[String]) -> &'a str {
      let first_slash = match path.find('/') {
          Some(i) => i,
          None => return module_of_root_file(path),
      };
  
-+    if is_whole_dir(&path[..first_slash]) {
++    if whole.iter().any(|d| d == &path[..first_slash]) {
 +        return &path[..first_slash];
 +    }
 +
@@ -198,7 +199,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
          None => module_of_single_dir(path, first_slash),
      }
  }
-@@ -144,6 +198,37 @@
+@@ -144,6 +199,37 @@
          );
      }
  
@@ -223,14 +224,14 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +    fn whole_dir_is_one_module_with_its_subdirectories() {
 +        // Root lib/ of the marketplace: every file and subdirectory is one
 +        // module, where a dominant dir would make each file its own module.
-+        set_whole_dirs(vec!["lib".to_string()]);
-+        assert_eq!(module_of_at("lib/qsm-error.ts", 2), "lib");
-+        assert_eq!(module_of_at("lib/fixtures/sandbox.ts", 2), "lib");
-+        assert_eq!(module_of_at("lib/templates/hooks-host.ts", 3), "lib");
++        let lib = vec!["lib".to_string()];
++        assert_eq!(module_of_in("lib/qsm-error.ts", 2, &lib), "lib");
++        assert_eq!(module_of_in("lib/fixtures/sandbox.ts", 2, &lib), "lib");
++        assert_eq!(module_of_in("lib/templates/hooks-host.ts", 3, &lib), "lib");
 +        // A plugin stays one module of its own.
-+        assert_eq!(module_of_at("plugins/qsm-docs/lib/store.ts", 2), "plugins/qsm-docs");
-+        set_whole_dirs(Vec::new());
-+        assert_eq!(module_of_at("lib/qsm-error.ts", 2), "lib/qsm-error");
++        assert_eq!(module_of_in("plugins/qsm-docs/lib/store.ts", 2, &lib), "plugins/qsm-docs");
++        // Without the list, lib is a dominant dir: one module per file.
++        assert_eq!(module_of_in("lib/qsm-error.ts", 2, &[]), "lib/qsm-error");
 +    }
 +
      #[test]

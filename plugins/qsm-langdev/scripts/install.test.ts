@@ -4,9 +4,15 @@
 // test depends on this machine's.
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { chmodSync, readFileSync } from "node:fs";
 import { type FakeInstall, fakeInstall } from "../../../lib/fixtures/install.ts";
+import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { type InstallContext, isFailure } from "../../../lib/install-contract.ts";
-import type { StructuralCheckerStatus } from "../lib/compare.ts";
+import {
+  PATCHED_SENTRUX_VERSION,
+  type StructuralCheckerStatus,
+  structuralCheckerStatus,
+} from "../lib/compare.ts";
 import { extraSteps, semgrepLoginStep, structuralChecker } from "./install.ts";
 
 function machine(opts: { dryRun?: boolean; cargo?: boolean } = {}): FakeInstall {
@@ -61,6 +67,32 @@ describe("qsm-langdev structural checker step", () => {
     const fx = machine();
     expect((await structuralChecker(fx.ctx, unpatched, builder(log))).status).toBe("installed");
     expect(log).toEqual([join(fx.home, ".cache")]);
+  });
+
+  test("a sentrux of an older qsm version is rebuilt, the patch's own version is not", async () => {
+    const root = sandboxDir("qsm-langdev-sentrux-");
+    const probe = (version: string): string => {
+      writeIn(root, version, `#!/bin/sh\necho "sentrux ${version}"\n`);
+      chmodSync(join(root, version), 0o755);
+      return join(root, version);
+    };
+    const log: string[] = [];
+    const fx = machine();
+    const stale = probe("0.5.7-qsm.2");
+    const step = await structuralChecker(
+      fx.ctx,
+      () => structuralCheckerStatus(stale),
+      builder(log),
+    );
+    expect(step.status).toBe("installed");
+    expect(log).toHaveLength(1);
+    const current = probe(PATCHED_SENTRUX_VERSION);
+    expect(await structuralCheckerStatus(current)).toEqual({ present: true, patched: true });
+  });
+
+  test("the version the checker wants is the one the patch declares", () => {
+    const patch = readFileSync(join(import.meta.dir, "..", "sentrux", "wiring.patch"), "utf8");
+    expect(patch).toContain(`+version = "${PATCHED_SENTRUX_VERSION}"`);
   });
 
   test("The build fails", async () => {
