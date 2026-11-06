@@ -26,7 +26,7 @@ describe("pages", () => {
     const { repo } = repoWith("qsm-bpmn-pages-", { "models/shop.c4": "x" });
     const r = pages(repo);
     expect(r.exit).toBe(1);
-    expect(r.message).toContain("models/ holds no graph");
+    expect(r.message).toContain("models holds 0 .bpmn graphs");
     expect(existsSync(join(repo, ".qsm"))).toBe(false);
   });
 

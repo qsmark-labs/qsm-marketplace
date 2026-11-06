@@ -2,9 +2,8 @@
 import type { Finding } from "../../../lib/model-graph.ts";
 import { c4Findings } from "./c4-ids.ts";
 import { lintBpmn } from "./bpmn/lint.ts";
-import { readGraph } from "./bpmn/model.ts";
+import type { Graph } from "./bpmn/model.ts";
 
-export async function lintFile(file: string): Promise<Finding[]> {
-  const graph = await readGraph(file);
-  return [...(await lintBpmn(file, graph.defs)), ...c4Findings(graph)];
+export async function lintGraph(graph: Graph): Promise<Finding[]> {
+  return [...(await lintBpmn(graph.file, graph.defs)), ...c4Findings(graph)];
 }

@@ -2,7 +2,7 @@
 // between the processes, lines that read at a glance, and a legend.
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { escapeHtml as esc } from "../../../../lib/html.ts";
-import type { Picture } from "../../../../lib/pictures.ts";
+import type { Picture } from "../../../../lib/model-graph.ts";
 import { domContainer } from "./dom.ts";
 import {
   type Definitions,
@@ -234,7 +234,7 @@ function pictureOf(
 }
 
 /** One picture per process of the graph; a process without a diagram fails, naming it. */
-export async function renderBpmn(graph: Graph, xml: string, project: string): Promise<Picture[]> {
+export async function renderBpmn(graph: Graph, project: string): Promise<Picture[]> {
   const drawn = processesOf(graph.defs).map((p) => {
     const id = diagramOf(graph.defs, p.id ?? "")?.id;
     if (id === undefined) {
@@ -246,7 +246,7 @@ export async function renderBpmn(graph: Graph, xml: string, project: string): Pr
   });
   const { default: Viewer } = await import("bpmn-js/lib/Viewer.js");
   const viewer = new Viewer({ container: domContainer() });
-  await viewer.importXML(xml);
+  await viewer.importXML(graph.xml);
   const out: Picture[] = [];
   for (const { p, id } of drawn) {
     await viewer.open(id);
@@ -255,7 +255,6 @@ export async function renderBpmn(graph: Graph, xml: string, project: string): Pr
     const { svg } = await viewer.saveSVG();
     out.push({
       name: pictureName(project, p.id ?? ""),
-      title: p.name ?? p.id ?? "",
       svg: pictureOf(svg, reg, graph.defs, p, project),
     });
   }

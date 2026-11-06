@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { type Envelope, isRecord, OUTCOME_CODES, type OutcomeCode } from "../outcome.ts";
+import type { Finding } from "../model-graph.ts";
 import { sandboxDir } from "./sandbox.ts";
 
 /** What a child needs to run and nothing the machine owns: PATH and TMPDIR from this run, HOME and
@@ -77,11 +78,7 @@ export function dataOf(stdout: string): unknown {
 }
 
 /** One finding a lint printed: the element, the rule and what is wrong. */
-export interface PrintedFinding {
-  readonly id: string;
-  readonly rule: string;
-  readonly message: string;
-}
+export type PrintedFinding = Pick<Finding, "id" | "rule" | "message">;
 
 const isFinding = (v: unknown): v is PrintedFinding =>
   isRecord(v) &&

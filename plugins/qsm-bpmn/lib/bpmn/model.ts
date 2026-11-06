@@ -94,16 +94,17 @@ export function diagramOf(defs: Definitions, processId: string): Diagram | undef
   });
 }
 
-/** A parsed graph: the definitions and the file it came from. */
+/** A parsed graph: the definitions, the file it came from and the text it was read from. */
 export interface Graph {
   readonly file: string;
   readonly defs: Definitions;
+  readonly xml: string;
 }
 
 /** Reads a BPMN file; an XML bpmn-moddle cannot read fails naming the file and its first warning. */
 export async function readGraph(file: string): Promise<Graph> {
   const xml = await Bun.file(file).text();
-  return { file, defs: await parseXml(xml, file) };
+  return { file, defs: await parseXml(xml, file), xml };
 }
 
 export async function parseXml(xml: string, file: string): Promise<Definitions> {

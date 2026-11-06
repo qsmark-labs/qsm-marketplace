@@ -1,7 +1,6 @@
 // layout: geometry for each process of a file that has none, by bpmn-auto-layout, in the colours
 // of the picture rule. A process that has geometry is never laid out again, because the layout the
 // owner made in bpmn.io must survive.
-import { readFileSync } from "node:fs";
 import { layoutProcess } from "bpmn-auto-layout";
 import { writeAtomic } from "../../../../lib/fs.ts";
 import { type Finding, lintOutcome } from "../../../../lib/model-graph.ts";
@@ -9,7 +8,7 @@ import { fail, ok, type Outcome } from "../../../../lib/outcome.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import { c4Elements } from "../c4-ids.ts";
-import { lintFile } from "../lint.ts";
+import { lintGraph } from "../lint.ts";
 import {
   c4Element,
   type Definitions,
@@ -21,6 +20,7 @@ import {
   parseXml,
   type Process,
   processesOf,
+  readGraph,
   type Shape,
   toXml,
 } from "./model.ts";
@@ -154,12 +154,12 @@ const undrawn = (defs: Definitions): Process[] =>
 export async function layoutFile(
   file: string,
 ): Promise<Outcome<{ laidOut: string[] } | { findings: Finding[] }>> {
-  const findings = (await lintFile(file)).filter((f) => f.rule !== "no-bpmndi");
+  const graph = await readGraph(file);
+  const findings = (await lintGraph(graph)).filter((f) => f.rule !== "no-bpmndi");
   if (findings.length > 0) {
     return lintOutcome(file, findings);
   }
-  const xml = readFileSync(file, "utf8");
-  const defs = await parseXml(xml, file);
+  const { xml, defs } = graph;
   const todo = undrawn(defs);
   if (todo.length === 0) {
     return fail(

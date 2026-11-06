@@ -5,7 +5,7 @@ import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.j
 import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
-import type { Picture } from "../../../../lib/pictures.ts";
+import type { Picture } from "../../../../lib/model-graph.ts";
 import { Cells, type Rect } from "./drawio.ts";
 import { isActor, isExternal } from "./lint.ts";
 import type { C4Element, C4Model, C4Relation } from "./model.ts";
@@ -854,7 +854,11 @@ const viewName = (project: string, view: string): string => `${project}.${view}.
 /** Every view of the graph: the context, the containers of each internal system, the components of
  * each container that has any. A `.drawio.svg` carries its draw.io diagram; a page that only shows
  * the picture asks for it without. */
-export async function renderC4(m: C4Model, project: string, drawio = true): Promise<Picture[]> {
+export async function renderC4(
+  m: C4Model,
+  project: string,
+  drawio = true,
+): Promise<(Picture & { readonly title: string })[]> {
   const g = new Graph4(m.elements, m.relations);
   const top = g.els.filter((e) => e.parent === null);
   const views: Drawn[] = [

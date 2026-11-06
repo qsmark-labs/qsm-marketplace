@@ -157,33 +157,38 @@ export function removeOwnedLinks(
  * completion, when it carries the generated marker, because a file of that name that is neither
  * may be the person's. Each removal is a step, and a second run finds none. */
 export function removeRetiredBin(ctx: InstallContext, bin: string): Step[] {
-  const verb = ctx.dryRun ? "would remove" : "removed";
-  const status: InstallStatus = ctx.dryRun ? "skipped" : "installed";
-  const name = `retired ${bin}`;
   const steps: Step[] = [];
+  /** Removes one thing unless this is a dry run, and names it as a step either way. */
+  const remove = (what: string, act: () => void): void => {
+    if (!ctx.dryRun) {
+      act();
+    }
+    steps.push({
+      name: `retired ${bin}`,
+      status: ctx.dryRun ? "skipped" : "installed",
+      detail: `${ctx.dryRun ? "would remove" : "removed"} ${what}`,
+    });
+  };
   const recordPath = buildRecordPath(ctx.env);
   const record = readRecord(recordPath);
   if (record?.bins[bin] !== undefined) {
     const binFile = join(binDir(ctx.env), bin);
     if (existsSync(binFile)) {
-      if (!ctx.dryRun) {
+      remove(`${binFile}, which no plugin ships any more`, () => {
         unlinkSync(binFile);
-      }
-      steps.push({ name, status, detail: `${verb} ${binFile}, which no plugin ships any more` });
+      });
     }
-    if (!ctx.dryRun) {
+    remove(`${bin} from ${recordPath}`, () => {
       writeRecord(recordPath, {
         bins: Object.fromEntries(Object.entries(record.bins).filter(([b]) => b !== bin)),
       });
-    }
-    steps.push({ name, status, detail: `${verb} ${bin} from ${recordPath}` });
+    });
   }
   const completion = join(fishCompletionDir(ctx.env), `${bin}.fish`);
   if (existsSync(completion) && readFileSync(completion, "utf8").includes(MARKER)) {
-    if (!ctx.dryRun) {
+    remove(completion, () => {
       unlinkSync(completion);
-    }
-    steps.push({ name, status, detail: `${verb} ${completion}` });
+    });
   }
   return steps;
 }
