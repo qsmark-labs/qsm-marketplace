@@ -70,7 +70,7 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
-| 5 | `agent-identity` | Agents open and review pull requests under their own identity, so the owner's approval is a gate GitHub enforces | `qsm-tasks-cli` | stub |
+| 1 | `agent-identity` | Agents open and review pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | built with `qsm-tasks-cli` | stub, decided |
 | 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
 
@@ -90,3 +90,6 @@ The owner picks from this table. Order is a suggestion: the same number can run 
    "QA ma chytat contract a business bugs, ne codebugs".
 5. **GitHub first** (2026-10-30): "i dont want to duplicate anything that github already has a
    way to do normally".
+6. **Task pull requests stay reviewable** (2026-11-06): the required check `pr-size` fails one
+   past 400 changed lines; a file `.gitattributes` marks generated, a BPMN's layout included, is
+   not counted, because a model is read through its picture.

@@ -145,10 +145,11 @@ Apply SHALL require the design and track no file. A feature's change SHALL name 
 
 ### Requirement: Issue forms ask the six questions
 
-The repository SHALL offer two issue forms, a feature request and an issue, and no blank issue.
-Each form SHALL have one required field per question of the implementation rule's "First: why":
-who it is for, the problem and why now, what is not done, what exists, what proves it works, and
-the budget. The feature request SHALL set the issue type Feature and the issue form the type Bug.
+The repository SHALL offer two issue forms, a feature request and an issue, the feedback template of
+qsm-tasks, and no blank issue. Each of the two forms SHALL have one required field per question of
+the implementation rule's "First: why": who it is for, the problem and why now, what is not done,
+what exists, what proves it works, and the budget. The feature request SHALL set the issue type
+Feature and the issue form the type Bug.
 
 #### Scenario: The owner files a feature
 
@@ -168,3 +169,21 @@ scenarios QA ran, and close the feature with `Closes #<feature>`.
 - **WHEN** an agent opens the pull request of task 12 of feature 3
 - **THEN** its base is `feature/3`, its body has the four sections, and its last line is
   `Closes #12`
+
+### Requirement: A pull request is small enough to review in one sitting
+
+The check `pr-size` SHALL fail a pull request whose changed lines, added plus deleted, pass 400,
+counting no file the base's `.gitattributes` marks `linguist-generated`, and SHALL name the count
+and the limit. Main and `feature/*` SHALL require it.
+
+#### Scenario: A task too big to review
+
+- **WHEN** a task pull request changes 520 lines outside generated files
+- **THEN** `pr-size` fails naming 520 changed lines and the limit 400, and the pull request cannot
+  merge
+
+#### Scenario: A model change is read through its picture
+
+- **WHEN** a pull request changes 1000 lines of `models/marketplace.bpmn`, its pictures, and 60
+  lines of specs
+- **THEN** `pr-size` counts 60 and passes

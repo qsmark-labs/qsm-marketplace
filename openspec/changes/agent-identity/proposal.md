@@ -17,11 +17,12 @@ and enforceable.
 - **`qsm-tasks` and `qsm-forge`** take the App's token for agent writes; the owner's own actions
   stay his.
 
-## Open decisions
+## Decisions of the owner
 
-1. **Now or after the flow has run on a few features?** Recommended after: the flow is proved
-   first with one login, then the gate is added.
-2. **One App for all agents, or one per role** (implementation, review, QA)? Recommended one, with
-   the role in the pull request or review body, because each App is a key to keep secret.
-3. **Ghost mode**: a bot identity names an agent on every pull request, against "no mention of an
-   AI anywhere it is posted"; the owner allowed `from:` labels on feedback. Does that extend here?
+1. **Now, with `qsm-tasks-cli`** (2026-11-06): the App is built with the binary, so every agent
+   write goes through it from the first day and nothing is rewired later.
+2. **One App, `qsmark-bot`** (2026-11-06): "je to proste qsmark-bot, a pres nej se automaticky
+   budou zakladat PRs". It opens every agent pull request and issue.
+3. **Ghost mode holds** (2026-11-06): the bot is automation, not an AI: "to je bot ne AI, to je
+   automatic static, deterministic code". Its name is the only trace; no text it posts mentions
+   an AI.
