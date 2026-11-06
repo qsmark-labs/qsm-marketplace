@@ -1,0 +1,165 @@
+{
+  "name": "qsm-docs",
+  "qsm": {
+    "bin": {
+      "qsm-docs": "scripts/cli.ts"
+    },
+    "noun": "docs",
+    "commands": {
+      "qsm-docs doctor": {
+        "description": "Report whether git, the one program qsm-docs needs on PATH, is there"
+      },
+      "qsm-docs get": {
+        "description": "Print a snapshot exactly as it was created; fail when its file no longer matches the sha256 recorded at create",
+        "args": [
+          {
+            "name": "id",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the snapshot id <project>-<branch>-<timestamp>"
+          }
+        ]
+      },
+      "qsm-docs create": {
+        "description": "Convert a file with its kind's converter, store a copy that never changes and print its id <project>-<branch>-<timestamp>",
+        "args": [
+          {
+            "name": "kind",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the kind of the document: json, or one a plugin installed with kind add"
+          },
+          {
+            "name": "file",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the file to store"
+          },
+          {
+            "name": "parent",
+            "type": "string",
+            "description": "the id of the snapshot this one was made from"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "the project (default: the directory name of the checkout's main worktree)"
+          },
+          {
+            "name": "branch",
+            "type": "string",
+            "description": "the branch (default: the checked-out branch)"
+          }
+        ]
+      },
+      "qsm-docs list": {
+        "description": "List the snapshots of a project newest first: id, kind, branch, time, parent, and whether a page made it",
+        "args": [
+          {
+            "name": "project",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the project"
+          },
+          {
+            "name": "branch",
+            "type": "string",
+            "description": "only this branch"
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "description": "only this kind"
+          },
+          {
+            "name": "open",
+            "type": "boolean",
+            "description": "only proposals a page saved that no later snapshot names as its parent"
+          }
+        ]
+      },
+      "qsm-docs diff": {
+        "description": "Name what changed between a snapshot and its parent, or two snapshots of one kind, through the kind's diff command",
+        "args": [
+          {
+            "name": "id",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the newer snapshot"
+          },
+          {
+            "name": "other",
+            "type": "string",
+            "positional": true,
+            "description": "a second snapshot of the same kind, compared instead of the parent"
+          }
+        ]
+      },
+      "qsm-docs delete": {
+        "description": "Remove a snapshot and record the delete in the ledger; the owner's verb, denied to the agent",
+        "args": [
+          {
+            "name": "id",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the snapshot to remove"
+          }
+        ]
+      },
+      "qsm-docs kind add": {
+        "description": "Install a kind from its JSON manifest and keep a copy of its page directory",
+        "args": [
+          {
+            "name": "manifest",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the kind's manifest file"
+          }
+        ]
+      },
+      "qsm-docs kind list": {
+        "description": "List the installed kinds with their media types, the built-in json first"
+      },
+      "qsm-docs kind remove": {
+        "description": "Remove a kind and its page files; every snapshot of it stays",
+        "args": [
+          {
+            "name": "name",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the kind to remove"
+          }
+        ]
+      },
+      "qsm-docs serve": {
+        "description": "Serve every kind's page on 127.0.0.1: the page shell, the kind's page in a frame, and edit mode, where a save becomes a proposal",
+        "noNoun": true,
+        "args": [
+          {
+            "name": "port",
+            "type": "number",
+            "description": "the port to listen on (default: 4748; 0 picks a free one)"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "the project a page opened without an id reads (default: the checkout's)"
+          },
+          {
+            "name": "branch",
+            "type": "string",
+            "description": "the branch a page opened without an id reads (default: the checked-out branch)"
+          }
+        ]
+      }
+    }
+  }
+}

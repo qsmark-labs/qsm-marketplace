@@ -1,16 +1,8 @@
 // Renders one validated findings document (lib/findings.ts) into one self-contained HTML file:
 // inline CSS, no script, no external resource, light and dark through prefers-color-scheme.
 
+import { escapeHtml } from "../../../lib/html.ts";
 import type { Change, Finding, FindingsDocument, Topic } from "./findings.ts";
-
-function escapeHtml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 function totalSavingTokens(doc: FindingsDocument): number {
   return doc.topics.reduce(

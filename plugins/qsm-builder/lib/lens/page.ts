@@ -8,7 +8,8 @@
 
 import { relative } from "node:path";
 import { ARTIFACT_SCRIPT, LIVE_SCRIPT, PEN_ICON, PEN_SCRIPT } from "./client.ts";
-import { esc, graph, type Link, type Vertex } from "./graph.ts";
+import { escapeHtml as esc } from "../../../../lib/html.ts";
+import { graph, type Link, type Vertex } from "./graph.ts";
 import type { Hook } from "./hooks.ts";
 import {
   type Case,

@@ -2,7 +2,8 @@
 // (actors, the system in scope with its groups, external systems), drawn as an SVG that carries
 // the view's draw.io diagram, with links that zoom in and out between the views.
 import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
-import { esc, type Picture } from "../svg.ts";
+import { escapeHtml as esc } from "../../../../lib/html.ts";
+import type { Picture } from "../svg.ts";
 import { Cells, type Rect } from "./drawio.ts";
 import { isActor, isExternal } from "./lint.ts";
 import type { C4Element, C4Model, C4Relation } from "./model.ts";
