@@ -378,18 +378,17 @@ in one code of the marketplace outcome table:
 
 ### Requirement: Install builds the structural checker when it is missing
 
-Install SHALL compile this plugin's binary and its classic hook through
-the shared install base, and SHALL handle the structural checker as one extra
-step: `already` when the checker on PATH reports a qsm-patched version;
-otherwise it SHALL run this plugin's build script and report `installed` on
-success, `error` with the build command on failure, and `missing-prereq`
-naming `cargo` when `cargo` is not on PATH. A dry run SHALL name the build
-command and run nothing.
+Install SHALL compile this plugin's binary and its classic hook through the shared install base, and
+SHALL handle the structural checker as one extra step: `already` when the checker on PATH reports
+exactly the version the build script's patch declares (an older qsm build is not one); otherwise it
+SHALL run this plugin's build script and report `installed` on success, `error` with the build
+command on failure, and `missing-prereq` naming `cargo` when `cargo` is not on PATH. A dry run SHALL
+name the build command and run nothing.
 
 #### Scenario: No compatible checker present
 
-- **WHEN** install runs, `cargo` is on PATH, and no checker reporting a
-  qsm-patched version is on PATH
+- **WHEN** install runs, `cargo` is on PATH, and no checker reporting the
+  patch's exact version is on PATH
 - **THEN** install SHALL run the build script and report `installed`
 
 #### Scenario: The build fails
@@ -405,19 +404,24 @@ command and run nothing.
 
 #### Scenario: A compatible checker is already present
 
-- **WHEN** the checker on PATH reports a qsm-patched version
+- **WHEN** the checker on PATH reports exactly the version the patch declares
 - **THEN** install SHALL report `already` and build nothing
+
+#### Scenario: An older qsm build is rebuilt
+
+- **WHEN** the checker on PATH reports an older qsm version than the patch
+  declares (it would ignore what the patch added)
+- **THEN** install SHALL run the build script and report `installed`
 
 ### Requirement: Doctor reports each checker's binary as present or missing
 
-`doctor` SHALL report, for every checker in the languages currently selected
-and the always-on languages, whether its
-binary resolves and, when it does not, the command to install it. `doctor`
-SHALL also report whether the structural checker on the machine reports a
-qsm-patched version, distinguishing that from an unpatched upstream checker
-and from none present at all. A binary that does not answer `--version` within the probe limit is
-not missing: `doctor` SHALL report it as not measured, as `check` does. `doctor` SHALL install
-nothing.
+`doctor` SHALL report, for every checker in the languages currently selected and the always-on
+languages, whether its binary resolves and, when it does not, the command to install it. `doctor`
+SHALL also report whether the structural checker on the machine reports the patch's exact version,
+distinguishing that from an older qsm build, an unpatched upstream checker and none present at all,
+naming the version found and, for an older qsm build, the version the patch builds. A binary that
+does not answer `--version` within the probe limit is not missing: `doctor` SHALL report it as not
+measured, as `check` does. `doctor` SHALL install nothing.
 
 #### Scenario: A backing linter is missing
 
@@ -437,6 +441,13 @@ nothing.
 - **WHEN** the structural checker on PATH reports a plain upstream version
 - **THEN** `doctor` SHALL report it as not ready, distinguishing this from no
   structural checker being present at all
+
+#### Scenario: An older qsm structural checker is present
+
+- **WHEN** the structural checker on PATH reports a qsm version older than the
+  patch declares
+- **THEN** `doctor` SHALL report it as not ready, naming the version found and
+  the version the patch builds, and SHALL NOT call it unpatched upstream
 
 ### Requirement: List reports the registry as data
 

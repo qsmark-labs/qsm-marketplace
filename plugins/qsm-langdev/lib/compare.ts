@@ -1385,6 +1385,8 @@ export async function doctorRows(
 export interface StructuralCheckerStatus {
   present: boolean;
   patched: boolean;
+  /** The version `--version` named, when it named one. */
+  found: string | null;
 }
 
 /** The version `sentrux/wiring.patch` gives the build; bumped with the patch, so an older build is rebuilt. */
@@ -1400,8 +1402,12 @@ export async function structuralCheckerStatus(
 ): Promise<StructuralCheckerStatus> {
   const result = await spawnAsync(tmpdir(), binary, ["--version"], PROBE_MS);
   if (spawnFailure(result, "sentrux") !== null) {
-    return { present: false, patched: false };
+    return { present: false, patched: false, found: null };
   }
   const words = `${result.stdout ?? ""}${result.stderr ?? ""}`.split(/\s+/);
-  return { present: true, patched: words.includes(PATCHED_SENTRUX_VERSION) };
+  return {
+    present: true,
+    patched: words.includes(PATCHED_SENTRUX_VERSION),
+    found: words.find((word) => /^\d+\.\d+\.\d+/.test(word)) ?? null,
+  };
 }
