@@ -282,11 +282,11 @@
     <bpmn:startEvent id="decouple_process_start" name="Owner said split">
       <bpmn:outgoing>decouple_process_f_start_file</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:serviceTask id="decouple_process_file" name="2.11.1 File the new feature issues">
+    <bpmn:serviceTask id="decouple_process_file" name="2.11.1 File the feature issues">
       <bpmn:incoming>decouple_process_f_start_file</bpmn:incoming>
       <bpmn:outgoing>decouple_process_f_file_close</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="decouple_process_close" name="2.11.2 Close the feature with links to the new issues">
+    <bpmn:serviceTask id="decouple_process_close" name="2.11.2 Close the feature with links">
       <bpmn:incoming>decouple_process_f_file_close</bpmn:incoming>
       <bpmn:outgoing>decouple_process_f_close_end</bpmn:outgoing>
     </bpmn:serviceTask>
