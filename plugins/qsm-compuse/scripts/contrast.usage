@@ -1,5 +1,5 @@
 drive contrast A B [--screen MON] [--min RATIO]
-drive contrast each SEL --min RATIO [--screen MON | --shot PNG]
+drive contrast each SEL --min RATIO [--screen MON | --shot PNG] [--over SEL]
 
   A, B   geom selector (see: drive geom), logical point X,Y, or a literal colour #rrggbb;
          selector@ink = glyph pixel. Two literal colours need no screen.
@@ -7,5 +7,7 @@ drive contrast each SEL --min RATIO [--screen MON | --shot PNG]
   Captures the output with grim; logical -> physical uses the monitor scale.
   each   every match of SEL a person can see: its ink (the pixel farthest from its rect's median)
          against that median, one PASS/FAIL line each; exit 1 if any fails.
+  --over the matches of this selector lie over SEL's by design (a count badge on its glyph): the
+         pixels under them are left out of the ground, so the cover neither fails nor passes it.
   --shot read this capture and the tree in GEOM_TREE instead of the live screen (no grim, no
          Hyprland); the scale is the capture's width over the tree's.
