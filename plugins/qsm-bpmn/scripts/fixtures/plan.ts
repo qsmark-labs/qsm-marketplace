@@ -5,7 +5,11 @@ import { resolve } from "node:path";
 
 export const CLI = resolve(import.meta.dir, "../cli.ts");
 const MODELS = resolve(import.meta.dir, "../../../../models");
-export const GRAPH = readFileSync(resolve(MODELS, "marketplace.bpmn"), "utf8");
+/** The marketplace graph as the tests start from it: its lanes link C4 actors, a link that only
+ * resolves beside the real C4 graph, so the copy a test writes elsewhere carries none. */
+export const GRAPH = readFileSync(resolve(MODELS, "marketplace.bpmn"), "utf8")
+  .replaceAll(/ c4:element="[^"]*"/g, "")
+  .replace(' xmlns:c4="https://c4model.com"', "");
 
 /** The one element of the graph that starts with `open` and ends with its closing tag. */
 function slice(open: string, close: string): string {

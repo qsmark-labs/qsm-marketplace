@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="marketplace_defs" targetNamespace="urn:qsm:marketplace">
+<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:c4="https://c4model.com" id="marketplace_defs" targetNamespace="urn:qsm:marketplace">
   <bpmn:collaboration id="feature_flow_collab">
     <bpmn:participant id="feature_flow_pool" name="A feature from request to main" processRef="feature_flow_process" />
   </bpmn:collaboration>
   <bpmn:process id="feature_flow_process" name="A feature from request to main" isExecutable="false">
     <bpmn:laneSet id="feature_flow_process_laneset">
-      <bpmn:lane id="feature_flow_process_lane_0" name="Owner">
+      <bpmn:lane id="feature_flow_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>need</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>request</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>land</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_accepted</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_done</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="feature_flow_process_lane_1" name="Agent">
+      <bpmn:lane id="feature_flow_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>plan</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>planned</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_dropped</bpmn:flowNodeRef>
@@ -26,7 +26,7 @@
         <bpmn:flowNodeRef>feature_flow_process_conflict</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_conflictTask</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="feature_flow_process_lane_3" name="QA agent">
+      <bpmn:lane id="feature_flow_process_lane_3" name="QA agent" c4:element="qa">
         <bpmn:flowNodeRef>qa</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>holds</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>feature_flow_process_fixTask</bpmn:flowNodeRef>
@@ -135,12 +135,12 @@
   </bpmn:collaboration>
   <bpmn:process id="plan_process" name="2 Plan the feature" isExecutable="false">
     <bpmn:laneSet id="plan_process_laneset">
-      <bpmn:lane id="plan_process_lane_0" name="Owner">
+      <bpmn:lane id="plan_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>answer</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_verdict</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="plan_process_lane_1" name="Agent">
+      <bpmn:lane id="plan_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>plan_process_filed</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>plan_process_context</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>intent</bpmn:flowNodeRef>
@@ -242,7 +242,7 @@
   </bpmn:collaboration>
   <bpmn:process id="record_plan_process" name="2.8 Record the approved plan" isExecutable="false">
     <bpmn:laneSet id="record_plan_process_laneset">
-      <bpmn:lane id="record_plan_process_lane_0" name="Agent">
+      <bpmn:lane id="record_plan_process_lane_0" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>record_plan_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>record_plan_process_commit</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>record_plan_process_update</bpmn:flowNodeRef>
@@ -272,7 +272,7 @@
   </bpmn:collaboration>
   <bpmn:process id="decouple_process" name="2.11 Decouple the feature" isExecutable="false">
     <bpmn:laneSet id="decouple_process_laneset">
-      <bpmn:lane id="decouple_process_lane_0" name="Agent">
+      <bpmn:lane id="decouple_process_lane_0" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>decouple_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>decouple_process_file</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>decouple_process_close</bpmn:flowNodeRef>
@@ -302,11 +302,11 @@
   </bpmn:collaboration>
   <bpmn:process id="split_process" name="3 Split the feature into tasks" isExecutable="false">
     <bpmn:laneSet id="split_process_laneset">
-      <bpmn:lane id="split_process_lane_0" name="Owner">
+      <bpmn:lane id="split_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>split_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>agreed</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="split_process_lane_1" name="Agent">
+      <bpmn:lane id="split_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>approved</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>push</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>cutJoin</bpmn:flowNodeRef>
@@ -361,18 +361,18 @@
   </bpmn:collaboration>
   <bpmn:process id="build_task_process" name="4-6 Build every open task" isExecutable="false">
     <bpmn:laneSet id="build_task_process_laneset">
-      <bpmn:lane id="build_task_process_lane_0" name="Agent">
+      <bpmn:lane id="build_task_process_lane_0" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>build_task_process_open</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>build</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>fix</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>comments</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="build_task_process_lane_1" name="Review agent">
+      <bpmn:lane id="build_task_process_lane_1" name="Review agent" c4:element="reviewer">
         <bpmn:flowNodeRef>reviewJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>build_task_process_review</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>build_task_process_findings</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="build_task_process_lane_2" name="Owner">
+      <bpmn:lane id="build_task_process_lane_2" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>build_task_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>accepted</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>build_task_process_merge</bpmn:flowNodeRef>
@@ -451,7 +451,7 @@
   </bpmn:collaboration>
   <bpmn:process id="consume_task_process" name="4 Build the task into a PR" isExecutable="false">
     <bpmn:laneSet id="consume_task_process_laneset">
-      <bpmn:lane id="consume_task_process_lane_0" name="Agent">
+      <bpmn:lane id="consume_task_process_lane_0" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>consume_task_process_open</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>claim</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>context</bpmn:flowNodeRef>
@@ -511,13 +511,13 @@
   </bpmn:collaboration>
   <bpmn:process id="land_process" name="9 Land the feature on main" isExecutable="false">
     <bpmn:laneSet id="land_process_laneset">
-      <bpmn:lane id="land_process_lane_0" name="Owner">
+      <bpmn:lane id="land_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>land_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>verdict</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>merge</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>closed</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="land_process_lane_1" name="Agent">
+      <bpmn:lane id="land_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>passed</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>pr</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>archive</bpmn:flowNodeRef>
@@ -729,7 +729,7 @@
   </bpmn:collaboration>
   <bpmn:process id="model_gate_process" name="A change to a graph is checked" isExecutable="false">
     <bpmn:laneSet id="model_gate_process_laneset">
-      <bpmn:lane id="model_gate_process_lane_0" name="Agent">
+      <bpmn:lane id="model_gate_process_lane_0" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>model_gate_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>writeJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>write</bpmn:flowNodeRef>
@@ -746,11 +746,11 @@
         <bpmn:flowNodeRef>model_gate_process_check</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>current</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="model_gate_process_lane_1" name="Review agent">
+      <bpmn:lane id="model_gate_process_lane_1" name="Review agent" c4:element="reviewer">
         <bpmn:flowNodeRef>review</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>findings</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="lane_2" name="Owner">
+      <bpmn:lane id="lane_2" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>model_gate_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>clear</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>model_gate_process_end</bpmn:flowNodeRef>
@@ -877,14 +877,14 @@
   </bpmn:collaboration>
   <bpmn:process id="simplify_process" name="A model is simplified on request" isExecutable="false">
     <bpmn:laneSet id="simplify_process_laneset">
-      <bpmn:lane id="simplify_process_lane_0" name="Owner">
+      <bpmn:lane id="simplify_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>simplify_process_ask</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>simplify_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>take</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>taken</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>left</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="simplify_process_lane_1" name="Simplify agent">
+      <bpmn:lane id="simplify_process_lane_1" name="Simplify agent" c4:element="simplifier">
         <bpmn:flowNodeRef>firstJoin</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>tryFirst</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>result</bpmn:flowNodeRef>
@@ -975,7 +975,7 @@
   </bpmn:collaboration>
   <bpmn:process id="try_rewrite_process" name="Try one rewrite" isExecutable="false">
     <bpmn:laneSet id="try_rewrite_process_laneset">
-      <bpmn:lane id="try_rewrite_process_lane_0" name="Simplify agent">
+      <bpmn:lane id="try_rewrite_process_lane_0" name="Simplify agent" c4:element="simplifier">
         <bpmn:flowNodeRef>try_rewrite_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>propose</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>check</bpmn:flowNodeRef>
@@ -986,7 +986,7 @@
         <bpmn:flowNodeRef>try_rewrite_process_kept</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>dropped</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="try_rewrite_process_lane_1" name="Review agent">
+      <bpmn:lane id="try_rewrite_process_lane_1" name="Review agent" c4:element="reviewer">
         <bpmn:flowNodeRef>try_rewrite_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>right</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -1052,13 +1052,13 @@
   </bpmn:collaboration>
   <bpmn:process id="docs_delete_process" name="A snapshot is deleted by the owner only" isExecutable="false">
     <bpmn:laneSet id="docs_delete_process_laneset">
-      <bpmn:lane id="docs_delete_process_lane_0" name="Owner">
+      <bpmn:lane id="docs_delete_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>want</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>kept</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>del</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>gone</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="docs_delete_process_lane_1" name="Agent">
+      <bpmn:lane id="docs_delete_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>docs_delete_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>run</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>deny</bpmn:flowNodeRef>
@@ -1108,13 +1108,13 @@
   </bpmn:collaboration>
   <bpmn:process id="docs_proposal_process" name="An edit on a page becomes a proposal" isExecutable="false">
     <bpmn:laneSet id="docs_proposal_process_laneset">
-      <bpmn:lane id="docs_proposal_process_lane_0" name="Owner">
+      <bpmn:lane id="docs_proposal_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>docs_proposal_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>docs_proposal_process_open</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>docs_proposal_process_edit</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>docs_proposal_process_save</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="docs_proposal_process_lane_1" name="Agent">
+      <bpmn:lane id="docs_proposal_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>tell</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>docs_proposal_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>clean</bpmn:flowNodeRef>
@@ -1182,7 +1182,7 @@
   </bpmn:collaboration>
   <bpmn:process id="edit_graph_process" name="The owner changes a graph on its page" isExecutable="false">
     <bpmn:laneSet id="edit_graph_process_laneset">
-      <bpmn:lane id="edit_graph_process_lane_0" name="Owner">
+      <bpmn:lane id="edit_graph_process_lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>edit_graph_process_start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>edit_graph_process_open</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>editJoin</bpmn:flowNodeRef>
@@ -1190,7 +1190,7 @@
         <bpmn:flowNodeRef>legal</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>save</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="edit_graph_process_lane_1" name="Agent">
+      <bpmn:lane id="edit_graph_process_lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>edit_graph_process_read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>apply</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>gates</bpmn:flowNodeRef>
@@ -1277,11 +1277,11 @@
   </bpmn:collaboration>
   <bpmn:process id="pr_pictures_process" name="A PR shows what its change does to the graphs" isExecutable="false">
     <bpmn:laneSet id="laneset">
-      <bpmn:lane id="lane_0" name="Owner">
+      <bpmn:lane id="lane_0" name="Owner" c4:element="owner">
         <bpmn:flowNodeRef>read</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>end</bpmn:flowNodeRef>
       </bpmn:lane>
-      <bpmn:lane id="lane_1" name="Agent">
+      <bpmn:lane id="lane_1" name="Agent" c4:element="agent">
         <bpmn:flowNodeRef>start</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>find</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>touched</bpmn:flowNodeRef>
@@ -3559,38 +3559,38 @@
       <bpmndi:BPMNShape id="BPMNShape_record_plan_pool" bpmnElement="record_plan_pool" isHorizontal="true">
         <dc:Bounds x="80" y="80" width="682" height="240" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_lane_0" bpmnElement="record_plan_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_lane_0" bpmnElement="record_plan_process_lane_0" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dbd5ef" color:background-color="#dbd5ef" color:border-color="#6b4fbb">
         <dc:Bounds x="110" y="80" width="652" height="240" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_start" bpmnElement="record_plan_process_start" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_start" bpmnElement="record_plan_process_start" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
         <dc:Bounds x="150" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="130" y="223" width="76" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_commit" bpmnElement="record_plan_process_commit" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_commit" bpmnElement="record_plan_process_commit" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
         <dc:Bounds x="286" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_update" bpmnElement="record_plan_process_update" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_update" bpmnElement="record_plan_process_update" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
         <dc:Bounds x="486" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_end" bpmnElement="record_plan_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_record_plan_process_end" bpmnElement="record_plan_process_end" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
         <dc:Bounds x="686" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="674" y="223" width="60" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_start_commit" bpmnElement="record_plan_process_f_start_commit" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_start_commit" bpmnElement="record_plan_process_f_start_commit" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="186" y="200" />
         <di:waypoint x="286" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_commit_update" bpmnElement="record_plan_process_f_commit_update" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_commit_update" bpmnElement="record_plan_process_f_commit_update" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="386" y="200" />
         <di:waypoint x="486" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_update_end" bpmnElement="record_plan_process_f_update_end" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_record_plan_process_f_update_end" bpmnElement="record_plan_process_f_update_end" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="586" y="200" />
         <di:waypoint x="686" y="200" />
       </bpmndi:BPMNEdge>
@@ -3601,38 +3601,38 @@
       <bpmndi:BPMNShape id="BPMNShape_decouple_pool" bpmnElement="decouple_pool" isHorizontal="true">
         <dc:Bounds x="80" y="80" width="682" height="240" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decouple_process_lane_0" bpmnElement="decouple_process_lane_0" isHorizontal="true" bioc:stroke="#08427b" bioc:fill="#c4d2df" color:background-color="#c4d2df" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_lane_0" bpmnElement="decouple_process_lane_0" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dbd5ef" color:background-color="#dbd5ef" color:border-color="#6b4fbb">
         <dc:Bounds x="110" y="80" width="652" height="240" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decouple_process_start" bpmnElement="decouple_process_start" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_start" bpmnElement="decouple_process_start" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
         <dc:Bounds x="150" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="130" y="223" width="76" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decouple_process_file" bpmnElement="decouple_process_file" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_file" bpmnElement="decouple_process_file" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
         <dc:Bounds x="286" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decouple_process_close" bpmnElement="decouple_process_close" bioc:stroke="#05284a" bioc:fill="#08427b" color:background-color="#08427b" color:border-color="#05284a">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_close" bpmnElement="decouple_process_close" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
         <dc:Bounds x="486" y="160" width="100" height="80" />
         <bpmndi:BPMNLabel color:color="#ffffff" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decouple_process_end" bpmnElement="decouple_process_end" bioc:stroke="#08427b" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#08427b">
+      <bpmndi:BPMNShape id="BPMNShape_decouple_process_end" bpmnElement="decouple_process_end" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
         <dc:Bounds x="686" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="671" y="223" width="67" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_start_file" bpmnElement="decouple_process_f_start_file" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_start_file" bpmnElement="decouple_process_f_start_file" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="186" y="200" />
         <di:waypoint x="286" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_file_close" bpmnElement="decouple_process_f_file_close" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_file_close" bpmnElement="decouple_process_f_file_close" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="386" y="200" />
         <di:waypoint x="486" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_close_end" bpmnElement="decouple_process_f_close_end" bioc:stroke="#08427b" color:border-color="#08427b">
+      <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_close_end" bpmnElement="decouple_process_f_close_end" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="586" y="200" />
         <di:waypoint x="686" y="200" />
       </bpmndi:BPMNEdge>
