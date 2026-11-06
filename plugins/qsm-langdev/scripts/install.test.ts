@@ -35,11 +35,11 @@ function builder(log: string[], failure?: string): (cacheRoot: string) => void {
 }
 
 const patched = (): Promise<StructuralCheckerStatus> =>
-  Promise.resolve({ present: true, patched: true });
+  Promise.resolve({ present: true, patched: true, found: PATCHED_SENTRUX_VERSION });
 const unpatched = (): Promise<StructuralCheckerStatus> =>
-  Promise.resolve({ present: true, patched: false });
+  Promise.resolve({ present: true, patched: false, found: "0.5.7" });
 const absent = (): Promise<StructuralCheckerStatus> =>
-  Promise.resolve({ present: false, patched: false });
+  Promise.resolve({ present: false, patched: false, found: null });
 
 describe("qsm-langdev structural checker step", () => {
   test("A compatible checker is already present", async () => {
@@ -87,7 +87,11 @@ describe("qsm-langdev structural checker step", () => {
     expect(step.status).toBe("installed");
     expect(log).toHaveLength(1);
     const current = probe(PATCHED_SENTRUX_VERSION);
-    expect(await structuralCheckerStatus(current)).toEqual({ present: true, patched: true });
+    expect(await structuralCheckerStatus(current)).toEqual({
+      present: true,
+      patched: true,
+      found: PATCHED_SENTRUX_VERSION,
+    });
   });
 
   test("the version the checker wants is the one the patch declares", () => {
