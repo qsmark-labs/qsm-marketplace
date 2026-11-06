@@ -40,15 +40,14 @@ def sel($all; $s): matches($all; $s) | if length == 0 then fail("no node matches
 # A node's rect cut to every clipping ancestor: a row a list scrolled out is still in the tree,
 # but none of it is on screen.
 def clipped($clips):
-  . as $n
-  | reduce ($clips[] | select(._id as $i | $n._anc | any(. == $i))) as $c ($n;
+  reduce (._anc[] | $clips[.] // empty) as $c (.;
       ([.x, $c.x] | max) as $x0 | ([.y, $c.y] | max) as $y0
       | ([.x + .w, $c.x + $c.w] | min) as $x1 | ([.y + .h, $c.y + $c.h] | min) as $y1
       | .x = $x0 | .y = $y0 | .w = ([$x1 - $x0, 0] | max) | .h = ([$y1 - $y0, 0] | max));
 # The matches a person can see: neither the node nor an ancestor is invisible or at opacity 0,
 # and what its clipping ancestors leave of it has an area.
 def shown($all; $s): ([$all[] | select(.opacity == 0 or .visible == false) | ._id]) as $hidden
-  | [$all[] | select(.clip == true)] as $clips
+  | ([$all[] | select(.clip == true) | {key: ._id, value: .}] | from_entries) as $clips
   | [matches($all; $s)[] | select(([._id] + ._anc | any(. as $i | $hidden | index($i))) == false)
       | clipped($clips) | select(.w > 0 and .h > 0)];
 
