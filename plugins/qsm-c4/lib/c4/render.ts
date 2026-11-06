@@ -361,6 +361,12 @@ function labelStrays(e: DrawnLine, edges: readonly DrawnLine[]): string | undefi
     : undefined;
 }
 
+/** What a view paints that render refuses: things that touch, and labels that do not read as
+ * their own line's. */
+export function defectsOf(painted: readonly Painted[], drawn: readonly DrawnLine[]): string[] {
+  return [...touchDefects(painted), ...drawn.flatMap((l) => labelStrays(l, drawn) ?? [])];
+}
+
 function rectSvg(b: Rect, fill: string, stroke: string, dash: boolean, rx: number): string {
   return `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="1.3"${dash ? ' stroke-dasharray="7 4"' : ""}/>`;
 }
@@ -761,7 +767,7 @@ async function drawView(
     content: cells.file(name),
     defs,
     body: svg.join(""),
-    defects: [...touchDefects(painted), ...drawn.flatMap((l) => labelStrays(l, drawn) ?? [])],
+    defects: defectsOf(painted, drawn),
   };
 }
 
