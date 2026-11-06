@@ -4,6 +4,7 @@
 import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
 import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
+import { QsmError } from "../../../../lib/qsm-error.ts";
 import type { Picture } from "../../../../lib/pictures.ts";
 import { Cells, type Rect } from "./drawio.ts";
 import { isActor, isExternal } from "./lint.ts";
@@ -49,6 +50,8 @@ interface Drawn {
   readonly content: string;
   readonly defs: string;
   readonly body: string;
+  /** what the layout paints touching something else, by `layoutDefects` */
+  readonly defects: readonly string[];
 }
 
 const kindFill = (kind: C4Element["kind"]): string => (kind === "person" ? GREY_LINE : FILL[kind]);
@@ -271,6 +274,55 @@ function placeLabel(l: Label, own: Seg[], others: Seg[], placed: Rect[]): Spot {
   return best ?? { x: 0, y: 0, w: l.width, h: l.height, end: false };
 }
 
+/** The smallest gap two painted bodies keep: the spacing scale of the layout. */
+const GAP = 16;
+
+const crosses = ([u, v]: Seg, r: Rect): boolean =>
+  Math.max(u.x, v.x) >= r.x &&
+  Math.min(u.x, v.x) <= r.x + r.w &&
+  Math.max(u.y, v.y) >= r.y &&
+  Math.min(u.y, v.y) <= r.y + r.h;
+
+/** Two parallel segments side by side closer than the gap: both vertical or both horizontal,
+ * overlapping along their run; how far apart they are and how long they run so. */
+function sideBySide([a, b]: Seg, [c, d]: Seg): { apart: number; run: number } | null {
+  const vertical = (p: Seg[0], q: Seg[0]): boolean => p.x === q.x;
+  const [along, across] =
+    vertical(a, b) && vertical(c, d) ? (["y", "x"] as const) : (["x", "y"] as const);
+  const apart = Math.abs(a[across] - c[across]);
+  if (a[across] !== b[across] || c[across] !== d[across] || apart >= GAP) {
+    return null;
+  }
+  const lo = Math.max(Math.min(a[along], b[along]), Math.min(c[along], d[along]));
+  const hi = Math.min(Math.max(a[along], b[along]), Math.max(c[along], d[along]));
+  return hi > lo ? { apart, run: hi - lo } : null;
+}
+
+/** Where a view breaks the rule that nothing painted touches anything else: a line through the
+ * label of the view's boundary, or two lines side by side closer than the spacing scale. */
+function layoutDefects(
+  label: Rect | null,
+  edges: readonly { title: string; segs: Seg[] }[],
+): string[] {
+  const out: string[] = [];
+  for (const [i, e] of edges.entries()) {
+    if (label !== null && e.segs.some((s) => crosses(s, label))) {
+      out.push(`the line "${e.title}" runs through the boundary's label`);
+    }
+    for (const f of edges.slice(i + 1)) {
+      const near = e.segs
+        .flatMap((s) => f.segs.map((t) => sideBySide(s, t)))
+        .find((x) => x !== null);
+      if (near !== undefined && near !== null) {
+        out.push(
+          `the lines "${e.title}" and "${f.title}" run ${Math.round(near.run)} px side by side ${Math.round(near.apart)} px apart, closer than ${GAP} px`,
+        );
+      }
+    }
+  }
+  return out;
+}
+
 function rectSvg(b: Rect, fill: string, stroke: string, dash: boolean, rx: number): string {
   return `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="1.3"${dash ? ' stroke-dasharray="7 4"' : ""}/>`;
 }
@@ -337,6 +389,30 @@ function legendSvg(keys: [string, string][], ly: number): { svg: string; height:
   return { svg: out.join(""), height: lh };
 }
 
+/** The size of a boundary's label: its title and its kind in brackets, on its own background. */
+const LABEL_SIZE = (title: string): { width: number; height: number } => ({
+  width: title.length * 8 + 112,
+  height: 20,
+});
+
+/** The boundary's label where ELK placed it, inside the boundary at `b`, or nothing. */
+function labelAt(out: ElkNode, id: string, b: Rect): Rect | null {
+  const l = (out.children ?? []).find((n) => n.id === id)?.labels?.[0];
+  return l === undefined
+    ? null
+    : { x: b.x + (l.x ?? 0), y: b.y + (l.y ?? 0), w: l.width ?? 0, h: l.height ?? 0 };
+}
+
+/** The gaps between lines, at the spacing scale; ELK reads them per graph, so every compound node
+ * carries them too, or the lines inside it keep ELK's 10 px defaults. */
+const SPACING = {
+  "elk.spacing.edgeEdge": String(GAP),
+  "elk.spacing.edgeNode": "24",
+  "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+  "elk.layered.spacing.edgeEdgeBetweenLayers": String(GAP),
+  "elk.spacing.portPort": String(GAP),
+};
+
 const LAYOUT = {
   "elk.algorithm": "layered",
   "elk.direction": "DOWN",
@@ -346,9 +422,7 @@ const LAYOUT = {
   "elk.partitioning.activate": "true",
   "elk.layered.spacing.nodeNodeBetweenLayers": "70",
   "elk.spacing.nodeNode": "40",
-  "elk.spacing.edgeEdge": "16",
-  "elk.spacing.edgeNode": "24",
-  "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+  ...SPACING,
   "elk.edgeLabels.inline": "true",
   "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
@@ -447,14 +521,25 @@ async function drawView(
         : [
             {
               id: boundary.id,
+              // the boundary's title is a label ELK places and keeps clear of the lines
+              labels: [
+                { id: `${boundary.id}-label`, text: boundary.title, ...LABEL_SIZE(boundary.title) },
+              ],
               layoutOptions: {
                 "elk.partitioning.partition": "1",
-                "elk.padding": "[top=14,left=14,bottom=36,right=14]",
+                ...SPACING,
+                "elk.padding": "[top=14,left=14,bottom=14,right=14]",
+                "elk.nodeLabels.placement": "[H_LEFT, V_BOTTOM, INSIDE]",
+                "elk.nodeLabels.padding": "[top=8,left=8,bottom=8,right=8]",
+                "elk.nodeSize.constraints": "[NODE_LABELS]",
               },
               children: [
                 ...groups.map((grp, k) => ({
                   id: `group-${k}`,
-                  layoutOptions: { "elk.padding": "[top=28,left=10,bottom=10,right=10]" },
+                  layoutOptions: {
+                    ...SPACING,
+                    "elk.padding": "[top=28,left=10,bottom=10,right=10]",
+                  },
                   children: inside.filter((e) => e.metadata.group === grp).map(leaf),
                 })),
                 ...inside.filter((e) => e.metadata.group === undefined).map(leaf),
@@ -502,15 +587,16 @@ async function drawView(
   // titles are drawn after the lines, each on its own background, so a line passes under a title
   const titles: string[] = [];
   const placed: Rect[] = shown.map((e) => at(e.id));
-  if (boundary !== null) {
+  const label = boundary === null ? null : labelAt(out, boundary.id, at(boundary.id));
+  if (boundary !== null && label !== null) {
     const b = at(boundary.id);
     svg.push(rectSvg(b, "none", "#555555", true, 12));
     titles.push(
-      `<rect x="${b.x + 8}" y="${b.y + b.h - 27}" width="${boundary.title.length * 8 + 112}" height="20" fill="#ffffff"/>`,
-      `<text x="${b.x + 12}" y="${b.y + b.h - 12}" font-size="13" font-weight="bold" fill="#222222">${esc(boundary.title)} <tspan font-size="9" font-weight="normal">[${boundary.kind === "system" ? "software system" : "container"}]</tspan></text>`,
+      `<rect x="${label.x}" y="${label.y}" width="${label.w}" height="${label.h}" fill="#ffffff"/>`,
+      `<text x="${label.x + 4}" y="${label.y + 15}" font-size="13" font-weight="bold" fill="#222222">${esc(boundary.title)} <tspan font-size="9" font-weight="normal">[${boundary.kind === "system" ? "software system" : "container"}]</tspan></text>`,
     );
     cells.boundary(boundary, b);
-    placed.push({ x: b.x, y: b.y + b.h - 28, w: boundary.title.length * 8 + 120, h: 24 });
+    placed.push({ x: label.x - 4, y: label.y - 4, w: label.w + 8, h: label.h + 8 });
     groups.forEach((grp, k) => {
       const gb = at(`group-${k}`);
       const [fill, stroke] = tint(grp);
@@ -582,6 +668,10 @@ async function drawView(
     content: cells.file(name),
     defs,
     body: svg.join(""),
+    defects: layoutDefects(
+      label,
+      drawnEdges.map((ed) => ({ title: byEdge.get(ed.id)?.title ?? ed.id, segs: segsOf(ed) })),
+    ),
   };
 }
 
@@ -741,6 +831,12 @@ export async function renderC4(m: C4Model, project: string, drawio = true): Prom
     );
   }
   const fileOf = (name: string): string => viewName(project, name);
+  const defects = views.flatMap((v) => v.defects.map((d) => `${fileOf(v.name)}: ${d}`));
+  if (defects.length > 0) {
+    throw new QsmError("worse", `the layout paints lines touching: ${defects.join("; ")}`, {
+      next: "restructure the graph: groups, levels or relations, not coordinates",
+    });
+  }
   return views.map((v) => ({
     name: fileOf(v.name),
     title: v.title,
