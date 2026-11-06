@@ -1,0 +1,8 @@
+{
+  "name": "qsm-c4",
+  "private": true,
+  "dependencies": {
+    "elkjs": "0.12.1",
+    "likec4": "1.60.0"
+  }
+}

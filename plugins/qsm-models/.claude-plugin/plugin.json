@@ -4,6 +4,5 @@
   "keywords": ["bpmn", "c4", "likec4", "models", "diagrams", "lint", "paths"],
   "author": {
     "name": "qsm"
-  },
-  "types": "./types/index.d.ts"
+  }
 }

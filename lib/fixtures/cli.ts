@@ -75,3 +75,25 @@ export function envelopeOf(stdout: string): Envelope {
 export function dataOf(stdout: string): unknown {
   return envelopeOf(stdout).data;
 }
+
+/** One finding a lint printed: the element, the rule and what is wrong. */
+export interface PrintedFinding {
+  readonly id: string;
+  readonly rule: string;
+  readonly message: string;
+}
+
+const isFinding = (v: unknown): v is PrintedFinding =>
+  isRecord(v) &&
+  typeof v.id === "string" &&
+  typeof v.rule === "string" &&
+  typeof v.message === "string";
+
+/** The findings in the `data` of the envelope a CLI printed under `--json`; no list fails the test. */
+export function findingsOf(stdout: string): PrintedFinding[] {
+  const data = dataOf(stdout);
+  if (!isRecord(data) || !Array.isArray(data.findings)) {
+    throw new Error(`no findings in ${JSON.stringify(data)}`);
+  }
+  return data.findings.filter(isFinding);
+}

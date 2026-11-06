@@ -21,7 +21,6 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   doctor: { words: ["qsm-c4","doctor"], args: [] },
   lint: { words: ["qsm-c4","lint"], args: [{ name: "path", flag: null }] },
   render: { words: ["qsm-c4","render"], args: [{ name: "path", flag: null }, { name: "check", flag: "--check", boolean: true }] },
-  elements: { words: ["qsm-c4","elements"], args: [{ name: "path", flag: null }] },
   pages: { words: ["qsm-c4","pages"], args: [{ name: "out", flag: "--out" }] },
 };
 
