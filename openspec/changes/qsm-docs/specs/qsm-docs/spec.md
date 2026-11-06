@@ -286,6 +286,13 @@ file under qsm-docs' data directory, and name the same command after `!` as what
 - **THEN** the guard denies it, names `! rm ~/.local/share/qsm-docs/projects/demo/<id>.json`, and
   the snapshot stays
 
+#### Scenario: A mistake, not an evasion
+
+- **WHEN** the agent runs `python3 -c "import shutil; shutil.rmtree('<data>/qsm-docs')"`, or feeds a
+  shell on stdin, or builds the path from a variable set earlier on the line
+- **THEN** the guard does not see it: it stops the commands an agent runs by mistake, at a command
+  position and on a path written in the line, and a deliberate evasion is outside what it promises
+
 #### Scenario: A mention is no call
 
 - **WHEN** the agent runs `grep -rn "qsm-docs delete" plugins`
