@@ -267,58 +267,73 @@ const gapBetween = (p: Rect, q: Rect): number =>
     Math.max(0, q.y - (p.y + p.h), p.y - (q.y + q.h)),
   );
 
-/** How far apart two stretches run side by side: both upright or both flat and overlapping along
- * their run. Stretches that cross, meet or only pass each other's ends do not run side by side;
- * crossings are a measure of the layout, not a touch. */
-function besideGap(s: Seg, t: Seg): number {
+/** Whether two stretches cross: one upright, one flat, each passing through the other's inside. A
+ * crossing is a measure of the layout, not a touch. */
+function crossing(s: Seg, t: Seg): boolean {
   const [p, q] = [spanOf(s), spanOf(t)];
-  const upright = p.w < 1 && q.w < 1;
-  const flat = p.h < 1 && q.h < 1;
-  const overlap = upright
-    ? Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y)
-    : Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x);
-  if (!(upright || flat) || overlap <= 0) {
-    return Infinity;
-  }
-  return upright ? Math.abs(p.x - q.x) : Math.abs(p.y - q.y);
+  const [h, v] = p.h < 1 && q.w < 1 ? [p, q] : [q, p];
+  return h.h < 1 && v.w < 1 && v.x > h.x && v.x < h.x + h.w && h.y > v.y && h.y < v.y + v.h;
 }
 
+type Point = { readonly x: number; readonly y: number };
+
+const samePoint = (p: Point, q: Point): boolean => Math.hypot(p.x - q.x, p.y - q.y) < 1;
+
 /** One thing a view paints, as a touch sees it: a box or a straight stretch of line, what to call
- * it, who drew it, and the boxes a line may touch because it starts or ends there. */
+ * it, who drew it, and for a line the boxes at its ends and the two points where it leaves and
+ * enters them. */
 interface Painted {
   readonly what: string;
   readonly owner: string;
   readonly shape: Rect | Seg;
   readonly ends?: readonly string[];
+  readonly ports?: readonly Point[];
 }
 
 const isSeg = (s: Rect | Seg): s is Seg => Array.isArray(s);
 
-/** The gap between two painted things: beside each other for two stretches, else between the
- * boxes they span. */
+/** Whether two stretches meet at a port both lines start or end at. */
+function sharePort(a: Painted, b: Painted): boolean {
+  const [s, t] = [a.shape, b.shape];
+  if (!isSeg(s) || !isSeg(t)) {
+    return false;
+  }
+  return (a.ports ?? []).some(
+    (p) =>
+      (b.ports ?? []).some((q) => samePoint(p, q)) &&
+      s.some((e) => samePoint(e, p)) &&
+      t.some((e) => samePoint(e, p)),
+  );
+}
+
+/** The gap between two painted things: the boxes they span, which for two straight stretches of
+ * an upright and flat routing is their true distance; nothing for a crossing. */
 const gapOf = (a: Rect | Seg, b: Rect | Seg): number =>
-  isSeg(a) && isSeg(b)
-    ? besideGap(a, b)
+  isSeg(a) && isSeg(b) && crossing(a, b)
+    ? Infinity
     : gapBetween(isSeg(a) ? spanOf(a) : a, isSeg(b) ? spanOf(b) : b);
 
 /** Whether two painted things may touch: the parts of one owner (a line's stretches and its label,
- * an outline and its title), and a line and the boxes at its ends. */
+ * an outline and its title), a line and the boxes at its ends, and two lines at a port they share. */
 const mayTouch = (a: Painted, b: Painted): boolean =>
-  a.owner === b.owner || a.ends?.includes(b.owner) === true || b.ends?.includes(a.owner) === true;
+  a.owner === b.owner ||
+  a.ends?.includes(b.owner) === true ||
+  b.ends?.includes(a.owner) === true ||
+  sharePort(a, b);
 
 /** Every pair of painted things closer than the gap, less a pixel of rounding, that may not
- * touch. */
+ * touch, each named once however many of their stretches meet. */
 function touchDefects(painted: readonly Painted[]): string[] {
-  const out: string[] = [];
+  const out = new Set<string>();
   for (const [i, a] of painted.entries()) {
     for (const b of painted.slice(i + 1)) {
       const gap = gapOf(a.shape, b.shape);
       if (gap < GAP - ROUNDING && !mayTouch(a, b)) {
-        out.push(`${a.what} and ${b.what} are ${Math.round(gap)} px apart, closer than ${GAP} px`);
+        out.add(`${a.what} and ${b.what} are ${Math.round(gap)} px apart, closer than ${GAP} px`);
       }
     }
   }
-  return out;
+  return [...out];
 }
 
 /** A line as drawn: its title, its stretches and its label. */
@@ -417,7 +432,9 @@ const SPACING = {
   "elk.spacing.edgeEdge": String(GAP),
   "elk.spacing.edgeNode": String(EDGE_NODE),
   "elk.layered.spacing.edgeNodeBetweenLayers": String(EDGE_NODE),
-  "elk.layered.spacing.edgeEdgeBetweenLayers": String(GAP),
+  // ELK's router keeps two stretches between layers off one track only when their ends lie within
+  // half this spacing of each other, so two gaps keep every end on a shared track a gap apart
+  "elk.layered.spacing.edgeEdgeBetweenLayers": String(2 * GAP),
   // ELK gives each end of a line a port of its own on the box, this far from the next
   "elk.spacing.portPort": String(GAP),
   "elk.spacing.edgeLabel": String(GAP),
@@ -533,6 +550,7 @@ function paintLines(
       textIn(label, spot, c),
     );
     const owner = `line ${k}`;
+    const ports = [segs[0]?.[0], segs.at(-1)?.[1]].filter((p) => p !== undefined);
     painted.push(
       { what: `the label of "${rel.title}"`, owner, shape: spot },
       ...segs.map((s) => ({
@@ -540,6 +558,7 @@ function paintLines(
         owner,
         shape: s,
         ends: [rel.from, rel.to],
+        ports,
       })),
     );
   }
