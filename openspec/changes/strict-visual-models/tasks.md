@@ -73,26 +73,26 @@ new work.
 
 ### The split (2026-11-06)
 
-- [ ] 14. **New.** The two plugin skeletons: `plugins/qsm-bpmn/` and `plugins/qsm-c4/`, each with
+- [x] 14. **New.** The two plugin skeletons: `plugins/qsm-bpmn/` and `plugins/qsm-c4/`, each with
       README opening with `## Why it exists`, INSTALL.md, USAGE.md, `plugin.json` with no
       dependency, `qsm.json` with its verbs (qsm-bpmn: `doctor`, `lint`, `layout`, `render`,
       `paths`, `pages`; qsm-c4: `doctor`, `lint`, `render`, `elements`, `pages`),
       `scripts/install.ts` on `lib/install-base.ts`, `openspec/config.yaml`, `package.json` pinning
       only what its kind imports. Proof: `mise exec -- bun run validate`, both noun files
       generated.
-- [ ] 15. **Moved.** The C4 code into qsm-c4: `lib/c4/`, `pages/c4.html.txt`, the C4 halves of
+- [x] 15. **Moved.** The C4 code into qsm-c4: `lib/c4/`, `pages/c4.html.txt`, the C4 halves of
       `lib/graphs.ts`, `lib/lint.ts`, `lib/render.ts` and `lib/pages/pages.ts`, the C4 tests of
       `scripts/`; the palette of `lib/c4/style.ts` to root `lib/palette.ts`, which qsm-c4 imports.
       Files: `plugins/qsm-c4/**`, `lib/palette.ts`. Proof: the moved tests pass against the
       compiled `qsm-c4`, and `qsm-c4 render models/` writes the same bytes as `qsm-models render`
       wrote for every `.drawio.svg`. Blocked by 14.
-- [ ] 16. **Moved.** The BPMN code into qsm-bpmn: `lib/bpmn/`, `lib/paths.ts`,
+- [x] 16. **Moved.** The BPMN code into qsm-bpmn: `lib/bpmn/`, `lib/paths.ts`,
       `pages/bpmn.html.txt`, the BPMN halves of the split files, the BPMN tests of `scripts/`,
       importing the palette from root `lib/palette.ts`. Files: `plugins/qsm-bpmn/**`. Proof: the
       moved tests pass against the compiled `qsm-bpmn`, `qsm-bpmn render models/` writes the same
       bytes for every process SVG, and `qsm-bpmn paths --specs openspec/changes` gives the same
       findings as before. Blocked by 15.
-- [ ] 17. **New.** The attribute migration: `qsm:c4` under `urn:qsm:models` becomes `c4:element`
+- [x] 17. **New.** The attribute migration: `qsm:c4` under `urn:qsm:models` becomes `c4:element`
       under `https://c4model.com` in `lib/bpmn/model.ts`, the fixtures, the skill and USAGE.md; a
       search first for a published convention for a C4 id in BPMN, whose result is written into
       design decision 24. `models/marketplace.bpmn` carries no `qsm:` attribute (measured
@@ -100,7 +100,7 @@ new work.
       `plugins/qsm-bpmn/scripts/`. Proof: a fixture with `c4:element` on a lane read by
       bpmn-moddle and written back unchanged (the moddle half of Verify 6), and
       `grep -r urn:qsm:models plugins/qsm-bpmn models` finds nothing. Blocked by 16.
-- [ ] 18. **New.** The link through the CLI: `qsm-c4 elements [--json]`, and qsm-bpmn resolving
+- [x] 18. **New.** The link through the CLI: `qsm-c4 elements [--json]`, and qsm-bpmn resolving
       every `c4:element` and every linked lane's colour by running it, never reading a `.c4` file,
       started only when the graph carries an id, `missing` without the binary. Files:
       `plugins/qsm-c4/lib/elements.ts`, `plugins/qsm-c4/qsm.json`,
@@ -108,14 +108,14 @@ new work.
       tests of the scenarios "A process with no C4 ids" (qsm-c4 off PATH, every verb runs), "A C4
       id and no qsm-c4" and "A link that no longer resolves"; `validate-no-cross-plugin-import`
       clean. Blocked by 15, 17.
-- [ ] 19. **New.** Deleting the dropped code: in the moved code, the decision links, the
+- [x] 19. **New.** Deleting the dropped code: in the moved code, the decision links, the
       `<project>:` call and C4 `project` handling, the metadata keys `project`, `verified` and
       `decision`, the stray-model walk of `lib/conform.ts`, the verb `check`, and their tests; the
       call to a missing process becomes a lint rule of qsm-bpmn. Files: `plugins/qsm-bpmn/lib/`,
       `plugins/qsm-c4/lib/c4/`, both `qsm.json`, both USAGE.md. Proof: `bun run validate`, the
       remaining tests green, and a C4 source with `decision` in its metadata refused by
       `qsm-c4 lint` as an unknown property. Blocked by 18.
-- [ ] 20. **New.** The checks in the generators: `layout` (without `no-bpmndi`), `render`, `pages`
+- [x] 20. **New.** The checks in the generators: `layout` (without `no-bpmndi`), `render`, `pages`
       and `elements` run the full lint first and write nothing on a finding. Files: each plugin's
       `lib/render.ts`, `lib/pages/pages.ts`, `plugins/qsm-bpmn/lib/bpmn/layout.ts`,
       `plugins/qsm-c4/lib/elements.ts`. Proof: `runBin` tests of the two "A render of a graph lint
@@ -144,7 +144,7 @@ new work.
       `models/marketplace.bpmn`, its SVGs, `openspec/changes/strict-visual-models/specs/`. Proof:
       `qsm-bpmn lint`, `qsm-bpmn render`, `qsm-bpmn paths --specs openspec/changes` with no new
       finding, `model-reviewer` of qsm-bpmn returns no finding. Blocked by 21.
-- [ ] 24. **New.** The marketplace entry: `qsm-bpmn` and `qsm-c4` replace `qsm-models` in
+- [x] 24. **New.** The marketplace entry: `qsm-bpmn` and `qsm-c4` replace `qsm-models` in
       `.claude-plugin/marketplace.json`; `plugins/qsm-models/` is deleted; each installer removes,
       and names, the `qsm-models` binary and completion an older install left. Files:
       `.claude-plugin/marketplace.json`, `plugins/qsm-models/`, both `scripts/install.ts`. Proof:
