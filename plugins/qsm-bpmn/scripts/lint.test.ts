@@ -160,6 +160,12 @@ describe("lint", () => {
     expect(rulesOf(r.findings, "plan_process_close")).toContain("no-dead-end");
   });
 
+  it("refuses a call activity that calls no process of the graph", () => {
+    const r = lint(plan(['calledElement="plan_process"', 'calledElement="gone_process"']));
+    expect(r.exit).toBe(3);
+    expect(r.findings.filter((f) => f.rule === "called-process-exists")).toHaveLength(1);
+  });
+
   it("refuses a step named after a command", () => {
     const r = lint(plan(['name="2.1 Gather the context"', 'name="Run `qsm-tasks close`"']));
     expect(rulesOf(r.findings, "plan_process_context")).toContain("no-code-in-name");

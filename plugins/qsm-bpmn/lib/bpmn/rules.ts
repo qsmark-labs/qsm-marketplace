@@ -231,6 +231,18 @@ export const RULES: Readonly<Record<string, () => Rule>> = {
       }
     }
   }),
+  "called-process-exists": perNode((n, reporter) => {
+    const defs = definitionsOf(n);
+    if (n.$type !== "bpmn:CallActivity" || defs === undefined) {
+      return;
+    }
+    if (!processesOf(defs).some((p) => p.id === n.calledElement)) {
+      reporter.report(
+        idOf(n),
+        `"${label(n)}" calls ${n.calledElement ?? "no process"}, which is no process of this graph`,
+      );
+    }
+  }),
   "split-after-call": perNode((n, reporter) => {
     const next = n.outgoing?.[0]?.targetRef;
     const defs = definitionsOf(n);

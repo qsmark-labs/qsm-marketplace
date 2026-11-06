@@ -35,6 +35,7 @@ on the repository the working directory is in.
 | `one-flow-out`, `one-flow-in` | an activity with more than one outgoing or incoming flow |
 | `merge-unnamed` | a merge gateway with a name |
 | `end-events-named` | a level with several end events of which one has no name |
+| `called-process-exists` | a call activity whose `calledElement` names no process of the graph |
 | `split-after-call` | a split right after a call activity whose answers are not the end events of the called process |
 | `no-dead-end` | a step with no way to an end event |
 | `no-code-in-name` | a name with a path or a command in backticks |

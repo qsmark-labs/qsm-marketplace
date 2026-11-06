@@ -26,12 +26,11 @@ repository the working directory is in.
 
 The tool supplies the kinds (person, system, container, component) and the tags (`external`,
 `agent`, `shared`, `artifact`); a source that declares its own `specification` or `views` is
-refused. Metadata keys are `colour`, `group`, `path`, `project`, `verified`, `decision`, `layer`
-and `order`. A person or a system
-has no parent, a container sits in a system and a component in a container; every relation has a
-title and a technology; no two elements share a title; an internal container names its code
-`path`. Every top-level person and every system tagged `agent` carries a `colour` of the palette
-(navy, purple, orange, green, teal, red), no two the same.
+refused. Metadata keys are `colour`, `group`, `path`, `layer` and `order`; any other is refused. A
+person or a system has no parent, a container sits in a system and a component in a container; every
+relation has a title and a technology; no two elements share a title; an internal container names
+its code `path`. Every top-level person and every system tagged `agent` carries a `colour` of the
+palette (navy, purple, orange, green, teal, red), no two the same.
 
 With `--json`, stdout is one envelope `{ code, exit, reason, message, warnings, data }`; `data`
 holds the findings, the written files or the elements.

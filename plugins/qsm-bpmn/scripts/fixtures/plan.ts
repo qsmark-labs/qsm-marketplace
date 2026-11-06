@@ -17,11 +17,14 @@ function slice(open: string, close: string): string {
   return GRAPH.slice(at, end + close.length);
 }
 
-/** The planning process with its pool and its diagram, in the graph's own definitions. */
+/** The planning process with its pool and its diagram, in the graph's own definitions; its call
+ * activity calls the planning process itself, so the file is complete alone. */
 export const PLAN = [
   GRAPH.slice(0, GRAPH.indexOf("<bpmn:collaboration")),
   slice('<bpmn:collaboration id="plan_collab">', "</bpmn:collaboration>"),
   slice('<bpmn:process id="plan_process"', "</bpmn:process>"),
   slice('<bpmndi:BPMNDiagram id="BPMNDiagram_plan_collab">', "</bpmndi:BPMNDiagram>"),
   "</bpmn:definitions>\n",
-].join("\n");
+]
+  .join("\n")
+  .replace('calledElement="model_gate_process"', 'calledElement="plan_process"');

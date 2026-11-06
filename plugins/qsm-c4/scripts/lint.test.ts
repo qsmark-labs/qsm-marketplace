@@ -83,12 +83,14 @@ describe("lint on C4", () => {
     ]);
   });
 
-  it("refuses the verified key until the verified-commit check is built", () => {
+  it("refuses decision in an element's metadata as an unknown property", () => {
     const r = lint(
-      c4("metadata { colour 'green' }", "metadata { colour 'green' verified 'deadbee' }"),
+      c4("metadata { colour 'green' }", "metadata { colour 'green' decision 'design.md#3' }"),
     );
     expect(r.exit).toBe(3);
-    expect(r.findings).toMatchObject([{ rule: "metadata" }]);
-    expect(r.findings[0]?.message).toContain("verified-commit check is not built yet");
+    expect(r.findings).toMatchObject([{ id: "qa", rule: "metadata" }]);
+    expect(r.findings[0]?.message).toBe(
+      "metadata decision is none of colour, group, path, layer, order",
+    );
   });
 });

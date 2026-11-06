@@ -16,12 +16,10 @@ const QSM_C4 = resolve(import.meta.dir, "../../qsm-c4/scripts/cli.ts");
 const NS = 'xmlns:c4="https://c4model.com" ';
 const TASK = '<bpmn:task id="plan_process_context" name="2.1 Gather the context">';
 const AGENT = '<bpmn:lane id="plan_process_lane_1" name="Agent">';
-/** The planning process alone: its call activity calls itself, the one process of this file. */
-const ALONE = PLAN.replace('calledElement="model_gate_process"', 'calledElement="plan_process"');
 const UNDRAWN = /\s*<bpmndi:BPMNDiagram[\s\S]*<\/bpmndi:BPMNDiagram>/;
 
 /** The planning process with `attrs` added to the element `open` starts. */
-const linked = (open: string, attrs: string, xml = ALONE): string =>
+const linked = (open: string, attrs: string, xml = PLAN): string =>
   xml.replace("xmlns:bioc=", `${NS}xmlns:bioc=`).replace(open, open.replace(">", ` ${attrs}>`));
 
 /** PATH with the runtime and git only: no qsm-c4. */
@@ -40,8 +38,8 @@ function withC4(): Record<string, string> {
 describe("a process with no C4 ids", () => {
   it("runs lint, layout, render, paths and pages with no qsm-c4 on PATH", () => {
     const { repo } = repoWith("qsm-bpmn-alone-", {
-      "models/shop.bpmn": ALONE,
-      "undrawn/shop.bpmn": ALONE.replace(UNDRAWN, ""),
+      "models/shop.bpmn": PLAN,
+      "undrawn/shop.bpmn": PLAN.replace(UNDRAWN, ""),
     });
     const env = withoutC4();
     for (const args of [
