@@ -2,6 +2,7 @@
 // actors, the rules a LikeC4 source may break and still validate.
 import type { Finding } from "../../../../lib/model-graph.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
+import { unmeasured } from "./font.ts";
 import { type C4Element, type C4Model, type C4Read, readC4 } from "./model.ts";
 import { hasTag } from "./style.ts";
 
@@ -140,6 +141,32 @@ function relationProblems(m: C4Model): Problem[] {
   );
 }
 
+/** A text a view draws and measures, holding a character the font tables have no width for. */
+function printableProblems(m: C4Model): Problem[] {
+  const texts = [
+    ...m.elements.flatMap((e) => [
+      { id: e.id, what: "title", text: e.title },
+      { id: e.id, what: "group", text: e.metadata.group ?? "" },
+    ]),
+    ...m.relations.flatMap((r) => [
+      { id: `${r.from} -> ${r.to}`, what: "title", text: r.title },
+      { id: `${r.from} -> ${r.to}`, what: "technology", text: r.technology },
+    ]),
+  ];
+  return texts.flatMap(({ id, what, text }) => {
+    const c = unmeasured(text);
+    return c === undefined
+      ? []
+      : [
+          {
+            id,
+            rule: "printable-text",
+            message: `its ${what} "${text}" holds "${c}", which a view cannot measure: write it in printable ASCII`,
+          },
+        ];
+  });
+}
+
 /** Every rule over a model LikeC4 accepted. */
 function lintModel(m: C4Model): Finding[] {
   const byId = new Map(m.elements.map((e) => [e.id, e]));
@@ -154,6 +181,7 @@ function lintModel(m: C4Model): Finding[] {
     ...titleProblems(m),
     ...colourProblems(m),
     ...relationProblems(m),
+    ...printableProblems(m),
   ].map((p) => ({ file: m.file, ...p }));
 }
 

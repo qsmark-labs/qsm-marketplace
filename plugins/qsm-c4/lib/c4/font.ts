@@ -21,12 +21,18 @@ const BOLD = [
   278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584,
 ];
 
+const advanceOf = (c: string, bold: boolean): number | undefined =>
+  (bold ? BOLD : REGULAR)[(c.codePointAt(0) ?? 0) - 32];
+
+/** The first character of `text` the tables have no width for, or nothing when every one has. */
+export const unmeasured = (text: string): string | undefined =>
+  Array.from(text).find((c) => advanceOf(c, false) === undefined);
+
 /** How wide `text` is drawn at `px`; a character outside the table has no known width. */
 export function textWidth(text: string, px: number, bold = false): number {
-  const table = bold ? BOLD : REGULAR;
   let units = 0;
   for (const c of text) {
-    const advance = table[(c.codePointAt(0) ?? 0) - 32];
+    const advance = advanceOf(c, bold);
     if (advance === undefined) {
       throw new QsmError("failed", `no glyph width for "${c}" in "${text}"`, {
         next: "write titles and labels in printable ASCII",

@@ -83,6 +83,21 @@ describe("lint on C4", () => {
     ]);
   });
 
+  it("refuses a relation title a view cannot measure, naming the relation and the character", () => {
+    const r = lint(
+      c4("  qa -> mp.tasks 'files fix tasks with'", "  qa -> mp.tasks 'files fix tasks — with'"),
+    );
+    expect(r.exit).toBe(3);
+    expect(r.findings).toMatchObject([
+      {
+        id: "qa -> mp.tasks",
+        rule: "printable-text",
+        message:
+          'its title "files fix tasks — with" holds "—", which a view cannot measure: write it in printable ASCII',
+      },
+    ]);
+  });
+
   it("refuses decision in an element's metadata as an unknown property", () => {
     const r = lint(
       c4("metadata { colour 'green' }", "metadata { colour 'green' decision 'design.md#3' }"),

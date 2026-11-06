@@ -28,4 +28,15 @@ describe("render", () => {
     expect(views.map((v) => readFileSync(join(dir, v), "utf8"))).toEqual(before);
     expect(readdirSync(dir).filter((f) => f.endsWith(".drawio.svg"))).toEqual(views);
   });
+
+  it("refuses at lint a relation title a view cannot measure, and writes nothing", () => {
+    const dir = sandboxDir("qsm-c4-render-");
+    const from = "  qa -> mp.tasks 'files fix tasks with'";
+    expect(C4).toContain(from);
+    writeIn(dir, "shop.c4", C4.replace(from, "  qa -> mp.tasks 'files fix tasks — with'"));
+    const run = runBin(CLI, ["render", dir, "--json"]);
+    expect(run.exit).toBe(3);
+    expect(envelopeOf(run.stdout).message).toContain("(printable-text)");
+    expect(readdirSync(dir)).toEqual(["shop.c4"]);
+  });
 });
