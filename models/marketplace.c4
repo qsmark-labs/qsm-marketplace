@@ -141,9 +141,37 @@ model {
     tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-tasks' }
-      tool = component 'qsm-tasks binary' 'The binary: ready, add, claim, close and the other board verbs' {
+      tool = component 'qsm-tasks binary' 'The entry: the nineteen verbs, one envelope, typed outcomes' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-tasks/scripts' }
+      }
+      reads = component 'read verbs' 'ready, list, show, note' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib' }
+      }
+      writes = component 'create and edit verbs' 'feature, add, edit, close' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib' }
+      }
+      moves = component 'move verbs' 'claim, unclaim, review, human, reopen, plan, qa' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib' }
+      }
+      upkeep = component 'feedback, flow, doctor, setup verbs' 'The verbs that file feedback, print the table, check and create the board' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib' }
+      }
+      flow = component 'lib/flow.ts' 'The Status and Priority table and each verb guard' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib/flow.ts' }
+      }
+      gh = component 'lib/github/' 'The only code that names gh, a node id or a GraphQL query' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib/github' }
+      }
+      feedback = component 'lib/feedback.ts' 'The feedback values, template sections and private-data patterns' {
+        technology 'TypeScript'
+        metadata { path 'plugins/qsm-tasks/lib/feedback.ts' }
       }
       tasktool = component 'task-tool' 'When and how a session reads and changes the board' {
         #artifact
@@ -425,7 +453,18 @@ model {
   mp.worktrunk -> mp.lib 'builds on cli-base, hooks-kit, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
   mp.spec.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-manifest' { technology 'import' }
   mp.forge.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
-  mp.tasks.tool -> mp.lib 'builds on install-base' { technology 'import' }
+  mp.tasks.tool -> mp.lib 'builds on cli-base, install-base, outcome' { technology 'import' }
+  mp.tasks.tool -> mp.tasks.reads 'dispatches to' { technology 'function call' }
+  mp.tasks.tool -> mp.tasks.writes 'dispatches to' { technology 'function call' }
+  mp.tasks.tool -> mp.tasks.moves 'dispatches to' { technology 'function call' }
+  mp.tasks.tool -> mp.tasks.upkeep 'dispatches to' { technology 'function call' }
+  mp.tasks.reads -> mp.tasks.gh 'reads a board in one query with' { technology 'function call' }
+  mp.tasks.writes -> mp.tasks.gh 'creates and edits issues with' { technology 'function call' }
+  mp.tasks.moves -> mp.tasks.gh 'moves a task or a feature with' { technology 'function call' }
+  mp.tasks.upkeep -> mp.tasks.gh 'checks and creates the board with' { technology 'function call' }
+  mp.tasks.moves -> mp.tasks.flow 'checks the guard with' { technology 'function call' }
+  mp.tasks.upkeep -> mp.tasks.flow 'prints and creates the table of' { technology 'function call' }
+  mp.tasks.upkeep -> mp.tasks.feedback 'validates a feedback body with' { technology 'function call' }
   mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
@@ -434,7 +473,7 @@ model {
   mp.review.reviewskill -> mp.review.strict 'dispatches' { technology 'Agent tool' }
 
   // the systems the plugins call
-  mp.tasks.tool -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
+  mp.tasks.gh -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
   mp.forge.tool -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
   mp.spec.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
   mp.builder -> repo 'reads the changes and models of the branch' { technology 'file read' }
