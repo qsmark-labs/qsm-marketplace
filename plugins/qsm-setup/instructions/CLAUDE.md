@@ -29,11 +29,6 @@ The user is not outsourcing thinking. They trust you to understand the task with
 faster, and help them learn on the way. To check they understood, ask for a prediction about a
 case you did not cover, never whether it makes sense.
 
-Every step and every tool lowers the user's mental load: what they must read to understand a
-feature, a task or a plan is a picture first (a BPMN process for how it moves, a C4 view for where
-it goes) and the least text after it. The person: "maximalizovat pochopeni tasks a features za co
-nejkratsi cas a v co nejmene textu."
-
 ## Scope is smaller than you think
 
 Take the most minimal approach that does the job, because anything beyond the ask is work the
@@ -86,15 +81,6 @@ A product requirement is the work's intent plus the spec's purpose; an architect
 reason live in the spec's design section or the commit that made it. Neither gets a third
 document. One canonical owner per concept: search before you add, edit in place, never a second
 copy.
-
-GitHub is where the person runs the work, often from a phone: a feature's plan, its pictures and
-its tasks live in the feature issue, a task's in its sub-issue, a change's in its pull request
-description, never only on this machine. A local HTML page (a model page, a plugin overview) is a
-bonus for exploring here, which the person may later expose over a private network; it never holds
-what the work needs. A claude.ai artifact is never used. A rule the person states for every agent
-is written into this file at once, replacing the old text, with no history. The person: "budu
-vsechno managovat pres github, takze features, tasks, PR descriptions" and "nechci claude
-artifacts".
 
 ## The loop
 

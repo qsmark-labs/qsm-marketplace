@@ -125,6 +125,19 @@ what done means, ending in a `strict-reviewer` review.
 | `test-hooks` | `claude plugin validate` and the hooks tests of every plugin |
 | `plugin-eval` | `bun run eval <plugin>`: the skill and agent evals |
 
+## Where the owner reads the work
+
+GitHub is where the owner runs this marketplace's work, often from a phone: a feature's plan, its
+pictures and its tasks live in the feature issue, a task's in its sub-issue, a change's in its pull
+request description, never only on this machine. What he reads opens with a picture, a BPMN
+process for how it moves and a C4 view for where it goes, and the least text after it. A local
+HTML page (a model page, a plugin overview) is a bonus for exploring here, which he may later
+expose over a private network; it never holds what the work needs. A claude.ai artifact is never
+used. A rule the owner states for this marketplace is written into this file at once, replacing
+the old text, with no history. The owner: "budu vsechno managovat pres github, takze features,
+tasks, PR descriptions", "maximalizovat pochopeni tasks a features za co nejkratsi cas a v co
+nejmene textu" and "nechci claude artifacts".
+
 ## Where work lands
 
 Everything lands on `main`, and the main checkout follows it. The main checkout is the repository
