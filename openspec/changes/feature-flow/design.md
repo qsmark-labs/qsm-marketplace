@@ -79,7 +79,7 @@ elsewhere: `task-tool`, `spec-archive` (`tasks-on-github-issues`). New elsewhere
 4. **Versions and a release train wait** for a full release flow of an app; the marketplace has
    none yet.
 5. **The three ways back are drawn**: the owner's comments on a task pull request
-   (`build_task_process` 6.2), changes asked on the feature pull request (`land_process` 9.5), a
+   (`human_review_process` 6.2), changes asked on the feature pull request (`land_process` 9.5), a
    plan the owner drops (`plan_process` 2.10). A model that leaves them out would say less than
    happens.
 

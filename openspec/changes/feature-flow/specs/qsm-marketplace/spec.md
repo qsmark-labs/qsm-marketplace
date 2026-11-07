@@ -85,23 +85,51 @@ code, and files them under the feature once the owner agrees.
 
 ### Requirement: Every open task is built, reviewed and merged
 
-Steps 4 to 6 SHALL follow `build_task_process` of `models/marketplace.bpmn` once per open task, and
-step 4 SHALL follow `consume_task_process` of `models/marketplace.bpmn`: claim, gather the context,
-draw the whiteboard, write the code, simplify, review the change, open the pull request into
-`feature/<n>`. The review agent reviews the pull request, the owner reads and merges it, and the
-Action closes the task it names.
+Steps 4 to 7 SHALL follow `build_task_process` of `models/marketplace.bpmn` once per open task,
+step 4 `consume_task_process` and step 6 `human_review_process`: the agent builds and opens the pull
+request, the review agent and the CI clear it, the owner reviews it with the agent fixing his
+comments, and the owner merges it himself.
 
-#### Scenario: One review finding (path p-6578c1)
+#### Scenario: One review finding (path p-72f342)
 
 - **WHEN** the review agent finds something in the task pull request
-- **THEN** the agent fixes it, the review runs again and finds nothing, the owner reads and merges,
-  and the task is closed
+- **THEN** the agent fixes it and replies in the thread, the review runs again and finds nothing,
+  the CI is green, and the owner, who has already reviewed, merges
 
-#### Scenario: The owner asks for changes on a task PR (path p-68713a)
+#### Scenario: The CI is red (path p-49d792)
 
-- **WHEN** the review finds nothing and the owner does not accept the task pull request
-- **THEN** the agent fixes the owner's comments, the review agent reviews again, and the owner reads
-  the pull request again before any merge
+- **WHEN** the review agent finds nothing and the CI is not green
+- **THEN** the agent fixes what the CI found and replies, and the review agent reviews again before
+  the task waits for the owner
+
+#### Scenario: The owner has not reviewed yet (path p-2a2201)
+
+- **WHEN** the review agent approves, the CI is green and the owner has not reviewed the pull
+  request
+- **THEN** the owner reviews it in step 6, the pull request returns to the review agent, and only
+  after the second approval with a green CI does the owner merge
+
+#### Scenario: Nothing found and the owner has reviewed (path p-8dcb4e)
+
+- **WHEN** the review agent finds nothing, the CI is green and the owner has reviewed
+- **THEN** the owner merges the pull request into `feature/<n>` and the task is closed
+
+#### Scenario: The owner asks for a big change (path p-52aae0)
+
+- **WHEN** the owner does not accept the pull request and the change he asks for is big
+- **THEN** the agent fixes his comments, simplifies the change and reviews it itself, pushes and
+  replies, and the owner reviews again
+
+#### Scenario: The owner asks for a small change (path p-a9880f)
+
+- **WHEN** the owner does not accept the pull request and the change he asks for is small
+- **THEN** the agent fixes his comments, pushes and replies without the simplify pass, and the owner
+  reviews again
+
+#### Scenario: The owner accepts at once (path p-d7c6a6)
+
+- **WHEN** the owner reviews the pull request and says it is good
+- **THEN** the loop ends and the pull request returns to the Agent Review step
 
 #### Scenario: The task becomes a pull request (path p-ef7dfb)
 

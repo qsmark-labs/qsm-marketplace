@@ -8,9 +8,11 @@
 
 ![Step 3, the split, BPMN level 2](../../../models/marketplace.split_process.svg)
 
-![Steps 4 to 6, every open task built, BPMN level 2](../../../models/marketplace.build_task_process.svg)
+![Steps 4 to 7, every open task built, BPMN level 2](../../../models/marketplace.build_task_process.svg)
 
 ![Step 4, one task becomes a pull request, BPMN level 3](../../../models/marketplace.consume_task_process.svg)
+
+![Step 6, the owner reviews a task pull request, BPMN level 3](../../../models/marketplace.human_review_process.svg)
 
 ![Step 9, the feature lands on main, BPMN level 2](../../../models/marketplace.land_process.svg)
 

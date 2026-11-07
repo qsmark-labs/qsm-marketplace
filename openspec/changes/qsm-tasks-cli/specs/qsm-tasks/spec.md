@@ -172,12 +172,31 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `review <n>` | task, bug | In Dev, Agent Review or Human Review | Agent Review |
-| `human <n>` | task, bug | Agent Review | Human Review |
+| `human <n> [--started]` | task, bug | Agent Review, PR approved, checks green; `--started`: Ready For Human | Ready For Human; `--started`: Human Review |
 
 #### Scenario: A task goes to review
 
 - **WHEN** `review 5` runs on a task In Dev
 - **THEN** the task is at Agent Review
+
+#### Scenario: The owner says a Human Review is good
+
+- **WHEN** `review 5` runs on a task at Human Review
+- **THEN** the task is at Agent Review, and the PR goes back to the review agent
+
+#### Scenario: A task is handed to the owner
+
+- **WHEN** `human 5` runs on a task at Agent Review whose PR has an approving review and green
+  checks, and then `human 5 --started` runs after the owner's first review
+- **THEN** the task is at Ready For Human and then at Human Review; until `status-action` (#15)
+  does the second move on the owner's first review, the agent runs `human --started` on seeing it
+
+#### Scenario: No approval or a red check
+
+- **WHEN** `human 5` runs on a task at Agent Review whose PR has no approving review, or a check
+  that is not green
+- **THEN** it exits `blocked` with `wrong-status` naming the missing approval or the check, and the
+  task stays at Agent Review
 
 ### Requirement: reopen and plan return work to Todo, qa starts the test
 
@@ -284,21 +303,36 @@ verb's guard; no other copy of a name SHALL exist in the binary.
 | --- | --- | --- | --- |
 | Todo | Not started | Being planned: intent, models, specs | Filed, not yet read |
 | In Dev | Claimed and being built | Split into tasks, built on `feature/<n>` | not used |
-| Agent Review | PR open: CI, gates and the review agent run; every finding is fixed | not used | not used |
+| Agent Review | PR open: CI, gates and the review agent run; findings fixed at once | not used | not used |
 
 #### Scenario: A task has a pull request open
 
 - **WHEN** `flow` runs
-- **THEN** the Agent Review row reads that CI, the gates and the review agent run and every finding
-  is fixed
+- **THEN** the Agent Review row reads that CI, the gates and the review agent run and findings are
+  fixed at once, with a reply in the thread and a new review asked
 
-### Requirement: Human Review, Ready For Test and In Test are defined per kind
+### Requirement: Ready For Human and Human Review are defined per kind
 
-`flow` SHALL define Human Review, Ready For Test and In Test per kind as follows.
+`flow` SHALL define Ready For Human and Human Review per kind as follows.
 
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
-| Human Review | CI green and no open finding: the owner reads and merges | not used | not used |
+| Ready For Human | Review agent approved, CI green: waits for the owner | not used | not used |
+| Human Review | The owner reviews, the agent fixes his comments; no review agent | not used | not used |
+
+#### Scenario: A task waits for the owner, then the owner reviews
+
+- **WHEN** `flow` runs
+- **THEN** the Ready For Human row reads that the review agent approved and the CI is green, and the
+  Human Review row reads that the owner reviews, the agent fixes his comments and the review agent
+  is not asked
+
+### Requirement: Ready For Test and In Test are defined per kind
+
+`flow` SHALL define Ready For Test and In Test per kind as follows.
+
+| Status | Task and Bug | Feature | Feedback |
+| --- | --- | --- | --- |
 | Ready For Test | not used | Every task closed and `feature/<n>` up to date with main: waits for QA | not used |
 | In Test | not used | The QA agent runs the scenarios of the cover in a sandbox | not used |
 
