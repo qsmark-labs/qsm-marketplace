@@ -87,6 +87,15 @@ reason live in the spec's design section or the commit that made it. Neither get
 document. One canonical owner per concept: search before you add, edit in place, never a second
 copy.
 
+GitHub is where the person runs the work, often from a phone: a feature's plan, its pictures and
+its tasks live in the feature issue, a task's in its sub-issue, a change's in its pull request
+description, never only on this machine. A local HTML page (a model page, a plugin overview) is a
+bonus for exploring here, which the person may later expose over a private network; it never holds
+what the work needs. A claude.ai artifact is never used. A rule the person states for every agent
+is written into this file at once, replacing the old text, with no history. The person: "budu
+vsechno managovat pres github, takze features, tasks, PR descriptions" and "nechci claude
+artifacts".
+
 ## The loop
 
 Work moves through six steps, LOAD, PLAN, EXECUTE, VERIFY, LEARN and CLOSE, in any order, back to
