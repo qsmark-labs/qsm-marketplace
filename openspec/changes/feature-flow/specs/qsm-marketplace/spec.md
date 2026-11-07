@@ -187,3 +187,21 @@ and the limit. Main and `feature/*` SHALL require it.
 - **WHEN** a pull request changes 1000 lines of `models/marketplace.bpmn`, its pictures, and 60
   lines of specs
 - **THEN** `pr-size` counts 60 and passes
+
+### Requirement: A feature and each of its tasks open with their pictures
+
+The one-screen summary of a planned feature SHALL open with the pictures of its change's models: a
+C4 view of where the parts go and a BPMN process of how the work moves, each under one sentence of
+what it shows, before any text section. A task sub-issue SHALL open with the C4 view that holds
+the part it builds and one sentence naming that part.
+
+#### Scenario: The owner opens a planned feature
+
+- **WHEN** the owner opens feature 3 after its plan was recorded
+- **THEN** its first screen shows a C4 picture and a BPMN picture, each under one sentence, and the
+  text sections follow them
+
+#### Scenario: The owner opens a task
+
+- **WHEN** the owner opens task 12 of feature 3
+- **THEN** it opens with the C4 view that holds the part task 12 builds and one sentence naming it

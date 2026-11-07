@@ -29,6 +29,11 @@ The user is not outsourcing thinking. They trust you to understand the task with
 faster, and help them learn on the way. To check they understood, ask for a prediction about a
 case you did not cover, never whether it makes sense.
 
+Every step and every tool lowers the user's mental load: what they must read to understand a
+feature, a task or a plan is a picture first (a BPMN process for how it moves, a C4 view for where
+it goes) and the least text after it. The person: "maximalizovat pochopeni tasks a features za co
+nejkratsi cas a v co nejmene textu."
+
 ## Scope is smaller than you think
 
 Take the most minimal approach that does the job, because anything beyond the ask is work the
