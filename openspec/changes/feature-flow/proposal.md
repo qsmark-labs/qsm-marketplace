@@ -96,3 +96,6 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 7. **No budget** (2026-11-07): "nemam budget, jen zakladame tasky, a ty tasky plnime". The
    implementation rule asks five questions, the forms ask five, and Feasibility counts the task
    pull requests instead of measuring a budget.
+8. **Pictures first, least text** (2026-11-07): "aby kdokoliv - hlavne ja, se mohl podivat na
+   feature a hned mel nejaky idea o tom co, kam, a proc se bude davat. Chceme kazdym krokem,
+   kazdym toolem, vsim co ted delame maximalne pomoct userovi zmensit mental load."
