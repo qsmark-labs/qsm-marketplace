@@ -85,56 +85,76 @@ code, and files them under the feature once the owner agrees.
 
 ### Requirement: Every open task is built, reviewed and merged
 
-Steps 4 to 8 SHALL follow `build_task_process` of `models/marketplace.bpmn` once per open task,
-step 4 `consume_task_process` and step 7 `human_review_process`: the agent builds and opens the pull
-request, the review agent and the CI clear it, the owner reads it and either merges it or asks for
-changes, and the owner merges it himself only when he wants none.
+Steps 4 to 8 SHALL follow `build_task_process` of `models/marketplace.bpmn` once per open task, step
+4 `consume_task_process` and step 7 `human_review_process`. The Status is named where it changes: In
+Dev, Agent Review, Ready For Human, Human Review, Done. Every return to review names its reason and
+the checks that run again: a review finding, a red CI, or the changes the owner asked for.
 
-#### Scenario: One review finding (path p-d3b89c)
+#### Scenario: Nothing found and the owner wants no changes (path p-ca9997)
+
+- **WHEN** the review agent finds nothing, the CI is green and the owner wants no changes
+- **THEN** the owner merges the pull request into `feature/<n>` and the task is Done
+
+#### Scenario: One review finding (path p-e6c8bd)
 
 - **WHEN** the review agent finds something in the task pull request
 - **THEN** the agent fixes it and replies in the thread, the review runs again and finds nothing,
-  the CI is green, and the owner reads the pull request and merges it
+  the CI is checked after it and is green, and the owner reads the pull request and merges it
 
-#### Scenario: The CI is red (path p-f9f802)
+#### Scenario: The CI is red (path p-6593dc)
 
 - **WHEN** the review agent finds nothing and the CI is not green
-- **THEN** the agent fixes what the CI found and replies, the review agent reviews again, and only
-  then does the owner read the pull request and merge it
+- **THEN** the agent fixes the failing CI without a reply in a thread, the review and the CI run
+  again, and only then does the owner read the pull request and merge it
 
-#### Scenario: The owner wants changes (path p-258cd7)
+#### Scenario: The owner wants changes (path p-2c86a4)
 
 - **WHEN** the review agent approves, the CI is green and the owner wants changes
-- **THEN** he reviews it in step 7, the pull request returns to the review agent, and he reads it
-  again after the second approval with a green CI before any merge
+- **THEN** the task is at Human Review while the owner and the agent work in step 7, then it goes
+  back to Agent Review, the review and the CI run again, and the owner reads the pull request again
+  before any merge
 
-#### Scenario: Nothing found and the owner wants no changes (path p-3b1044)
+#### Scenario: The owner asks for a big change and is satisfied (path p-724ef6)
 
-- **WHEN** the review agent finds nothing, the CI is green and the owner wants no changes
-- **THEN** the owner merges the pull request into `feature/<n>` and the task is closed
+- **WHEN** the owner wants changes and the change he asks for is big
+- **THEN** the agent fixes his comments, simplifies the change and reviews it itself, pushes the
+  fix and replies in the thread, and the owner reviews the pull request and is satisfied
 
-#### Scenario: The owner asks for a big change (path p-52aae0)
+#### Scenario: The owner asks for a small change and is satisfied (path p-e3192a)
 
-- **WHEN** the owner does not accept the pull request and the change he asks for is big
-- **THEN** the agent fixes his comments, simplifies the change and reviews it itself, pushes and
-  replies, and the owner reviews again
+- **WHEN** the owner wants changes and the change he asks for is small
+- **THEN** the agent fixes his comments, pushes the fix and replies in the thread without the
+  simplify pass, and the owner reviews the pull request and is satisfied
 
-#### Scenario: The owner asks for a small change (path p-a9880f)
+#### Scenario: The owner asks again, big then small (path p-42c334)
 
-- **WHEN** the owner does not accept the pull request and the change he asks for is small
-- **THEN** the agent fixes his comments, pushes and replies without the simplify pass, and the owner
-  reviews again
+- **WHEN** the owner is not satisfied by the first fix, which was big, and asks again for a small
+  change
+- **THEN** the agent fixes again without the simplify pass, pushes and replies, and the owner
+  reviews again; no review agent is asked inside step 7
 
-#### Scenario: The owner accepts at once (path p-d7c6a6)
+#### Scenario: The owner asks again, small then big (path p-8a40f1)
 
-- **WHEN** the owner reviews the pull request and says it is good
-- **THEN** the loop ends and the pull request returns to the Agent Review step
+- **WHEN** the owner is not satisfied by the first fix, which was small, and asks again for a big
+  change
+- **THEN** the agent fixes again, simplifies and reviews the change itself, pushes and replies, and
+  the owner reviews again
 
-#### Scenario: The task becomes a pull request (path p-ef7dfb)
+#### Scenario: The owner asks twice for a big change (path p-094234)
+
+- **WHEN** the owner is not satisfied after a big fix and asks again for a big change
+- **THEN** the agent simplifies and reviews each fix itself before it pushes and replies
+
+#### Scenario: The owner asks twice for a small change (path p-018ae5)
+
+- **WHEN** the owner is not satisfied after a small fix and asks again for a small change
+- **THEN** the agent fixes, pushes and replies each time without the simplify pass
+
+#### Scenario: The task becomes a pull request (path p-b868f0)
 
 - **WHEN** an agent consumes an open task
-- **THEN** it claims the task, and the pull request it opens targets `feature/<n>` only after the
-  simplify pass and its own review
+- **THEN** it claims the task, which is In Dev, and the pull request it opens targets `feature/<n>`
+  only after the simplify pass and its own review
 
 ### Requirement: The owner lands the feature on main
 
