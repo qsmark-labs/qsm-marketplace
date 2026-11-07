@@ -36,11 +36,11 @@ one feature pull request whose merge into main is the owner's accept.
 - **A feature change has its own OpenSpec schema**, `feature`: proposal (one screen), models
   (BPMN and C4, each with its picture), specs (scenarios cite the BPMN's cover paths), design
   (decisions only). It has no tasks artifact.
-- **Step 1, the request**: two issue forms, feature request and issue, whose fields are the six
+- **Step 1, the request**: two issue forms, feature request and issue, whose fields are the five
   questions of the implementation rule.
 - **Step 2, planning** writes the change models first, and its plan opens with a Feasibility
-  section: what can be done, what cannot and why, and an estimate against the budget the request
-  named, which the owner reads before his yes. After the yes in the session it commits the change
+  section: what can be done, what cannot and why, and how many task pull requests it
+  takes, which the owner reads before his yes. After the yes in the session it commits the change
   onto the local branch `feature/<n>` and updates the feature issue with a one-screen summary. A
   request too big for one feature ends in a proposed split: after the yes the agent files one new
   feature issue per part, each planned on its own, and closes the original with a comment linking
@@ -70,7 +70,7 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
-| 5 | `agent-identity` | Agents open and review pull requests under their own identity, so the owner's approval is a gate GitHub enforces | `qsm-tasks-cli` | stub |
+| 1 | `agent-identity` | Agents open and review pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | built with `qsm-tasks-cli` | stub, decided |
 | 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
 
@@ -90,3 +90,9 @@ The owner picks from this table. Order is a suggestion: the same number can run 
    "QA ma chytat contract a business bugs, ne codebugs".
 5. **GitHub first** (2026-10-30): "i dont want to duplicate anything that github already has a
    way to do normally".
+6. **Task pull requests stay reviewable** (2026-11-06): the required check `pr-size` fails one
+   past 400 changed lines; a file `.gitattributes` marks generated, a BPMN's layout included, is
+   not counted, because a model is read through its picture.
+7. **No budget** (2026-11-07): "nemam budget, jen zakladame tasky, a ty tasky plnime". The
+   implementation rule asks five questions, the forms ask five, and Feasibility counts the task
+   pull requests instead of measuring a budget.

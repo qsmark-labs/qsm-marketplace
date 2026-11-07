@@ -5,7 +5,7 @@
 The plan skill SHALL take a filed feature issue, settle what its answers leave
 open through grilling, and have the spec tool write one feature change, models first, in the
 session's worktree on `feature/<n>`. The plan SHALL open with a Feasibility section: what can be
-done, what cannot and why, and an estimate against the request's budget. After the owner's yes it
+done, what cannot and why, and how many task pull requests it takes. After the owner's yes it
 SHALL commit the change, bind the issue, replace its body with a one-screen summary, and create no
 task and no pull request.
 
@@ -20,7 +20,7 @@ task and no pull request.
 
 - **WHEN** the owner reads the plan of feature 3 before his yes
 - **THEN** its first section is Feasibility, naming what can be done, what cannot and why, and the
-  estimate against the budget the request named
+  number of task pull requests it takes
 
 ### Requirement: A request too big for one feature is decoupled into new features
 

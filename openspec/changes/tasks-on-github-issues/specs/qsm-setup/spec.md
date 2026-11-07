@@ -10,7 +10,7 @@ sections what happened, where, how to reproduce it in the abstract and expected 
 an issue number. The table "where things live" SHALL name
 the task tool `qsm-tasks` and the memory tool `qsm-memory`, each row with what tasks, or memory,
 mean for us and the few verbs an agent uses daily, in the table's three columns. The implementation
-rule SHALL hold the six questions asked before any design, the table of kinds of things with the
+rule SHALL hold the five questions asked before any design, the table of kinds of things with the
 three answers per kind, one error system per project, contracts before code, and the design gate.
 The context rule SHALL hold understand before act, the restate and when a go is waited for, what is
 closed, only the ask, large output to files, secrets never in context, done means verified, memory
@@ -26,7 +26,7 @@ appear in one of the four, and the others SHALL point to it at most in one line.
 
 #### Scenario: A fix-sized ask whose intent is certain
 
-- **WHEN** the ask sizes as a fix and every one of the six questions already has an answer
+- **WHEN** the ask sizes as a fix and every one of the five questions already has an answer
 - **THEN** the agent restates in one line what it understood and the size, and acts without
   waiting for a go
 
