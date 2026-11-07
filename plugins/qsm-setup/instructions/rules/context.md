@@ -11,7 +11,7 @@ already said.
 1. A question changes nothing: answer it in the same turn, reading only what you must.
 2. A change touches files, state, or the world: restate it first, the output style says how. The
    gate is certainty about the intent, not permission. Wait for the user's go only when an answer
-   to one of the six questions of the implementation rule is missing, or the ask sizes scoped or
+   to one of the five questions of the implementation rule is missing, or the ask sizes scoped or
    larger; until then, read no file and run no command. A fix-sized ask with certain intent goes
    straight to action after the restate, unless it removes or replaces existing infrastructure:
    then one sentence confirms the scope first, because a redirection in the middle of a removal

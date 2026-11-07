@@ -46,7 +46,7 @@ flow ran and the line really appears in the log.
 Every piece of work starts with its intent, written before the work itself: the epic in the task
 tool holds it for a feature, a change, a document, a task. No intent, no work. What a project or a
 plugin is for, permanently, is the README's first section, `## Why it exists`. The implementation
-rule, `rules/implementation.md`, holds the six questions that write it.
+rule, `rules/implementation.md`, holds the five questions that write it.
 
 ## Which rule wins
 

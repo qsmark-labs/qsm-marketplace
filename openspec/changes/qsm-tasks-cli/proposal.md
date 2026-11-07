@@ -29,6 +29,8 @@ feature's Status true to its tasks.
   feature and the board sets Done. No verb accepts.
 - **`doctor` and `setup`** check and create what the API allows and name the rest.
 - **Ghost mode**: the binary adds nothing of its own to what it posts.
+- **Agent writes go through `qsmark-bot`**, the organization's GitHub App of `agent-identity`,
+  built with this feature; the owner's own actions stay his.
 
 ## Not in this feature
 

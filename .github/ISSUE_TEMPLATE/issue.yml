@@ -1,0 +1,40 @@
+---
+name: Issue
+description: Something the marketplace does wrong.
+assignees: [Questi0nM4rk]
+type: Bug
+body:
+  - type: textarea
+    id: who
+    attributes:
+      label: Who is it for
+      description: Who meets the problem, specifically, and what they were doing.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and why now
+      description: What goes wrong, why it matters now, and what happens if we leave it.
+    validations:
+      required: true
+  - type: textarea
+    id: not-doing
+    attributes:
+      label: What we are not doing
+    validations:
+      required: true
+  - type: textarea
+    id: exists
+    attributes:
+      label: What exists
+      description: What already covers this, if anything, and why it is not enough.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: What proves it works
+      description: The test, output or number that shows the problem is gone.
+    validations:
+      required: true

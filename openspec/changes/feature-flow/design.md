@@ -36,7 +36,7 @@ agents, received-findings, review-threads, `/simplify`, the review skill. Nothin
    changes in the same pull request. A plan file would be the tasks.md the owner removed.
 7. **Review reuses workflow-review**, reading the feature's change as what was asked. It posts
    under the owner's login until `agent-identity`.
-8. **Forms and template.** Issue forms carry the six questions and set the issue type; the pull
+8. **Forms and template.** Issue forms carry the five questions and set the issue type; the pull
    request template has Before, After, What it solves, Closes. GitHub closes the feature itself on
    the feature pull request's merge into main; the Action of `qsm-tasks-cli` closes task pull
    requests merged into `feature/*`.
@@ -46,7 +46,7 @@ agents, received-findings, review-threads, `/simplify`, the review skill. Nothin
     feasibility = "Sekce v plánu, krok 2", split = "Nové feature issues, původní zavřít", and the
     outcome: "pridame feature closed because of decoupling, nebo neco takoveho, a da se tam odkaz
     na ty nove features". The plan opens with a Feasibility section (what can be done, what cannot
-    and why, an estimate against the request's budget) that the owner reads before his yes, written
+    and why, how many task pull requests it takes) that the owner reads before his yes, written
     in `plan_process` 2.2. The gateway "Plan approved?" gains the answer split: `decouple_process`
     files one new feature issue per part, each linking the original and planned on its own, then
     closes the original with a comment linking them, and the feature ends "Feature closed as

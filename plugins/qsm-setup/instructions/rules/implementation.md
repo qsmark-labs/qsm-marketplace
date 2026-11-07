@@ -6,15 +6,13 @@ skill holds gets its source named, or is called a guess.
 
 ## First: why
 
-Answer these six in writing before you design. A missing answer is a question for the user.
+Answer these five in writing before you design. A missing answer is a question for the user.
 
 1. Who is this for, specifically, and what do they do with it?
 2. What problem does it solve, and why now? What happens if we do not build it?
 3. What are we not doing?
 4. What exists already that does this, and why is this better than using it?
 5. What must be true for it to work, and what proves it works: a test, an output, a number?
-6. Budget: how much time and code is this worth? Cut the solution to fit the budget, never the
-   other way round.
 
 ## Then: what kind of thing is it
 
