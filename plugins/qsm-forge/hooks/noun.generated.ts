@@ -26,6 +26,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   ghResolveAll: { words: ["qsm-forge","gh","resolve-all"], args: [{ name: "pr", flag: null }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },
   ghDismissReviews: { words: ["qsm-forge","gh","dismiss-reviews"], args: [{ name: "pr", flag: null }, { name: "author", flag: "--author" }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },
   ghSubmitReview: { words: ["qsm-forge","gh","submit-review"], args: [{ name: "pr", flag: null }, { name: "file", flag: "--file" }, { name: "repo", flag: "--repo" }] },
+  ghPrOpen: { words: ["qsm-forge","gh","pr-open"], args: [{ name: "head", flag: "--head" }, { name: "base", flag: "--base" }, { name: "title", flag: "--title" }, { name: "bodyFile", flag: "--body-file" }, { name: "repo", flag: "--repo" }] },
   glStatus: { words: ["qsm-forge","gl","status"], args: [{ name: "mr", flag: null }, { name: "project", flag: "--project" }] },
   glThreads: { words: ["qsm-forge","gl","threads"], args: [{ name: "mr", flag: null }, { name: "project", flag: "--project" }] },
   glReply: { words: ["qsm-forge","gl","reply"], args: [{ name: "mr", flag: null }, { name: "noteId", flag: null }, { name: "message", flag: "--message" }, { name: "project", flag: "--project" }] },

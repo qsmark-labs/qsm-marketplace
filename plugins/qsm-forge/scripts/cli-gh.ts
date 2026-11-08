@@ -10,8 +10,10 @@ import {
   optionalString,
   readStdin,
   requiredNumber,
+  requiredString,
 } from "../../../lib/cli-base.ts";
 import { fail, type Outcome, ok } from "../../../lib/outcome.ts";
+import { mintInstallationToken } from "../lib/app-token.ts";
 import { runCommand } from "../lib/exec.ts";
 import {
   dismissStaleReviews,
@@ -234,6 +236,41 @@ function handler(verb: Verb): Handler {
   };
 }
 
+/** Opens a pull request as the App: the token lives in this process and in the one `gh pr create`
+ * child. The owner is whoever's own gh login runs this call. */
+async function prOpen(call: Call): Promise<Outcome> {
+  const repo = await resolveGithubRepo(runCommand, optionalString(call, "repo") ?? null);
+  const target = `${repo.owner}/${repo.repo}`;
+  const token = await mintInstallationToken(repo, process.env);
+  const owner = (await runCommand("gh", ["api", "user", "--jq", ".login"])).trim();
+  const url = (
+    await runCommand(
+      "gh",
+      [
+        "pr",
+        "create",
+        "--repo",
+        target,
+        "--head",
+        requiredString(call, "head"),
+        "--base",
+        requiredString(call, "base"),
+        "--title",
+        requiredString(call, "title"),
+        "--body-file",
+        requiredString(call, "bodyFile"),
+        "--assignee",
+        owner,
+        "--reviewer",
+        owner,
+      ],
+      undefined,
+      { GH_TOKEN: token },
+    )
+  ).trim();
+  return ok({ url, repo: target }, url);
+}
+
 /** Keyed by the full merged-binary verb ("qsm-forge gh <verb>" minus the
  * bin word), so scripts/cli.ts only ever spreads this into runCli's table. */
 export const handlers: Readonly<Record<string, Handler>> = {
@@ -245,4 +282,5 @@ export const handlers: Readonly<Record<string, Handler>> = {
   "gh resolve-all": handler(resolveAll),
   "gh dismiss-reviews": handler(dismissReviews),
   "gh submit-review": handler(submitReview),
+  "gh pr-open": prOpen,
 };

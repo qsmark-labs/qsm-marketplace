@@ -44,6 +44,13 @@ export type Forge = {
     file?: string;
     repo?: string;
   }): Promise<unknown>;
+  ghPrOpen(options: {
+    head: string;
+    base: string;
+    title: string;
+    bodyFile: string;
+    repo?: string;
+  }): Promise<unknown>;
   glStatus(options: {
     mr: number;
     project?: string;

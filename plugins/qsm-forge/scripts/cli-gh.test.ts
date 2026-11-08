@@ -199,4 +199,23 @@ describe("qsm-forge gh output and forge failures", () => {
     expect(run.code).toBe(1);
     expect(run.stderr).toContain("gh");
   });
+
+  test("pr-open with an unset App variable is missing, exit 4, naming it, before any call", () => {
+    const run = cli([
+      "gh",
+      "pr-open",
+      "--head",
+      "h",
+      "--base",
+      "main",
+      "--title",
+      "t",
+      "--body-file",
+      "b.md",
+      "--repo",
+      "owner/name",
+    ]);
+    expect(run.code).toBe(4);
+    expect(run.stderr).toContain("QSM_FORGE_APP_ID");
+  });
 });
