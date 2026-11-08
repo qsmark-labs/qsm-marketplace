@@ -19,12 +19,14 @@ is the writing skill; worktrees are the worktrunk skill; threads are the review-
    never pushes.
 3. Work lands in this order: a worktree, a local test, `/simplify`, a local review agent, then the
    landing. A step skipped is named, never silent. Where main requires a pull request, the landing
-   is a pull request that links its issue (`Closes #<n>`), which the person merges; the owner's
-   bypass is the person's, and an agent uses it only for the task tool's own commits. Elsewhere
-   the landing is a merge to main and its push. Every issue and pull request an agent opens is
-   assigned to the person (`--assignee @me` while it posts as them), and its reviewers are the
-   review bot and the person; a pull request's author cannot be its reviewer, so the person is
-   requested once a bot account opens them. The person: "assignee jsem vzdycky ja".
+   is a pull request that links its issue (`Closes #<n>`), or a side change no issue holds that
+   says so (`Side change: <why>`), and the person merges it; an admin merge is the person's, on
+   the web. Elsewhere the landing is a merge to main and its push. Where the organization has a
+   bot App, an agent opens its pull request as the bot (`qsm-forge gh pr-open`), so the person can
+   approve it; every other write, an issue, a comment, a reply to a finding, is the person's own
+   login. Every issue and pull request an agent opens is assigned to the person (`--assignee @me`
+   while it posts as them), and its reviewers are the review bot and the person. The person:
+   "assignee jsem vzdycky ja", and "Jen PRs chtel".
 4. `/simplify` runs before the review, and the review reads the code that will land, because
    `/simplify` can drop code that handles an edge case it did not recognise and only a review
    after it catches that. Fix every review finding that holds, nitpicks included, before you push,
