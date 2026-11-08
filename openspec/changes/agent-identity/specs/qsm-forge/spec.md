@@ -1,13 +1,18 @@
 ## ADDED Requirements
 
-### Requirement: Agents write to GitHub under their own identity
+### Requirement: Agents open pull requests as the organization's App
 
-Pull requests an agent opens and reviews an agent posts SHALL be made with the organization's
-App identity, and the owner's approval SHALL be the one GitHub requires before a merge into main
-or into `feature/*`.
+A pull request an agent opens SHALL be opened as the organization's GitHub App, with the owner as
+its assignee and requested reviewer, so the owner's approval can be the one GitHub requires before
+a merge into main or into `feature/*`. Every other write an agent makes SHALL stay the owner's own.
 
-#### Scenario: The review agent posts a review
+#### Scenario: An agent opens a pull request
 
-- **WHEN** the review agent submits its review of a task pull request
-- **THEN** the review shows the App as its author, and the pull request still needs the owner's
-  approval to merge
+- **WHEN** an agent runs `qsm-forge gh pr-open` for a pushed branch
+- **THEN** GitHub shows the App as the author, the owner as assignee and requested reviewer, and
+  the pull request needs the owner's approval to merge
+
+#### Scenario: An agent replies to a review finding
+
+- **WHEN** an agent replies in a review thread or files an issue
+- **THEN** the reply or the issue is made from the owner's own login, not the App's
