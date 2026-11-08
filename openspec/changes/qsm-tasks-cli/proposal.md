@@ -37,8 +37,8 @@ own binary, `qsm-tasks`, so the agent never composes a backend call.
   feature and the board sets Done. No verb accepts.
 - **`doctor` and `setup`** check and create what the API allows and name the rest.
 - **Ghost mode**: the binary adds nothing of its own to what it posts.
-- **Agent writes go through `qsmark-bot`**, the organization's GitHub App of `agent-identity`,
-  built with this feature; the owner's own actions stay his.
+- **Every write is the owner's own login**: issues, sub-issues, Status and comments. Only a pull
+  request is opened as `qsmark-bot` (`agent-identity`, #14), by qsm-forge, not by this binary.
 
 ## Not in this feature
 
@@ -77,7 +77,7 @@ deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters
    is the accept; the spec binds to the feature; tasks are created at the split, not at planning.
 8. **Split into three features** (2026-11-07): the binary (#13), the bot (#14) and the Action
    (#15), each working alone, in that order.
-9. **`claim` assigns the caller** (2026-11-07), as the spec says, also once `qsmark-bot` writes;
-   the owner stays the assignee of what nobody claims.
+9. **`claim` assigns the caller** (2026-11-07), as the spec says; the owner stays the assignee of
+   what nobody claims.
 10. **The plan was approved from one page** (2026-11-07): a picture of the task and feature
     lifecycles, the verbs in four groups and the seven task pull requests.

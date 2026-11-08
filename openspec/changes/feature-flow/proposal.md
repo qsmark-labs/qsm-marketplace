@@ -72,7 +72,7 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
-| 1 | `agent-identity` | Agents open and review pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | built with `qsm-tasks-cli` | stub, decided |
+| 1 | `agent-identity` | Agents open pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | none | built |
 | 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
 
