@@ -4,7 +4,8 @@
 // agent never composes a gh, jq or GraphQL call itself.
 
 import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
-import { fail, type Outcome } from "../../../lib/outcome.ts";
+import { fail, type Outcome, ok } from "../../../lib/outcome.ts";
+import { MOVES, PRIORITIES, renderFlow, STATUSES } from "../lib/flow.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
@@ -58,7 +59,7 @@ if (import.meta.main) {
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),
       close: onBoard(notBuilt(41)),
-      flow: (call) => notBuilt(42)({ call }),
+      flow: () => ok({ statuses: STATUSES, moves: MOVES, priorities: PRIORITIES }, renderFlow()),
       claim: onBoard(notBuilt(43)),
       unclaim: onBoard(notBuilt(43)),
       review: onBoard(notBuilt(43)),
