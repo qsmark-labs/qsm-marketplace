@@ -125,6 +125,12 @@ what done means, ending in a `strict-reviewer` review.
 | `test-hooks` | `claude plugin validate` and the hooks tests of every plugin |
 | `plugin-eval` | `bun run eval <plugin>`: the skill and agent evals |
 
+## Who asks for a review
+
+- Only the owner asks Macroscope for a review, by commenting `@macroscope-app review` on a green
+  pull request, because every review is paid and an agent opens pull requests the owner may not
+  want reviewed at all. An agent never writes that comment.
+
 ## Where work lands
 
 Everything lands on `main`, and the main checkout follows it. The main checkout is the repository
