@@ -21,7 +21,7 @@ lane). Feature #13, decoupled from #12 with #14 (`agent-identity`) and #15 (`sta
 
 Tasks move from a file in git to GitHub issues and the org board. An agent that drives the board
 with raw `gh`, `jq` and GraphQL composes several calls per step and gets the flow wrong in a new way
-each session. The owner: "i still want my one tasks tool". This feature gives the task port its
+each session. One tasks tool stays the agent's only door, so this feature gives the task port its
 own binary, `qsm-tasks`, so the agent never composes a backend call.
 
 ## What
@@ -57,27 +57,24 @@ deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters
 
 ## Decisions of the owner
 
-1. **`close` stays** (2026-10-29): it finishes a task no merge closes, such as a decision.
-2. **Feedback is a plain issue from a template, with labels** (2026-10-30, the type dropped
-   2026-11-04: what happened, where, how to reproduce it in the abstract, what it should do): "i
-   want area, kind, from/who noticed, some basic log of things that lead to that, WITHOUT ANY
-   PERSONAL OR SYSTEM INFO, just abstract stuff, and than the rest. Ideally no suggested fix, but
-   how i want it to behave." The `from:` label on a public repository: "its an AI marketplace, im
-   okay with keeping this there."
-3. **Priority is a field, P0 to P2** (2026-10-30).
-4. **GitHub's defaults** (2026-10-30): "Cannot we use features instead of epics, than stack tasks
-   under them, and than qa test the feature instead of the epic? So we dont overengineer and
-   destroy the github ecosystem?"
-5. **Each kind uses its own part of one Status** (2026-10-30): "tasku staci review, nepotrebuje
-   qa, a feature zase nepotrebuje review, ma test."
-6. **One door, nothing duplicated** (2026-10-30): "i dont want to duplicate anything that github
-   already has a way to do normally" and "i still want my one tasks tool".
-7. **The feature branch and the accept** (2026-11-01): task pull requests target `feature/<n>`,
-   the Action closes what they name, and the owner's merge of the feature pull request into main
-   is the accept; the spec binds to the feature; tasks are created at the split, not at planning.
-8. **Split into three features** (2026-11-07): the binary (#13), the bot (#14) and the Action
-   (#15), each working alone, in that order.
-9. **`claim` assigns the caller** (2026-11-07), as the spec says; the owner stays the assignee of
-   what nobody claims.
-10. **The plan was approved from one page** (2026-11-07): a picture of the task and feature
-    lifecycles, the verbs in four groups and the seven task pull requests.
+1. **`close` stays**: it finishes a task no merge closes, such as a decision.
+2. **Feedback is a plain issue from a template, with labels**: what happened, where, how to
+   reproduce it in the abstract, and how it should behave, with no personal or system detail and
+   no suggested fix. The `from:` label stays on the public repository, because it says who noticed
+   and nothing about the person.
+3. **Priority is a field, P0 to P2**.
+4. **GitHub's defaults**: features instead of epics, tasks under them, and QA tests the feature,
+   because a second hierarchy would fight the GitHub ecosystem.
+5. **Each kind uses its own part of one Status**: a task needs a review and no QA, a feature needs
+   its test and no review.
+6. **One door, nothing duplicated**: nothing GitHub already does is built again, and one tasks
+   tool is the agent's only way to the board.
+7. **The feature branch and the accept**: task pull requests target `feature/<n>`, the Action
+   closes what they name, and the owner's merge of the feature pull request into main is the
+   accept; the spec binds to the feature; tasks are created at the split, not at planning.
+8. **Split into three features**: the binary (#13), the bot (#14) and the Action (#15), each
+   working alone, in that order.
+9. **`claim` assigns the caller**, as the spec says; the owner stays the assignee of what nobody
+   claims.
+10. **The plan was approved from one page**: a picture of the task and feature lifecycles, the
+    verbs in four groups and the seven task pull requests.

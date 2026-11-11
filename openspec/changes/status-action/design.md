@@ -21,8 +21,7 @@ The behaviour is the spec and `feature_status_process` of `models/marketplace.bp
    Action closes each issue the body names as completed; "Item closed" then sets Done. One file,
    `.github/workflows/qsm-tasks.yml`, two jobs.
 4. **The Action writes as the owner**, with the owner's token stored as a repository secret:
-   `qsmark-bot` only opens pull requests (#14), and the owner said of the Action "ma to byt pode
-   mnou".
+   `qsmark-bot` only opens pull requests (#14), and the board is the owner's.
 
 ## Unmeasured, measured before the code
 
