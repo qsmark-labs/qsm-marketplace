@@ -129,8 +129,8 @@ Nothing a UI paints ever touches anything else: two bodies side by side (badges,
 chips, cards, rows) keep a gap from the project's spacing scale, in every project, every surface
 and every tool page, an agent's own throwaway pages included. A flex row or a list of bodies gets
 its gap where it is declared, never from the whitespace between inline elements, which is zero
-for elements a script builds. The person in their words: "Nikdy nikde nesmi byt nic co se dotyka,
-v zadnem projektu nebo kodu ever."
+for elements a script builds. Two painted bodies that touch look like one body or a
+defect, and no project is an exception.
 
 ## Clean before and after
 
