@@ -54,8 +54,12 @@ async function killDaemon(pidFile: string): Promise<void> {
   const pid = Number(readFileSync(pidFile, "utf8"));
   try {
     process.kill(pid, "SIGKILL");
-  } catch {
-    return;
+  } catch (cause) {
+    // The daemon already ended; any other failure to kill it is the test's to see.
+    if (cause instanceof Error && "code" in cause && cause.code === "ESRCH") {
+      return;
+    }
+    throw cause;
   }
   await untilGone(pid);
 }
