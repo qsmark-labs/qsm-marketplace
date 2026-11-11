@@ -87,10 +87,7 @@ The grader judges the thought process and the output, in one to three points:
 
 When the sandbox lacks what the job needs (web, git, the task tool), the prompt says so to both
 arms and the grade falls on the plan. The bar: every run with the plugin passes (3 of 3) and at
-most one without does. `bun run eval <plugin>` skips a case that met the bar and has not changed;
-`--case <case> --runs 1 --keep-temp` keeps the trace while iterating. A skill whose scenario still
-passes without the plugin after the case was made harder is proposed for removal, because it adds
-bytes and no behaviour.
+most one without does.
 
 ## Working the lens edits
 
@@ -106,8 +103,8 @@ shows it, or `qsm-builder lens tasks <plugin>` lists it):
    in better words, with the reason.
 3. Ask for a yes and write nothing before it. A silent write is the one thing the lens was made to
    prevent.
-4. After the yes, apply it, run the plugin's eval for an edited skill or agent (`bun run eval
-   <plugin> --case <case>`), and commit the change with a message that names the task.
+4. After the yes, apply it, update the eval case of an edited skill or agent, and commit the change
+   with a message that names the task.
 5. Close the task in the task tool with what was done. A refused task is closed with the reason, so
    the person sees the answer on the page.
 
