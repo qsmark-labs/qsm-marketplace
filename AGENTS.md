@@ -131,6 +131,11 @@ what done means, ending in a `strict-reviewer` review.
   in their issues, a change in its pull request description.
 - Each item opens with its pictures in the order a reader understands it: the BPMN process of the
   business flow first, then the C4 view of where the code goes, then the least text.
+- The board holds issues only, and every pull request closes one, a side change included: a board
+  that mixes issue and pull request numbers leaves the reader unsure which number is the work, and
+  work without an issue has no status anyone can see. A report names the work by its issue number
+  and title as the board shows it, its pull request after it: "#16 The touch check moves to lib
+  (PR #18)".
 - A local HTML page is a bonus for exploring; a claude.ai artifact is never used.
 - A rule the owner states for this marketplace is written here at once, replacing the old text.
 - Every rule here is general, because this marketplace becomes a product for other users: the
