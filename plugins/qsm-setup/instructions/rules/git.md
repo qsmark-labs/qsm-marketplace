@@ -12,27 +12,25 @@ is the writing skill; worktrees are the worktrunk skill; threads are the review-
    when the branch is new), while the marketplace gates judge the commit itself. Every comparison is
    against the code it adds onto, so the work never degrades, and takes staged and committed content
    only, never an unstaged change, so a file another session left behind never blocks it. Merge,
-   never rebase unless it is needed. The person in their words: "kazda session si udela svuj
-   worktree pod .claude/ of the project", "there should be no shared checkout ever", "Unstaged
-   nebereme nikdy a nikde. Staged and up".
+   never rebase unless it is needed.
 2. The main agent pushes when a task or a batch finishes, so local commits never pile up. A worker
    never pushes.
 3. Work lands in this order: a worktree, a local test, `/simplify`, a local review agent, then the
-   landing. A step skipped is named, never silent. Where main requires a pull request, the landing
-   is a pull request that links its issue (`Closes #<n>`), or a side change no issue holds that
-   says so (`Side change: <why>`), and the person merges it; an admin merge is the person's, on
-   the web. Elsewhere the landing is a merge to main and its push. Where the organization has a
-   bot App, an agent opens its pull request as the bot (`qsm-forge gh pr-open`), so the person can
-   approve it; every other write, an issue, a comment, a reply to a finding, is the person's own
-   login. Every issue and pull request an agent opens is assigned to the person (`--assignee @me`
-   while it posts as them), and its reviewers are the review bot and the person. The person:
-   "assignee jsem vzdycky ja", and "Jen PRs chtel".
+   landing. Name a skipped step.
+   - Where main requires a pull request, the landing is one. It says `Closes #<n>`, or
+     `Side change: <why>` when no issue holds the work.
+   - The person merges it, and an admin merge is theirs, on the web: the merge is their acceptance.
+   - Where the organization has a bot App, the agent opens the pull request as the bot
+     (`qsm-forge gh pr-open`), so the person can approve it. Every other write stays the
+     person's login: a second identity pays only where an approval needs it.
+   - The person is the assignee of everything an agent opens. The reviewers are the review bot
+     and the person.
+   - Elsewhere the landing is a merge to main and its push.
 4. `/simplify` runs before the review, and the review reads the code that will land, because
    `/simplify` can drop code that handles an edge case it did not recognise and only a review
    after it catches that. Fix every review finding that holds, nitpicks included, before you push,
    because a second round trip costs more than a one-line fix; a fix that changes more than the
-   finding's lines gets the reviewer back on that fix. The person in their words: "spis napred
-   simplify a potom review".
+   finding's lines gets the reviewer back on that fix.
 5. A merge or push runs only after the commit it carries succeeded: never chain them after a
    commit in one command, because a gate that blocks the commit leaves the merge carrying the
    tree without it.
