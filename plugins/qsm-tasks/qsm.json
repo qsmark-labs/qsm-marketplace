@@ -1,0 +1,68 @@
+{
+  "name": "qsm-tasks",
+  "qsm": {
+    "bin": {
+      "qsm-tasks": "scripts/cli.ts"
+    },
+    "noun": "tasks",
+    "commands": {
+      "qsm-tasks ready": {
+        "description": "List the open Todo tasks and bugs, unblocked and not deferred, by Priority then number"
+      },
+      "qsm-tasks list": {
+        "description": "List the issues on the board, filtered by feature, kind, Status, priority, label or change"
+      },
+      "qsm-tasks show": {
+        "description": "Print one issue: its facts, blockers, sub-issue counts, body and comments"
+      },
+      "qsm-tasks feature": {
+        "description": "File a Feature at Todo from an intent file"
+      },
+      "qsm-tasks add": {
+        "description": "Add a Task as a sub-issue of an open feature"
+      },
+      "qsm-tasks feedback": {
+        "description": "File feedback on the marketplace as a plain issue from its template, with its labels"
+      },
+      "qsm-tasks edit": {
+        "description": "Change an issue's title, priority, body, assignee, feature, order or change"
+      },
+      "qsm-tasks note": {
+        "description": "Post one comment on an issue, the text unchanged"
+      },
+      "qsm-tasks claim": {
+        "description": "Take a Todo task or bug: In Dev, assigned to the caller, on the board"
+      },
+      "qsm-tasks unclaim": {
+        "description": "Give a task back: Todo and unassigned, or deferred until a given value"
+      },
+      "qsm-tasks review": {
+        "description": "Move a task or bug to Agent Review"
+      },
+      "qsm-tasks human": {
+        "description": "Hand an approved task with green checks to the owner: Ready For Human, then Human Review"
+      },
+      "qsm-tasks close": {
+        "description": "Close an issue with its reason as a comment, as completed or not planned"
+      },
+      "qsm-tasks reopen": {
+        "description": "Reopen a closed task, bug or feedback under an open parent, at Todo"
+      },
+      "qsm-tasks plan": {
+        "description": "Return a feature to Todo for planning"
+      },
+      "qsm-tasks qa": {
+        "description": "Start the test of a feature at Ready For Test with no open sub-issue: In Test"
+      },
+      "qsm-tasks doctor": {
+        "description": "Check gh, the repository, the board, its fields, labels, workflows and views"
+      },
+      "qsm-tasks flow": {
+        "description": "Print the Status and Priority tables: each Status per kind and each verb's guard"
+      },
+      "qsm-tasks setup": {
+        "description": "Create the board's missing fields, options and labels; never rename or delete"
+      }
+    }
+  }
+}

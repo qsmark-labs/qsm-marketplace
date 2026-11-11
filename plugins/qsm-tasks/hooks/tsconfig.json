@@ -1,0 +1,4 @@
+{
+  "extends": "../../../tsconfig.hooks.json",
+  "include": ["../../../.claude/types", "register.tsx", "noun.generated.ts", "../types"]
+}
