@@ -13,6 +13,8 @@ import { enclosing, readGraph, symbolsOf } from "./symbols.ts";
 export interface ToolOutcome {
   readonly ok: boolean;
   readonly text: string;
+  /** The pid of the detached build this call started. */
+  readonly pid?: number;
 }
 
 const DEFAULT_TOP_K = 5;
@@ -268,8 +270,10 @@ function startBuild(repo: string, files: CacheFiles, env: Env): ToolOutcome {
   if (holder !== null) {
     return ok(`a build of ${repo} is already running since ${holder.started_at}`);
   }
-  const failure = spawnBuild(repo, files, env);
-  return failure === null ? ok(`started a build of ${repo}`) : failed(failure);
+  const started = spawnBuild(repo, files, env);
+  return started.ok
+    ? { ...ok(`started a build of ${repo}`), pid: started.pid }
+    : failed(started.reason);
 }
 
 /** Distinct edited files that start a refresh. */

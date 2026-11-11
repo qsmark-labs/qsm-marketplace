@@ -137,15 +137,16 @@ function redact(job: Record<string, unknown>): Record<string, unknown> {
  * Open one instance's live view, password included, in the person's own browser. The password is
  * read from the instance at this moment and goes only to the opener's argument vector, never to
  * the answer, so nothing that reads the CLI's output ever holds it. With nothing to open it, the
- * failure names the address without the password and how to get the password by hand.
+ * failure names the address without the password and how to get the password by hand. Answers the
+ * address and the opener's pid, which a dry run has none of.
  */
-function openLiveView(box: Box, name: string): string {
+function openLiveView(box: Box, name: string): { address: string; pid?: number } {
   const port = Number(name.replace(/^bbox-/, ""));
   const address = liveViewUrl(port);
   if (box.dryRun) {
     box.run(tokenDefinition(name));
     box.commands.push(`xdg-open ${liveViewLink(port, "<token>")}`);
-    return address;
+    return { address };
   }
   if (!instances(box).some((i) => i.name === name)) {
     throw new QsmError(
@@ -172,7 +173,7 @@ function openLiveView(box: Box, name: string): string {
         `password with: docker exec ${name} cat /run/bbox.token, and add it as ?password=`,
     );
   }
-  return address;
+  return { address, pid: opened.pid };
 }
 
 function instances(box: Box): Instance[] {
@@ -421,7 +422,7 @@ function takeover(call: Call, box: Box): Outcome {
   const name = requiredString(call, "name");
   const tab = requiredNumber(call, "tab");
   const timeoutMs = optionalNumber(call, "timeout") ?? DEFAULT_WAIT_MS;
-  const view = openLiveView(box, name);
+  const view = openLiveView(box, name).address;
   const armed = box.send(name, {
     cmd: "wait_for_human",
     tab,
@@ -445,8 +446,8 @@ function takeover(call: Call, box: Box): Outcome {
 }
 
 function viewVerb(call: Call, box: Box): Outcome {
-  const address = openLiveView(box, requiredString(call, "name"));
-  return ok({ liveView: address }, `opened ${address}`);
+  const { address, pid } = openLiveView(box, requiredString(call, "name"));
+  return ok({ liveView: address, pid }, `opened ${address}`);
 }
 
 type BoxHandler = (call: Call, box: Box) => Outcome;

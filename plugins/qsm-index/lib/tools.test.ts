@@ -13,7 +13,7 @@ import { cacheFiles, type Env } from "./paths.ts";
 import { type RunResult, spawnRunner } from "./run.ts";
 import { liveHolder, readStatus } from "./state.ts";
 import { commit, git } from "../../../lib/fixtures/git.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
 import { fakeRunner, killBuilds, repoWithCache, until, world } from "./test-repo.ts";
 import { context, impact, reindex, search, status, structure } from "./tools.ts";
 
@@ -284,9 +284,11 @@ describe("the staleness line", () => {
     });
     expect(elapsed).toBeLessThan(1000);
     await until(() => liveHolder(files.lock) !== null, "the build to take its lock");
+    const pid = liveHolder(files.lock)?.pid ?? 0;
     const again = structure({ repo, op: "explain", node: "a.ts" }, graphRunner().run, env);
     expect(again.text.split("\n")[0]).toBe("index is stale; reindex running");
     await until(() => readStatus(files.status)?.state === "done", "the build to finish");
+    await untilGone(pid);
   });
 });
 
@@ -367,16 +369,20 @@ describe("reindex", () => {
     const outcome = reindex({ path: repo }, spawnRunner, env);
     const elapsed = performance.now() - started;
 
-    expect(outcome).toEqual({ ok: true, text: `started a build of ${repo}` });
+    expect(outcome).toMatchObject({ ok: true, text: `started a build of ${repo}` });
     expect(elapsed).toBeLessThan(1000);
     await until(() => liveHolder(files.lock) !== null, "the build to take its lock");
     const { text } = status({ path: repo }, spawnRunner, env);
     expect(text).toContain("build: running, phase graph");
+    // the test is done with the build: end its group and wait for the end
+    const pid = outcome.pid ?? 0;
+    process.kill(-pid, "SIGKILL");
+    await untilGone(pid);
   });
 
   test("a second reindex while a build runs starts nothing and says so", async () => {
     const { repo, env, files, runCount } = background(2);
-    reindex({ path: repo }, spawnRunner, env);
+    const first = reindex({ path: repo }, spawnRunner, env);
     await until(() => liveHolder(files.lock) !== null, "the build to take its lock");
     const since = liveHolder(files.lock)?.started_at;
 
@@ -387,6 +393,7 @@ describe("reindex", () => {
       text: `a build of ${repo} is already running since ${since}`,
     });
     await until(() => readStatus(files.status)?.state === "done", "the build to finish");
+    await untilGone(first.pid ?? 0);
     expect(runCount()).toBe(1);
   });
 });
@@ -399,11 +406,14 @@ describe("the lock", () => {
     const stale = { pid: dead, started_at: "2026-01-01T00:00:00.000Z" };
     writeFileSync(files.lock, JSON.stringify(stale));
 
-    expect(reindex({ path: repo }, spawnRunner, env).text).toBe(`started a build of ${repo}`);
+    const outcome = reindex({ path: repo }, spawnRunner, env);
+
+    expect(outcome.text).toBe(`started a build of ${repo}`);
 
     await until(() => liveHolder(files.lock) !== null, "the new build to take the lock");
     expect(liveHolder(files.lock)?.pid).not.toBe(dead);
     await until(() => readStatus(files.status)?.state === "done", "the build to finish");
+    await untilGone(outcome.pid ?? 0);
     expect(readStatus(files.status)?.result).toBe("ok");
   });
 });

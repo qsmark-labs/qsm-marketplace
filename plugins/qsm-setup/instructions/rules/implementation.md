@@ -143,3 +143,8 @@ period, no cleanup of their transcripts, notes, sessions or files, and no settin
 tool delete them (`cleanupPeriodDays` below 36500 is such a setting), because a deleted transcript
 never comes back and nobody asked for it to go. A tool that must make room archives at maximum
 compression and names the archive.
+
+Whatever starts a process, a timer or a server owns its end: it waits for that end, or hands back
+the handle (a pid) so its caller can. A test waits on the end itself, never on a log line, a file
+or a sleep, because a side effect comes before the end, and what still runs after a test writes
+into what the next one removed.
