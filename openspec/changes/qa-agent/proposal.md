@@ -4,10 +4,9 @@ models, specs and design come at its planning.
 ## Why
 
 Step 8 of the flow has no owner yet. When the Action has brought `feature/<n>` up to date with main
-and set Ready For Test, nothing tests the whole feature as a user meets it. The owner: "QA ma
-chytat contract a business bugs, ne codebugs" (QA catches contract and business bugs, not code
-bugs). Code review already happened on every task; QA is the blackbox proof that the feature does
-what its models say.
+and set Ready For Test, nothing tests the whole feature as a user meets it. QA catches contract and
+business bugs, not code bugs. Code review already happened on every task; QA is the blackbox proof
+that the feature does what its models say.
 
 ## What
 
