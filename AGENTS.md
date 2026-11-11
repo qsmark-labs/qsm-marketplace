@@ -131,6 +131,12 @@ what done means, ending in a `strict-reviewer` review.
   pull request, because every review is paid and an agent opens pull requests the owner may not
   want reviewed at all. An agent never writes that comment.
 
+## Temporary
+
+- Evals are written, not run: a change to a skill or agent writes or updates its eval case, and
+  nobody runs `bun run eval` until the owner has reviewed every case in one pass, because a run
+  against an unreviewed case judges the skill by a grader nobody checked.
+
 ## Where work lands
 
 Everything lands on `main`, and the main checkout follows it. The main checkout is the repository
@@ -160,9 +166,6 @@ mise exec -- bun run test:hooks
 - `bun test` skips a dot directory unless it is named, and skips `plugins/*/hooks/*.test.ts`;
   `test:hooks` runs those and skips visibly without `claude` on PATH.
 - `bun run plugin-types` regenerates the engine types the hooks typecheck against.
-- `bun run eval <plugin>` after a change to a skill or agent.
-  Note: the maintainer is reviewing the existing eval cases; until a case is reviewed, its
-  result is a signal to read, not a verdict.
 - One agent, one tree: an implementer works in its own worktree, and the orchestrator reviews,
   merges and deletes it, because the stop gate scores a whole tree.
 - The langdev guard blocks `--no-verify` and any `QSM_LANGDEV_ALLOW` an agent sets. A blocked commit
