@@ -63,7 +63,7 @@
         ]
       },
       "qsm-forge gh reply": {
-        "description": "Reply to the thread a comment belongs to and resolve it, unless --no-resolve",
+        "description": "Reply to the thread a comment belongs to; the thread stays unresolved, because resolving is the reviewer's act",
         "args": [
           {
             "name": "pr",
@@ -84,11 +84,6 @@
             "type": "string",
             "required": true,
             "description": "the reply text"
-          },
-          {
-            "name": "noResolve",
-            "type": "boolean",
-            "description": "reply without resolving"
           },
           {
             "name": "repo",

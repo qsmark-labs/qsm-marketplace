@@ -133,7 +133,7 @@ async function comments({ forge, at, call }: At): Promise<Outcome> {
 async function reply({ forge, at, call }: At): Promise<Outcome> {
   const message = optionalString(call, "message") ?? "";
   // A reply with nothing to say is the one call this wrapper will not make:
-  // it would resolve a thread with an empty note under the person's name.
+  // it would post an empty note under the person's name.
   if (message.trim().length === 0) {
     return fail("usage", "reply requires --message; nothing was posted");
   }
@@ -141,11 +141,10 @@ async function reply({ forge, at, call }: At): Promise<Outcome> {
     pr: pr(call),
     commentId: requiredNumber(call, "commentId"),
     message,
-    keepOpen: flagArg(call, "noResolve"),
   });
   return said({ thread: outcome.thread.id, replied: true, resolved: outcome.resolved }, [
     `replied on ${at} ${place(outcome.thread.path, outcome.thread.line)}`,
-    outcome.resolved ? "thread resolved" : "thread left open",
+    outcome.resolved ? "thread already resolved" : "thread left open",
   ]);
 }
 
