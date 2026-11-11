@@ -15,9 +15,18 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { isAlive } from "../detach.ts";
 
 const RUN_PREFIX = "qsm-test-run.";
 const sandboxes: string[] = [];
+const atEnd: (() => void | Promise<void>)[] = [];
+
+/** Registers `fn` to run when the current test ends, before the guard looks for processes the test
+ * left. A fixture that starts a process calls this, because its own afterEach would bind only to
+ * the first test file that imports it. */
+export function atTestEnd(fn: () => void | Promise<void>): void {
+  atEnd.push(fn);
+}
 
 /** A fresh temp directory, removed after the test that made it. */
 export function sandboxDir(prefix: string): string {
@@ -32,12 +41,15 @@ export function writeIn(root: string, rel: string, text: string): void {
   writeFileSync(join(root, rel), text);
 }
 
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
+/** Waits until `pid` has exited: a test that started a process waits for its end, not for a line
+ * it wrote, because the process still writes after the line. */
+export async function untilGone(pid: number, limitMs = 20_000): Promise<void> {
+  const deadline = Date.now() + limitMs;
+  while (isAlive(pid)) {
+    if (Date.now() > deadline) {
+      throw new Error(`process ${pid} still runs after ${limitMs} ms`);
+    }
+    await Bun.sleep(20);
   }
 }
 
@@ -45,7 +57,7 @@ function alive(pid: number): boolean {
 function cleanBefore(base: string): void {
   for (const name of readdirSync(base)) {
     const pid = Number(name.slice(RUN_PREFIX.length).split(".")[0]);
-    if (!name.startsWith(RUN_PREFIX) || !Number.isInteger(pid) || alive(pid)) {
+    if (!name.startsWith(RUN_PREFIX) || !Number.isInteger(pid) || isAlive(pid)) {
       continue;
     }
     rmSync(join(base, name), { recursive: true, force: true });
@@ -132,7 +144,10 @@ beforeEach(() => {
   before = pids();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  for (const fn of atEnd.splice(0)) {
+    await fn();
+  }
   const left = stopLeft([...pids()].filter((pid) => !before.has(pid)));
   for (const dir of sandboxes.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
