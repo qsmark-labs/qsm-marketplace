@@ -1,8 +1,8 @@
 ## Intent
 
 Held here until the task tool opens again, then moved to the epic beside `secrets-recall-detection`.
-The person, in their words: "make it super easy to remove secrets, maybe even add a mod view, where
-i can go thru them with arrows, and than just press DEL, and delete them from the vault".
+The aim: removing secrets is super easy, perhaps a mod view where
+a person goes through them with the arrow keys and presses DEL to delete one from the vault.
 
 1. For the person, after the capture took more than was a secret: a certificate, a test value, a
    string that only looked random.

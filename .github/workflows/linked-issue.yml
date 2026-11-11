@@ -17,8 +17,5 @@ jobs:
           if printf '%s' "$BODY" | grep -qiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +(#[0-9]+|https://github\.com/[^ ]+/issues/[0-9]+)'; then
             exit 0
           fi
-          if printf '%s' "$BODY" | grep -qE '^Side change: +[^ ]'; then
-            exit 0
-          fi
-          echo "::error::The pull request links no issue: write 'Closes #<n>', or 'Side change: <why>' for a change no issue holds."
+          echo "::error::The pull request links no issue: write 'Closes #<n>'; a side change gets its issue first."
           exit 1

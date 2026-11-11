@@ -64,3 +64,30 @@ while read -r _ local_sha _ _; do
   gated[$local_sha]=1
   gate_commit "$local_sha" || exit 1
 done <"$pushed_refs"
+
+# The size check of the pull request this branch becomes, run before it exists. Its base is the
+# branch it was cut from: of origin/main and every origin/feature/*, the one whose merge base is
+# nearest to the pushed commit. main and feature/* are bases themselves and are not measured.
+nearest_base() {
+  local sha=$1 best="" best_count="" candidate count
+  for candidate in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/main 'refs/remotes/origin/feature/*'); do
+    count=$(git rev-list --count "$(git merge-base "$candidate" "$sha")..$sha") || return 1
+    if [[ -z $best_count || $count -lt $best_count ]]; then
+      best=$candidate best_count=$count
+    fi
+  done
+  [[ -n $best ]] || {
+    echo "pre-push: no origin/main to measure the pull request size against" >&2
+    return 1
+  }
+  echo "$best"
+}
+
+while read -r _ local_sha remote_ref _; do
+  if [[ $local_sha =~ ^0+$ || $remote_ref == refs/heads/main || $remote_ref == refs/heads/feature/* ]]; then
+    continue
+  fi
+  base=$(nearest_base "$local_sha") || exit 1
+  echo "pre-push: pull request size of ${remote_ref#refs/heads/} against $base" >&2
+  .gates/pr-size.sh "$base" "$local_sha" >&2 || exit 1
+done <"$pushed_refs"

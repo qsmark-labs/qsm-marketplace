@@ -678,14 +678,11 @@ export interface ReplyOutcome {
   readonly resolved: boolean;
 }
 
-/** Reply, then close what was answered. `keepOpen` is the caller's opt-out;
- * an already-resolved thread is left as it is rather than resolved twice. */
+/** Reply and leave the thread as it is: resolving is the reviewer's act. */
 export interface ReplyRequest {
   readonly pr: number;
   readonly commentId: number;
   readonly message: string;
-  /** The caller's opt-out from GitHub's "answered means closed". */
-  readonly keepOpen: boolean;
 }
 
 export async function replyToThread(
@@ -695,10 +692,7 @@ export async function replyToThread(
   const { pr, commentId, message } = request;
   const thread = requireThread(await forge.threads(pr), commentId, pr);
   await forge.reply(pr, commentId, message);
-  if (request.keepOpen || thread.resolved) {
-    return { thread, resolved: thread.resolved };
-  }
-  return { thread, resolved: await forge.resolve(thread.id) };
+  return { thread, resolved: thread.resolved };
 }
 
 export interface ResolveOutcome {

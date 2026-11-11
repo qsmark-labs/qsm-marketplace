@@ -30,6 +30,8 @@
 2. A test proves the intended use or a real edge case through the real path. A fixture is
    recorded from the real producer, never written from what the consumer expects.
 3. Clean before and after. A run leaves no temp files, and nothing deletes what the person made.
+   Whatever starts a process, a timer or a server waits for its end or hands back its handle; a
+   test that waits on a log line, a file or a sleep instead of that end is a break.
 4. Nothing a UI paints touches anything else. Every gap comes from the spacing scale.
 5. The repositories are public: no secrets, employer names, machine paths or AI attribution.
 
