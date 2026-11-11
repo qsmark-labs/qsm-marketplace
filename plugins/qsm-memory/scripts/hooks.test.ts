@@ -8,6 +8,7 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { spawn as spawnAsync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { isAlive } from "../../../lib/detach.ts";
 import { cliShim } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -55,12 +56,16 @@ function verb(box: Box, argv: readonly string[], env?: Record<string, string>) {
   return { exit: r.exit, ...envelopeSchema.parse(JSON.parse(r.stdout)) };
 }
 
-/** Waits until save.log holds `text`, the line a detached child writes when it ends. */
-async function logged(box: Box, text: string): Promise<string> {
+const startedSchema = z.object({ pid: z.number() });
+
+/** Waits until save.log holds `text`, the line a detached child writes when it ends, and until the
+ * child has exited, so nothing it still writes lands in a home the test already removed. */
+async function logged(box: Box, text: string, data: unknown): Promise<string> {
+  const { pid } = startedSchema.parse(data);
   const deadline = Date.now() + 20_000;
   for (;;) {
     const log = existsSync(box.log) ? readFileSync(box.log, "utf8") : "";
-    if (log.includes(text)) {
+    if (log.includes(text) && !isAlive(pid)) {
       return log;
     }
     if (Date.now() > deadline) {
@@ -111,7 +116,7 @@ describe("session end", () => {
 
     expect({ exit: r.exit, code: r.code }).toEqual({ exit: 0, code: "ok" });
     expect(r.message).toBe(`started the save in the background; its outcome goes to ${box.log}`);
-    await logged(box, "saved s1: 2 turns");
+    await logged(box, "saved s1: 2 turns", r.data);
     expect(cli(box, ["list"])).toContain("s1 2 hi");
   });
 
@@ -124,9 +129,10 @@ describe("session end", () => {
     writeFileSync(join(dataDir, "memory.db"), "not a database");
     chmodSync(join(dataDir, "memory.db"), 0o400);
 
-    expect(verb(box, ["save", path, "--cwd", box.work, "--detach"]).code).toBe("ok");
+    const r = verb(box, ["save", path, "--cwd", box.work, "--detach"]);
+    expect(r.code).toBe("ok");
 
-    await logged(box, "failed:");
+    await logged(box, "failed:", r.data);
     chmodSync(join(dataDir, "memory.db"), 0o600);
     writeFileSync(join(dataDir, "memory.db"), "");
     expect(cli(box, ["list", "--unsaved"])).toContain(path);
@@ -158,9 +164,10 @@ describe("session start", () => {
     const box = sandbox();
     writeFileSync(join(box.projects, "s9.jsonl"), new TranscriptBuilder().human("x").text());
 
-    expect(verb(box, ["save", "--catch-up", "--detach"]).code).toBe("ok");
+    const r = verb(box, ["save", "--catch-up", "--detach"]);
+    expect(r.code).toBe("ok");
 
-    await logged(box, "saved 1, 0 remain");
+    await logged(box, "saved 1, 0 remain", r.data);
   });
 
   test("catch-ups that run at once all succeed: a start and an end save together", async () => {

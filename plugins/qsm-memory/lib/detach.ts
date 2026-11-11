@@ -9,7 +9,7 @@ import { spawnDetached } from "../../../lib/detach.ts";
 import { type Env, resolveDbPath } from "./store.ts";
 
 export type Detached =
-  | { readonly started: true; readonly log: string }
+  | { readonly started: true; readonly log: string; readonly pid: number }
   | { readonly started: false; readonly reason: string };
 
 /** Starts `qsm-memory <args>` detached, its output appended to save.log in the archive's directory. */
@@ -17,5 +17,7 @@ export function startDetached(args: readonly string[], env: Env): Detached {
   const log = join(dirname(resolveDbPath(env)), "save.log");
   mkdirSync(dirname(log), { recursive: true, mode: 0o700 });
   const started = spawnDetached("qsm-memory", args, { file: log, append: true }, env);
-  return started.ok ? { started: true, log } : { started: false, reason: started.reason };
+  return started.ok
+    ? { started: true, log, pid: started.pid }
+    : { started: false, reason: started.reason };
 }
