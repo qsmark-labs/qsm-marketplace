@@ -19,10 +19,10 @@ export interface Rect {
 type Point = { readonly x: number; readonly y: number };
 
 /** A straight stretch of a line, from one point to the next. */
-export type Seg = [Point, Point];
+export type Segment = [Point, Point];
 
 /** The four sides of a box: the lines an outline draws. */
-export function sidesOf(r: Rect): Seg[] {
+export function sidesOf(r: Rect): Segment[] {
   const [a, b, c, d] = [
     { x: r.x, y: r.y },
     { x: r.x + r.w, y: r.y },
@@ -38,7 +38,7 @@ export function sidesOf(r: Rect): Seg[] {
 }
 
 /** The box a segment spans. */
-export const spanOf = ([u, v]: Seg): Rect => ({
+export const spanOf = ([u, v]: Segment): Rect => ({
   x: Math.min(u.x, v.x),
   y: Math.min(u.y, v.y),
   w: Math.abs(v.x - u.x),
@@ -54,7 +54,7 @@ export const gapBetween = (p: Rect, q: Rect): number =>
 
 /** Whether two stretches cross: one upright, one flat, each passing through the other's inside. A
  * crossing is a measure of the layout, not a touch. */
-function crossing(s: Seg, t: Seg): boolean {
+function crossing(s: Segment, t: Segment): boolean {
   const [p, q] = [spanOf(s), spanOf(t)];
   const [h, v] = p.h < 1 && q.w < 1 ? [p, q] : [q, p];
   return h.h < 1 && v.w < 1 && v.x > h.x && v.x < h.x + h.w && h.y > v.y && h.y < v.y + v.h;
@@ -68,17 +68,17 @@ const samePoint = (p: Point, q: Point): boolean => Math.hypot(p.x - q.x, p.y - q
 export interface Painted {
   readonly what: string;
   readonly owner: string;
-  readonly shape: Rect | Seg;
+  readonly shape: Rect | Segment;
   readonly ends?: readonly string[];
   readonly ports?: readonly Point[];
 }
 
-const isSeg = (s: Rect | Seg): s is Seg => Array.isArray(s);
+const isSegment = (s: Rect | Segment): s is Segment => Array.isArray(s);
 
 /** Whether two stretches meet at a port both lines start or end at. */
 function sharePort(a: Painted, b: Painted): boolean {
   const [s, t] = [a.shape, b.shape];
-  if (!isSeg(s) || !isSeg(t)) {
+  if (!isSegment(s) || !isSegment(t)) {
     return false;
   }
   return (a.ports ?? []).some(
@@ -91,10 +91,10 @@ function sharePort(a: Painted, b: Painted): boolean {
 
 /** The gap between two painted things: the boxes they span, which for two straight stretches of
  * an upright and flat routing is their true distance; nothing for a crossing. */
-const gapOf = (a: Rect | Seg, b: Rect | Seg): number =>
-  isSeg(a) && isSeg(b) && crossing(a, b)
+const gapOf = (a: Rect | Segment, b: Rect | Segment): number =>
+  isSegment(a) && isSegment(b) && crossing(a, b)
     ? Infinity
-    : gapBetween(isSeg(a) ? spanOf(a) : a, isSeg(b) ? spanOf(b) : b);
+    : gapBetween(isSegment(a) ? spanOf(a) : a, isSegment(b) ? spanOf(b) : b);
 
 /** Whether two painted things may touch: the parts of one owner (a line's stretches and its label,
  * an outline and its title), a line and the boxes at its ends, and two lines at a port they share. */
