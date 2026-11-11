@@ -56,9 +56,15 @@ function signJwt(pem: string, appId: string, now: number): string {
   return `${head}.${body}.${signature}`;
 }
 
-async function github(jwt: string, method: string, path: string): Promise<Record<string, unknown>> {
+async function github(
+  jwt: string,
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const response = await fetch(`${API}${path}`, {
     method,
+    body: body === undefined ? undefined : JSON.stringify(body),
     headers: {
       Authorization: `Bearer ${jwt}`,
       Accept: "application/vnd.github+json",
@@ -76,7 +82,8 @@ async function github(jwt: string, method: string, path: string): Promise<Record
   return answer;
 }
 
-/** A short-lived installation token of the App for `repo`. */
+/** A short-lived installation token of the App, narrowed to `repo` and to opening a pull request,
+ * so it cannot reach another repository or write anything else the installation could. */
 export async function mintInstallationToken(
   repo: GithubRepo,
   env: Readonly<Record<string, string | undefined>>,
@@ -90,6 +97,7 @@ export async function mintInstallationToken(
     jwt,
     "POST",
     `/app/installations/${String(installation.id)}/access_tokens`,
+    { repositories: [repo.repo], permissions: { contents: "read", pull_requests: "write" } },
   );
   if (typeof minted.token !== "string") {
     throw new QsmError("failed", "GitHub answered without an installation token");

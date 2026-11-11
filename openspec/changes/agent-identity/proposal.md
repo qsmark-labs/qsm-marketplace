@@ -17,15 +17,14 @@ the owner's approval possible, and the ruleset makes it required.
 
 ## Decisions of the owner
 
-1. **One App, `qsmark-bot`, for pull requests only**: "je to proste qsmark-bot, a pres nej se
-   automaticky budou zakladat PRs", and "Jen PRs chtel": tasks, issues and replies to findings
-   are made from the owner's account.
-2. **A local token, no webhook and no Actions**: the token is minted per call on the machine, so
-   an error shows in the same command.
-3. **Ghost mode holds**: the bot is automation, not an AI: "to je bot ne AI, to je automatic
-   static, deterministic code". Its name is the only trace; no text it posts mentions an AI.
-4. **The owner is the assignee, Macroscope and the owner the reviewers**: "reviewer je macroscope
-   plus ja, a assignee jsem vzdycky ja." `qsmark-bot` assigns the owner on every pull request it
-   opens and requests his review, which it can because it is not the author.
-5. **The admin merge is the owner's, on the web**: "kdyz bude potreba admin merge, tak to mam
-   udelat ja na webu, tak jak v guardrails."
+1. **One App, `qsmark-bot`, for pull requests only**: tasks, issues and replies to findings stay
+   the owner's own, because a second identity pays only where an approval needs it.
+2. **A local token, no webhook and no Actions**: the token is minted per call on the machine and
+   narrowed to one repository and to pull requests, so an error shows in the same command and the
+   token cannot do more than open one.
+3. **Ghost mode holds**: the bot is deterministic automation, not an AI, and no text it posts
+   mentions one.
+4. **The owner is the assignee, Macroscope and the owner the reviewers**: `qsmark-bot` assigns the
+   owner on every pull request it opens and requests his review, which it can because it is not
+   the author.
+5. **The admin merge is the owner's, on the web**, because the merge is the owner's acceptance.
