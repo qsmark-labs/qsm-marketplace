@@ -92,12 +92,16 @@ export async function until(check: () => boolean, what: string): Promise<void> {
 /** Waits for a detached build to take its lock and answers its pid, the process a test then waits
  * out: the build writes its status before it releases the lock and exits. */
 export async function buildPid(files: CacheFiles): Promise<number> {
-  await until(() => liveHolder(files.lock) !== null, "the build to take its lock");
-  const holder = liveHolder(files.lock);
-  if (holder === null) {
+  // One read answers both questions, so the lock cannot go between seeing it and reading its pid.
+  let pid: number | null = null;
+  await until(() => {
+    pid = liveHolder(files.lock)?.pid ?? null;
+    return pid !== null;
+  }, "the build to take its lock");
+  if (pid === null) {
     throw new Error("the build released its lock before its pid was read");
   }
-  return holder.pid;
+  return pid;
 }
 
 /** The top of a test file that starts detached builds: a long limit, and every build

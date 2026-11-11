@@ -133,7 +133,14 @@ function stopLeft(candidates: Iterable<number>): string[] {
     const command = ofThisRun(pid);
     if (command !== null) {
       left.push(`  ${pid} ${command}`);
-      process.kill(pid, "SIGKILL");
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch (cause) {
+        // It ended between the read and the kill; it still outlived its test.
+        if (!(cause instanceof Error && "code" in cause && cause.code === "ESRCH")) {
+          throw cause;
+        }
+      }
     }
   }
   return left;
@@ -145,16 +152,31 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  // Every end runs, and the guard and the removal after them, even when one end fails: a failed
+  // end must not leave the next one's daemon running into the following tests.
+  const failed: unknown[] = [];
   for (const fn of atEnd.splice(0)) {
-    await fn();
+    try {
+      await fn();
+    } catch (cause) {
+      failed.push(cause);
+    }
   }
   const left = stopLeft([...pids()].filter((pid) => !before.has(pid)));
   for (const dir of sandboxes.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
   if (left.length > 0) {
-    throw new Error(
-      `test-run: the test left ${left.length} process(es) running; wait for the end of what a test starts:\n${left.join("\n")}`,
+    failed.push(
+      new Error(
+        `test-run: the test left ${left.length} process(es) running; wait for the end of what a test starts:\n${left.join("\n")}`,
+      ),
+    );
+  }
+  if (failed.length > 0) {
+    throw new AggregateError(
+      failed,
+      `test-run: ${failed.length} failure(s) at the end of the test`,
     );
   }
 });
