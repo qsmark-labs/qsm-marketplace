@@ -1,7 +1,8 @@
 ## Intent
 
-Held here until the task tool opens again, then moved to the epic. The person, in their words:
-"we should scan more, and than remove, than scan less, and let agents work with secrets."
+Held here until the task tool opens again, then moved to the epic. The reasoning: scanning more
+and removing wrongly captured values is safer than scanning less and letting agents work with
+secrets.
 
 1. For the person who pastes keys, tokens and configs into a prompt, and for the agent that then
    works with them through `{{secret:<id>}}` without ever seeing a value.
