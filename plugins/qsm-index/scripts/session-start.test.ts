@@ -12,15 +12,9 @@ import { auto } from "../lib/auto.ts";
 import { buildIndex } from "../lib/build.ts";
 import { spawnRunner } from "../lib/run.ts";
 import { readStatus } from "../lib/state.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
-import {
-  detachedBuildTests,
-  fakeRunner,
-  until,
-  untilRefreshed,
-  verb,
-  world,
-} from "../lib/test-repo.ts";
+import { pidIn } from "../../../lib/fixtures/cli.ts";
+import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
+import { detachedBuildTests, fakeRunner, untilRefreshed, verb, world } from "../lib/test-repo.ts";
 
 detachedBuildTests();
 
@@ -86,9 +80,13 @@ test("a stale index of at most 5000 files is refreshed in the background without
   // with src/a.ts, 5000
   moreFiles(repo, 4999);
 
-  expect(hook(repo, env)).toEqual(silent);
+  // started: the verb says nothing to ask and reports the build's pid
+  const started = verb(env, "auto", repo);
+  expect(started.exit).toBe(0);
+  const pid = pidIn(started.data);
 
   await untilRefreshed(files, before);
+  await untilGone(pid);
   expect(readStatus(files.status)?.result).toBe("ok");
 });
 
@@ -141,13 +139,15 @@ test("a yes starts the build and lifts an earlier no", async () => {
   moreFiles(repo, 5000);
   auto({ path: repo, consent: "no" }, spawnRunner, env);
 
-  expect(auto({ path: repo, consent: "yes" }, spawnRunner, env)).toEqual({
-    answer: "started",
-    repo,
-  });
+  const answer = auto({ path: repo, consent: "yes" }, spawnRunner, env);
 
+  expect(answer).toMatchObject({ answer: "started", repo });
   expect(existsSync(files.declined)).toBe(false);
-  await until(() => readStatus(files.status)?.state === "done", "the build to finish");
+  if (answer.answer !== "started") {
+    throw new Error(`the build did not start: ${answer.answer}`);
+  }
+  await untilGone(answer.pid);
+  expect(readStatus(files.status)?.state).toBe("done");
 });
 
 test("a refresh that cannot start says why", () => {

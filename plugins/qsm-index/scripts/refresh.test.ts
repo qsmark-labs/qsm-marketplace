@@ -11,15 +11,23 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildIndex } from "../lib/build.ts";
 import { readStatus } from "../lib/state.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
-import { detachedBuildTests, fakeRunner, untilRefreshed, verb, world } from "../lib/test-repo.ts";
+import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
+import {
+  buildPid,
+  detachedBuildTests,
+  fakeRunner,
+  untilRefreshed,
+  verb,
+  world,
+} from "../lib/test-repo.ts";
 
 detachedBuildTests();
 
 /** A repository with one source file and its cache, indexed unless told otherwise, and the PATH
- * described at the top. */
+ * described at the top; the fake graphify sleeps, so the build holds its lock long enough to be
+ * found. */
 function indexedWorld(indexed = true) {
-  const made = world("qsm-index-refresh-");
+  const made = world("qsm-index-refresh-", () => "sleep 1");
   if (indexed) {
     buildIndex(made.repo, { cwd: "/", run: fakeRunner().run, env: made.env });
   }
@@ -49,7 +57,9 @@ test("reindex --if-indexed starts a refresh of an indexed repository", async () 
   expect({ exit: r.exit, code: r.code }).toEqual({ exit: 0, code: "ok" });
   expect(r.message).toBe(`started a build of ${repo}`);
   expect(existsSync(files.log)).toBe(true);
+  const pid = await buildPid(files);
   await untilRefreshed(files, before);
+  await untilGone(pid);
 });
 
 test("the twentieth distinct edited file starts a refresh", async () => {
@@ -58,10 +68,13 @@ test("the twentieth distinct edited file starts a refresh", async () => {
   expect(editsAreOk(numbered(repo, 1, 19), env)).toBe(true);
   expect(existsSync(files.log)).toBe(false);
 
-  expect(edited(env, join(repo, "src", "f20.ts")).message).toBe(`started a build of ${repo}`);
+  const twentieth = edited(env, join(repo, "src", "f20.ts"));
 
+  expect(twentieth.message).toBe(`started a build of ${repo}`);
   expect(existsSync(files.log)).toBe(true);
+  const pid = await buildPid(files);
   await untilRefreshed(files, before);
+  await untilGone(pid);
   expect(existsSync(files.edits)).toBe(false);
 });
 
