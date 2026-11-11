@@ -48,16 +48,16 @@ function selfCommand(): string[] {
 
 /**
  * Detached, with every stream closed and the handle unreferenced, so this process exits the moment
- * its lines are printed.
+ * its lines are printed. Answers the child's pid, or undefined when none started.
  */
-function startRefresh(dir: string, cwd: string, now: number): void {
+function startRefresh(dir: string, cwd: string, now: number): number | undefined {
   if (!claimRefresh(dir, cwd, now)) {
-    return;
+    return undefined;
   }
   const [command, ...head] = selfCommand();
   if (command === undefined) {
     abandonRefresh(dir, cwd);
-    return;
+    return undefined;
   }
   try {
     const child = spawn(command, [...head, "refresh", "--cwd", cwd], {
@@ -65,9 +65,11 @@ function startRefresh(dir: string, cwd: string, now: number): void {
       stdio: "ignore",
     });
     child.unref();
+    return child.pid;
   } catch {
     // A refresh that could not start is one frame without fresher counters.
     abandonRefresh(dir, cwd);
+    return undefined;
   }
 }
 
@@ -79,9 +81,7 @@ const renderVerb: Handler = async (call: Call): Promise<Outcome> => {
   const cwd = optionalString(call, "cwd") ?? snapshot.cwd ?? process.cwd();
   const dir = cacheDir(process.env);
   const git = resolveGit(dir, cwd, nowMs, GIT_MAX_AGE_MS);
-  if (git.stale) {
-    startRefresh(dir, cwd, nowMs);
-  }
+  const refreshPid = git.stale ? startRefresh(dir, cwd, nowMs) : undefined;
   const lines = render({
     snapshot,
     git: git.state,
@@ -90,7 +90,7 @@ const renderVerb: Handler = async (call: Call): Promise<Outcome> => {
     // every consumer's to strip.
     color: !flagArg(call, "noColor") && !call.json,
   });
-  return ok({ lines }, lines.join("\n"));
+  return ok(refreshPid === undefined ? { lines } : { lines, refreshPid }, lines.join("\n"));
 };
 
 /** The background half of the render. */

@@ -89,6 +89,17 @@ export async function until(check: () => boolean, what: string): Promise<void> {
   }
 }
 
+/** Waits for a detached build to take its lock and answers its pid, the process a test then waits
+ * out: the build writes its status before it releases the lock and exits. */
+export async function buildPid(files: CacheFiles): Promise<number> {
+  await until(() => liveHolder(files.lock) !== null, "the build to take its lock");
+  const holder = liveHolder(files.lock);
+  if (holder === null) {
+    throw new Error("the build released its lock before its pid was read");
+  }
+  return holder.pid;
+}
+
 /** The top of a test file that starts detached builds: a long limit, and every build
  * killed after each test. */
 export function detachedBuildTests(): void {

@@ -4,7 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { spawnDetached } from "../../../lib/detach.ts";
+import { type Detached, spawnDetached } from "../../../lib/detach.ts";
 import { GRAPH_DIR, GRAPH_FILE } from "./build.ts";
 import { type CacheFiles, cacheFiles, type Env } from "./paths.ts";
 import { changedSet, head, topLevel } from "./repo.ts";
@@ -25,7 +25,8 @@ export interface Ask {
 }
 
 export type AutoAnswer =
-  | { readonly answer: "started" | "fresh" | "running" | "declined"; readonly repo: string }
+  | { readonly answer: "fresh" | "running" | "declined"; readonly repo: string }
+  | { readonly answer: "started"; readonly repo: string; readonly pid: number }
   | Ask
   | { readonly answer: "not-indexable" | "failed"; readonly reason: string };
 
@@ -69,17 +70,11 @@ function isDeclined(files: CacheFiles, consent: AutoArgs["consent"]): boolean {
   return existsSync(files.declined);
 }
 
-/** Starts `qsm-index build` detached with the build log replaced, one build's output; null when
- * started, else why not. */
-export function spawnBuild(repo: string, files: CacheFiles, env: Env): string | null {
+/** Starts `qsm-index build` detached with the build log replaced, one build's output; the build's
+ * pid when started, else why not. */
+export function spawnBuild(repo: string, files: CacheFiles, env: Env): Detached {
   mkdirSync(files.dir, { recursive: true });
-  const started = spawnDetached(
-    "qsm-index",
-    ["build", repo],
-    { file: files.log, append: false },
-    env,
-  );
-  return started.ok ? null : started.reason;
+  return spawnDetached("qsm-index", ["build", repo], { file: files.log, append: false }, env);
 }
 
 /** In this order: not a git repository, declined, running, fresh. Otherwise a repository with no
@@ -108,8 +103,10 @@ export function auto(args: AutoArgs, run: Runner, env: Env): AutoAnswer {
       return { answer: "ask", repo, files: count, stale: indexed };
     }
   }
-  const failure = spawnBuild(repo, files, env);
-  return failure === null ? { answer: "started", repo } : { answer: "failed", reason: failure };
+  const started = spawnBuild(repo, files, env);
+  return started.ok
+    ? { answer: "started", repo, pid: started.pid }
+    : { answer: "failed", reason: started.reason };
 }
 
 /** What the agent is told for an ask: what was found, the question, and the two answers. */

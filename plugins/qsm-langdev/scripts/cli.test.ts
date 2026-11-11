@@ -70,12 +70,14 @@ function plainRepo(): string {
   return home;
 }
 
-/** A stand-in semgrep in `<home>/bin` whose `show identity` exits `identity`,
+/** A stand-in semgrep (and sentrux) in `<home>/bin` whose `show identity` exits `identity`,
  * so doctor's login probe needs no real semgrep and no login. */
 function fakeSemgrep(home: string, identity: number): string {
   const bin = join(home, "bin");
   mkdirSync(bin, { recursive: true });
   fakeBin(bin, "semgrep", `if [ "$1" = show ]; then exit ${identity}; fi\necho 1.153.1`);
+  // the real sentrux starts a background curl for its own version check, which outlives doctor
+  fakeBin(bin, "sentrux", "echo sentrux 0.0.0");
   return bin;
 }
 
