@@ -125,6 +125,18 @@ what done means, ending in a `strict-reviewer` review.
 | `test-hooks` | `claude plugin validate` and the hooks tests of every plugin |
 | `plugin-eval` | `bun run eval <plugin>`: the skill and agent evals |
 
+## Where the owner reads the work
+
+- GitHub holds the work, and the owner reads it there, often on a phone: a feature and its tasks
+  in their issues, a change in its pull request description.
+- Each item opens with its pictures in the order a reader understands it: the BPMN process of the
+  business flow first, then the C4 view of where the code goes, then the least text.
+- A local HTML page is a bonus for exploring; a claude.ai artifact is never used.
+- A rule the owner states for this marketplace is written here at once, replacing the old text.
+- Every rule here is general, because this marketplace becomes a product for other users: the
+  owner's words become a few points of the reasoning behind the decision, never a citation. A
+  phrase any user could say may stay, lightly reworded in English.
+
 ## Who asks for a review
 
 - Only the owner asks Macroscope for a review, by commenting `@macroscope-app review` on a green
@@ -170,7 +182,8 @@ mise exec -- bun run test:hooks
   merges and deletes it, because the stop gate scores a whole tree.
 - The langdev guard blocks `--no-verify` and any `QSM_LANGDEV_ALLOW` an agent sets. A blocked commit
   or push means fix the cause now: an agent never offers the allow in place of a fix, nor a fix
-  "later" in a task (the person: "FIX EVERYTHING NOW"). When the finding is right for most code and
-  wrong for this code, the rule is what is wrong: propose the change to the rule's config, with its
-  reason, and make it after the person's yes. The allow is the last line of defense, for a
-  regression nothing can fix; the person types it: `! QSM_LANGDEV_ALLOW="<why>" <command>`.
+  "later" in a task, because a deferred fix is a fix nobody makes. When the finding is right for
+  most code and wrong for this code, the rule is what is wrong: propose the change to the rule's
+  config, with its reason, and make it after the person's yes. The allow is the last line of
+  defense, for a regression nothing can fix; the person types it:
+  `! QSM_LANGDEV_ALLOW="<why>" <command>`.
