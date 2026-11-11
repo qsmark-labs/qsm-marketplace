@@ -6,10 +6,10 @@ grilling.
 ## Why
 
 Done features pile up with no version, no release note and no point at which they leave the board.
-The owner: "i want to a add full release versions, so released is what we pick into the 2weeks
-release, and from there after 2weeks it gets archived." About the Iron Law of AGENTS.md that
-forbids versioning in the tree: "that rule is relevant for local not releasing projects ... normal
-versioning and releasing for a proper project is okay, and wanned."
+The owner wants full release versions: a released feature is one picked into the two-week
+release, and from there, after two weeks, it is archived. The Iron Law of AGENTS.md that forbids
+versioning in the tree is relevant to local projects that do not release; normal versioning and
+releasing for a proper project is allowed and wanted.
 
 ## What
 

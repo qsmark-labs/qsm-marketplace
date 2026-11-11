@@ -32,16 +32,18 @@ origin remote picks one. Both resolve the repository from the working tree; pass
 
 ## Write
 
-- `reply <number> <comment-id> --message "<text>"`. On GitHub it also resolves the thread, because
-  an answered thread left open sends the reviewer back for nothing; `--no-resolve` when the reply
-  is a question. On GitLab the thread stays open, since resolving is the reviewer's act there.
-- Name where the fix landed: "Fixed in abc1234". The reviewer checks the claim with it and
-  `resolve-all` sweeps on it; "done" proves nothing.
-- `resolve <number> <comment-id>` without a reply only when nothing needs saying, because a silent
-  resolve on a question reads as avoidance.
-- `qsm-forge gh resolve-all <pr>` closes only threads whose latest reply starts with "Fixed in":
-  the safe sweep after a round of fixes. With `--message "<text>"` it posts that text on every
-  open thread and closes them all; use it only when the user asked for exactly that.
+Two roles, because only the reviewer can say a finding is closed:
+
+- As the implementer, `reply <number> <comment-id> --message "<text>"` to every comment, on both
+  forges, and never resolve. Say where the fix landed ("Fixed in abc1234") or why not; "done"
+  proves nothing.
+- As the reviewer, check each fix. When it is right, `resolve <number> <comment-id> --message
+  "Good"`. When it is not, reply with what is still wrong and leave the thread open.
+- `qsm-forge gh resolve-all <pr>` is the reviewer's sweep after checking every fix: it closes only
+  threads whose latest reply starts with "Fixed in". With `--message "<text>"` it posts that text on
+  every open thread and closes them all; use it only when the user asked for exactly that.
+- `resolve` without a message only when nothing needs saying, because a silent resolve on a
+  question reads as avoidance.
 - `qsm-forge gh dismiss-reviews <pr>` clears reviews still asking for changes, `--author <login>`
   for one. It is for a stale bot review after the changes landed; ask before dismissing a person.
 
@@ -84,5 +86,5 @@ the message is theirs: an authentication failure does not fix itself on retry.
 ## Say it in the reply
 
 Name the forge and the identifier, what you posted, and what is still open: "Replied on
-owner/name#12 src/a.ts:42 and resolved it; two threads still open." When something was not
-posted, say so first and why.
+owner/name#12 src/a.ts:42 with the fix hash; the thread stays open for the reviewer." When something
+was not posted, say so first and why.

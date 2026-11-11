@@ -96,11 +96,12 @@ what to output, the tools and the skill to load, and the person watches the loop
 
 All feedback about this marketplace has one place: epic `qsm-i1u` in the task tool of the checkout
 `QSM_MARKETPLACE` points at. Feedback is a tool that misbehaved or was missing, a wrong output,
-guidance the user gave on how agents should work (their words quoted), or what an agent got wrong in
-its own workflow. The title names where, the plugin or `marketplace`, so a plugin's feedback can be
-found by its title. The label says who noticed: `main-agent`, `subagent`, or `user` (written by the
-main agent). Search the title words first and comment on a task that already holds it. The task-tool
-skill holds the commands to search and to create it (parent `qsm-i1u`, label `source:<who>`, a
-description of what, how and why), run in the checkout `QSM_MARKETPLACE` points at.
+guidance the user gave on how agents should work (its point in a few general words, never the user's
+words quoted), or what an agent got wrong in its own workflow. The title names where, the plugin or
+`marketplace`, so a plugin's feedback can be found by its title. The label says who noticed:
+`main-agent`, `subagent`, or `user` (written by the main agent). Search the title words first and
+comment on a task that already holds it. The task-tool skill holds the commands to search and to
+create it (parent `qsm-i1u`, label `source:<who>`, a description of what, how and why), run in the
+checkout `QSM_MARKETPLACE` points at.
 
 A feedback task is the only task a subagent ever creates; every other task is the main agent's.

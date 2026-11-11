@@ -35,12 +35,11 @@ results, no generation. The PR and task export is `models-pr-pictures`.
 
 1. **Pages on qsm-docs, kinds from qsm-bpmn** (2026-11-04, epic qsm-vgw0): "qsm-docs knows
    nothing of BPMN or C4".
-2. **Gherkin is an optional field of a step, edited on its details page** (2026-11-06): "se pisou
-   jako optional field k tomu stepu. A potom se budou moct updatovat v tom detail page tady
-   locally."
+2. **Gherkin is an optional field of a step, edited on its details page** : the scenarios are
+   written as an optional field of the step and updated on its details page, locally.
 3. **A save is a proposal for the agent** (2026-11-06), not a write into the checkout.
-4. **Only what shows the graph and its scenarios** (2026-11-06): "Ted chci jen page co to zobrazi,
-   ma moznost mit treba gherkin definitions pro BPMN". Everything else of the earlier draft is cut.
+4. **Only what shows the graph and its scenarios** : a page that shows the graph,
+   with room for Gherkin definitions of BPMN steps. Everything else of the earlier draft is cut.
 5. **No Gherkin-to-tests link** (2026-11-05): the scenarios are notes the owner reads and exports.
 
 ## Critiques

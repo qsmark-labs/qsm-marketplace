@@ -7,8 +7,8 @@ import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from "no
 import { join, resolve } from "node:path";
 import { sleep } from "bun";
 import { isAlive } from "../../../lib/detach.ts";
-import { envelopeOf } from "../../../lib/fixtures/cli.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { envelopeOf, pidIn } from "../../../lib/fixtures/cli.ts";
+import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
 import {
   catalogJson,
   ccrAllowing,
@@ -422,10 +422,8 @@ describe("sync in the background and doctor's view", () => {
   test("the detached child is told --if-stale, so queued sessions refresh once", async () => {
     const w = makeWorld();
     const recorded = recordingCcr(w);
-    startDetachedSync(placesOf(w.env), w.env);
-    for (let i = 0; i < 100 && !existsSync(recorded); i += 1) {
-      await sleep(100);
-    }
+    const started = startDetachedSync(placesOf(w.env), w.env);
+    await untilGone(pidIn(started.data));
     expect(readFileSync(recorded, "utf8").trim()).toBe("sync --if-stale");
   });
 
@@ -454,15 +452,10 @@ describe("sync in the background and doctor's view", () => {
   test("a detached sync that fails is in sync.log and doctor names it", async () => {
     const w = makeWorld();
     setMode(w, "codex-fails");
-    expect(envelopeOf(runCcr(w, ["sync", "--detach", "--json"]).stdout).code).toBe("ok");
+    const started = envelopeOf(runCcr(w, ["sync", "--detach", "--json"]).stdout);
+    expect(started.code).toBe("ok");
+    await untilGone(pidIn(started.data));
     const log = join(w.stateDir, "sync.log");
-    for (
-      let i = 0;
-      i < 100 && !(existsSync(log) && readFileSync(log, "utf8").includes("failed:"));
-      i += 1
-    ) {
-      await sleep(100);
-    }
     expect(readFileSync(log, "utf8")).toContain("failed: codex debug models exited 1");
     expect(envelopeOf(runCcr(w, ["doctor", "--json"]).stdout).message).toContain(
       "codex debug models exited 1",
@@ -768,14 +761,11 @@ describe("secrets and a healthy machine", () => {
       runCcr(w, ["doctor", "--json"]),
     ];
     setMode(w, "codex-fails");
-    outs.push(runCcr(w, ["sync", "--json"]), runCcr(w, ["sync", "--detach", "--json"]));
-    // the foreground sync wrote its failed line already; the detached child writes the second,
-    // and until it has, it can still make the state directory the test removes
-    const syncLog = join(w.stateDir, "sync.log");
-    const failures = () => readFileSync(syncLog, "utf8").split("network").length - 1;
-    for (let i = 0; i < 100 && failures() < 2; i += 1) {
-      await sleep(100);
-    }
+    outs.push(runCcr(w, ["sync", "--json"]));
+    const detached = runCcr(w, ["sync", "--detach", "--json"]);
+    outs.push(detached);
+    // the detached child can still write into the state directory the test removes
+    await untilGone(pidIn(envelopeOf(detached.stdout).data));
     const logs = ["launch.log", "sync.log", "sync.out", "ccr.out"].map((f) =>
       readFileSync(join(w.stateDir, f), "utf8"),
     );

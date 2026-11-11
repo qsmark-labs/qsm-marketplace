@@ -77,6 +77,14 @@ export function dataOf(stdout: string): unknown {
   return envelopeOf(stdout).data;
 }
 
+/** The pid a detached verb reported in its envelope `data`; none fails the test. */
+export function pidIn(data: unknown): number {
+  if (!isRecord(data) || typeof data.pid !== "number") {
+    throw new Error(`no pid in ${JSON.stringify(data)}`);
+  }
+  return data.pid;
+}
+
 /** One finding a lint printed: the element, the rule and what is wrong. */
 export type PrintedFinding = Pick<Finding, "id" | "rule" | "message">;
 

@@ -2,7 +2,7 @@
 
 The `ci` point is in the point table and every language declares checkers at it, but nothing runs
 it: CI has no `langdev` job, `check` does not take `--at ci`, and semgrep's Pro form needs
-`SEMGREP_APP_TOKEN`, which the owner adds later ("pridam ho potom"). These lines were part of
+`SEMGREP_APP_TOKEN`, which the owner adds later. These lines were part of
 `langdev-point-targets`; they moved here on 2026-10-31 so that change could archive with a main spec
 that describes only what runs.
 
