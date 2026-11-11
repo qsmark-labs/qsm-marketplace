@@ -90,8 +90,25 @@ nearest_base() {
   echo "$best"
 }
 
+# A merge whose every parent is already on origin/main or an origin/feature/* (main taken into a
+# feature branch) brings only lines reviewed where they landed, so it has none of its own.
+merges_bases() {
+  local parent base
+  for parent in $(git rev-list --parents -n 1 "$1" | cut -d' ' -f2-); do
+    for base in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/main 'refs/remotes/origin/feature/*'); do
+      git merge-base --is-ancestor "$parent" "$base" && continue 2
+    done
+    return 1
+  done
+  [[ $(git rev-list --parents -n 1 "$1" | wc -w) -gt 2 ]]
+}
+
 while read -r _ local_sha remote_ref _; do
   if [[ $local_sha =~ ^0+$ || $remote_ref == refs/heads/main || $remote_ref == refs/heads/feature/* ]]; then
+    continue
+  fi
+  if merges_bases "$local_sha"; then
+    echo "pre-push: ${remote_ref#refs/heads/} merges reviewed bases, nothing of its own to measure" >&2
     continue
   fi
   base=$(nearest_base "$local_sha" "${remote_ref#refs/heads/}") || exit 1
