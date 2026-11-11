@@ -166,9 +166,9 @@ mise exec -- bun run test:hooks
 - `bun test` skips a dot directory unless it is named, and skips `plugins/*/hooks/*.test.ts`;
   `test:hooks` runs those and skips visibly without `claude` on PATH.
 - `bun run plugin-types` regenerates the engine types the hooks typecheck against.
-- A change to a skill or agent writes or updates its eval case, and nobody runs it: the owner
-  reviews every case in one pass first, because a run against an unreviewed case judges the
-  skill by a grader nobody checked.
+- `bun run eval <plugin>` after a change to a skill or agent.
+  Note: the maintainer is reviewing the existing eval cases; until a case is reviewed, its
+  result is a signal to read, not a verdict.
 - One agent, one tree: an implementer works in its own worktree, and the orchestrator reviews,
   merges and deletes it, because the stop gate scores a whole tree.
 - The langdev guard blocks `--no-verify` and any `QSM_LANGDEV_ALLOW` an agent sets. A blocked commit
