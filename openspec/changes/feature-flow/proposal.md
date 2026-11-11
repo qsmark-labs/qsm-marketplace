@@ -76,26 +76,23 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 
 ## Decisions of the owner
 
-1. **Features, no epics** (2026-11-01): "we removed epics fully". A feature is GitHub's default
-   issue type Feature; a task is a sub-issue; feedback is a plain issue from a
-   template.
-2. **Strict visual models everywhere** (2026-11-01): "vsude strict defined theorem visual models,
-   tak aby bylo jasne na vsechny strany really co chceme". BPMN is behaviour, C4 is structure.
-3. **Near the loop** (2026-11-01): "I want to take the problem apart and know about it." Specs
-   today are "one huge useless file with insane amount of text. No visibility or visuals for
-   anything."
-4. **The feature branch and the accept** (2026-11-01): `feature/<n>` at the split, task pull
-   requests target it, a conflict with main is resolved and reviewed before QA, and the feature
-   pull request to main is the accept; QA catches contract and business bugs, never code bugs:
-   "QA ma chytat contract a business bugs, ne codebugs".
-5. **GitHub first** (2026-10-30): "i dont want to duplicate anything that github already has a
-   way to do normally".
-6. **Task pull requests stay reviewable** (2026-11-06): the required check `pr-size` fails one
-   past 400 changed lines; a file `.gitattributes` marks generated, a BPMN's layout included, is
-   not counted, because a model is read through its picture.
-7. **No budget** (2026-11-07): "nemam budget, jen zakladame tasky, a ty tasky plnime". The
-   implementation rule asks five questions, the forms ask five, and Feasibility counts the task
-   pull requests instead of measuring a budget.
-8. **Pictures first, least text** (2026-11-07): "aby kdokoliv - hlavne ja, se mohl podivat na
-   feature a hned mel nejaky idea o tom co, kam, a proc se bude davat. Chceme kazdym krokem,
-   kazdym toolem, vsim co ted delame maximalne pomoct userovi zmensit mental load."
+1. **Features, no epics**: a feature is GitHub's issue type Feature, a task its sub-issue, and
+   feedback a plain issue from a template, because GitHub already has these and a second
+   hierarchy would only drift from it.
+2. **Strict visual models everywhere**: BPMN is behaviour, C4 is structure, so what is wanted is
+   clear from every side before anything is built.
+3. **Near the loop**: the owner takes each problem apart himself, so a spec is pictures and short
+   requirements, never one long file of text.
+4. **The feature branch and the accept**: `feature/<n>` is cut at the split, task pull requests
+   target it, a conflict with main is resolved and reviewed before QA, and the feature pull
+   request to main is the accept. QA catches contract and business bugs, because code bugs are
+   the review's.
+5. **GitHub first**: nothing GitHub already does is built again.
+6. **Task pull requests stay reviewable**: the required check `pr-size` fails one past 400
+   changed lines; `.gitattributes` marks generated files, a BPMN's layout included, as not
+   counted, because a model is read through its picture.
+7. **No budget**: the implementation rule and the forms ask five questions, and Feasibility counts
+   the task pull requests instead of measuring a budget.
+8. **Pictures first, least text**: anyone who opens a feature, the owner first, sees at once what
+   goes where and why. Every step and every tool exists to lower what the reader must hold in
+   mind.

@@ -127,16 +127,13 @@ what done means, ending in a `strict-reviewer` review.
 
 ## Where the owner reads the work
 
-GitHub is where the owner runs this marketplace's work, often from a phone: a feature's plan, its
-pictures and its tasks live in the feature issue, a task's in its sub-issue, a change's in its pull
-request description, never only on this machine. What he reads opens with a picture, a BPMN
-process for how it moves and a C4 view for where it goes, and the least text after it. A local
-HTML page (a model page, a plugin overview) is a bonus for exploring here, which he may later
-expose over a private network; it never holds what the work needs. A claude.ai artifact is never
-used. A rule the owner states for this marketplace is written into this file at once, replacing
-the old text, with no history. The owner: "budu vsechno managovat pres github, takze features,
-tasks, PR descriptions", "maximalizovat pochopeni tasks a features za co nejkratsi cas a v co
-nejmene textu" and "nechci claude artifacts".
+- GitHub holds the work, and the owner reads it there, often on a phone: a feature and its tasks
+  in their issues, a change in its pull request description.
+- Each item opens with its pictures in the order a reader understands it: the BPMN process of the
+  business flow first, then the C4 view of where the code goes, then the least text.
+- A local HTML page is a bonus for exploring; a claude.ai artifact is never used.
+- A rule the owner states for this marketplace is written here at once, replacing the old text.
+- Nothing in this public repository quotes the owner: write the general reason instead.
 
 ## Where work lands
 
@@ -174,7 +171,8 @@ mise exec -- bun run test:hooks
   merges and deletes it, because the stop gate scores a whole tree.
 - The langdev guard blocks `--no-verify` and any `QSM_LANGDEV_ALLOW` an agent sets. A blocked commit
   or push means fix the cause now: an agent never offers the allow in place of a fix, nor a fix
-  "later" in a task (the person: "FIX EVERYTHING NOW"). When the finding is right for most code and
-  wrong for this code, the rule is what is wrong: propose the change to the rule's config, with its
-  reason, and make it after the person's yes. The allow is the last line of defense, for a
-  regression nothing can fix; the person types it: `! QSM_LANGDEV_ALLOW="<why>" <command>`.
+  "later" in a task, because a deferred fix is a fix nobody makes. When the finding is right for
+  most code and wrong for this code, the rule is what is wrong: propose the change to the rule's
+  config, with its reason, and make it after the person's yes. The allow is the last line of
+  defense, for a regression nothing can fix; the person types it:
+  `! QSM_LANGDEV_ALLOW="<why>" <command>`.
