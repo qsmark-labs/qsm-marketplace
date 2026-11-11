@@ -20,15 +20,16 @@ The behaviour is the spec and `feature_status_process` of `models/marketplace.bp
    on the default branch. On `pull_request: closed` with `merged` and a base `feature/*`, the
    Action closes each issue the body names as completed; "Item closed" then sets Done. One file,
    `.github/workflows/qsm-tasks.yml`, two jobs.
-4. **The Action writes as `qsmark-bot`** (#14), whose token may push the merge of main into a
-   protected `feature/<n>`.
+4. **The Action writes as the owner**, with the owner's token stored as a repository secret:
+   `qsmark-bot` only opens pull requests (#14), and the board is the owner's.
 
 ## Unmeasured, measured before the code
 
 1. Does an Action on `issues: opened` see the parent of an issue made with `add --feature`? If not,
    decision 1 is revised before the Action is built, with no silent second route.
-2. Does the bot's token let the Action close the issues a merge into `feature/*` names, and push
-   the merge of main into `feature/<n>` past the `feature` ruleset?
+2. Does the owner's token let the Action close the issues a merge into `feature/*` names, and
+   bring main into `feature/<n>`, which the `feature` ruleset lets change only through a pull
+   request?
 
 ## Critiques
 
