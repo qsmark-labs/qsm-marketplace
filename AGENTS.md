@@ -133,7 +133,9 @@ what done means, ending in a `strict-reviewer` review.
   business flow first, then the C4 view of where the code goes, then the least text.
 - A local HTML page is a bonus for exploring; a claude.ai artifact is never used.
 - A rule the owner states for this marketplace is written here at once, replacing the old text.
-- Nothing in this public repository quotes the owner: write the general reason instead.
+- Every rule here is general, because this marketplace becomes a product for other users: the
+  owner's words become a few points of the reasoning behind the decision, never a citation. A
+  phrase any user could say may stay, lightly reworded in English.
 
 ## Where work lands
 
