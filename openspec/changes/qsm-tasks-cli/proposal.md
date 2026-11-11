@@ -80,5 +80,6 @@ deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters
     verbs in four groups and the seven task pull requests.
 11. **The board holds the work, not the pull requests**: a pull request that closes an issue is
     reached from that issue, so each piece of work is one card whose Status tells where it is.
-    Only a side pull request, which closes no issue, is a card of its own. The Auto-add workflow
-    adds issues only, and the agent adds a side pull request when it opens one.
+    A side pull request, which closes no issue, is no card either, because a board that mixes
+    issue and pull request numbers leaves the reader unsure which number is the work. The
+    Auto-add workflow adds issues only.
