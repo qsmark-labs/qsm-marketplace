@@ -64,7 +64,7 @@ async function github(
 ): Promise<Record<string, unknown>> {
   const response = await fetch(`${API}${path}`, {
     method,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     headers: {
       Authorization: `Bearer ${jwt}`,
       Accept: "application/vnd.github+json",
