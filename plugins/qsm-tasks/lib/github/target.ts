@@ -20,7 +20,7 @@ export interface Target {
 
 const BOARD = "id number owner{...on Organization{login} ...on User{login}}";
 // $login and $number default so the linked form can leave them out; @include skips the owner then.
-const QUERY = `query($owner:String!,$name:String!,$named:Boolean!,$login:String="",$number:Int=0){repository(owner:$owner,name:$name){id nameWithOwner projectsV2(first:10){nodes{${BOARD}}}} repositoryOwner(login:$login)@include(if:$named){...on ProjectV2Owner{projectV2(number:$number){${BOARD}}}}}`;
+const QUERY = `query($owner:String!,$name:String!,$named:Boolean!,$login:String="",$number:Int=0){repository(owner:$owner,name:$name){id nameWithOwner projectsV2(first:10,query:"is:open"){pageInfo{hasNextPage} nodes{${BOARD}}}} repositoryOwner(login:$login)@include(if:$named){...on ProjectV2Owner{projectV2(number:$number){${BOARD}}}}}`;
 
 function split(value: string, flag: "--repo" | "--project"): [string, string] {
   const shape = flag === "--repo" ? /^([\w.-]+)\/([\w.-]+)$/ : /^([\w.-]+)\/(\d+)$/;
@@ -58,36 +58,38 @@ function readBoard(node: unknown): Board | null {
   return typeof login === "string" ? { id: node.id, owner: login, number: node.number } : null;
 }
 
-/** The board --project named, or every board linked to the repository. */
-function offered(data: Record<string, unknown>, named: boolean): Board[] {
+interface Offered {
+  readonly boards: readonly Board[];
+  /** GitHub holds more open linked boards than one page shows */
+  readonly more: boolean;
+}
+
+/** The board --project named, or every open board linked to the repository. */
+function offered(data: Record<string, unknown>, named: boolean): Offered {
   const owner = data.repositoryOwner;
-  const linked =
-    isRecord(data.repository) && isRecord(data.repository.projectsV2)
-      ? data.repository.projectsV2.nodes
-      : [];
-  const nodes: unknown[] = named
-    ? [isRecord(owner) ? owner.projectV2 : null]
-    : Array.isArray(linked)
-      ? linked
-      : [];
-  return nodes.map((node) => readBoard(node)).filter((board) => board !== null);
+  const page = isRecord(data.repository) ? data.repository.projectsV2 : undefined;
+  const linked = isRecord(page) && Array.isArray(page.nodes) ? page.nodes : [];
+  const nodes: unknown[] = named ? [isRecord(owner) ? owner.projectV2 : null] : linked;
+  const more =
+    !named && isRecord(page) && isRecord(page.pageInfo) && page.pageInfo.hasNextPage === true;
+  return { boards: nodes.map((node) => readBoard(node)).filter((board) => board !== null), more };
 }
 
 /** The one board: none is `no-board` (linked) or `not-found` (named), several a wrong call. */
 function oneBoard(
   repo: string,
-  boards: readonly Board[],
+  { boards, more }: Offered,
   project: string | undefined,
 ): Result<Board> {
-  const [board, ...more] = boards;
+  const [board, ...others] = boards;
   if (board === undefined) {
     return project === undefined
-      ? refuse("missing", "no-board", `${repo} has no linked board`, "pass --project")
+      ? refuse("missing", "no-board", `${repo} has no open linked board`)
       : refuse("failed", "not-found", `no board ${project} on GitHub`);
   }
-  if (more.length > 0) {
+  if (others.length > 0 || more) {
     const names = boards.map((b) => `${b.owner}/${b.number}`).join(", ");
-    return wrongCall(`${repo} has several linked boards (${names}): pass --project`);
+    return wrongCall(`${repo} has several open linked boards (${names}${more ? " and more" : ""})`);
   }
   return { ok: true, value: board };
 }

@@ -52,7 +52,7 @@ function parseJson(stdout: string): Result<unknown> {
 function ghFailure(answer: GhAnswer): Result<never> {
   const said = answer.stderr.trim();
   return said.startsWith(NO_REPO)
-    ? refuse("missing", "no-repo", `gh found no GitHub repository here: ${said}`, "pass --repo")
+    ? refuse("missing", "no-repo", `gh found no GitHub repository here: ${said}`)
     : refuse("failed", "refused", said === "" ? `gh exited ${answer.exit}` : said);
 }
 
