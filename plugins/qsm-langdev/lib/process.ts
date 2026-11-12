@@ -3,7 +3,24 @@
 // of its deadline), so none runs without one and none carries a limit of its own.
 
 import { type SpawnSyncReturns, spawn as spawnChild } from "node:child_process";
+import { orphaned, owned, ownerEnv, reapNamed } from "../../../lib/reap.ts";
 import { isErrno } from "./errors.ts";
+
+const TOOL = "qsm-langdev";
+
+// No checker leaves a build server running. A dotnet build's MSBuild nodes and VBCSCompiler outlive
+// it and carry the owner mark, and another build (a second session's gate, the person's own) then
+// reuses them, so cleaning them up would kill them under that build.
+const NO_BUILD_SERVERS = {
+  MSBUILDDISABLENODEREUSE: "1",
+  DOTNET_CLI_USE_MSBUILD_SERVER: "0",
+  UseSharedCompilation: "false",
+};
+
+/** Kills what a dead run left of its checkers, naming each. */
+export function reapOrphans(): void {
+  reapNamed(TOOL, orphaned(TOOL), "left by a run that ended before its cleanup");
+}
 
 export type Spawned = Pick<
   SpawnSyncReturns<string>,
@@ -32,11 +49,18 @@ function killGroup(pid: number, command: string): Error | null {
   }
 }
 
-function killLiveOnSignal(): void {
+/** Once per process, before the first checker starts: ends what a dead run left, and arms the
+ * cleanup of whatever this run's checkers leave (a descendant that left the group with setsid). It
+ * is not done after each checker: checkers run in parallel and that would kill a sibling's. */
+function armCleanup(): void {
   if (armed) {
     return;
   }
   armed = true;
+  reapOrphans();
+  process.on("exit", () => {
+    reapNamed(TOOL, owned(TOOL), "left running when the run ended");
+  });
   for (const [signal, code] of [
     ["SIGTERM", 143],
     ["SIGINT", 130],
@@ -64,7 +88,12 @@ export function spawnAsync(
   return new Promise((resolvePromise, rejectPromise) => {
     // `env` named: Bun resolves the binary against the PATH the process started with unless it is
     // handed one, and a test puts a fake first.
-    const child = spawnChild(command, args, { cwd, detached: true, env });
+    armCleanup();
+    const child = spawnChild(command, args, {
+      cwd,
+      detached: true,
+      env: { ...env, ...NO_BUILD_SERVERS, ...ownerEnv(TOOL) },
+    });
     // A tool that reads stdin sees the end of it, as it did under spawnSync.
     child.stdin.end();
     let stdout = "";
@@ -88,7 +117,6 @@ export function spawnAsync(
     }, timeoutMs);
     if (child.pid !== undefined) {
       live.add(child.pid);
-      killLiveOnSignal();
     }
     child.on("error", (err: NodeJS.ErrnoException) => {
       error = err;
@@ -97,6 +125,12 @@ export function spawnAsync(
       clearTimeout(timer);
       if (child.pid !== undefined) {
         live.delete(child.pid);
+        // The checker ended; what it started in the background must not outlive it.
+        const failure = killGroup(child.pid, command);
+        if (failure !== null) {
+          rejectPromise(failure);
+          return;
+        }
       }
       resolvePromise({ status, signal, stdout, stderr, ...(error === undefined ? {} : { error }) });
     });

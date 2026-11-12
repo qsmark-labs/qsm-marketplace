@@ -17,6 +17,7 @@ import {
 import { join, resolve } from "node:path";
 import { MARKER } from "./completions.ts";
 import { isolatedEnv, runBin } from "./fixtures/cli.ts";
+import { leftDir } from "./fixtures/dead-run.ts";
 import { type FakeInstall, fakeInstall } from "./fixtures/install.ts";
 import { sandboxDir } from "./fixtures/sandbox.ts";
 import { installBase, installScript, linkBin, removeOwnedLinks } from "./install-base.ts";
@@ -81,6 +82,26 @@ describe("install-base over the fixture plugin", () => {
     const again = await install(f.ctx);
     expect(again.status).toBe("already");
     expect(again.steps.map((s) => s.status)).not.toContain("installed");
+  }, 120_000);
+});
+
+describe("install-base and a build another run left in the bin directory", () => {
+  test("a live run's temporary file stays, a dead run's is removed", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const ended = spawnSync("true");
+    expect(ended.pid).toBeGreaterThan(0);
+    const dist = join(FIXTURE, "dist");
+    mkdirSync(dist, { recursive: true });
+    const live = join(dist, `ping.${process.ppid}.tmp`);
+    const dead = join(dist, `ping.${ended.pid}.tmp`);
+    writeFileSync(live, "partial build of a running install");
+    writeFileSync(dead, "partial build of a crashed install");
+
+    await install(f.ctx);
+
+    expect(existsSync(live)).toBe(true);
+    expect(existsSync(dead)).toBe(false);
+    rmSync(live);
   }, 120_000);
 });
 
@@ -196,6 +217,13 @@ describe("install-base plugin dependencies", () => {
     expect(existsSync(join(root, "node_modules/dep/package.json"))).toBe(true);
     expect(first.status).not.toBe("error");
     expect(step(first, "dependencies").status).toBe("installed");
+  });
+
+  test("an install removes the scratch directory a killed earlier install left", async () => {
+    const left = leftDir("qsm-bun-install");
+    const d = fakeInstall();
+    await installBase({ pluginRoot: depPlugin(false) })(d.ctx);
+    expect(existsSync(left)).toBe(false);
   });
 
   test("dry run names the install and runs nothing", async () => {
