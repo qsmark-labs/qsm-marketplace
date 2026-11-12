@@ -172,7 +172,8 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `review <n>` | task, bug | In Dev, Agent Review or Human Review | Agent Review |
-| `human <n> [--started]` | task, bug | Agent Review, PR approved, checks green; `--started`: Ready For Human | Ready For Human; `--started`: Human Review |
+| `human <n> --pr <m>` | task, bug | Agent Review; PR `<m>` based on `feature/<parent>`, saying `Closes #<n>`, approved by a review with none asking for changes, checks green | Ready For Human |
+| `human <n> --started` | task, bug | Ready For Human | Human Review |
 
 #### Scenario: A task goes to review
 
@@ -186,17 +187,19 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 
 #### Scenario: A task is handed to the owner
 
-- **WHEN** `human 5` runs on a task at Agent Review whose PR has an approving review and green
-  checks, and then `human 5 --started` runs after the owner's first review
+- **WHEN** `human 5 --pr 9` runs on a task at Agent Review under feature 3, and PR 9 is based on
+  `feature/3`, says `Closes #5`, has an approving review and green checks, and then
+  `human 5 --started` runs after the owner's first review
 - **THEN** the task is at Ready For Human and then at Human Review; until `status-action` (#15)
   does the second move on the owner's first review, the agent runs `human --started` on seeing it
 
-#### Scenario: No approval or a red check
+#### Scenario: The named PR is not the task's ready PR
 
-- **WHEN** `human 5` runs on a task at Agent Review whose PR has no approving review, or a check
-  that is not green
-- **THEN** it exits `blocked` with `wrong-status` naming the missing approval or the check, and the
-  task stays at Agent Review
+- **WHEN** `human 5 --pr 9` runs on a task at Agent Review and PR 9 is based on another branch,
+  does not say `Closes #5`, has no approving review or one asking for changes, or a check that is
+  not green
+- **THEN** it exits `blocked` with `wrong-status` naming what fails, writes nothing, and the task
+  stays at Agent Review
 
 ### Requirement: reopen and plan return work to Todo, qa starts the test
 

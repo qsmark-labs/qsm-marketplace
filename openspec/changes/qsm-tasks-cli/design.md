@@ -40,6 +40,12 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
     private-data patterns. Feedback has no issue type: the label `feedback` names the kind.
 13. **Ghost mode**: the binary's only own texts are the label `deferred` and the comment `Deferred
     until <value>`; `from:` names an agent by the owner's choice.
+14. **`human` reads the pull request the agent names, `--pr <m>`** (the owner's decision on #67).
+    GitHub links a closing pull request to its issue only when it targets the default branch, and
+    a task's targets `feature/<n>`, so the link is empty; the agent opened it and knows its number.
+    One query reads its base, body, the latest review of each reviewer and the head commit's check
+    rollup, before any write: base `feature/<parent>`, `Closes #<n>`, an approval and no request
+    for changes, rollup `SUCCESS`.
 
 ## Measured before the code
 
