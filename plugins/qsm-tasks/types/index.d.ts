@@ -14,12 +14,22 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  show(): Promise<unknown>;
+  show(options: {
+    number: number;
+    comments?: boolean;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   feature(): Promise<unknown>;
   add(): Promise<unknown>;
   feedback(): Promise<unknown>;
   edit(): Promise<unknown>;
-  note(): Promise<unknown>;
+  note(options: {
+    number: number;
+    text: string;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   claim(): Promise<unknown>;
   unclaim(): Promise<unknown>;
   review(): Promise<unknown>;

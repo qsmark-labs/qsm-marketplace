@@ -1,10 +1,19 @@
-// ready and list: each read is one query, and prints rows an agent reads without parsing.
+// The reads, ready, list and show, and note, the one write beside them: each verb is one query or
+// one comment, and prints rows an agent reads without parsing.
 
-import { type Call, flagArg, optionalNumber, optionalString } from "../../../lib/cli-base.ts";
+import {
+  type Call,
+  flagArg,
+  optionalNumber,
+  optionalString,
+  requiredNumber,
+  requiredString,
+} from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { changeLabel, DEFERRED, priorityRank, STATUS } from "../lib/flow.ts";
 import type { Run } from "../lib/github/gh.ts";
-import { type Item, search } from "../lib/github/items.ts";
+import { comment } from "../lib/github/board.ts";
+import { issue, type Item, search } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
 
 interface At {
@@ -69,4 +78,28 @@ export async function list(call: Call, { run, target }: At): Promise<Outcome> {
   const whole = feature !== undefined || spec !== undefined;
   const found = await search(run, target, whole ? { feature, label } : { open: true });
   return found.ok ? rows(found.value.toSorted((a, b) => a.number - b.number)) : found.outcome;
+}
+
+export async function show(call: Call, { run, target }: At): Promise<Outcome> {
+  const found = await issue(run, target, requiredNumber(call, "number"), flagArg(call, "comments"));
+  if (!found.ok) {
+    return found.outcome;
+  }
+  const i = found.value;
+  const lines = [
+    row(i),
+    `${i.open ? "open" : "closed"}, kind ${i.kind ?? "none"}, parent ${i.parent === null ? "none" : `#${i.parent}`}`,
+    `labels: ${i.labels.length === 0 ? "none" : i.labels.join(", ")}`,
+    `sub-issues: ${i.subIssues.closed} of ${i.subIssues.total} closed`,
+    "",
+    i.body,
+    ...i.comments.flatMap((c) => ["", `--- ${c.author}, ${c.at}`, c.body]),
+  ];
+  return ok(i, lines.join("\n"));
+}
+
+export async function note(call: Call, { run, target }: At): Promise<Outcome> {
+  const number = requiredNumber(call, "number");
+  const posted = await comment(run, target, number, requiredString(call, "text"));
+  return posted.ok ? ok({ number, url: posted.value }, `#${number} comment added`) : posted.outcome;
 }

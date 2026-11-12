@@ -33,6 +33,8 @@ interface FakeGh {
   readonly exit?: number;
   /** what it answers a search */
   readonly search?: string;
+  /** what it answers the read of one issue */
+  readonly issue?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call. */
@@ -41,14 +43,20 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
   const calls = join(dir, "calls");
   // builtins only: the PATH holds the fake and the runtime, no cat
   const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
-  const search = gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `;
-  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}*) ${answer} ;; esac`;
+  const search = [
+    gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
+    gh.issue === undefined ? "" : `*comments\\(first*) printf '%s' '${gh.issue}' ;; `,
+  ].join("");
+  const stdin = join(dir, "stdin");
+  const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
+  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
   const r = runBin(CLI, [...argv, "--json"], { env });
   const out = envelopeOf(r.stdout);
   const recorded = existsSync(calls) ? readFileSync(calls, "utf8").trim().split("\n") : [];
-  return { exit: r.exit, data: out.data, message: out.message, calls: recorded };
+  const posted = existsSync(stdin) ? readFileSync(stdin, "utf8") : null;
+  return { exit: r.exit, data: out.data, message: out.message, calls: recorded, posted };
 }
 
 describe("qsm-tasks resolves the board", () => {
@@ -144,5 +152,27 @@ describe("qsm-tasks reads the board", () => {
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
     const off = { ...task(8, null), projectItems: { nodes: [] } };
     expect(run({ stdout: linked([BOARD]), search: found([off]) }).message).toStartWith("#8 ");
+  });
+});
+
+describe("qsm-tasks note", () => {
+  it("posts the text on stdin, unchanged, and nothing as an argument", () => {
+    const text = 'waiting for the "API" key\nand a second line';
+    const r = run({ stdout: linked([BOARD]) }, ["note", "5", text]);
+    expect(r.exit).toBe(0);
+    expect(r.posted).toBe(`${text}\n`);
+    expect(r.calls[1]).toBe("issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -");
+  });
+});
+
+describe("qsm-tasks show", () => {
+  it("refuses an issue whose blockers GitHub cut, as ready and list do", () => {
+    const cutBlockers = { pageInfo: { hasNextPage: true }, nodes: [] };
+    const family = { parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    const node = { ...task(5, null), blockedBy: cutBlockers, body: "", ...family };
+    const issue = JSON.stringify({ data: { node: { issue: node } } });
+    const r = run({ stdout: linked([BOARD]), issue }, ["show", "5"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("over 100 blockers");
   });
 });

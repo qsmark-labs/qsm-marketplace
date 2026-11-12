@@ -12,7 +12,7 @@ import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
-import { checkSpec, list, ready } from "./reads.ts";
+import { checkSpec, list, note, ready, show } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
@@ -59,8 +59,8 @@ if (import.meta.main) {
     await runCli(manifest, "qsm-tasks", {
       ready: onBoard(ready),
       list: onBoard(list, checkSpec),
-      show: onBoard(notBuilt(58)),
-      note: onBoard(notBuilt(58)),
+      show: onBoard(show),
+      note: onBoard(note),
       feature: onBoard(notBuilt(41)),
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),
