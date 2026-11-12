@@ -108,3 +108,17 @@ export async function edit(
   const done = await gh(run, ["issue", "edit", String(number), "--repo", target.repo, ...flags]);
   return done.ok ? { ok: true, value: null } : done;
 }
+
+/** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
+export function comment(
+  run: Run,
+  target: Target,
+  number: number,
+  body: string,
+): Promise<Result<string>> {
+  return gh(
+    run,
+    ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"],
+    body,
+  );
+}

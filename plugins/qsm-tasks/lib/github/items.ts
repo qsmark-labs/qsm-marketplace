@@ -1,9 +1,9 @@
-// Issues as the verbs see them: plain items with their kind, Status and Priority on the board, read
+// Issues as the verbs read them: plain items with their kind, Status and Priority on the board, read
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
 import type { Kind } from "../flow.ts";
-import { gh, graphql, type Run } from "./gh.ts";
+import { graphql, type Run } from "./gh.ts";
 import type { Target } from "./target.ts";
 
 export interface Item {
@@ -47,7 +47,7 @@ export interface Filter {
   /** the sub-issues of this feature */
   readonly feature?: number | undefined;
   readonly label?: string | undefined;
-  readonly without?: string;
+  readonly without?: string | undefined;
 }
 
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */
@@ -175,18 +175,4 @@ export async function issue(
     ok: true,
     value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },
   };
-}
-
-/** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
-export function comment(
-  run: Run,
-  target: Target,
-  number: number,
-  body: string,
-): Promise<Result<string>> {
-  return gh(
-    run,
-    ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"],
-    body,
-  );
 }

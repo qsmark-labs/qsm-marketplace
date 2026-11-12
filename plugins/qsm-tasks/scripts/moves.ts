@@ -6,9 +6,8 @@ import { type Call, optionalString, requiredNumber } from "../../../lib/cli-base
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { refuse, type Result } from "../lib/failure.ts";
 import { DEFERRED, moveOf, STATUS } from "../lib/flow.ts";
-import { type Card, card, edit, setStatus } from "../lib/github/board.ts";
+import { type Card, card, comment, edit, setStatus } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
-import { comment } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
 
 interface At {
