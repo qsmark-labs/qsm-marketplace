@@ -51,11 +51,8 @@ async function pluginsOf(path: string): Promise<Result<string[]>> {
     : { ok: true, value: names };
 }
 
-interface Values {
-  readonly area: string;
-  readonly kind: string;
-  readonly from: string;
-}
+/** The labels' values a feedback names: where, what and who. */
+type Values = Readonly<Record<"area" | "kind" | "from", string>>;
 
 /** The values the call gives, each one feedback's rules allow, or a wrong call. */
 function valuesOf(call: Call, plugins: readonly string[]): Values {
