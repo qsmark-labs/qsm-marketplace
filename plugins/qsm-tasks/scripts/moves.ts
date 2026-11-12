@@ -16,9 +16,8 @@ interface At {
 
 type Write = () => Promise<Result<unknown>>;
 
-/** A move: the card read, the guard checked, then the writes `around` names before and after the
- * Status, in order up to the first refusal; it prints `#<n> <from> -> <to>`. A Status already at
- * its target is not written again, so a rerun after a refusal makes only what is left. */
+/** A move: card read, guard checked, then `around`'s writes before and after the Status, up to the
+ * first refusal; a Status at its target is not written again. It prints `#<n> <from> -> <to>`. */
 function moving(
   verb: string,
   around: (call: Call, on: At, at: Card) => { before?: Write[]; after?: Write[] } = () => ({}),
@@ -55,9 +54,8 @@ export const claim = moving("claim", (_call, { run, target }, at) => ({
     : [() => edit(run, target, at.number, ["--add-assignee", "@me"])],
 }));
 
-/** Back to Todo and unassigned; --until defers it, and without it a deferred task comes back. The
- * assignee and the label go first and the comment last, so a rerun after a refusal finishes it:
- * a task labelled deferred at Todo still passes the guard. */
+/** Back to Todo and unassigned; --until defers it, and without it a deferred task comes back.
+ * Assignee and label first, comment last: whatever a refusal leaves, a rerun passes and finishes. */
 export const unclaim = moving("unclaim", (call, { run, target }, at) => {
   const until = optionalString(call, "until");
   const deferring = until !== undefined;
