@@ -137,8 +137,7 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   }
   const issues = nodes(found);
   const blocked = issues.find((node) => isRecord(node) && cut(node.blockedBy));
-  const whole = blocked === undefined;
-  if (!whole) {
+  if (blocked !== undefined) {
     return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
   }
   return { ok: true, value: issues.flatMap((node) => readCard(node, target.board.id)?.item ?? []) };
@@ -162,6 +161,12 @@ function readComment(node: unknown): Comment {
     body: text(node, "body") ?? "",
   };
 }
+
+/** The lists `show` reads whole, by their field and their name. */
+const LISTS = [
+  ["blockedBy", "blockers"],
+  ["comments", "comments"],
+] as const;
 
 /** One issue with its body, parent, sub-issue counts and, when asked, its comments oldest first. */
 export async function issue(
@@ -188,8 +193,9 @@ export async function issue(
   if (!isRecord(node) || item === null || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
   }
-  if (cut(node.comments)) {
-    return refuse("failed", "refused", `#${number} has over ${PAGE} comments: GitHub cut the list`);
+  const [, list] = LISTS.find(([key]) => cut(node[key])) ?? [];
+  if (list !== undefined) {
+    return refuse("failed", "refused", `#${number} has over ${PAGE} ${list}: GitHub cut the list`);
   }
   const summary = node.subIssuesSummary;
   const subIssues = {
