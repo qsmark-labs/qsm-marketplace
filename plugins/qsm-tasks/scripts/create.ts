@@ -67,19 +67,15 @@ function taskFlags(call: Call): string[] {
 }
 
 /** Sets the new task's Priority; the card read it needs for the card's id brings the field's ids. */
-async function prioritize(
-  run: Run,
-  target: Target,
-  number: number,
-  value: string,
-): Promise<Result<null>> {
-  const at = await card(run, target, number);
+async function prioritize({ run, target }: At, n: number, value: string): Promise<Result<null>> {
+  const at = await card(run, target, n);
   return at.ok ? setField(run, target, at.value, "Priority", value) : at;
 }
 
 /** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and
  * the Priority option are read first, so a refusal files nothing and a rerun no duplicate. */
-export async function add(call: Call, { run, target }: At): Promise<Outcome> {
+export async function add(call: Call, on: At): Promise<Outcome> {
+  const { run, target } = on;
   const under = optionalNumber(call, "feature");
   const priority = optionalString(call, "priority");
   const parent = under === undefined ? done : await parentOf(run, target, under);
@@ -99,6 +95,6 @@ export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   if (!filed.ok) {
     return filed.outcome;
   }
-  const set = priority === undefined ? done : await prioritize(run, target, filed.value, priority);
+  const set = priority === undefined ? done : await prioritize(on, filed.value, priority);
   return set.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : set.outcome;
 }
