@@ -20,13 +20,14 @@ import type { At } from "./reads.ts";
 
 /** The checks a create makes before any gh call: the change id fits a label, the Priority is one. */
 export function checkCreate(call: Call): void {
-  const spec = optionalString(call, "spec");
-  const priority = optionalString(call, "priority");
-  if (spec !== undefined) {
-    changeLabel(spec);
-  }
-  if (priority !== undefined) {
-    priorityOf(priority);
+  for (const [name, check] of [
+    ["spec", changeLabel],
+    ["priority", priorityOf],
+  ] as const) {
+    const value = optionalString(call, name);
+    if (value !== undefined) {
+      check(value);
+    }
   }
 }
 
