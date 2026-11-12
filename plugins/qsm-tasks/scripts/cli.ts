@@ -3,7 +3,7 @@
 // qsm-tasks: the task port on GitHub issues and the board, one verb per step of the flow, so an
 // agent never composes a gh, jq or GraphQL call itself.
 
-import { type Call, type Handler, runCli } from "../../../lib/cli-base.ts";
+import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { refuse } from "../lib/failure.ts";
@@ -12,6 +12,7 @@ import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
+import { checkSpec, list, ready } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
@@ -22,14 +23,20 @@ interface OnBoard {
 }
 
 /** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
-function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>): Handler {
+function onBoard(
+  verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>,
+  check: (call: Call) => void = () => {},
+): Handler {
   return async (call) => {
+    // a wrong call throws usage here, before any gh call
+    check(call);
     const gh = connect();
     if (!gh.ok) {
       return gh.outcome;
     }
-    // --repo and --project arrive with the first verb that declares them
-    const target = await resolveTarget(gh.value, { repo: undefined, project: undefined });
+    // a verb that does not declare --repo or --project reads undefined: gh's repository, linked board
+    const given = { repo: optionalString(call, "repo"), project: optionalString(call, "project") };
+    const target = await resolveTarget(gh.value, given);
     return target.ok ? verb(call, { run: gh.value, target: target.value }) : target.outcome;
   };
 }
@@ -50,10 +57,10 @@ function notBuilt(issue: number): (call: Call, at?: OnBoard) => Outcome {
 if (import.meta.main) {
   process.exit(
     await runCli(manifest, "qsm-tasks", {
-      ready: onBoard(notBuilt(40)),
-      list: onBoard(notBuilt(40)),
-      show: onBoard(notBuilt(40)),
-      note: onBoard(notBuilt(40)),
+      ready: onBoard(ready),
+      list: onBoard(list, checkSpec),
+      show: onBoard(notBuilt(58)),
+      note: onBoard(notBuilt(58)),
       feature: onBoard(notBuilt(41)),
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),

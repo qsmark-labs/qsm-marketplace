@@ -2,8 +2,18 @@
 // `bun lib/generate-noun.ts plugins/<name>` again after changing qsm.json.
 
 export type Tasks = {
-  ready(): Promise<unknown>;
-  list(): Promise<unknown>;
+  ready(options: {
+    feature?: number;
+    qa?: boolean;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
+  list(options: {
+    feature?: number;
+    spec?: string;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   show(): Promise<unknown>;
   feature(): Promise<unknown>;
   add(): Promise<unknown>;

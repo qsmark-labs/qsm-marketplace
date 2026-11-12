@@ -1,25 +1,38 @@
 // The flow as data (design.md decision 4): the Status and Priority options, what each Status means
 // per kind, and the guard of each move, so a verb checks a move against this table and no other
 // copy of a name exists in the binary.
-import { type Outcome, ok } from "../../../lib/outcome.ts";
+import { type Outcome, ok, UsageError } from "../../../lib/outcome.ts";
 
-const STATUS_NAMES = [
-  "Todo",
-  "In Dev",
-  "Agent Review",
-  "Ready For Human",
-  "Human Review",
-  "Ready For Test",
-  "In Test",
-  "Blocked",
-  "Done",
-] as const;
-type StatusName = (typeof STATUS_NAMES)[number];
+/** The Status options by what a verb asks for; the rows below name them with the same words. */
+export const STATUS = {
+  todo: "Todo",
+  inDev: "In Dev",
+  agentReview: "Agent Review",
+  readyForHuman: "Ready For Human",
+  humanReview: "Human Review",
+  readyForTest: "Ready For Test",
+  inTest: "In Test",
+  blocked: "Blocked",
+  done: "Done",
+} as const;
+type StatusName = (typeof STATUS)[keyof typeof STATUS];
+
+/** The label that keeps a task out of `ready` until it is brought back. */
+export const DEFERRED = "deferred";
+
+/** The label that binds a feature to its change (design.md decision 7). */
+export function changeLabel(id: string): string {
+  // 50 characters a label, minus `change:`; no quote or space, so it carries no qualifier
+  if (!/^[\w.-]{1,43}$/.test(id)) {
+    throw new UsageError(`--spec ${id}: an id of 1 to 43 letters, digits, '_', '.' or '-'`);
+  }
+  return `change:${id}`;
+}
 
 /** The kinds the flow tells apart: an issue of type Task or Bug is the kind `task`, because the
  * flow treats them alike; Feedback is the label `feedback`, not an issue type. */
 const KIND_LABELS = { task: "Task and Bug", feature: "Feature", feedback: "Feedback" } as const;
-type Kind = keyof typeof KIND_LABELS;
+export type Kind = keyof typeof KIND_LABELS;
 /** the order of the table's columns */
 const KINDS: readonly Kind[] = ["task", "feature", "feedback"];
 
@@ -82,6 +95,12 @@ const PRIORITIES = [
   { name: "P1", means: "Needed for the current feature" },
   { name: "P2", means: "Worth doing, no date" },
 ] as const;
+
+/** Where a Priority sorts: P0 first, an issue with none after P2. */
+export function priorityRank(name: string | null): number {
+  const at = PRIORITIES.findIndex((p) => p.name === name);
+  return at === -1 ? PRIORITIES.length : at;
+}
 
 /** A move one verb makes: the kinds it takes, the Statuses it starts from, what else must hold. */
 interface Move {
