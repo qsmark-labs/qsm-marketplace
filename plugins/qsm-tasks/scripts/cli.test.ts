@@ -325,3 +325,49 @@ describe("qsm-tasks show", () => {
     expect(r.message).toContain("over 100 blockers");
   });
 });
+
+describe("qsm-tasks edits and closes the work", () => {
+  const feature = { issueType: { name: "Feature" } };
+
+  it("close --not-planned on a feature with an open sub-issue is blocked and changes nothing", () => {
+    const open = { ...feature, subIssuesSummary: { total: 2, completed: 1 } };
+    const argv = ["close", "3", "--reason", "dropped", "--not-planned"];
+    const r = run({ stdout: linked([BOARD]), card: cardOf("In Dev", [], open) }, argv);
+    expect(r.data).toMatchObject({ reason: "wrong-status" });
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it("close posts the reason on stdin, then closes as not planned; a rerun posts it once", () => {
+    const argv = ["close", "5", "--reason", "dropped: the API went away", "--not-planned"];
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, argv);
+    expect(r.message).toBe("#5 closed as not planned");
+    expect(r.posted).toBe("dropped: the API went away\n");
+    expect(r.calls[3]).toBe(
+      "issue close 5 --repo qsmark-labs/qsm-marketplace --reason not planned",
+    );
+    const said = { comments: { nodes: [{ body: "dropped: the API went away" }] } };
+    const again = run({ stdout: linked([BOARD]), card: cardOf("Todo", [], said) }, argv);
+    expect(again.calls.filter((c) => c.startsWith("issue comment"))).toEqual([]);
+  });
+
+  it("edit --spec on a task is blocked wrong-kind and changes nothing", () => {
+    const argv = ["edit", "12", "--spec", "x"];
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, argv);
+    expect(r.data).toMatchObject({ reason: "wrong-kind" });
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it("edit refused by GitHub, as a cycle is, exits failed with GitHub's words", () => {
+    const gh = { stdout: linked([BOARD]), card: cardOf("Todo", []), refuseEditOnce: true } as const;
+    const r = run(gh, ["edit", "1", "--after", "2"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("refused");
+  });
+
+  it.each([[["edit", "3", "--spec", "x".repeat(60)]], [["edit", "3"]]])(
+    "%p is a usage before any gh call",
+    (argv) => {
+      expect(run({ stdout: linked([BOARD]) }, argv).calls).toEqual([]);
+    },
+  );
+});

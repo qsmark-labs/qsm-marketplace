@@ -18,11 +18,13 @@ export interface Card extends Item, Facts {
   readonly statusField: Field;
   /** null on a board that has no Priority field yet */
   readonly priorityField: Field | null;
+  /** the text of its newest comment, null when it has none */
+  readonly lastComment: string | null;
 }
 
 // every field, picked by name: asking for a field by a name the board lacks fails the whole query
 const SELECT = "...on ProjectV2SingleSelectField{id name options{id name}}";
-const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} ${FAMILY}}}}}`;
+const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} ${FAMILY} comments(last:1){nodes{body}}}}}}`;
 const ADD = `mutation($board:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$board,contentId:$issue}){item{id}}}`;
 const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(input:{projectId:$board,itemId:$card,fieldId:$field,value:{singleSelectOptionId:$option}}){clientMutationId}}`;
 
@@ -73,7 +75,8 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   const { parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
   const facts = { caller, parentOpen, openSubIssues };
-  const own = { id, cardId: read.cardId, statusField, priorityField };
+  const lastComment = text(nodes(isRecord(issue) ? issue.comments : undefined)[0], "body");
+  const own = { id, cardId: read.cardId, statusField, priorityField, lastComment };
   return { ok: true, value: { ...read.item, ...facts, ...own } };
 }
 
@@ -128,18 +131,16 @@ export async function file(
     make?: readonly string[];
   },
 ): Promise<Result<number>> {
-  for (const name of issue.make ?? []) {
-    const made = await label(run, target, name);
-    if (!made.ok) {
-      return made;
-    }
+  const labelled = await labels(run, target, issue.make ?? []);
+  if (!labelled.ok) {
+    return labelled;
   }
   const type = issue.kind === "task" ? "Task" : "Feature";
   const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
-  const labels = (issue.make ?? []).flatMap((name) => ["--label", name]);
+  const put = (issue.make ?? []).flatMap((name) => ["--label", name]);
   const made = await gh(
     run,
-    [...args, "--body-file", "-", ...labels, ...(issue.flags ?? [])],
+    [...args, "--body-file", "-", ...put, ...(issue.flags ?? [])],
     issue.body,
   );
   if (!made.ok) {
@@ -151,23 +152,45 @@ export async function file(
     : refuse("failed", "refused", `gh filed no issue it could name: ${made.value}`);
 }
 
-/** Creates a label the repository lacks; one it has already is left as it is. */
-async function label(run: Run, target: Target, name: string): Promise<Result<null>> {
-  const made = await run(["label", "create", name, "--repo", target.repo]);
-  // gh 2.103.3 answers a label that exists with this text and no code of its own
-  const exists = made.exit !== 0 && made.stderr.includes("already exists");
-  const done = made.exit === 0 || exists ? null : made.stderr.trim();
-  return done === null ? { ok: true, value: null } : refuse("failed", "refused", done);
+/** Creates each label the repository lacks; one it has already is left as it is. */
+async function labels(run: Run, target: Target, names: readonly string[]): Promise<Result<null>> {
+  for (const name of names) {
+    const made = await run(["label", "create", name, "--repo", target.repo]);
+    // gh 2.103.3 answers a label that exists with this text and no code of its own
+    if (made.exit !== 0 && !made.stderr.includes("already exists")) {
+      return refuse("failed", "refused", made.stderr.trim());
+    }
+  }
+  return { ok: true, value: null };
 }
 
-/** `gh issue edit` with the given flags: assignees and labels, in one call. */
+/** `gh issue edit` in one call: a body goes on stdin, the labels in `make` are made as `file` does. */
 export async function edit(
   run: Run,
   target: Target,
   number: number,
   flags: readonly string[],
+  { body, make = [] }: { body?: string | undefined; make?: readonly string[] } = {},
 ): Promise<Result<null>> {
-  const done = await gh(run, ["issue", "edit", String(number), "--repo", target.repo, ...flags]);
+  const made = await labels(run, target, make);
+  if (!made.ok) {
+    return made;
+  }
+  const added = make.flatMap((name) => ["--add-label", name]);
+  const args = ["issue", "edit", String(number), "--repo", target.repo, ...flags, ...added];
+  const done = await gh(run, body === undefined ? args : [...args, "--body-file", "-"], body);
+  return done.ok ? { ok: true, value: null } : done;
+}
+
+/** Closes an issue as completed, or as not planned: GitHub keeps the reason, no Status changes. */
+export async function close(
+  run: Run,
+  target: Target,
+  number: number,
+  notPlanned: boolean,
+): Promise<Result<null>> {
+  const args = ["issue", "close", String(number), "--repo", target.repo, "--reason"];
+  const done = await gh(run, [...args, notPlanned ? "not planned" : "completed"]);
   return done.ok ? { ok: true, value: null } : done;
 }
 

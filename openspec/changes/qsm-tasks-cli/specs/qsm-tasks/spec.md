@@ -143,7 +143,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `edit <n>` | any | | `--title`, `--priority`, `--body-file`, `--assignee`, `--feature`, `--after`, `--unblock`, `--spec <id>` (a feature only) |
-| `close <n> --reason <t> [--not-planned]` | any; a feature only not planned with no open sub-issue | open | closed with the reason as a comment, no Status |
+| `close <n> --reason <t> [--not-planned]` | any; a feature only not planned with no open sub-issue | open | closed with the reason as its newest comment, posted once, no Status |
 
 #### Scenario: A feature with an open task is closed as not planned
 
