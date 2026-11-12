@@ -9,44 +9,27 @@ import { FEEDBACK_KINDS, FROM, MARKETPLACE, privateData, sectionsWrong } from ".
 import { readText } from "../lib/files.ts";
 import { comment, file } from "../lib/github/board.ts";
 import { connect, gh, type Run } from "../lib/github/gh.ts";
+import { text } from "../lib/github/items.ts";
 
 /** The checkout feedback lands in, the one QSM_MARKETPLACE names: gh runs in it. */
 function checkout(): Result<string> {
   const path = process.env.QSM_MARKETPLACE;
   return path === undefined || path === ""
-    ? refuse(
-        "missing",
-        "no-repo",
-        "QSM_MARKETPLACE names no marketplace checkout",
-        "set QSM_MARKETPLACE",
-      )
+    ? refuse("missing", "no-repo", "QSM_MARKETPLACE is unset", "set QSM_MARKETPLACE")
     : { ok: true, value: path };
 }
 
-/** The plugin names a marketplace.json lists, or null when it is no JSON with a plugins list. */
-function namesIn(text: string): string[] | null {
-  try {
-    const parsed: unknown = JSON.parse(text);
-    const plugins = isRecord(parsed) && Array.isArray(parsed.plugins) ? parsed.plugins : null;
-    return (
-      plugins?.flatMap((p) => (isRecord(p) && typeof p.name === "string" ? [p.name] : [])) ?? null
-    );
-  } catch {
-    return null;
-  }
-}
-
-/** The plugins of the checkout's marketplace.json, by name. */
+/** The plugins of the checkout's marketplace.json, by name; a file that is missing, no JSON, or
+ * lists no plugins says the path is no marketplace checkout. */
 async function pluginsOf(path: string): Promise<Result<string[]>> {
   const at = join(path, ".claude-plugin", "marketplace.json");
-  const listed = await readText(at);
-  if (!listed.ok) {
-    return listed;
-  }
-  const names = namesIn(listed.value);
-  return names === null
-    ? refuse("missing", "no-repo", `${at} lists no plugins`, "set QSM_MARKETPLACE")
-    : { ok: true, value: names };
+  const parsed: unknown = await Bun.file(at)
+    .json()
+    .catch(() => null);
+  const plugins: unknown = isRecord(parsed) ? parsed.plugins : null;
+  return Array.isArray(plugins)
+    ? { ok: true, value: plugins.flatMap((p: unknown) => text(p, "name") ?? []) }
+    : refuse("missing", "no-repo", `${at} lists no plugins`, "set QSM_MARKETPLACE");
 }
 
 /** The labels' values a feedback names: where, what and who. */
@@ -88,8 +71,7 @@ async function bodyOf(call: Call): Promise<Result<string>> {
     : refuse("blocked", "private-data", `the body carries private data: ${found}`);
 }
 
-/** The open feedback of exactly this title, looked up by the title, so their count does not matter;
- * its number, or "" when there is none. */
+/** The number of the open feedback of exactly this title, or "": the query names the title. */
 function sameOpen(run: Run, repo: string, title: string): Promise<Result<string>> {
   const exact = JSON.stringify(title);
   const list = ["issue", "list", "--repo", repo, "--state", "open", "--label", "feedback"];
@@ -117,11 +99,7 @@ async function post(run: Run, repo: string, title: string, given: Given): Promis
   return filed.ok ? { ok: true, value: `#${filed.value} filed: ${title}` } : filed;
 }
 
-interface Given {
-  readonly path: string;
-  readonly values: Values;
-  readonly body: string;
-}
+type Given = Readonly<{ path: string; values: Values; body: string }>;
 
 /** Everything the call names, checked before any gh call: the checkout, the values, the body. */
 async function prepare(call: Call): Promise<Result<Given>> {
