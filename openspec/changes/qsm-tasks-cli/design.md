@@ -27,8 +27,10 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
    issues. A task is never bound: it is a sub-issue of the bound feature.
 8. **Cancel is a close as not planned**, never a Status; GitHub keeps the reason and the views
    filter by it.
-9. **Done is GitHub's**: "Item closed" sets it for every kind; no verb writes Done and no verb adds
-   to the board except `claim`, which may run before auto-add did.
+9. **Done is GitHub's**: "Item closed" sets it for every kind; no verb writes Done. A verb adds an
+   issue to the board only when it must write a field the auto-add has not given a card yet,
+   because a field lives only on a card: `claim`, a move on an issue off the board such as
+   `reopen`, and `add --priority`.
 10. **Errors**: `blocked` (`wrong-kind`, `wrong-status`, `held`, `private-data`), `missing`
     (`no-gh`, `no-repo`, `no-board`, `no-file`), `failed` (`refused`, `not-found`). No retry, no
     second route, no rollback; each write is idempotent, so a repeat finishes a half-done verb.

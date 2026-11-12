@@ -84,10 +84,85 @@
         ]
       },
       "qsm-tasks feature": {
-        "description": "File a Feature at Todo from an intent file"
+        "description": "File a Feature at Todo from an intent file",
+        "args": [
+          {
+            "name": "goal",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the title"
+          },
+          {
+            "name": "intent",
+            "type": "string",
+            "required": true,
+            "description": "a file holding the intent: the body"
+          },
+          {
+            "name": "spec",
+            "type": "string",
+            "description": "bind it to a change: the label change:<id>"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks add": {
-        "description": "Add a Task as a sub-issue of an open feature"
+        "description": "Add a Task as a sub-issue of an open feature",
+        "args": [
+          {
+            "name": "title",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the title"
+          },
+          {
+            "name": "feature",
+            "type": "number",
+            "description": "the open feature it is a sub-issue of"
+          },
+          {
+            "name": "after",
+            "type": "number",
+            "description": "the issue it is blocked by"
+          },
+          {
+            "name": "priority",
+            "type": "string",
+            "description": "P0, P1 or P2"
+          },
+          {
+            "name": "bodyFile",
+            "type": "string",
+            "description": "a file holding the body"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "repeatable": true,
+            "description": "a label it carries"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks feedback": {
         "description": "File feedback on the marketplace as a plain issue from its template, with its labels"

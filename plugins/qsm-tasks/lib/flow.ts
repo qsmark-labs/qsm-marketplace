@@ -97,6 +97,15 @@ const PRIORITIES = [
   { name: "P2", means: "Worth doing, no date" },
 ] as const;
 
+/** A --priority value the table names, or a wrong call listing the names. */
+export function priorityOf(value: string): string {
+  const names = PRIORITIES.map((p) => p.name);
+  if (!names.some((name) => name === value)) {
+    throw new UsageError(`--priority ${value}: one of ${names.join(", ")}`);
+  }
+  return value;
+}
+
 /** Where a Priority sorts: P0 first, an issue with none after P2. */
 export function priorityRank(name: string | null): number {
   const at = PRIORITIES.findIndex((p) => p.name === name);

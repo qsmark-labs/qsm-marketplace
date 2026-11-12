@@ -4,7 +4,7 @@
 import { fail, type Outcome } from "../../../lib/outcome.ts";
 
 interface Reasons {
-  readonly missing: "no-gh" | "no-repo" | "no-board";
+  readonly missing: "no-gh" | "no-repo" | "no-board" | "no-file";
   readonly blocked: "wrong-kind" | "wrong-status" | "held";
   /** `not-built`: a declared verb whose issue has not landed; it leaves with the last of them */
   readonly failed: "refused" | "not-found" | "not-built";
@@ -23,6 +23,9 @@ interface Refused {
 
 /** A value, or the outcome the verb ends with. */
 export type Result<T> = { readonly ok: true; readonly value: T } | Refused;
+
+/** A step that holds or a write that was made, with nothing to hand on. */
+export const done: Result<null> = { ok: true, value: null };
 
 /** A call that cannot go on as given, found only once GitHub answered: `usage`, with no reason. */
 export function wrongCall(message: string): Refused {

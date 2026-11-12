@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 
 const CLI = join(import.meta.dir, "cli.ts");
 
@@ -41,6 +41,8 @@ interface FakeGh {
   readonly refuseEditOnce?: true;
   /** what it answers adding an issue to the board */
   readonly added?: string;
+  /** the address it answers an issue create with */
+  readonly created?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call; a run in the
@@ -61,7 +63,8 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
     gh.issue === undefined ? "" : `*comments\\(first*) printf '%s' '${gh.issue}' ;; `,
   ].join("");
   const stdin = join(dir, "stdin");
-  const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
+  // a body gh reads on stdin is kept; a create answers the new issue's address
+  const comment = `*"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
   const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${edit}${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
@@ -190,7 +193,11 @@ function cardOf(status: string, assignees: readonly string[], more: object = {})
     ...more,
   };
   return JSON.stringify({
-    data: { viewer: { login: "Questi0nM4rk" }, board: { field }, repo: { issue } },
+    data: {
+      viewer: { login: "Questi0nM4rk" },
+      board: { fields: { nodes: [{ ...field, name: "Status" }] } },
+      repo: { issue },
+    },
   });
 }
 
@@ -263,6 +270,47 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
       "api graphql",
     ]);
     expect(r.calls[3]).toContain("addProjectV2ItemById");
+  });
+});
+
+describe("qsm-tasks files the work", () => {
+  const feature = { issueType: { name: "Feature" } };
+  /** show's read of one issue as GitHub answers it. */
+  const issueOf = (more: object) => {
+    const family = { body: "", parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    return JSON.stringify({ data: { node: { issue: { ...task(3, null), ...family, ...more } } } });
+  };
+  const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/77";
+
+  it("add files a sub-issue of an open feature with its body on stdin, unchanged", () => {
+    const dir = sandboxDir("qsm-tasks-");
+    const body = 'Write the "CSV"\nwith two lines';
+    writeIn(dir, "body.md", body);
+    const gh = { stdout: linked([BOARD]), issue: issueOf(feature), created };
+    const argv = ["add", "Write the CSV", "--feature", "3", "--body-file", join(dir, "body.md")];
+    const r = run(gh, argv, dir);
+    expect(r.message).toBe("#77 filed: Write the CSV");
+    expect(r.calls[2]).toBe(
+      "issue create --repo qsmark-labs/qsm-marketplace --title Write the CSV --type Task --body-file - --parent 3",
+    );
+    expect(r.posted).toBe(`${body}\n`);
+  });
+
+  it("add under a closed feature is blocked wrong-status and files nothing", () => {
+    const closed = { ...feature, state: "CLOSED" };
+    const gh = { stdout: linked([BOARD]), issue: issueOf(closed), created };
+    const r = run(gh, ["add", "Write the CSV", "--feature", "3"]);
+    expect(r.data).toMatchObject({ reason: "wrong-status" });
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it.each([
+    [["feature", "Export", "--intent", "x.md", "--spec", "x".repeat(60)]],
+    [["add", "Write", "--priority", "P5"]],
+  ])("%p is a usage before any gh call", (argv) => {
+    const r = run({ stdout: linked([BOARD]) }, argv);
+    expect(r.exit).toBe(2);
+    expect(r.calls).toEqual([]);
   });
 });
 
