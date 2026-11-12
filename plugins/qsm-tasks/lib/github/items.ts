@@ -132,8 +132,7 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   }
   const issues = nodes(found);
   const blocked = issues.find((node) => isRecord(node) && cut(node.blockedBy));
-  const whole = blocked === undefined;
-  if (!whole) {
+  if (blocked !== undefined) {
     return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
   }
   return { ok: true, value: issues.flatMap((node) => readItem(node, target.board.id) ?? []) };
@@ -182,6 +181,9 @@ export async function issue(
   const body = text(node, "body");
   if (!isRecord(node) || item === null || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
+  }
+  if (cut(node.blockedBy)) {
+    return refuse("failed", "refused", `#${number} has over ${PAGE} blockers: GitHub cut the list`);
   }
   if (cut(node.comments)) {
     return refuse("failed", "refused", `#${number} has over ${PAGE} comments: GitHub cut the list`);
