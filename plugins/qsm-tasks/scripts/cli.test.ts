@@ -21,10 +21,11 @@ describe("qsm-tasks without gh", () => {
 
 const BOARD = { id: "PVT_kwDOFMPqAc4Bo0vN", number: 1, owner: { login: "qsmark-labs" } };
 
-function linked(nodes: readonly unknown[], hasNextPage = false): string {
+/** The resolution's answer; `more` adds what another read finds in the same answer. */
+function linked(nodes: readonly unknown[], hasNextPage = false, more: object = {}): string {
   const repo = { id: "R_kgDOVGCdTA", nameWithOwner: "qsmark-labs/qsm-marketplace" };
   const projectsV2 = { pageInfo: { hasNextPage }, nodes };
-  return JSON.stringify({ data: { repository: { ...repo, projectsV2 } } });
+  return JSON.stringify({ data: { repository: { ...repo, projectsV2 }, ...more } });
 }
 
 interface FakeGh {
@@ -436,6 +437,29 @@ describe("qsm-tasks files the work", () => {
     expect(r.exit).toBe(1);
     expect(r.message).toContain("#77 is filed");
     expect(r.data).toMatchObject({ next: "qsm-tasks edit 77 --after 2" });
+  });
+
+  it("add refused after the filing names the edit that writes every flag still unwritten", () => {
+    // one answer for the resolution and the Priority read: the board has P1
+    const priority = { id: "PVTSSF_prio", name: "Priority", options: [{ id: "o1", name: "P1" }] };
+    const stdout = linked([BOARD], false, { board: { fields: { nodes: [priority] } } });
+    const ordered = run({ stdout, created, refuseEditOnce: true }, [
+      "add",
+      "Write the CSV",
+      "--after",
+      "2",
+      "--priority",
+      "P1",
+    ]);
+    expect(ordered.data).toMatchObject({ next: "qsm-tasks edit 77 --after 2 --priority P1" });
+    const prioritized = run({ stdout, created, card: cardOf("Todo", []) }, [
+      "add",
+      "Write the CSV",
+      "--priority",
+      "P1",
+    ]);
+    expect(prioritized.message).toContain("#77 is filed");
+    expect(prioritized.data).toMatchObject({ next: "qsm-tasks edit 77 --priority P1" });
   });
 
   it("add under a closed feature is blocked wrong-status and files nothing", () => {
