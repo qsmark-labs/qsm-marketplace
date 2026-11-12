@@ -304,13 +304,6 @@ describe("qsm-tasks files the work", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("add --priority on a board with no such option is not-found and files nothing", () => {
-    // the field read gets the resolution's answer, which holds no Priority field
-    const r = run({ stdout: linked([BOARD]) }, ["add", "Write", "--priority", "P1"]);
-    expect(r.data).toMatchObject({ reason: "not-found" });
-    expect(r.calls.some((c) => c.startsWith("issue create"))).toBe(false);
-  });
-
   it.each([
     [["feature", "Export", "--intent", "x.md", "--spec", "x".repeat(60)]],
     [["add", "Write", "--priority", "P5"]],

@@ -11,7 +11,7 @@ import {
   comment,
   edit,
   reopen as reopenIssue,
-  setStatus,
+  setField,
 } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import type { Target } from "../lib/github/target.ts";
@@ -43,7 +43,9 @@ function moving(
     const { to } = move.value;
     const { before = [], after = [] } = around(call, on, at);
     const status: Write[] =
-      from === to && at.cardId !== null ? [] : [() => setStatus(on.run, on.target, at, to)];
+      from === to && at.cardId !== null
+        ? []
+        : [() => setField(on.run, on.target, at, "Status", to)];
     for (const write of [...before, ...status, ...after]) {
       const done = await write();
       if (!done.ok) {

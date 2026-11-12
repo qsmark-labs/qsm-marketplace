@@ -115,15 +115,6 @@ export async function setField(
   return set.ok ? { ok: true, value: null } : set;
 }
 
-export function setStatus(
-  run: Run,
-  target: Target,
-  at: Card,
-  status: string,
-): Promise<Result<null>> {
-  return setField(run, target, at, "Status", status);
-}
-
 /** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. The
  * labels in `make` it creates when missing and puts on; one in `flags` must exist, or gh fails. */
 export async function file(
