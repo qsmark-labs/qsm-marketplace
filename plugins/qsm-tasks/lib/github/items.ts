@@ -2,7 +2,7 @@
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
-import type { Kind } from "../flow.ts";
+import { type Kind, STATUS } from "../flow.ts";
 import { graphql, type Run } from "./gh.ts";
 import type { Target } from "./target.ts";
 
@@ -36,7 +36,7 @@ export interface Issue extends Item {
 
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
-const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:30){nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
 const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
 
@@ -50,13 +50,13 @@ export interface Filter {
   readonly without?: string | undefined;
 }
 
+const TYPES = { task: "type:Task,Bug", feature: "type:Feature" } as const;
+
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */
 function qualifiers(repo: string, filter: Filter): string {
   return [
     `repo:${repo} is:issue`,
-    filter.kind === undefined
-      ? ""
-      : { task: "type:Task,Bug", feature: "type:Feature" }[filter.kind],
+    filter.kind === undefined ? "" : TYPES[filter.kind],
     filter.open === undefined ? "" : "is:open",
     filter.feature === undefined ? "" : `parent-issue:${repo}#${filter.feature}`,
     filter.label === undefined ? "" : `label:"${filter.label}"`,
@@ -101,12 +101,15 @@ function readItem(node: unknown, board: string): Item | null {
     (p) => isRecord(p) && text(p.project, "id") === board,
   );
   const card = isRecord(onBoard) ? onBoard : {};
+  const open = node.state === "OPEN";
+  // off the board, an issue is where "Item added" or "Item closed" will put it (decision 9)
+  const offBoard = open ? STATUS.todo : STATUS.done;
   return {
     number,
     title,
-    open: node.state === "OPEN",
+    open,
     kind: kindOf(text(node.issueType, "name"), labels),
-    status: text(card.status, "name"),
+    status: isRecord(onBoard) ? text(card.status, "name") : offBoard,
     priority: text(card.priority, "name"),
     assignees: nodes(node.assignees).flatMap((a) => text(a, "login") ?? []),
     labels,
@@ -124,10 +127,25 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
     return answer;
   }
   const found = answer.value.search;
-  if (isRecord(found) && isRecord(found.pageInfo) && found.pageInfo.hasNextPage === true) {
+  if (cut(found)) {
     return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
   }
-  return { ok: true, value: nodes(found).flatMap((node) => readItem(node, target.board.id) ?? []) };
+  const issues = nodes(found);
+  const blocked = issues.find((node) => isRecord(node) && cut(node.blockedBy));
+  const whole = blocked === undefined;
+  if (!whole) {
+    return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
+  }
+  return { ok: true, value: issues.flatMap((node) => readItem(node, target.board.id) ?? []) };
+}
+
+/** A connection GitHub cut at its page size: reading it as whole would lie. */
+function cut(connection: unknown): boolean {
+  return (
+    isRecord(connection) &&
+    isRecord(connection.pageInfo) &&
+    connection.pageInfo.hasNextPage === true
+  );
 }
 
 function readComment(node: unknown): Comment {
