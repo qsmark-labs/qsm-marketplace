@@ -38,7 +38,19 @@ export type Tasks = {
     project?: string;
   }): Promise<unknown>;
   feedback(): Promise<unknown>;
-  edit(): Promise<unknown>;
+  edit(options: {
+    number: number;
+    title?: string;
+    priority?: string;
+    bodyFile?: string;
+    assignee?: string;
+    feature?: number;
+    after?: number;
+    unblock?: number;
+    spec?: string;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   note(options: {
     number: number;
     text: string;
@@ -62,7 +74,13 @@ export type Tasks = {
     project?: string;
   }): Promise<unknown>;
   human(): Promise<unknown>;
-  close(): Promise<unknown>;
+  close(options: {
+    number: number;
+    reason: string;
+    notPlanned?: boolean;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   reopen(options: {
     number: number;
     repo?: string;

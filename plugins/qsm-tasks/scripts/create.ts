@@ -32,7 +32,7 @@ export function checkCreate(call: Call): void {
   }
 }
 
-async function readText(path: string | undefined): Promise<Result<string>> {
+export async function readText(path: string | undefined): Promise<Result<string>> {
   if (path === undefined) {
     return { ok: true, value: "" };
   }

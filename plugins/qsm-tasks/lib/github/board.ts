@@ -154,14 +154,36 @@ export async function label(run: Run, target: Target, name: string): Promise<Res
   return done === null ? { ok: true, value: null } : refuse("failed", "refused", done);
 }
 
-/** `gh issue edit` with the given flags: assignees and labels, in one call. */
+/** `gh issue edit` with the given flags in one call; a body given goes on stdin. */
 export async function edit(
   run: Run,
   target: Target,
   number: number,
   flags: readonly string[],
+  body?: string,
 ): Promise<Result<null>> {
-  const done = await gh(run, ["issue", "edit", String(number), "--repo", target.repo, ...flags]);
+  const args = ["issue", "edit", String(number), "--repo", target.repo, ...flags];
+  const done = await gh(run, body === undefined ? args : [...args, "--body-file", "-"], body);
+  return done.ok ? { ok: true, value: null } : done;
+}
+
+/** Closes an issue as completed, or as not planned: GitHub keeps the reason, no Status changes. */
+export async function close(
+  run: Run,
+  target: Target,
+  number: number,
+  notPlanned: boolean,
+): Promise<Result<null>> {
+  const reason = notPlanned ? "not planned" : "completed";
+  const done = await gh(run, [
+    "issue",
+    "close",
+    String(number),
+    "--repo",
+    target.repo,
+    "--reason",
+    reason,
+  ]);
   return done.ok ? { ok: true, value: null } : done;
 }
 
