@@ -544,6 +544,16 @@ describe("qsm-tasks feedback", () => {
     },
   );
 
+  it("refuses a title with private data by kind, never the text, before any gh call", () => {
+    const { dir, argv } = setup(sections("x"));
+    const titled = argv.map((a) =>
+      a === "ready skips a task" ? "broke in /home/someone/work" : a,
+    );
+    const r = run(fake(dir), titled, dir);
+    expect(r.message).toBe("the title carries private data: home path on line 1");
+    expect(r.calls).toEqual([]);
+  });
+
   it("refuses a suggested fix, and an area that names no plugin, as usage before any gh call", () => {
     const fix = setup(`${sections("x")}## Suggested fix\nx\n`);
     expect(run(fake(fix.dir), fix.argv, fix.dir).calls).toEqual([]);
