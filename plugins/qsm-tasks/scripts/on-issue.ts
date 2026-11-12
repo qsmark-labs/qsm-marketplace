@@ -14,11 +14,11 @@ export interface At {
 }
 
 /** One write. */
-export type Step = () => Promise<Result<unknown>>;
+export type Write = () => Promise<Result<unknown>>;
 
 /** What a verb will do once its guard holds: its writes, and the line it prints after them. */
 export interface Plan {
-  readonly steps: readonly Step[];
+  readonly steps: readonly Write[];
   readonly said: string;
 }
 

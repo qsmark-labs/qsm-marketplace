@@ -4,18 +4,19 @@
 import { hostname, userInfo } from "node:os";
 import { looksLikeSecret } from "../../../lib/secret-shapes.ts";
 
-export const KINDS = ["tool-broken", "tool-missing", "wrong-output", "guidance", "agent-mistake"];
+export const FEEDBACK_KINDS = [
+  "tool-broken",
+  "tool-missing",
+  "wrong-output",
+  "guidance",
+  "agent-mistake",
+];
 export const FROM = ["user", "main-agent", "subagent"];
 /** An area that is no plugin: the marketplace as a whole. */
 export const MARKETPLACE = "marketplace";
 
 /** The template's sections, each a `## ` heading, in its order; a body holds these and no other. */
 const SECTIONS = ["What happened", "Where", "How to reproduce", "Expected behaviour"];
-
-/** The labels a feedback carries: `feedback` names its kind, the rest say what, where and who. */
-export function labelsOf(area: string, kind: string, from: string): string[] {
-  return ["feedback", `area:${area}`, `kind:${kind}`, `from:${from}`];
-}
 
 /** What is wrong with the body's sections: one missing, or one the template does not have. */
 export function sectionsWrong(body: string): string | null {
@@ -51,13 +52,11 @@ function privateIn(line: string, login: string, host: string): string | null {
   if (login !== "" && words.includes(login)) {
     return "login";
   }
-  if (host !== "" && words.includes(host)) {
-    return "hostname";
-  }
-  return looksLikeSecret(line) === null ? null : "secret";
+  return host !== "" && words.includes(host) ? "hostname" : null;
 }
 
-/** The first private data in the text, named by its kind and line, never by the text itself. */
+/** The first private data in the text, named by its kind and line, never by the text itself; a
+ * secret by its shape, read on the whole text, because a key block spans many lines. */
 export function privateData(text: string): string | null {
   const [login, host] = [userInfo().username, hostname()];
   const lines = text.split("\n");
@@ -67,5 +66,6 @@ export function privateData(text: string): string | null {
       return `${kind} on line ${at + 1}`;
     }
   }
-  return null;
+  const secret = looksLikeSecret(text);
+  return secret === null ? null : `a secret, ${secret}`;
 }

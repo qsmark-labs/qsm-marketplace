@@ -6,7 +6,7 @@
 import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
-import { refuse } from "../lib/failure.ts";
+import { refuse, type Result } from "../lib/failure.ts";
 import { flowOutcome } from "../lib/flow.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
@@ -14,7 +14,7 @@ import { resolveTarget, type Target } from "../lib/github/target.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 import { add, checkCreate, feature } from "./create.ts";
 import { checkEdit, close, edit } from "./edits.ts";
-import { feedback } from "./feedback.ts";
+import { checkout, feedback } from "./feedback.ts";
 import { claim, plan, qa, reopen, review, unclaim } from "./moves.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
 
@@ -26,15 +26,21 @@ interface OnBoard {
   readonly target: Target;
 }
 
-/** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
+/** A verb on the board: gh found, then the repository and the board resolved once, before it runs;
+ * gh runs where `cwd` says, when a verb names its own checkout. */
 function onBoard(
   verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>,
   check: (call: Call) => void = () => {},
+  cwd?: () => Result<string>,
 ): Handler {
   return async (call) => {
     // a wrong call throws usage here, before any gh call
     check(call);
-    const gh = connect();
+    const room: Result<string | undefined> = cwd?.() ?? { ok: true, value: undefined };
+    if (!room.ok) {
+      return room.outcome;
+    }
+    const gh = connect(room.value);
     if (!gh.ok) {
       return gh.outcome;
     }
@@ -77,7 +83,7 @@ if (import.meta.main) {
       reopen: onBoard(reopen),
       plan: onBoard(plan),
       qa: onBoard(qa),
-      feedback,
+      feedback: onBoard(feedback, undefined, checkout),
       doctor: onBoard(notBuilt(45)),
       setup: onBoard(notBuilt(45)),
     }),
