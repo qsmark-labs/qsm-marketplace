@@ -3,7 +3,7 @@
 // qsm-tasks: the task port on GitHub issues and the board, one verb per step of the flow, so an
 // agent never composes a gh, jq or GraphQL call itself.
 
-import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
+import { type Call, type Handler, runCli } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { refuse } from "../lib/failure.ts";
@@ -27,8 +27,8 @@ function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>):
     if (!gh.ok) {
       return gh.outcome;
     }
-    const given = { repo: optionalString(call, "repo"), project: optionalString(call, "project") };
-    const target = await resolveTarget(gh.value, given);
+    // --repo and --project arrive with the first verb that declares them
+    const target = await resolveTarget(gh.value, { repo: undefined, project: undefined });
     return target.ok ? verb(call, { run: gh.value, target: target.value }) : target.outcome;
   };
 }
