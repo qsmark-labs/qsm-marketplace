@@ -186,6 +186,16 @@ describe("qsm-tasks reads the board", () => {
     }
   });
 
+  it("ready refuses an issue whose boards GitHub cut, instead of reading it as off the board", () => {
+    const cut = {
+      ...task(8, null, [], "In Dev"),
+      projectItems: { pageInfo: { hasNextPage: true }, nodes: [] },
+    };
+    const r = run({ stdout: linked([BOARD]), search: found([cut]) });
+    expect(r.exit).not.toBe(0);
+    expect(r.message).toContain("#8: GitHub left out its projectItems");
+  });
+
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
     const off = { ...task(8, null), projectItems: { nodes: [] } };
     expect(run({ stdout: linked([BOARD]), search: found([off]) }).message).toStartWith("#8 ");
@@ -249,6 +259,16 @@ describe("qsm-tasks moves a task", () => {
       "issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -",
     ]);
     expect(again.posted).toBe("Deferred until 2026-12-01\n");
+  });
+
+  it("unclaim of a deferred task off the board keeps the label when adding the card fails", () => {
+    const deferred = { labels: { nodes: [{ name: "deferred" }] }, projectItems: { nodes: [] } };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", [], deferred) }, [
+      "unclaim",
+      "5",
+    ]);
+    expect(r.exit).not.toBe(0);
+    expect(r.calls.join("\n")).not.toContain("--remove-label");
   });
 });
 

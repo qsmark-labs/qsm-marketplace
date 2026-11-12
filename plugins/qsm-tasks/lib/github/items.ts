@@ -36,7 +36,10 @@ export interface Issue extends Item {
 
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
-export const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+const WHOLE = "pageInfo{hasNextPage}";
+export const ITEM = `number title state issueType{name} assignees(first:10){${WHOLE} nodes{login}} labels(first:30){${WHOLE} nodes{name}} blockedBy(first:${PAGE}){${WHOLE} nodes{number state}} projectItems(first:10){${WHOLE} nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+/** The lists an item is read from: a list missing or cut would make the item lie. */
+const ITEM_LISTS = ["assignees", "labels", "blockedBy", "projectItems"] as const;
 /** Where an issue sits in the tree: its parent and its sub-issues. */
 export const FAMILY = "parent{number state} subIssuesSummary{total completed}";
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
@@ -96,11 +99,16 @@ function kindOf(type: string | null, labels: readonly string[]): Kind | null {
 export function readCard(
   node: unknown,
   board: string,
-): { item: Item; cardId: string | null } | null {
+): Result<{ item: Item; cardId: string | null }> {
   const number = count(node, "number");
   const title = text(node, "title");
   if (!isRecord(node) || number === null || title === null) {
-    return null;
+    return refuse("failed", "refused", "GitHub answered an issue without its number or title");
+  }
+  const broken = ITEM_LISTS.find((key) => !whole(node[key]));
+  if (broken !== undefined) {
+    const said = `#${number}: GitHub left out its ${broken} or cut them at the page size`;
+    return refuse("failed", "refused", said);
   }
   const labels = nodes(node.labels).flatMap((l) => text(l, "name") ?? []);
   const onBoard = nodes(node.projectItems).find(
@@ -123,7 +131,7 @@ export function readCard(
       text(b, "state") === "OPEN" ? (count(b, "number") ?? []) : [],
     ),
   };
-  return { item, cardId: text(card, "id") };
+  return { ok: true, value: { item, cardId: text(card, "id") } };
 }
 
 /** The parent and sub-issue counts `FAMILY` reads; no parent is null. */
@@ -152,12 +160,18 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   if (cut(found)) {
     return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
   }
-  const issues = nodes(found);
-  const blocked = issues.find((node) => isRecord(node) && cut(node.blockedBy));
-  if (blocked !== undefined) {
-    return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
+  if (!whole(found)) {
+    return refuse("failed", "refused", "GitHub answered the search without its issues");
   }
-  return { ok: true, value: issues.flatMap((node) => readCard(node, target.board.id)?.item ?? []) };
+  const items: Item[] = [];
+  for (const node of nodes(found)) {
+    const read = readCard(node, target.board.id);
+    if (!read.ok) {
+      return read;
+    }
+    items.push(read.value.item);
+  }
+  return { ok: true, value: items };
 }
 
 /** A connection GitHub cut at its page size: reading it as whole would lie. */
@@ -167,6 +181,11 @@ export function cut(connection: unknown): boolean {
     isRecord(connection.pageInfo) &&
     connection.pageInfo.hasNextPage === true
   );
+}
+
+/** A connection that came back with its list, and not cut. */
+function whole(connection: unknown): boolean {
+  return isRecord(connection) && Array.isArray(connection.nodes) && !cut(connection);
 }
 
 function readComment(node: unknown): Comment {
@@ -197,18 +216,19 @@ export async function issue(
     return answer;
   }
   const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
-  const item = readCard(node, target.board.id)?.item;
   const body = text(node, "body");
-  if (!isRecord(node) || item === undefined || body === null) {
+  if (!isRecord(node) || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
   }
   const [, list] = LISTS.find(([key]) => cut(node[key])) ?? [];
   if (list !== undefined) {
     return refuse("failed", "refused", `#${number} has over ${PAGE} ${list}: GitHub cut the list`);
   }
+  const read = readCard(node, target.board.id);
+  if (!read.ok) {
+    return read;
+  }
   const { parent, subIssues } = readFamily(node);
-  return {
-    ok: true,
-    value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },
-  };
+  const thread = nodes(node.comments).map(readComment);
+  return { ok: true, value: { ...read.value.item, body, parent, subIssues, comments: thread } };
 }

@@ -45,7 +45,8 @@ export const claim = moving("claim", (_call, { run, target }, at) => ({
 }));
 
 /** Back to Todo and unassigned; --until defers it, and without it a deferred task comes back.
- * Assignee and label first, comment last: whatever a refusal leaves, a rerun passes and finishes. */
+ * The assignee and a new label go first, a label that brings it back after the board write, the
+ * comment last: whatever a refusal leaves, a rerun passes and finishes. */
 export const unclaim = moving("unclaim", (call, { run, target }, at) => {
   const until = optionalString(call, "until");
   const deferring = until !== undefined;
@@ -53,13 +54,16 @@ export const unclaim = moving("unclaim", (call, { run, target }, at) => {
   const flags = [
     ...(at.assignees.length === 0 ? [] : ["--remove-assignee", at.assignees.join(",")]),
     ...(deferring ? ["--add-label", DEFERRED] : []),
-    ...(bringingBack ? ["--remove-label", DEFERRED] : []),
   ];
   const release: Write[] = flags.length === 0 ? [] : [() => edit(run, target, at.number, flags)];
+  // the label leaves after the board write: a failed write leaves it deferred, so a rerun passes
+  const back: Write[] = bringingBack
+    ? [() => edit(run, target, at.number, ["--remove-label", DEFERRED])]
+    : [];
   const note: Write[] = deferring
     ? [() => comment(run, target, at.number, `Deferred until ${until}`)]
     : [];
-  return { before: release, after: note };
+  return { before: release, after: [...back, ...note] };
 });
 
 /** In Dev, Agent Review or Human Review: Agent Review. */

@@ -67,19 +67,22 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   const statusField = fieldOf(board, "Status");
   const priorityField = fieldOf(board, "Priority");
   const [id, caller] = [text(issue, "id"), text(viewer, "login")];
-  if (read === null || id === null || caller === null || statusField === null) {
+  if (id === null || caller === null || statusField === null) {
     return refuse(
       "failed",
       "not-found",
       `no issue #${number} in ${target.repo}, or no Status field`,
     );
   }
+  if (!read.ok) {
+    return read;
+  }
   const { parent, parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
   const facts = { caller, parent, parentOpen, openSubIssues };
   const lastComment = text(nodes(isRecord(issue) ? issue.comments : undefined)[0], "body");
-  const own = { id, cardId: read.cardId, statusField, priorityField, lastComment };
-  return { ok: true, value: { ...read.item, ...facts, ...own } };
+  const own = { id, cardId: read.value.cardId, statusField, priorityField, lastComment };
+  return { ok: true, value: { ...read.value.item, ...facts, ...own } };
 }
 
 /** The card's id, adding the issue to the board first when it is not on it yet. */
