@@ -7,6 +7,7 @@ import { type Call, type Handler, runCli } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { refuse } from "../lib/failure.ts";
+import { flowOutcome } from "../lib/flow.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
@@ -57,7 +58,7 @@ if (import.meta.main) {
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),
       close: onBoard(notBuilt(41)),
-      flow: notBuilt(42),
+      flow: flowOutcome,
       claim: onBoard(notBuilt(43)),
       unclaim: onBoard(notBuilt(43)),
       review: onBoard(notBuilt(43)),
