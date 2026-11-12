@@ -4,7 +4,7 @@
 import { type Call, optionalString, requiredNumber } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import type { Result } from "../lib/failure.ts";
-import { DEFERRED, moveOf, STATUS } from "../lib/flow.ts";
+import { DEFERRED, moveOf } from "../lib/flow.ts";
 import { type Card, card, comment, edit, setStatus } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import type { Target } from "../lib/github/target.ts";
@@ -17,9 +17,8 @@ interface At {
 type Write = () => Promise<Result<unknown>>;
 
 /** A move: the card read, the guard checked, then the writes `around` names before and after the
- * Status, in order up to the first refusal; it prints `#<n> <from> -> <to>`. An issue not on the
- * board is at Todo once it is added (design.md decision 9), and a Status already at its target is
- * not written again. */
+ * Status, in order up to the first refusal; it prints `#<n> <from> -> <to>`. A Status already at
+ * its target is not written again, so a rerun after a refusal makes only what is left. */
 function moving(
   verb: string,
   around: (call: Call, on: At, at: Card) => { before?: Write[]; after?: Write[] } = () => ({}),
@@ -30,8 +29,8 @@ function moving(
       return found.outcome;
     }
     const at = found.value;
-    const from = at.cardId === null ? STATUS.todo : at.status;
-    const move = moveOf(verb, { ...at, status: from });
+    const from = at.status;
+    const move = moveOf(verb, at);
     if (!move.ok) {
       return move.outcome;
     }
@@ -56,7 +55,9 @@ export const claim = moving("claim", (_call, { run, target }, at) => ({
     : [() => edit(run, target, at.number, ["--add-assignee", "@me"])],
 }));
 
-/** Back to Todo and unassigned; --until defers it, and without it a deferred task comes back. */
+/** Back to Todo and unassigned; --until defers it, and without it a deferred task comes back. The
+ * assignee and the label go first and the comment last, so a rerun after a refusal finishes it:
+ * a task labelled deferred at Todo still passes the guard. */
 export const unclaim = moving("unclaim", (call, { run, target }, at) => {
   const until = optionalString(call, "until");
   const deferring = until !== undefined;
@@ -70,5 +71,5 @@ export const unclaim = moving("unclaim", (call, { run, target }, at) => {
   const note: Write[] = deferring
     ? [() => comment(run, target, at.number, `Deferred until ${until}`)]
     : [];
-  return { after: [...release, ...note] };
+  return { before: release, after: note };
 });

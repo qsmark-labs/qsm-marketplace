@@ -35,12 +35,19 @@ interface FakeGh {
   readonly search?: string;
   /** what it answers the read of a move's card */
   readonly card?: string;
+  /** refuse the first `gh issue edit`, as GitHub refuses a write */
+  readonly refuseEditOnce?: true;
 }
 
-/** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call. */
-function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
-  const dir = sandboxDir("qsm-tasks-");
+/** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call; a run in the
+ * same `dir` meets the same fake again. */
+function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("qsm-tasks-")) {
   const calls = join(dir, "calls");
+  const refused = join(dir, "refused");
+  const edit =
+    gh.refuseEditOnce === undefined
+      ? ""
+      : `*"issue edit"*) [ -e "${refused}" ] && exit 0; : > "${refused}"; printf 'refused' >&2; exit 1 ;; `;
   // builtins only: the PATH holds the fake and the runtime, no cat
   const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
   const search = [
@@ -49,7 +56,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
   ].join("");
   const stdin = join(dir, "stdin");
   const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
-  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
+  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${edit}${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
   const r = runBin(CLI, [...argv, "--json"], { env });
@@ -192,20 +199,21 @@ describe("qsm-tasks moves a task", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("unclaim --until sets Todo, gives the task back, labels it deferred and says until when", () => {
-    const r = run({ stdout: linked([BOARD]), card: cardOf("In Dev", ["Questi0nM4rk"]) }, [
-      "unclaim",
-      "5",
-      "--until",
-      "2026-12-01",
-    ]);
-    expect(r.exit).toBe(0);
-    expect(r.message).toBe("#5 In Dev -> Todo");
-    expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
-      "api graphql",
+  it("unclaim --until refused at its first write writes nothing else, and a rerun finishes it", () => {
+    const dir = sandboxDir("qsm-tasks-");
+    const gh = { stdout: linked([BOARD]), card: cardOf("In Dev", ["Questi0nM4rk"]) };
+    const argv = ["unclaim", "5", "--until", "2026-12-01"];
+    const first = run({ ...gh, refuseEditOnce: true }, argv, dir);
+    expect(first.exit).toBe(1);
+    expect(first.calls).toHaveLength(3);
+    const again = run({ ...gh, refuseEditOnce: true }, argv, dir);
+    expect(again.exit).toBe(0);
+    expect(again.message).toBe("#5 In Dev -> Todo");
+    expect(again.calls.slice(5).map((c) => c.split(" -f ")[0])).toEqual([
       "issue edit 5 --repo qsmark-labs/qsm-marketplace --remove-assignee Questi0nM4rk --add-label deferred",
+      "api graphql",
       "issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -",
     ]);
-    expect(r.posted).toBe("Deferred until 2026-12-01\n");
+    expect(again.posted).toBe("Deferred until 2026-12-01\n");
   });
 });
