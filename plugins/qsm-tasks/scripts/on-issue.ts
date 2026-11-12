@@ -5,13 +5,7 @@ import { type Call, requiredNumber } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import type { Result } from "../lib/failure.ts";
 import { type Card, card } from "../lib/github/board.ts";
-import type { Run } from "../lib/github/gh.ts";
-import type { Target } from "../lib/github/target.ts";
-
-export interface At {
-  readonly run: Run;
-  readonly target: Target;
-}
+import type { At } from "./reads.ts";
 
 /** One write. */
 export type Write = () => Promise<Result<unknown>>;

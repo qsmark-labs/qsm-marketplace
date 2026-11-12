@@ -2,7 +2,7 @@
 // of the repository's template `.github/ISSUE_TEMPLATE/feedback.yml`, and the private data a body
 // must not carry, because feedback lands on a public repository.
 import { hostname, userInfo } from "node:os";
-import { looksLikeSecret } from "../../../lib/secret-shapes.ts";
+import { blockSpans, shapeSpans } from "../../../lib/secret-shapes.ts";
 
 export const FEEDBACK_KINDS = [
   "tool-broken",
@@ -66,6 +66,10 @@ export function privateData(text: string): string | null {
       return `${kind} on line ${at + 1}`;
     }
   }
-  const secret = looksLikeSecret(text);
-  return secret === null ? null : `a secret, ${secret}`;
+  // a public block (a certificate, a public key) is no secret, as looksLikeSecret has it
+  const spans = [...blockSpans(text), ...shapeSpans(text)].filter((s) => s.kind !== "pem-block");
+  const [first] = spans.toSorted((a, b) => a.start - b.start);
+  return first === undefined
+    ? null
+    : `${first.kind} on line ${text.slice(0, first.start).split("\n").length}`;
 }
