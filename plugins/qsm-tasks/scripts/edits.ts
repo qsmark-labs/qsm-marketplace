@@ -42,8 +42,7 @@ const WHERE = new Set(["number", "repo", "project"]);
 /** edit's checks before any gh call: the change id and Priority can be, and it changes something. */
 export function checkEdit(call: Call): void {
   checkCreate(call);
-  const changes = Object.entries(call.args).filter(([n, v]) => !WHERE.has(n) && v !== undefined);
-  if (changes.length === 0) {
+  if (Object.entries(call.args).every(([n, v]) => WHERE.has(n) || v === undefined)) {
     throw new UsageError("edit: name what to change");
   }
 }
@@ -94,8 +93,7 @@ function closable(at: Card, notPlanned: boolean): Result<null> {
     : refuse("blocked", "wrong-status", `#${at.number} has ${at.openSubIssues} open sub-issues`);
 }
 
-/** The reason as a comment, then the close; a rerun after a refused close finds the reason as the
- * newest comment and does not post it again. */
+/** The reason, unless it is the newest comment already, then the close: a rerun posts it once. */
 export const close = onIssue((call, { run, target }, at): Result<Plan> => {
   const notPlanned = flagArg(call, "notPlanned");
   const allowed = closable(at, notPlanned);
