@@ -12,11 +12,13 @@ export interface GhAnswer {
 /** One call of gh; a test hands a recording fake where a run hands the real gh. */
 export type Run = (args: readonly string[], stdin?: string) => Promise<GhAnswer>;
 
-const runGh: Run = async (args, stdin) => {
+/** gh, run in `cwd` when one is given, so `{owner}` and `{repo}` fill from that checkout. */
+const runGh = async (args: readonly string[], stdin?: string, cwd?: string): Promise<GhAnswer> => {
   const proc = Bun.spawn(["gh", ...args], {
     stdin: stdin === undefined ? "ignore" : Buffer.from(stdin),
     stdout: "pipe",
     stderr: "pipe",
+    ...(cwd === undefined ? {} : { cwd }),
   });
   const [stdout, stderr, exit] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -27,9 +29,9 @@ const runGh: Run = async (args, stdin) => {
 };
 
 /** gh on PATH, or `missing` `no-gh`. */
-export function connect(): Result<Run> {
+export function connect(cwd?: string): Result<Run> {
   return onPath("gh")
-    ? { ok: true, value: runGh }
+    ? { ok: true, value: (args, stdin) => runGh(args, stdin, cwd) }
     : refuse("missing", "no-gh", "gh is not on PATH", "install the GitHub CLI, then gh auth login");
 }
 

@@ -37,7 +37,13 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  feedback(): Promise<unknown>;
+  feedback(options: {
+    title: string;
+    area: string;
+    kind: string;
+    from: string;
+    bodyFile: string;
+  }): Promise<unknown>;
   edit(options: {
     number: number;
     title?: string;

@@ -2,13 +2,15 @@
 // Status field's ids and the caller. Each write is idempotent, so running a verb again finishes it.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
-import type { Facts } from "../flow.ts";
+import type { Facts, Kind } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
 import { FAMILY, ITEM, type Item, nodes, readCard, readFamily, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 /** A single-select field of the board: its id and its options' ids by name. */
 type Field = Readonly<{ id: string; options: ReadonlyMap<string, string> }>;
+/** What a write on the repository alone needs: feedback files without a board. */
+type Repo = Pick<Target, "repo">;
 
 /** An issue as a move sees it: the item, what its guard reads, and the ids its writes need. */
 export interface Card extends Item, Facts {
@@ -122,9 +124,9 @@ export async function setField(
  * labels in `make` it creates when missing and puts on; one in `flags` must exist, or gh fails. */
 export async function file(
   run: Run,
-  target: Target,
+  target: Repo,
   issue: {
-    kind: "task" | "feature";
+    kind: Kind;
     title: string;
     body: string;
     flags?: readonly string[];
@@ -135,8 +137,11 @@ export async function file(
   if (!labelled.ok) {
     return labelled;
   }
-  const type = issue.kind === "task" ? "Task" : "Feature";
-  const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
+  // feedback is a plain issue with no type: its label names its kind
+  const type = { task: ["--type", "Task"], feature: ["--type", "Feature"], feedback: [] }[
+    issue.kind
+  ];
+  const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, ...type];
   const put = (issue.make ?? []).flatMap((name) => ["--label", name]);
   const made = await gh(
     run,
@@ -153,7 +158,7 @@ export async function file(
 }
 
 /** Creates each label the repository lacks; one it has already is left as it is. */
-async function labels(run: Run, target: Target, names: readonly string[]): Promise<Result<null>> {
+async function labels(run: Run, target: Repo, names: readonly string[]): Promise<Result<null>> {
   for (const name of names) {
     const made = await run(["label", "create", name, "--repo", target.repo]);
     // gh 2.103.3 answers a label that exists with this text and no code of its own
@@ -203,7 +208,7 @@ export async function reopen(run: Run, target: Target, number: number): Promise<
 /** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
 export function comment(
   run: Run,
-  target: Target,
+  target: Repo,
   number: number,
   body: string,
 ): Promise<Result<string>> {

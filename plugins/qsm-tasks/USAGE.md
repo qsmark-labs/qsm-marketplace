@@ -11,7 +11,9 @@ the open issues, and with `--feature` or `--spec` the whole tree or binding, ope
 `show` prints that row, the facts, the sub-issue counts and the body, and with `--comments` the
 comments oldest first; `note` posts its text unchanged and prints `#<n> comment added`. `feature`
 and `add` print `#<n> filed: <title>`; a body or an intent goes to GitHub on stdin. `edit` prints
-`#<n> edited`, `close` posts its reason, then prints `#<n> closed as <reason>`. A move,
+`#<n> edited`, `close` posts its reason, then prints `#<n> closed as <reason>`. `feedback` always
+files in `$QSM_MARKETPLACE`'s repository, refuses private data as `blocked` `private-data` naming
+the kind and line, and comments on the same open feedback instead of filing it twice. A move,
 `claim`, `unclaim`, `review`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
 in `qsm-tasks flow` fails it exits `blocked` and changes nothing. Every verb but `flow` needs `gh`
 on PATH with a login that has the `project` scope.

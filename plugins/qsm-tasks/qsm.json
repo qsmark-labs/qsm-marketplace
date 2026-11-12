@@ -165,7 +165,40 @@
         ]
       },
       "qsm-tasks feedback": {
-        "description": "File feedback on the marketplace as a plain issue from its template, with its labels"
+        "description": "File feedback on the marketplace as a plain issue from its template, with its labels",
+        "args": [
+          {
+            "name": "title",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the finding, in a line"
+          },
+          {
+            "name": "area",
+            "type": "string",
+            "required": true,
+            "description": "marketplace, or a plugin of marketplace.json"
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "required": true,
+            "description": "tool-broken, tool-missing, wrong-output, guidance or agent-mistake"
+          },
+          {
+            "name": "from",
+            "type": "string",
+            "required": true,
+            "description": "who noticed: user, main-agent or subagent"
+          },
+          {
+            "name": "bodyFile",
+            "type": "string",
+            "required": true,
+            "description": "a file in the template's four sections"
+          }
+        ]
       },
       "qsm-tasks edit": {
         "description": "Change an issue's title, priority, body, assignee, feature, order or change",
