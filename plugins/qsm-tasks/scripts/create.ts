@@ -86,9 +86,11 @@ async function afterFiling(
   if (set.ok) {
     return null;
   }
-  const flag = ordered.ok ? `--priority ${priority}` : `--after ${after}`;
+  // a refused order left the Priority unwritten too, so the edit carries both
+  const prioritized = priority === undefined ? [] : ["--priority", priority];
+  const flags = ordered.ok ? prioritized : ["--after", String(after), ...prioritized];
   const said = `#${n} is filed, but ${set.outcome.message ?? "a write was refused"}`;
-  return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flag}`).outcome;
+  return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flags.join(" ")}`).outcome;
 }
 
 /** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and

@@ -4,7 +4,7 @@ import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
 import { featureBranch } from "../flow.ts";
 import { graphql, type Run, variables } from "./gh.ts";
-import { cut, nodes, text } from "./items.ts";
+import { nodes, text, whole } from "./items.ts";
 import type { Target } from "./target.ts";
 
 // latestReviews holds one review per reviewer, so twenty is more than a task's PR ever has; a list
@@ -64,8 +64,12 @@ export async function readyPull(
   if (!isRecord(pull)) {
     return refuse("failed", "not-found", `no PR #${pr} in ${target.repo}`);
   }
-  if (cut(pull.latestReviews)) {
-    return refuse("failed", "refused", `PR #${pr} has more reviews than GitHub answered at once`);
+  if (!whole(pull.latestReviews)) {
+    return refuse(
+      "failed",
+      "refused",
+      `the reviews of PR #${pr} came back cut or without their page check`,
+    );
   }
   const why = unready(pull, pr, n, parent);
   return why === null ? { ok: true, value: null } : refuse("blocked", "wrong-status", why);

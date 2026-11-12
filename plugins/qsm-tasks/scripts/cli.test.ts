@@ -288,7 +288,10 @@ describe("qsm-tasks moves a task", () => {
 describe("qsm-tasks human hands a task over", () => {
   const card = cardOf("Agent Review", [], { parent: { number: 3, state: "OPEN" } });
   const rollup = (state: string) => ({ nodes: [{ commit: { statusCheckRollup: { state } } }] });
-  const review = (state: string, oid: string) => ({ nodes: [{ state, commit: { oid } }] });
+  const review = (state: string, oid: string) => ({
+    pageInfo: { hasNextPage: false },
+    nodes: [{ state, commit: { oid } }],
+  });
   /** The PR read as GitHub answers it, for task 5 under feature 3, ready unless `more` says not;
    * its head is the commit `c2`. */
   const run5 = (more: object) => {
@@ -323,10 +326,10 @@ describe("qsm-tasks human hands a task over", () => {
   });
 
   it("with reviews GitHub cut is refused, as a change request past the page goes unseen", () => {
-    const cutReviews = { pageInfo: { hasNextPage: true }, ...review("COMMENTED", "c2") };
+    const cutReviews = { ...review("COMMENTED", "c2"), pageInfo: { hasNextPage: true } };
     const r = run5({ latestReviews: cutReviews });
     expect(r.exit).toBe(1);
-    expect(r.message).toContain("more reviews than GitHub answered");
+    expect(r.message).toContain("the reviews of PR #9 came back cut");
     expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(false);
   });
 
