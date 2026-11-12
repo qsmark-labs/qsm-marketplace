@@ -19,8 +19,7 @@ to exist if GitHub's own CLI kept the flow of a task.
 | Skill | `task-writing` | How to write the text of an epic or task: skeleton, before and after, done-when, plain summary for a first-time reader |
 | Binary | `qsm-tasks` | Nineteen verbs over GitHub issues and the board; `qsm-tasks --help` lists them |
 
-The skills still drive `br` until they move to the binary; the binary's verbs land one at a time,
-and a verb not built yet says so and names its issue.
+The skills still drive `br` until they move to the binary.
 
 ## Install
 

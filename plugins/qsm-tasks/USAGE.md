@@ -17,10 +17,12 @@ the kind and line, and comments on the same open feedback instead of filing it t
 prints one line per check, `ok`, `failed` with its fix, or `manual` where the API cannot read it,
 and exits `failed`, `partial` when only `manual` ones are left, or `ok`; it writes nothing. `setup`
 creates the fields, options and labels doctor would fail, never renames or deletes, then prints
-doctor's lines; a second run prints `nothing to create`. A move,
-`claim`, `unclaim`, `review`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
+doctor's lines; a second run prints `nothing to create`. A move, `claim`, `unclaim`, `review`,
+`human`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
 in `qsm-tasks flow` fails it exits `blocked` and changes nothing. Every verb but `flow` needs `gh`
-on PATH with a login that has the `project` scope.
+on PATH with a login that has the `project` scope. `human <n> --pr <m>` reads PR `<m>` first and
+moves the task only when it is open, based on `feature/<parent>`, says `Closes #<n>`, is green, and
+no review asks for changes on its head commit.
 
 Every verb but `flow` and `feedback` acts on a repository and its board, resolved on each run and
 never stored: `--repo owner/name` where the verb takes it, else the repository `gh` resolves in the

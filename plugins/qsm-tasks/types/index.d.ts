@@ -79,7 +79,13 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  human(): Promise<unknown>;
+  human(options: {
+    number: number;
+    pr?: number;
+    started?: boolean;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   close(options: {
     number: number;
     reason: string;

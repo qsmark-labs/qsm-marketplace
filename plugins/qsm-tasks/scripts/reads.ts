@@ -11,15 +11,9 @@ import {
 } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { changeLabel, DEFERRED, priorityRank, STATUS } from "../lib/flow.ts";
-import type { Run } from "../lib/github/gh.ts";
 import { comment } from "../lib/github/board.ts";
 import { issue, type Item, search } from "../lib/github/items.ts";
-import type { Target } from "../lib/github/target.ts";
-
-export interface At {
-  readonly run: Run;
-  readonly target: Target;
-}
+import type { At } from "./on-issue.ts";
 
 /** `#<n> [<Status>] <title>` with its priority, assignees and open blockers. */
 function row(item: Item): string {

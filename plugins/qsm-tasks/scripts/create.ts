@@ -16,7 +16,7 @@ import { card, file, hasPriority, setField } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import { issue } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
-import type { At } from "./reads.ts";
+import type { At } from "./on-issue.ts";
 
 /** The checks a create makes before any gh call: the change id fits a label, the Priority is one. */
 export function checkCreate(call: Call): void {

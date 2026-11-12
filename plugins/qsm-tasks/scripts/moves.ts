@@ -1,12 +1,18 @@
 // The moves of a task and a feature, one engine for all: read the card, check the move's guard in
 // lib/flow.ts, then make the writes, which are idempotent, so running a verb again finishes it.
 
-import { type Call, optionalString } from "../../../lib/cli-base.ts";
-import type { Outcome } from "../../../lib/outcome.ts";
+import {
+  type Call,
+  flagArg,
+  optionalNumber,
+  optionalString,
+  requiredNumber,
+} from "../../../lib/cli-base.ts";
+import { type Outcome, UsageError } from "../../../lib/outcome.ts";
 import { DEFERRED, moveOf } from "../lib/flow.ts";
 import { type Card, comment, edit, reopen as reopenIssue, setField } from "../lib/github/board.ts";
-import { onIssue, type Write } from "./on-issue.ts";
-import type { At } from "./reads.ts";
+import { readyPull } from "../lib/github/pulls.ts";
+import { type At, onIssue, type Write } from "./on-issue.ts";
 
 /** A move: card read, guard checked, then `around`'s writes before and after the Status, up to the
  * first refusal; a Status at its target is not written again. It prints `#<n> <from> -> <to>`. */
@@ -58,6 +64,31 @@ export const unclaim = moving("unclaim", (call, { run, target }, at) => {
 
 /** In Dev, Agent Review or Human Review: Agent Review. */
 export const review = moving("review");
+
+/** Agent Review: Ready For Human, once the PR --pr names is the task's ready one; the read of it is
+ * the first step, so a PR that is not ready ends the move before any write. */
+const handOver = moving("human", (call, { run, target }, at) => {
+  const [pr, { number, parent }] = [requiredNumber(call, "pr"), at];
+  // the move's guard refused a task under no feature, so parent is a number here
+  const read = parent === null ? [] : [() => readyPull(run, target, pr, number, parent)];
+  return { before: read };
+});
+
+/** Ready For Human, once the owner started his review: Human Review. */
+const ownerStarted = moving("human --started");
+
+export function human(call: Call, on: At): Promise<Outcome> {
+  return flagArg(call, "started") ? ownerStarted(call, on) : handOver(call, on);
+}
+
+/** --pr names the pull request a hand-over reads; --started reads none. */
+export function checkHuman(call: Call): void {
+  const started = flagArg(call, "started");
+  const named = optionalNumber(call, "pr") !== undefined;
+  if (started === named) {
+    throw new UsageError("human: --pr <m> to hand a task over, or --started, not both");
+  }
+}
 
 /** A feature at In Dev, Ready For Test or Blocked: back to Todo for planning. */
 export const plan = moving("plan");

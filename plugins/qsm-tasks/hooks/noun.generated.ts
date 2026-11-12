@@ -29,7 +29,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   claim: { words: ["qsm-tasks","claim"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   unclaim: { words: ["qsm-tasks","unclaim"], args: [{ name: "number", flag: null }, { name: "until", flag: "--until" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   review: { words: ["qsm-tasks","review"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
-  human: { words: ["qsm-tasks","human"], args: [] },
+  human: { words: ["qsm-tasks","human"], args: [{ name: "number", flag: null }, { name: "pr", flag: "--pr" }, { name: "started", flag: "--started", boolean: true }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   close: { words: ["qsm-tasks","close"], args: [{ name: "number", flag: null }, { name: "reason", flag: "--reason" }, { name: "notPlanned", flag: "--not-planned", boolean: true }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   reopen: { words: ["qsm-tasks","reopen"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   plan: { words: ["qsm-tasks","plan"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
