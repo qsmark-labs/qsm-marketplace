@@ -47,8 +47,8 @@ function fieldOf(board: unknown, wanted: string): Field | null {
 }
 
 export async function card(run: Run, target: Target, number: number): Promise<Result<Card>> {
-  const vars = variables({ repo: target.repoId, board: target.board.id, number });
-  const answer = await graphql(run, CARD, vars);
+  const ids = variables({ repo: target.repoId, board: target.board.id, number });
+  const answer = await graphql(run, CARD, ids);
   if (!answer.ok) {
     return answer;
   }
@@ -68,8 +68,8 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   const { parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
   const facts = { caller, parentOpen, openSubIssues };
-  const ids = { id, cardId: read.cardId, statusField, priorityField };
-  return { ok: true, value: { ...read.item, ...facts, ...ids } };
+  const own = { id, cardId: read.cardId, statusField, priorityField };
+  return { ok: true, value: { ...read.item, ...facts, ...own } };
 }
 
 /** The card's id, adding the issue to the board first when it is not on it yet. */
@@ -89,13 +89,14 @@ async function cardOn(run: Run, target: Target, at: Card): Promise<Result<string
 }
 
 /** Sets one of the card's fields, adding the card first when the issue is not on the board. */
-async function setOption(
+export async function setField(
   run: Run,
   target: Target,
   at: Card,
-  [name, field]: readonly [string, Field | null],
+  name: "Status" | "Priority",
   value: string,
 ): Promise<Result<null>> {
+  const field = name === "Status" ? at.statusField : at.priorityField;
   const option = field?.options.get(value);
   if (field === null || option === undefined) {
     return refuse("failed", "not-found", `the board's ${name} has no option ${value}`);
@@ -115,27 +116,32 @@ export function setStatus(
   at: Card,
   status: string,
 ): Promise<Result<null>> {
-  return setOption(run, target, at, ["Status", at.statusField], status);
+  return setField(run, target, at, "Status", status);
 }
 
-export function setPriority(
-  run: Run,
-  target: Target,
-  at: Card,
-  value: string,
-): Promise<Result<null>> {
-  return setOption(run, target, at, ["Priority", at.priorityField], value);
-}
-
-/** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. */
+/** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. The
+ * labels in `make` it creates when missing and puts on; one in `flags` must exist, or gh fails. */
 export async function file(
   run: Run,
   target: Target,
-  issue: { kind: "task" | "feature"; title: string; body: string; flags: readonly string[] },
+  issue: {
+    kind: "task" | "feature";
+    title: string;
+    body: string;
+    flags: readonly string[];
+    make?: readonly string[];
+  },
 ): Promise<Result<number>> {
+  for (const name of issue.make ?? []) {
+    const made = await label(run, target, name);
+    if (!made.ok) {
+      return made;
+    }
+  }
   const type = issue.kind === "task" ? "Task" : "Feature";
   const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
-  const made = await gh(run, [...args, "--body-file", "-", ...issue.flags], issue.body);
+  const labels = (issue.make ?? []).flatMap((name) => ["--label", name]);
+  const made = await gh(run, [...args, "--body-file", "-", ...labels, ...issue.flags], issue.body);
   if (!made.ok) {
     return made;
   }
@@ -146,7 +152,7 @@ export async function file(
 }
 
 /** Creates a label the repository lacks; one it has already is left as it is. */
-export async function label(run: Run, target: Target, name: string): Promise<Result<null>> {
+async function label(run: Run, target: Target, name: string): Promise<Result<null>> {
   const made = await run(["label", "create", name, "--repo", target.repo]);
   // gh 2.103.3 answers a label that exists with this text and no code of its own
   const exists = made.exit !== 0 && made.stderr.includes("already exists");
