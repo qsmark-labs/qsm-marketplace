@@ -22,7 +22,7 @@ import {
 import type { Run } from "../lib/github/gh.ts";
 import type { Target } from "../lib/github/target.ts";
 import { checkCreate } from "./create.ts";
-import { onIssue, type Plan, type Step } from "./on-issue.ts";
+import { onIssue, type Plan, type Write } from "./on-issue.ts";
 
 /** gh's flags for what edit changes on the issue itself; GitHub refuses a cycle in its own words. */
 function editFlags(call: Call): string[] {
@@ -71,7 +71,7 @@ export const edit = onIssue((call, { run, target }, at): Result<Plan> => {
     return refuse("blocked", "wrong-kind", `--spec binds a feature; #${at.number} is not one`);
   }
   const priority = optionalString(call, "priority");
-  const steps: Step[] = [
+  const steps: Write[] = [
     () => change(run, target, at, call),
     ...(priority === undefined ? [] : [() => setField(run, target, at, "Priority", priority)]),
   ];
@@ -101,7 +101,7 @@ export const close = onIssue((call, { run, target }, at): Result<Plan> => {
   if (!allowed.ok) {
     return allowed;
   }
-  const steps: Step[] = [
+  const steps: Write[] = [
     () => comment(run, target, at.number, requiredString(call, "reason")),
     () => closeIssue(run, target, at.number, notPlanned),
   ];
