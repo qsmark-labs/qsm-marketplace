@@ -33,6 +33,8 @@ interface FakeGh {
   readonly exit?: number;
   /** what it answers a search */
   readonly search?: string;
+  /** what it answers the read of a move's card */
+  readonly card?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call. */
@@ -41,7 +43,10 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
   const calls = join(dir, "calls");
   // builtins only: the PATH holds the fake and the runtime, no cat
   const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
-  const search = gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `;
+  const search = [
+    gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
+    gh.card === undefined ? "" : `*viewer\\{login\\}*) printf '%s' '${gh.card}' ;; `,
+  ].join("");
   const stdin = join(dir, "stdin");
   const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
   const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
@@ -90,6 +95,7 @@ describe("qsm-tasks resolves the board", () => {
 
 function task(number: number, priority: string | null, blockedBy: number[] = [], status = "Todo") {
   const card = {
+    id: `PVTI_${number}`,
     project: { id: BOARD.id },
     status: { name: status },
     priority: priority === null ? null : { name: priority },
@@ -143,5 +149,50 @@ describe("qsm-tasks note", () => {
     expect(r.exit).toBe(0);
     expect(r.posted).toBe(`${text}\n`);
     expect(r.calls[1]).toBe("issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -");
+  });
+});
+
+/** A move's card as GitHub answers it: the caller, the Status field and one task on the board. */
+function cardOf(status: string, assignees: readonly string[]): string {
+  const statuses = ["Todo", "In Dev", "Agent Review"];
+  const field = { id: "PVTSSF_1", options: statuses.map((name, i) => ({ id: `opt${i}`, name })) };
+  const issue = {
+    ...task(5, null, [], status),
+    id: "I_5",
+    assignees: { nodes: assignees.map((login) => ({ login })) },
+  };
+  return JSON.stringify({
+    data: { viewer: { login: "Questi0nM4rk" }, board: { field }, repo: { issue } },
+  });
+}
+
+describe("qsm-tasks moves a task", () => {
+  it("claim on a task held by another login is blocked held, and writes nothing", () => {
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", ["someone-else"]) }, [
+      "claim",
+      "5",
+    ]);
+    expect(r.exit).toBe(5);
+    expect(r.data).toMatchObject({ reason: "held" });
+    expect(r.message).toContain("someone-else");
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it("unclaim --until sets Todo, gives the task back, labels it deferred and says until when", () => {
+    const r = run({ stdout: linked([BOARD]), card: cardOf("In Dev", ["Questi0nM4rk"]) }, [
+      "unclaim",
+      "5",
+      "--until",
+      "2026-12-01",
+    ]);
+    expect(r.exit).toBe(0);
+    expect(r.message).toBe("#5 In Dev -> Todo\n#5 deferred until 2026-12-01");
+    expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
+      "api graphql",
+      "issue edit 5 --repo qsmark-labs/qsm-marketplace --remove-assignee Questi0nM4rk",
+      "issue edit 5 --repo qsmark-labs/qsm-marketplace --add-label deferred",
+      "issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -",
+    ]);
+    expect(r.posted).toBe("Deferred until 2026-12-01\n");
   });
 });

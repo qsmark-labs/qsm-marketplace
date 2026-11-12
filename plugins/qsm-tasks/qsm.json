@@ -125,13 +125,75 @@
         ]
       },
       "qsm-tasks claim": {
-        "description": "Take a Todo task or bug: In Dev, assigned to the caller, on the board"
+        "description": "Take a Todo task or bug: In Dev, assigned to the caller, on the board",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the task or bug"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks unclaim": {
-        "description": "Give a task back: Todo and unassigned, or deferred until a given value"
+        "description": "Give a task back: Todo and unassigned, or deferred until a given value",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the task or bug"
+          },
+          {
+            "name": "until",
+            "type": "string",
+            "description": "defer it: label deferred and comment Deferred until <value>"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks review": {
-        "description": "Move a task or bug to Agent Review"
+        "description": "Move a task or bug to Agent Review",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the task or bug"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks human": {
         "description": "Hand an approved task with green checks to the owner: Ready For Human, then Human Review"

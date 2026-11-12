@@ -3,7 +3,7 @@
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
 import type { Kind } from "../flow.ts";
-import { graphql, type Run } from "./gh.ts";
+import { gh, graphql, type Run } from "./gh.ts";
 import type { Target } from "./target.ts";
 
 export interface Item {
@@ -36,7 +36,7 @@ export interface Issue extends Item {
 
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
-const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:30){nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+export const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:30){nodes{number state}} projectItems(first:10){nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
 const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
 
@@ -66,11 +66,11 @@ function qualifiers(repo: string, filter: Filter): string {
     .join(" ");
 }
 
-function nodes(connection: unknown): unknown[] {
+export function nodes(connection: unknown): unknown[] {
   return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
 }
 
-function text(record: unknown, key: string): string | null {
+export function text(record: unknown, key: string): string | null {
   const value = isRecord(record) ? record[key] : undefined;
   return typeof value === "string" ? value : null;
 }
@@ -90,7 +90,7 @@ function kindOf(type: string | null, labels: readonly string[]): Kind | null {
   return labels.includes("feedback") ? "feedback" : null;
 }
 
-function readItem(node: unknown, board: string): Item | null {
+export function readItem(node: unknown, board: string): Item | null {
   const number = count(node, "number");
   const title = text(node, "title");
   if (!isRecord(node) || number === null || title === null) {
@@ -178,17 +178,15 @@ export async function issue(
 }
 
 /** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
-export async function comment(
+export function comment(
   run: Run,
   target: Target,
   number: number,
   body: string,
 ): Promise<Result<string>> {
-  const args = ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"];
-  const answer = await run(args, body);
-  const said = answer.stderr.trim();
-  if (answer.exit !== 0) {
-    return refuse("failed", "refused", said === "" ? `gh exited ${answer.exit}` : said);
-  }
-  return { ok: true, value: answer.stdout.trim() };
+  return gh(
+    run,
+    ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"],
+    body,
+  );
 }

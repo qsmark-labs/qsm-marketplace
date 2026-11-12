@@ -2,6 +2,7 @@
 // per kind, and the guard of each move, so a verb checks a move against this table and no other
 // copy of a name exists in the binary.
 import { type Outcome, ok } from "../../../lib/outcome.ts";
+import { refuse, type Result } from "./failure.ts";
 
 /** The Status options by what a verb asks for; the rows below name them with the same words. */
 export const STATUS = {
@@ -160,6 +161,27 @@ const MOVES: readonly Move[] = [
     when: "no open sub-issue",
   },
 ];
+
+/** The move `verb` makes on an issue of `kind` at `status`, or why it may not: the kind is not
+ * one it takes, or the Status is not one it starts from. What `when` adds the verb checks. */
+export function moveOf(verb: string, kind: Kind | null, status: string | null): Result<Move> {
+  const moves = MOVES.filter((m) => m.verb === verb);
+  if (kind === null || !moves.some((m) => m.kinds.includes(kind))) {
+    const takes = [...new Set(moves.flatMap((m) => m.kinds))].map((k) => KIND_LABELS[k]);
+    const is = kind === null ? "an issue of no kind" : KIND_LABELS[kind];
+    return refuse("blocked", "wrong-kind", `${verb} takes ${takes.join(", ")}, not ${is}`);
+  }
+  const row = moves.find((m) => m.kinds.includes(kind) && m.from.some((from) => from === status));
+  if (row === undefined) {
+    const from = [...new Set(moves.flatMap((m) => m.from))].join(", ");
+    return refuse(
+      "blocked",
+      "wrong-status",
+      `${verb} needs ${from}; it is at ${status ?? "no Status"}`,
+    );
+  }
+  return { ok: true, value: row };
+}
 
 function rows(table: readonly (readonly string[])[]): string[] {
   const widths = table.reduce<number[]>(
