@@ -102,7 +102,10 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  doctor(): Promise<unknown>;
+  doctor(options: {
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   flow(): Promise<unknown>;
   setup(): Promise<unknown>;
 };

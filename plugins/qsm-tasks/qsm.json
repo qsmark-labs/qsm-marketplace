@@ -465,7 +465,19 @@
         ]
       },
       "qsm-tasks doctor": {
-        "description": "Check gh, the repository, the board, its fields, labels, workflows and views"
+        "description": "Check gh, the repository, the board, its fields, labels, workflows and views",
+        "args": [
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks flow": {
         "description": "Print the Status and Priority tables: each Status per kind and each verb's guard"
