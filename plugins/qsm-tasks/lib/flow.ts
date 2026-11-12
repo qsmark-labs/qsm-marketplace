@@ -1,6 +1,7 @@
 // The flow as data (design.md decision 4): the Status and Priority options, what each Status means
 // per kind, and the guard of each move, so a verb checks a move against this table and no other
 // copy of a name exists in the binary.
+import { type Outcome, ok } from "../../../lib/outcome.ts";
 
 const STATUS_NAMES = [
   "Todo",
@@ -15,13 +16,12 @@ const STATUS_NAMES = [
 ] as const;
 type StatusName = (typeof STATUS_NAMES)[number];
 
-/** Task and Bug share one column; Feedback is the label `feedback`, not an issue type. */
-const COLUMNS = [
-  { kind: "task", label: "Task and Bug" },
-  { kind: "feature", label: "Feature" },
-  { kind: "feedback", label: "Feedback" },
-] as const;
-type Kind = (typeof COLUMNS)[number]["kind"];
+/** The kinds the flow tells apart: an issue of type Task or Bug is the kind `task`, because the
+ * flow treats them alike; Feedback is the label `feedback`, not an issue type. */
+const KIND_LABELS = { task: "Task and Bug", feature: "Feature", feedback: "Feedback" } as const;
+type Kind = keyof typeof KIND_LABELS;
+/** the order of the table's columns */
+const KINDS: readonly Kind[] = ["task", "feature", "feedback"];
 
 interface Status {
   readonly name: StatusName;
@@ -29,7 +29,7 @@ interface Status {
   readonly means: Partial<Readonly<Record<Kind, string>>>;
 }
 
-export const STATUSES: readonly Status[] = [
+const STATUSES: readonly Status[] = [
   {
     name: "Todo",
     means: {
@@ -77,7 +77,7 @@ export const STATUSES: readonly Status[] = [
   },
 ];
 
-export const PRIORITIES = [
+const PRIORITIES = [
   { name: "P0", means: "Breaks something in use or blocks the work in hand: next" },
   { name: "P1", means: "Needed for the current feature" },
   { name: "P2", means: "Worth doing, no date" },
@@ -86,7 +86,7 @@ export const PRIORITIES = [
 /** A move one verb makes: the kinds it takes, the Statuses it starts from, what else must hold. */
 interface Move {
   readonly verb: string;
-  readonly kinds: readonly ("task" | "bug" | "feature" | "feedback")[];
+  readonly kinds: readonly Kind[];
   readonly from: readonly StatusName[];
   readonly to: StatusName;
   readonly when?: string;
@@ -94,44 +94,44 @@ interface Move {
 
 const REVIEW: readonly StatusName[] = ["Agent Review", "Ready For Human", "Human Review"];
 
-export const MOVES: readonly Move[] = [
+const MOVES: readonly Move[] = [
   {
     verb: "claim",
-    kinds: ["task", "bug"],
+    kinds: ["task"],
     from: ["Todo"],
     to: "In Dev",
     when: "unassigned or the caller's",
   },
-  { verb: "unclaim", kinds: ["task", "bug"], from: ["In Dev", ...REVIEW], to: "Todo" },
+  { verb: "unclaim", kinds: ["task"], from: ["In Dev", ...REVIEW], to: "Todo" },
   {
     verb: "unclaim",
-    kinds: ["task", "bug"],
+    kinds: ["task"],
     from: ["Todo"],
     to: "Todo",
     when: "labelled deferred",
   },
   {
     verb: "review",
-    kinds: ["task", "bug"],
+    kinds: ["task"],
     from: ["In Dev", "Agent Review", "Human Review"],
     to: "Agent Review",
   },
   {
     verb: "human",
-    kinds: ["task", "bug"],
+    kinds: ["task"],
     from: ["Agent Review"],
     to: "Ready For Human",
     when: "the PR approved and its checks green",
   },
   {
     verb: "human --started",
-    kinds: ["task", "bug"],
+    kinds: ["task"],
     from: ["Ready For Human"],
     to: "Human Review",
   },
   {
     verb: "reopen",
-    kinds: ["task", "bug", "feedback"],
+    kinds: ["task", "feedback"],
     from: ["Done"],
     to: "Todo",
     when: "its parent open",
@@ -160,16 +160,16 @@ function rows(table: readonly (readonly string[])[]): string[] {
 }
 
 /** The table as a person reads it: each Status per kind, each move with its guard, the Priorities. */
-export function renderFlow(): string {
+function renderFlow(): string {
   const statuses = STATUSES.flatMap((s) => [
     s.name,
     // a kind with no meaning for this Status does not use it
-    ...rows(COLUMNS.map((c) => [`  ${c.label}`, s.means[c.kind] ?? "not used"])),
+    ...rows(KINDS.map((kind) => [`  ${KIND_LABELS[kind]}`, s.means[kind] ?? "not used"])),
   ]);
   const moves = rows(
     MOVES.map((m) => [
       `  ${m.verb}`,
-      m.kinds.join(", "),
+      m.kinds.map((kind) => KIND_LABELS[kind]).join(", "),
       `${m.from.join(", ")} -> ${m.to}`,
       m.when === undefined ? "" : `when ${m.when}`,
     ]),
@@ -178,4 +178,9 @@ export function renderFlow(): string {
   return ["Statuses", ...statuses, "", "Moves", ...moves, "", "Priorities", ...priorities].join(
     "\n",
   );
+}
+
+/** What `flow` ends with: the tables as data, and as text for a person. */
+export function flowOutcome(): Outcome {
+  return ok({ statuses: STATUSES, moves: MOVES, priorities: PRIORITIES }, renderFlow());
 }
