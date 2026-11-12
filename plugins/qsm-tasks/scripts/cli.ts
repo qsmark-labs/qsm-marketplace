@@ -4,9 +4,10 @@
 // agent never composes a gh, jq or GraphQL call itself.
 
 import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
-import { fail, type Outcome, ok } from "../../../lib/outcome.ts";
+import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { MOVES, PRIORITIES, renderFlow, STATUSES } from "../lib/flow.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
+import { refuse } from "../lib/failure.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
@@ -14,14 +15,14 @@ import manifestJson from "../qsm.json" with { type: "json" };
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
+/** What a verb on the board is handed beside its call. */
 interface OnBoard {
-  readonly call: Call;
   readonly run: Run;
   readonly target: Target;
 }
 
 /** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
-function onBoard(verb: (at: OnBoard) => Outcome | Promise<Outcome>): Handler {
+function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>): Handler {
   return async (call) => {
     const gh = connect();
     if (!gh.ok) {
@@ -29,22 +30,20 @@ function onBoard(verb: (at: OnBoard) => Outcome | Promise<Outcome>): Handler {
     }
     const given = { repo: optionalString(call, "repo"), project: optionalString(call, "project") };
     const target = await resolveTarget(gh.value, given);
-    return target.ok ? verb({ call, run: gh.value, target: target.value }) : target.outcome;
+    return target.ok ? verb(call, { run: gh.value, target: target.value }) : target.outcome;
   };
 }
 
-/** A declared verb whose task has not landed yet: it fails naming that task. */
-function notBuilt(
-  issue: number,
-): (at: { readonly call: Call; readonly target?: Target }) => Outcome {
-  return ({ call, target }) => {
+/** A declared verb whose issue has not landed yet: it fails naming that issue, and the board it
+ * resolved when it runs on one. */
+function notBuilt(issue: number): (call: Call, at?: OnBoard) => Outcome {
+  return (call, at) => {
     const on =
-      target === undefined
+      at === undefined
         ? ""
-        : ` on ${target.repo}, board ${target.board.owner}/${target.board.number}`;
-    return fail("failed", `${call.verb}${on}: not built yet, see issue #${issue}`, {
-      reason: "not-built",
-    });
+        : ` on ${at.target.repo}, board ${at.target.board.owner}/${at.target.board.number}`;
+    return refuse("failed", "not-built", `${call.verb}${on}: not built yet, see issue #${issue}`)
+      .outcome;
   };
 }
 
@@ -67,7 +66,7 @@ if (import.meta.main) {
       reopen: onBoard(notBuilt(43)),
       plan: onBoard(notBuilt(43)),
       qa: onBoard(notBuilt(43)),
-      feedback: (call) => notBuilt(44)({ call }),
+      feedback: notBuilt(44),
       doctor: onBoard(notBuilt(45)),
       setup: onBoard(notBuilt(45)),
     }),

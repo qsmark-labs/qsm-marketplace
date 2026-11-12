@@ -17,9 +17,10 @@ function recording(answer: GhAnswer): { run: Run; calls: (readonly string[])[] }
 }
 
 describe("resolveTarget", () => {
-  it("reads the named repository and board in one query", async () => {
-    const board = { id: "PVT_kwDOFMPqAc4Bo0vN", number: 1 };
-    const data = { repository: REPO, repositoryOwner: { projectV2: board } };
+  it("reads the named repository and a board it does not link in one query", async () => {
+    const board = { id: "PVT_kwDOFMPqAc4Bo0vN", number: 1, owner: { login: "qsmark-labs" } };
+    const repository = { ...REPO, projectsV2: { nodes: [] } };
+    const data = { repository, repositoryOwner: { projectV2: board } };
     const { run, calls } = recording({ exit: 0, stdout: JSON.stringify({ data }), stderr: "" });
     const target = await resolveTarget(run, { repo: REPO.nameWithOwner, project: "qsmark-labs/1" });
     expect(target).toEqual({
@@ -27,12 +28,19 @@ describe("resolveTarget", () => {
       value: {
         repoId: REPO.id,
         repo: REPO.nameWithOwner,
-        board: { ...board, owner: "qsmark-labs" },
+        board: { id: board.id, number: 1, owner: "qsmark-labs" },
       },
     });
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toContain("owner=qsmark-labs");
+    expect(calls[0]).toContain("named=true");
     expect(calls[0]).toContain("number=1");
+  });
+
+  it("is failed not-found for a board owner GitHub does not know", async () => {
+    const data = { repository: { ...REPO, projectsV2: { nodes: [] } }, repositoryOwner: null };
+    const { run } = recording({ exit: 0, stdout: JSON.stringify({ data }), stderr: "" });
+    const target = await resolveTarget(run, { repo: undefined, project: "no-such-owner/1" });
+    expect(target.ok ? null : target.outcome.data).toEqual({ reason: "not-found" });
   });
 
   it("is failed not-found for a board number GitHub does not know", async () => {
