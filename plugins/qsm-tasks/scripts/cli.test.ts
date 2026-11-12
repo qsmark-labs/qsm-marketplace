@@ -289,13 +289,18 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
 
 describe("qsm-tasks files the work", () => {
   const feature = { issueType: { name: "Feature" } };
+  /** show's read of one issue as GitHub answers it. */
+  const issueOf = (more: object) => {
+    const family = { body: "", parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    return JSON.stringify({ data: { node: { issue: { ...task(3, null), ...family, ...more } } } });
+  };
   const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/77";
 
   it("add files a sub-issue of an open feature with its body on stdin, unchanged", () => {
     const dir = sandboxDir("qsm-tasks-");
     const body = 'Write the "CSV"\nwith two lines';
     writeIn(dir, "body.md", body);
-    const gh = { stdout: linked([BOARD]), card: cardOf("In Dev", [], feature), created };
+    const gh = { stdout: linked([BOARD]), issue: issueOf(feature), created };
     const argv = ["add", "Write the CSV", "--feature", "3", "--body-file", join(dir, "body.md")];
     const r = run(gh, argv, dir);
     expect(r.message).toBe("#77 filed: Write the CSV");
@@ -307,7 +312,7 @@ describe("qsm-tasks files the work", () => {
 
   it("add under a closed feature is blocked wrong-status and files nothing", () => {
     const closed = { ...feature, state: "CLOSED" };
-    const gh = { stdout: linked([BOARD]), card: cardOf("Done", [], closed), created };
+    const gh = { stdout: linked([BOARD]), issue: issueOf(closed), created };
     const r = run(gh, ["add", "Write the CSV", "--feature", "3"]);
     expect(r.data).toMatchObject({ reason: "wrong-status" });
     expect(r.calls).toHaveLength(2);
@@ -357,12 +362,8 @@ describe("qsm-tasks edits and closes the work", () => {
   });
 
   it("edit --spec on a task is blocked wrong-kind and changes nothing", () => {
-    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, [
-      "edit",
-      "12",
-      "--spec",
-      "x",
-    ]);
+    const argv = ["edit", "12", "--spec", "x"];
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, argv);
     expect(r.data).toMatchObject({ reason: "wrong-kind" });
     expect(r.calls).toHaveLength(2);
   });
@@ -402,24 +403,24 @@ describe("qsm-tasks feedback", () => {
     };
   }
 
-  it("refuses a body with a home path, naming the kind and line but not the text, before any call", () => {
+  it("refuses a body with a home path, naming the kind and line but not the text, before any write", () => {
     const { dir, argv } = setup(sections("It broke in /home/someone/work."));
     const r = run({ stdout: linked([BOARD]), marketplace: join(dir, "market") }, argv, dir);
     expect(r.data).toMatchObject({ reason: "private-data" });
     expect(r.message).toContain("home path on line 2");
     expect(r.message).not.toContain("someone");
-    expect(r.calls).toEqual([]);
+    expect(r.calls).toHaveLength(1);
   });
 
-  it("refuses a suggested fix, and an area that names no plugin, as usage before any call", () => {
+  it("refuses a suggested fix, and an area that names no plugin, as usage before any write", () => {
     const fix = setup(`${sections("x")}## Suggested fix\nx\n`);
     const market = (dir: string) => ({ stdout: linked([BOARD]), marketplace: join(dir, "market") });
-    expect(run(market(fix.dir), fix.argv, fix.dir).calls).toEqual([]);
+    expect(run(market(fix.dir), fix.argv, fix.dir).calls).toHaveLength(1);
     const area = setup(sections("x"));
     const argv = area.argv.map((a) => (a === "qsm-tasks" ? "no-such-plugin" : a));
     const r = run(market(area.dir), argv, area.dir);
     expect(r.exit).toBe(2);
-    expect(r.calls).toEqual([]);
+    expect(r.calls).toHaveLength(1);
   });
 
   it("comments on the same feedback while it is open, and files no new issue", () => {
@@ -439,7 +440,7 @@ describe("qsm-tasks feedback", () => {
     expect(r.calls.some((c) => c.startsWith("issue create"))).toBe(false);
   });
 
-  it("files a new one as a plain issue with its four labels", () => {
+  it("files a new one as a plain issue with its four labels, making only its area's", () => {
     const { dir, argv } = setup(sections("ready skipped task 5."));
     const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/91";
     const r = run(
@@ -448,8 +449,10 @@ describe("qsm-tasks feedback", () => {
       dir,
     );
     expect(r.message).toBe("#91 filed: ready skips a task");
+    const made = r.calls.filter((c) => c.startsWith("label create"));
+    expect(made).toEqual(["label create area:qsm-tasks --repo qsmark-labs/qsm-marketplace"]);
     expect(r.calls.at(-1)).toBe(
-      "issue create --repo qsmark-labs/qsm-marketplace --title ready skips a task --body-file - --label feedback --label area:qsm-tasks --label kind:tool-broken --label from:subagent",
+      "issue create --repo qsmark-labs/qsm-marketplace --title ready skips a task --body-file - --label area:qsm-tasks --label feedback --label kind:tool-broken --label from:subagent",
     );
   });
 });

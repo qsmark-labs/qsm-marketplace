@@ -9,10 +9,12 @@ import {
   stringList,
 } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
-import { refuse, type Result } from "../lib/failure.ts";
+import { done, refuse, type Result } from "../lib/failure.ts";
+import { readText } from "../lib/files.ts";
 import { changeLabel, priorityOf } from "../lib/flow.ts";
-import { card, file, label, setPriority } from "../lib/github/board.ts";
+import { card, file, setField } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
+import { issue } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
 
 interface At {
@@ -32,57 +34,38 @@ export function checkCreate(call: Call): void {
   }
 }
 
-export async function readText(path: string | undefined): Promise<Result<string>> {
-  if (path === undefined) {
-    return { ok: true, value: "" };
-  }
-  const text = Bun.file(path);
-  return (await text.exists())
-    ? { ok: true, value: await text.text() }
-    : refuse("missing", "no-file", `no file ${path}`);
-}
-
-/** A Feature at Todo, its intent as the body; --spec binds it to its change. */
+/** A Feature at Todo, its intent as the body; --spec binds it to its change by a label it makes. */
 export async function feature(call: Call, { run, target }: At): Promise<Outcome> {
   const intent = await readText(requiredString(call, "intent"));
   if (!intent.ok) {
     return intent.outcome;
   }
   const spec = optionalString(call, "spec");
-  const labels = spec === undefined ? [] : [changeLabel(spec)];
-  for (const name of labels) {
-    const made = await label(run, target, name);
-    if (!made.ok) {
-      return made.outcome;
-    }
-  }
+  const make = spec === undefined ? [] : [changeLabel(spec)];
   const title = requiredString(call, "goal");
-  const flags = labels.flatMap((name) => ["--label", name]);
-  const filed = await file(run, target, { kind: "feature", title, body: intent.value, flags });
+  const filed = await file(run, target, {
+    kind: "feature",
+    title,
+    body: intent.value,
+    flags: [],
+    make,
+  });
   return filed.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : filed.outcome;
 }
 
-const DONE: Result<null> = { ok: true, value: null };
-
-/** The feature a task goes under, when it names one: a feature, and open. */
-async function parentOf(
-  run: Run,
-  target: Target,
-  number: number | undefined,
-): Promise<Result<null>> {
-  const parent = number === undefined ? null : await card(run, target, number);
-  if (parent === null || !parent.ok) {
-    return parent ?? DONE;
+/** The feature a task goes under: a feature, and open. */
+async function parentOf(run: Run, target: Target, number: number): Promise<Result<null>> {
+  const parent = await issue(run, target, number, false);
+  if (!parent.ok) {
+    return parent;
   }
   if (parent.value.kind !== "feature") {
-    return refuse("blocked", "wrong-kind", `#${String(number)} is not a feature`);
+    return refuse("blocked", "wrong-kind", `#${number} is not a feature`);
   }
-  return parent.value.open
-    ? DONE
-    : refuse("blocked", "wrong-status", `#${String(number)} is closed`);
+  return parent.value.open ? done : refuse("blocked", "wrong-status", `#${number} is closed`);
 }
 
-/** gh's flags for a task's labels, parent and the task it comes after. */
+/** gh's flags for a task's labels, which must exist, its parent and the task it comes after. */
 function taskFlags(call: Call): string[] {
   const under = optionalNumber(call, "feature");
   const after = optionalNumber(call, "after");
@@ -93,24 +76,21 @@ function taskFlags(call: Call): string[] {
   ];
 }
 
-/** Sets the new task's Priority on its card, when the call names one. */
+/** Sets the new task's Priority; the card read it needs for the card's id brings the field's ids. */
 async function prioritize(
   run: Run,
   target: Target,
   number: number,
-  value: string | undefined,
+  value: string,
 ): Promise<Result<null>> {
-  const at = value === undefined ? null : await card(run, target, number);
-  return at === null || value === undefined
-    ? DONE
-    : at.ok
-      ? setPriority(run, target, at.value, value)
-      : at;
+  const at = await card(run, target, number);
+  return at.ok ? setField(run, target, at.value, "Priority", value) : at;
 }
 
 /** A Task, under --feature, after --after, with --priority, --body-file and --label. */
 export async function add(call: Call, { run, target }: At): Promise<Outcome> {
-  const parent = await parentOf(run, target, optionalNumber(call, "feature"));
+  const under = optionalNumber(call, "feature");
+  const parent = under === undefined ? done : await parentOf(run, target, under);
   if (!parent.ok) {
     return parent.outcome;
   }
@@ -128,6 +108,7 @@ export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   if (!filed.ok) {
     return filed.outcome;
   }
-  const set = await prioritize(run, target, filed.value, optionalString(call, "priority"));
+  const priority = optionalString(call, "priority");
+  const set = priority === undefined ? done : await prioritize(run, target, filed.value, priority);
   return set.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : set.outcome;
 }

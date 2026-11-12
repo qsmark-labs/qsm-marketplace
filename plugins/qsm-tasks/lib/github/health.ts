@@ -3,7 +3,7 @@
 // A check is ok, failed with its fix, or manual where the API cannot answer (design.md, measured).
 import { isRecord } from "../../../../lib/outcome.ts";
 import type { Result } from "../failure.ts";
-import { FROM, KINDS } from "../feedback.ts";
+import { FEEDBACK_KINDS, FROM } from "../feedback.ts";
 import { DEFERRED, PRIORITY_NAMES, STATUS } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
 import type { Target } from "./target.ts";
@@ -31,7 +31,7 @@ const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository
 const LABELS = [
   DEFERRED,
   "feedback",
-  ...KINDS.map((k) => `kind:${k}`),
+  ...FEEDBACK_KINDS.map((k) => `kind:${k}`),
   ...FROM.map((f) => `from:${f}`),
 ];
 
