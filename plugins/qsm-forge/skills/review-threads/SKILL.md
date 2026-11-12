@@ -32,11 +32,15 @@ origin remote picks one. Both resolve the repository from the working tree; pass
 
 ## Write
 
-Two roles, because only the reviewer can say a finding is closed:
+Two roles, because a finding is closed by a reader or by a test, never by the claim alone:
 
-- As the implementer, `reply <number> <comment-id> --message "<text>"` to every comment, on both
-  forges, and never resolve. Say where the fix landed ("Fixed in abc1234") or why not; "done"
-  proves nothing.
+- As the implementer, push the fix first, to the thread's own branch or to a stacked pull request
+  above it, because a reply that names a commit the forge does not have points the reviewer at
+  nothing. Then `reply <number> <comment-id> --message "<text>"` to every comment, on both forges.
+  Say where the fix landed ("Fixed in abc1234, PR #119") or why not; "done" proves nothing.
+- Resolve your own thread only when a test that fails without the fix proves it, and name the
+  test in the message (`resolve <number> <comment-id> --message "Fixed in abc1234. Test: ..."`).
+  Without such a test, reply and leave the thread open for the reviewer.
 - As the reviewer, check each fix. When it is right, `resolve <number> <comment-id> --message
   "Good"`. When it is not, reply with what is still wrong and leave the thread open.
 - `qsm-forge gh resolve-all <pr>` is the reviewer's sweep after checking every fix: it closes only
@@ -80,6 +84,10 @@ the message is theirs: an authentication failure does not fix itself on retry.
 - When you reach for `resolve-all --message` to save answering each thread, answer them, because
   the reviewer reads the same text everywhere.
 - When a reply says "fixed" with no commit, add the hash, because nobody can verify the claim.
+- When the fix is committed but not pushed, push before the first reply, because the hash in it
+  does not exist on the forge yet.
+- When you are about to resolve your own thread with no test that fails without the fix, reply
+  instead and leave it open, because only a test or the reviewer closes a finding.
 - When the user asked for comments and the payload says `approve`, change it, because approval is
   the user's call.
 
