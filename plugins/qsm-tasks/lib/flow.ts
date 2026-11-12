@@ -1,7 +1,7 @@
 // The flow as data (design.md decision 4): the Status and Priority options, what each Status means
 // per kind, and the guard of each move, so a verb checks a move against this table and no other
 // copy of a name exists in the binary.
-import { type Outcome, ok } from "../../../lib/outcome.ts";
+import { type Outcome, ok, UsageError } from "../../../lib/outcome.ts";
 import { refuse, type Result } from "./failure.ts";
 
 /** The Status options by what a verb asks for; the rows below name them with the same words. */
@@ -23,6 +23,10 @@ export const DEFERRED = "deferred";
 
 /** The label that binds a feature to its change (design.md decision 7). */
 export function changeLabel(id: string): string {
+  // 50 characters a label, minus `change:`; no quote or space, so it carries no qualifier
+  if (!/^[\w.-]{1,43}$/.test(id)) {
+    throw new UsageError(`--spec ${id}: an id of 1 to 43 letters, digits, '_', '.' or '-'`);
+  }
   return `change:${id}`;
 }
 

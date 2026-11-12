@@ -62,6 +62,14 @@ export async function ready(call: Call, { run, target }: At): Promise<Outcome> {
   return rows(picked.toSorted(byRank));
 }
 
+/** A --spec id that cannot be a label is a wrong call, refused before any gh call. */
+export function checkSpec(call: Call): void {
+  const spec = optionalString(call, "spec");
+  if (spec !== undefined) {
+    changeLabel(spec);
+  }
+}
+
 /** The open issues; a feature's sub-issues or a change's feature are read whole, open and closed. */
 export async function list(call: Call, { run, target }: At): Promise<Outcome> {
   const feature = optionalNumber(call, "feature");
