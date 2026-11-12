@@ -18,11 +18,13 @@ export interface Card extends Item, Facts {
   readonly statusField: Field;
   /** null on a board that has no Priority field yet */
   readonly priorityField: Field | null;
+  /** the text of its newest comment, null when it has none */
+  readonly lastComment: string | null;
 }
 
 // every field, picked by name: asking for a field by a name the board lacks fails the whole query
 const SELECT = "...on ProjectV2SingleSelectField{id name options{id name}}";
-const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} ${FAMILY}}}}}`;
+const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} ${FAMILY} comments(last:1){nodes{body}}}}}}`;
 const ADD = `mutation($board:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$board,contentId:$issue}){item{id}}}`;
 const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(input:{projectId:$board,itemId:$card,fieldId:$field,value:{singleSelectOptionId:$option}}){clientMutationId}}`;
 
@@ -73,7 +75,8 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   const { parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
   const facts = { caller, parentOpen, openSubIssues };
-  const own = { id, cardId: read.cardId, statusField, priorityField };
+  const lastComment = text(nodes(isRecord(issue) ? issue.comments : undefined)[0], "body");
+  const own = { id, cardId: read.cardId, statusField, priorityField, lastComment };
   return { ok: true, value: { ...read.item, ...facts, ...own } };
 }
 

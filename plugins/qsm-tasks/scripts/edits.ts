@@ -94,15 +94,17 @@ function closable(at: Card, notPlanned: boolean): Result<null> {
     : refuse("blocked", "wrong-status", `#${at.number} has ${at.openSubIssues} open sub-issues`);
 }
 
-/** The reason as a comment first, then the close, so a rerun after a refused close still has it. */
+/** The reason as a comment, then the close; a rerun after a refused close finds the reason as the
+ * newest comment and does not post it again. */
 export const close = onIssue((call, { run, target }, at): Result<Plan> => {
   const notPlanned = flagArg(call, "notPlanned");
   const allowed = closable(at, notPlanned);
   if (!allowed.ok) {
     return allowed;
   }
+  const reason = requiredString(call, "reason");
   const steps: Write[] = [
-    () => comment(run, target, at.number, requiredString(call, "reason")),
+    ...(at.lastComment === reason ? [] : [() => comment(run, target, at.number, reason)]),
     () => closeIssue(run, target, at.number, notPlanned),
   ];
   const said = `#${at.number} closed as ${notPlanned ? "not planned" : "completed"}`;

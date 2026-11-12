@@ -337,7 +337,7 @@ describe("qsm-tasks edits and closes the work", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("close posts the reason on stdin, then closes as not planned", () => {
+  it("close posts the reason on stdin, then closes as not planned; a rerun posts it once", () => {
     const argv = ["close", "5", "--reason", "dropped: the API went away", "--not-planned"];
     const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, argv);
     expect(r.message).toBe("#5 closed as not planned");
@@ -345,6 +345,9 @@ describe("qsm-tasks edits and closes the work", () => {
     expect(r.calls[3]).toBe(
       "issue close 5 --repo qsmark-labs/qsm-marketplace --reason not planned",
     );
+    const said = { comments: { nodes: [{ body: "dropped: the API went away" }] } };
+    const again = run({ stdout: linked([BOARD]), card: cardOf("Todo", [], said) }, argv);
+    expect(again.calls.filter((c) => c.startsWith("issue comment"))).toEqual([]);
   });
 
   it("edit --spec on a task is blocked wrong-kind and changes nothing", () => {

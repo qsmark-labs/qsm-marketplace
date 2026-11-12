@@ -5,7 +5,8 @@ import { type Call, optionalString } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { DEFERRED, moveOf } from "../lib/flow.ts";
 import { type Card, comment, edit, reopen as reopenIssue, setField } from "../lib/github/board.ts";
-import { type At, onIssue, type Write } from "./on-issue.ts";
+import { onIssue, type Write } from "./on-issue.ts";
+import type { At } from "./reads.ts";
 
 /** A move: card read, guard checked, then `around`'s writes before and after the Status, up to the
  * first refusal; a Status at its target is not written again. It prints `#<n> <from> -> <to>`. */
@@ -14,6 +15,7 @@ function moving(
   around: (call: Call, on: At, at: Card) => { before?: Write[]; after?: Write[] } = () => ({}),
 ): (call: Call, on: At) => Promise<Outcome> {
   return onIssue((call, on, at) => {
+    const from = at.status;
     const move = moveOf(verb, at);
     if (!move.ok) {
       return move;
@@ -21,10 +23,10 @@ function moving(
     const { to } = move.value;
     const { before = [], after = [] } = around(call, on, at);
     const status: Write[] =
-      at.status === to && at.cardId !== null
+      from === to && at.cardId !== null
         ? []
         : [() => setField(on.run, on.target, at, "Status", to)];
-    const said = `#${at.number} ${at.status ?? "no Status"} -> ${to}`;
+    const said = `#${at.number} ${from ?? "no Status"} -> ${to}`;
     return { ok: true, value: { steps: [...before, ...status, ...after], said } };
   });
 }
