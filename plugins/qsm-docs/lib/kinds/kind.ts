@@ -1,18 +1,16 @@
 // The kinds a snapshot can be: the built-in json, and every kind another plugin installed from a
 // manifest. qsm-docs knows nothing of a kind's format; it runs the kind's commands.
-import { spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { runTempDir, spawnMarked, sweepNamed } from "../../../../lib/reap.ts";
 import { isRecord, messageOf, UsageError } from "../../../../lib/outcome.ts";
 import type { Env } from "../../../../lib/paths.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
@@ -61,6 +59,8 @@ const JSON_KIND: Kind = {
   diff: (a, b) => diffJson(readFileSync(a, "utf8"), readFileSync(b, "utf8")),
 };
 
+const TOOL = "qsm-docs";
+
 const kindsDir = (env: Env): string => kindsIn(docsDir(env));
 
 /** One of a kind's commands, with its placeholders filled; its stdout, or a throw naming it. */
@@ -69,7 +69,7 @@ function run(kind: string, argv: readonly string[], fill: Record<string, string>
     Object.entries(fill).reduce((s, [key, value]) => s.replaceAll(`{${key}}`, value), a),
   );
   const [cmd = "", ...rest] = args;
-  const r = spawnSync(cmd, rest, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnMarked(TOOL, cmd, rest, { maxBuffer: 256 * 1024 * 1024 });
   if (r.error !== undefined) {
     throw new QsmError("missing", `${kind}: ${cmd} could not run: ${r.error.message}`, {
       next: `install what provides ${cmd}, or add the kind ${kind} again`,
@@ -104,7 +104,8 @@ function installedKind(m: Manifest, pages: string): Kind {
     ext: m.ext,
     pages,
     convert: (bytes) => {
-      const dir = mkdtempSync(join(tmpdir(), "qsm-docs-convert-"));
+      sweepNamed(TOOL);
+      const dir = runTempDir(TOOL);
       try {
         const file = join(dir, `snapshot.${m.ext}`);
         writeFileSync(file, bytes);
