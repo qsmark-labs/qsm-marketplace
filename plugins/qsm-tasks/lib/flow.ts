@@ -22,8 +22,7 @@ export const DEFERRED = "deferred";
 
 /** The label that binds a feature to its change (design.md decision 7). */
 export function changeLabel(id: string): string {
-  // GitHub caps a label at 50 characters, so the id after `change:` fits 43; a word character, a
-  // dot or a dash only, so it cannot carry a search qualifier
+  // 50 characters a label, minus `change:`; no quote or space, so it carries no qualifier
   if (!/^[\w.-]{1,43}$/.test(id)) {
     throw new UsageError(`--spec ${id}: an id of 1 to 43 letters, digits, '_', '.' or '-'`);
   }

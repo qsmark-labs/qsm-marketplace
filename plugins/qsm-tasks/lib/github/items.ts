@@ -35,13 +35,13 @@ export interface Filter {
   readonly without?: string | undefined;
 }
 
+const TYPES = { task: "type:Task,Bug", feature: "type:Feature" } as const;
+
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */
 function qualifiers(repo: string, filter: Filter): string {
   return [
     `repo:${repo} is:issue`,
-    filter.kind === undefined
-      ? ""
-      : { task: "type:Task,Bug", feature: "type:Feature" }[filter.kind],
+    filter.kind === undefined ? "" : TYPES[filter.kind],
     filter.open === undefined ? "" : "is:open",
     filter.feature === undefined ? "" : `parent-issue:${repo}#${filter.feature}`,
     filter.label === undefined ? "" : `label:"${filter.label}"`,
@@ -87,8 +87,7 @@ function readItem(node: unknown, board: string): Item | null {
   );
   const card = isRecord(onBoard) ? onBoard : {};
   const open = node.state === "OPEN";
-  // an issue the board has not added yet sits where the "Item added" and "Item closed" workflows
-  // will put it, by its state (design.md decision 9)
+  // off the board, an issue is where "Item added" or "Item closed" will put it (decision 9)
   const offBoard = open ? STATUS.todo : STATUS.done;
   return {
     number,
@@ -118,13 +117,9 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   }
   const issues = nodes(found);
   const blocked = issues.find((node) => isRecord(node) && cut(node.blockedBy));
-  if (blocked !== undefined) {
-    const number = count(blocked, "number") ?? 0;
-    return refuse(
-      "failed",
-      "refused",
-      `#${number} has more than ${PAGE} blockers: GitHub's answer is cut`,
-    );
+  const whole = blocked === undefined;
+  if (!whole) {
+    return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
   }
   return { ok: true, value: issues.flatMap((node) => readItem(node, target.board.id) ?? []) };
 }

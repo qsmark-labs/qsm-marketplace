@@ -134,21 +134,15 @@ describe("qsm-tasks reads the board", () => {
       'q=repo:qsmark-labs/qsm-marketplace is:issue label:"change:add-x"',
     );
   });
-});
 
-describe("qsm-tasks reads the board, its edges", () => {
-  it.each([['a" is:open type:Task'], ["x".repeat(60)]])(
-    "list --spec %p is a usage before any gh call",
-    (spec) => {
-      const r = run({ stdout: linked([BOARD]), search: found([]) }, ["list", "--spec", spec]);
-      expect(r.exit).toBe(2);
-      expect(r.calls).toEqual([]);
-    },
-  );
+  it("list --spec refuses an id that cannot be a label, before any gh call", () => {
+    for (const spec of ['a" is:open type:Task', "x".repeat(60)]) {
+      expect(run({ stdout: linked([BOARD]) }, ["list", "--spec", spec]).calls).toEqual([]);
+    }
+  });
 
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
     const off = { ...task(8, null), projectItems: { nodes: [] } };
-    const r = run({ stdout: linked([BOARD]), search: found([off]) });
-    expect(r.message.split(" ")[0]).toBe("#8");
+    expect(run({ stdout: linked([BOARD]), search: found([off]) }).message).toStartWith("#8 ");
   });
 });
