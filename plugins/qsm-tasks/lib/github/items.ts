@@ -183,9 +183,16 @@ export function cut(connection: unknown): boolean {
   );
 }
 
-/** A connection that came back with its list, and not cut. */
+/** A connection that came back with its list and a page check that says it is not cut: one with no
+ * pageInfo may be cut, and reading it as whole would lie. */
 function whole(connection: unknown): boolean {
-  return isRecord(connection) && Array.isArray(connection.nodes) && !cut(connection);
+  return (
+    isRecord(connection) &&
+    Array.isArray(connection.nodes) &&
+    isRecord(connection.pageInfo) &&
+    typeof connection.pageInfo.hasNextPage === "boolean" &&
+    !cut(connection)
+  );
 }
 
 function readComment(node: unknown): Comment {

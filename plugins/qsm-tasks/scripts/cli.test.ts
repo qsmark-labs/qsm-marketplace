@@ -130,6 +130,11 @@ describe("qsm-tasks resolves the board", () => {
   });
 });
 
+/** A list of an issue as GitHub answers it: its nodes and the page check a read demands. */
+function whole(nodes: readonly unknown[]) {
+  return { pageInfo: { hasNextPage: false }, nodes };
+}
+
 function task(number: number, priority: string | null, blockedBy: number[] = [], status = "Todo") {
   const card = {
     id: `PVTI_${number}`,
@@ -142,13 +147,10 @@ function task(number: number, priority: string | null, blockedBy: number[] = [],
     title: `task ${number}`,
     state: "OPEN",
     issueType: { name: "Task" },
-    assignees: { nodes: [] },
-    labels: { nodes: [] },
-    blockedBy: {
-      pageInfo: { hasNextPage: false },
-      nodes: blockedBy.map((n) => ({ number: n, state: "OPEN" })),
-    },
-    projectItems: { nodes: [card] },
+    assignees: whole([]),
+    labels: whole([]),
+    blockedBy: whole(blockedBy.map((n) => ({ number: n, state: "OPEN" }))),
+    projectItems: whole([card]),
   };
 }
 
@@ -197,8 +199,18 @@ describe("qsm-tasks reads the board", () => {
     expect(r.message).toContain("#8: GitHub left out its projectItems");
   });
 
+  it("ready refuses an issue whose labels come with no page check, or not at all", () => {
+    const { labels: _, ...without } = task(8, null);
+    const unchecked = { ...without, labels: { nodes: [] } };
+    for (const issue of [unchecked, without]) {
+      const r = run({ stdout: linked([BOARD]), search: found([issue]) });
+      expect(r.exit).not.toBe(0);
+      expect(r.message).toContain("#8: GitHub left out its labels");
+    }
+  });
+
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
-    const off = { ...task(8, null), projectItems: { nodes: [] } };
+    const off = { ...task(8, null), projectItems: whole([]) };
     expect(run({ stdout: linked([BOARD]), search: found([off]) }).message).toStartWith("#8 ");
   });
 });
@@ -220,7 +232,7 @@ function cardOf(status: string, assignees: readonly string[], more: object = {})
   const issue = {
     ...task(5, null, [], status),
     id: "I_5",
-    assignees: { nodes: assignees.map((login) => ({ login })) },
+    assignees: whole(assignees.map((login) => ({ login }))),
     ...more,
   };
   return JSON.stringify({
@@ -263,7 +275,7 @@ describe("qsm-tasks moves a task", () => {
   });
 
   it("unclaim of a deferred task off the board keeps the label when adding the card fails", () => {
-    const deferred = { labels: { nodes: [{ name: "deferred" }] }, projectItems: { nodes: [] } };
+    const deferred = { labels: whole([{ name: "deferred" }]), projectItems: whole([]) };
     const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", [], deferred) }, [
       "unclaim",
       "5",
@@ -367,7 +379,7 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
   });
 
   it("reopen on a closed issue off the board takes it as Done, adds the card at Done, reopens and sets Todo", () => {
-    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+    const off = { state: "CLOSED", projectItems: whole([]) };
     const added = JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "PVTI_5" } } } });
     const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off), added }, [
       "reopen",
@@ -385,7 +397,7 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
   });
 
   it("reopen off the board reopens nothing when adding the card fails, so a rerun still reads Done", () => {
-    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+    const off = { state: "CLOSED", projectItems: whole([]) };
     const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off) }, ["reopen", "5"]);
     expect(r.exit).not.toBe(0);
     expect(r.calls.join("\n")).not.toContain("issue reopen");
