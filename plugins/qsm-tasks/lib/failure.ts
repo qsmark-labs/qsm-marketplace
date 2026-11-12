@@ -4,9 +4,9 @@
 import { fail, type Outcome } from "../../../lib/outcome.ts";
 
 interface Reasons {
-  readonly missing: "no-gh";
+  readonly missing: "no-gh" | "no-repo" | "no-board";
   /** `not-built`: a declared verb whose issue has not landed; it leaves with the last of them */
-  readonly failed: "not-built";
+  readonly failed: "refused" | "not-found" | "not-built";
 }
 
 interface Refusal {
@@ -22,6 +22,11 @@ interface Refused {
 
 /** A value, or the outcome the verb ends with. */
 export type Result<T> = { readonly ok: true; readonly value: T } | Refused;
+
+/** A call that cannot go on as given, found only once GitHub answered: `usage`, with no reason. */
+export function wrongCall(message: string): Refused {
+  return { ok: false, outcome: fail<Refusal>("usage", message) };
+}
 
 export function refuse<C extends keyof Reasons>(
   code: C,

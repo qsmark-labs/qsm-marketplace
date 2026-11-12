@@ -8,6 +8,7 @@ import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { refuse } from "../lib/failure.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
+import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
 
@@ -16,20 +17,33 @@ const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 /** What a verb on the board is handed beside its call. */
 interface OnBoard {
   readonly run: Run;
+  readonly target: Target;
 }
 
-/** A verb on the board: gh found first, or `missing` `no-gh` and nothing runs. */
+/** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
 function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>): Handler {
-  return (call) => {
+  return async (call) => {
     const gh = connect();
-    return gh.ok ? verb(call, { run: gh.value }) : gh.outcome;
+    if (!gh.ok) {
+      return gh.outcome;
+    }
+    // --repo and --project arrive with the first verb that declares them
+    const target = await resolveTarget(gh.value, { repo: undefined, project: undefined });
+    return target.ok ? verb(call, { run: gh.value, target: target.value }) : target.outcome;
   };
 }
 
-/** A declared verb whose issue has not landed yet: it fails naming that issue. */
-function notBuilt(issue: number): Handler {
-  return (call) =>
-    refuse("failed", "not-built", `${call.verb}: not built yet, see issue #${issue}`).outcome;
+/** A declared verb whose issue has not landed yet: it fails naming that issue, and the board it
+ * resolved when it runs on one. */
+function notBuilt(issue: number): (call: Call, at?: OnBoard) => Outcome {
+  return (call, at) => {
+    const on =
+      at === undefined
+        ? ""
+        : ` on ${at.target.repo}, board ${at.target.board.owner}/${at.target.board.number}`;
+    return refuse("failed", "not-built", `${call.verb}${on}: not built yet, see issue #${issue}`)
+      .outcome;
+  };
 }
 
 if (import.meta.main) {
