@@ -2,7 +2,7 @@
 // Status field's ids and the caller. Each write is idempotent, so running a verb again finishes it.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
-import type { Facts } from "../flow.ts";
+import type { Facts, Kind } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
 import { FAMILY, ITEM, type Item, readCard, readFamily, text } from "./items.ts";
 import type { Target } from "./target.ts";
@@ -131,10 +131,13 @@ export function setPriority(
 export async function file(
   run: Run,
   target: Target,
-  issue: { kind: "task" | "feature"; title: string; body: string; flags: readonly string[] },
+  issue: { kind: Kind; title: string; body: string; flags: readonly string[] },
 ): Promise<Result<number>> {
-  const type = issue.kind === "task" ? "Task" : "Feature";
-  const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
+  // feedback is a plain issue with no type: its label names its kind
+  const type = { task: ["--type", "Task"], feature: ["--type", "Feature"], feedback: [] }[
+    issue.kind
+  ];
+  const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, ...type];
   const made = await gh(run, [...args, "--body-file", "-", ...issue.flags], issue.body);
   if (!made.ok) {
     return made;

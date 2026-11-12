@@ -14,6 +14,7 @@ import { resolveTarget, type Target } from "../lib/github/target.ts";
 import manifestJson from "../qsm.json" with { type: "json" };
 import { add, checkCreate, feature } from "./create.ts";
 import { checkEdit, close, edit } from "./edits.ts";
+import { feedback } from "./feedback.ts";
 import { claim, plan, qa, reopen, review, unclaim } from "./moves.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
 
@@ -76,7 +77,7 @@ if (import.meta.main) {
       reopen: onBoard(reopen),
       plan: onBoard(plan),
       qa: onBoard(qa),
-      feedback: notBuilt(44),
+      feedback,
       doctor: onBoard(notBuilt(45)),
       setup: onBoard(notBuilt(45)),
     }),

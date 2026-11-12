@@ -5,7 +5,7 @@ import { fail, type Outcome } from "../../../lib/outcome.ts";
 
 interface Reasons {
   readonly missing: "no-gh" | "no-repo" | "no-board" | "no-file";
-  readonly blocked: "wrong-kind" | "wrong-status" | "held";
+  readonly blocked: "wrong-kind" | "wrong-status" | "held" | "private-data";
   /** `not-built`: a declared verb whose issue has not landed; it leaves with the last of them */
   readonly failed: "refused" | "not-found" | "not-built";
 }

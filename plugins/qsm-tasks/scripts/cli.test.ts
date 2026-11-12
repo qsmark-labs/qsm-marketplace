@@ -43,31 +43,42 @@ interface FakeGh {
   readonly added?: string;
   /** the address it answers an issue create with */
   readonly created?: string;
+  /** the checkout QSM_MARKETPLACE names */
+  readonly marketplace?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call; a run in the
  * same `dir` meets the same fake again. */
+/** Which call each answer of the fake goes to, by a piece of its arguments. */
+const ANSWERS = [
+  ["search", "*search\\(*"],
+  ["card", "*viewer\\{login\\}*"],
+  ["added", "*addProjectV2ItemById*"],
+  ["issue", "*comments\\(first*"],
+] as const;
+
+/** The fake's case arms: a refused first edit when asked, then the named answers. */
+function arms(gh: FakeGh, refused: string): string {
+  const edit = `*"issue edit"*) [ -e "${refused}" ] && exit 0; : > "${refused}"; printf 'refused' >&2; exit 1 ;; `;
+  const named = ANSWERS.flatMap(([key, pattern]) => {
+    const answer = gh[key];
+    return answer === undefined ? [] : [`${pattern}) printf '%s' '${answer}' ;; `];
+  });
+  return [...(gh.refuseEditOnce === undefined ? [] : [edit]), ...named].join("");
+}
+
 function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("qsm-tasks-")) {
   const calls = join(dir, "calls");
-  const refused = join(dir, "refused");
-  const edit =
-    gh.refuseEditOnce === undefined
-      ? ""
-      : `*"issue edit"*) [ -e "${refused}" ] && exit 0; : > "${refused}"; printf 'refused' >&2; exit 1 ;; `;
   // builtins only: the PATH holds the fake and the runtime, no cat
   const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
-  const search = [
-    gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
-    gh.card === undefined ? "" : `*viewer\\{login\\}*) printf '%s' '${gh.card}' ;; `,
-    gh.added === undefined ? "" : `*addProjectV2ItemById*) printf '%s' '${gh.added}' ;; `,
-    gh.issue === undefined ? "" : `*comments\\(first*) printf '%s' '${gh.issue}' ;; `,
-  ].join("");
+  const search = arms(gh, join(dir, "refused"));
   const stdin = join(dir, "stdin");
   // a body gh reads on stdin is kept; a create answers the new issue's address
   const comment = `*"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
-  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${edit}${search}${comment}*) ${answer} ;; esac`;
+  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
-  const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
+  const marketplace = gh.marketplace === undefined ? {} : { QSM_MARKETPLACE: gh.marketplace };
+  const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}`, ...marketplace });
   const r = runBin(CLI, [...argv, "--json"], { env });
   const out = envelopeOf(r.stdout);
   const recorded = existsSync(calls) ? readFileSync(calls, "utf8").trim().split("\n") : [];
@@ -366,4 +377,76 @@ describe("qsm-tasks edits and closes the work", () => {
       expect(run({ stdout: linked([BOARD]) }, argv).calls).toEqual([]);
     },
   );
+});
+
+describe("qsm-tasks feedback", () => {
+  const sections = (what: string) =>
+    `## What happened\n${what}\n## Where\nqsm-tasks\n## How to reproduce\nRun a verb.\n## Expected behaviour\nIt works.\n`;
+
+  /** A marketplace checkout with one plugin, and the feedback body, both in the test's own dir. */
+  function setup(body: string): { dir: string; argv: string[] } {
+    const dir = sandboxDir("qsm-tasks-");
+    writeIn(
+      dir,
+      "market/.claude-plugin/marketplace.json",
+      JSON.stringify({ plugins: [{ name: "qsm-tasks" }] }),
+    );
+    writeIn(dir, "body.md", body);
+    const flags = ["--area", "qsm-tasks", "--kind", "tool-broken", "--from", "subagent"];
+    return {
+      dir,
+      argv: ["feedback", "ready skips a task", ...flags, "--body-file", join(dir, "body.md")],
+    };
+  }
+
+  it("refuses a body with a home path, naming the kind and line but not the text, before any call", () => {
+    const { dir, argv } = setup(sections("It broke in /home/someone/work."));
+    const r = run({ stdout: linked([BOARD]), marketplace: join(dir, "market") }, argv, dir);
+    expect(r.data).toMatchObject({ reason: "private-data" });
+    expect(r.message).toContain("home path on line 2");
+    expect(r.message).not.toContain("someone");
+    expect(r.calls).toEqual([]);
+  });
+
+  it("refuses a suggested fix, and an area that names no plugin, as usage before any call", () => {
+    const fix = setup(`${sections("x")}## Suggested fix\nx\n`);
+    const market = (dir: string) => ({ stdout: linked([BOARD]), marketplace: join(dir, "market") });
+    expect(run(market(fix.dir), fix.argv, fix.dir).calls).toEqual([]);
+    const area = setup(sections("x"));
+    const argv = area.argv.map((a) => (a === "qsm-tasks" ? "no-such-plugin" : a));
+    const r = run(market(area.dir), argv, area.dir);
+    expect(r.exit).toBe(2);
+    expect(r.calls).toEqual([]);
+  });
+
+  it("comments on the same feedback while it is open, and files no new issue", () => {
+    const { dir, argv } = setup(sections("ready skipped task 5."));
+    const open = {
+      ...task(9, null),
+      title: "ready skips a task",
+      issueType: null,
+      labels: { nodes: [{ name: "feedback" }] },
+    };
+    const r = run(
+      { stdout: linked([BOARD]), search: found([open]), marketplace: join(dir, "market") },
+      argv,
+      dir,
+    );
+    expect(r.message).toBe("#9 commented: the same feedback is open");
+    expect(r.calls.some((c) => c.startsWith("issue create"))).toBe(false);
+  });
+
+  it("files a new one as a plain issue with its four labels", () => {
+    const { dir, argv } = setup(sections("ready skipped task 5."));
+    const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/91";
+    const r = run(
+      { stdout: linked([BOARD]), search: found([]), created, marketplace: join(dir, "market") },
+      argv,
+      dir,
+    );
+    expect(r.message).toBe("#91 filed: ready skips a task");
+    expect(r.calls.at(-1)).toBe(
+      "issue create --repo qsmark-labs/qsm-marketplace --title ready skips a task --body-file - --label feedback --label area:qsm-tasks --label kind:tool-broken --label from:subagent",
+    );
+  });
 });
