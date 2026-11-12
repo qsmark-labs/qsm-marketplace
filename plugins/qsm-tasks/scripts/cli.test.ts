@@ -41,6 +41,8 @@ interface FakeGh {
   readonly refuseEditOnce?: true;
   /** what it answers adding an issue to the board */
   readonly added?: string;
+  /** what it answers `gh issue list`: the number of the open feedback of a title, or nothing */
+  readonly list?: string;
   /** the address it answers an issue create with */
   readonly created?: string;
   /** the checkout QSM_MARKETPLACE names */
@@ -55,6 +57,7 @@ const ANSWERS = [
   ["card", "*viewer\\{login\\}*"],
   ["added", "*addProjectV2ItemById*"],
   ["issue", "*comments\\(first*"],
+  ["list", "*issue\\ list*"],
 ] as const;
 
 /** The fake's case arms: a refused first edit when asked, then the named answers. */
@@ -403,51 +406,53 @@ describe("qsm-tasks feedback", () => {
     };
   }
 
-  it("refuses a body with a home path, naming the kind and line but not the text, before any write", () => {
-    const { dir, argv } = setup(sections("It broke in /home/someone/work."));
-    const r = run({ stdout: linked([BOARD]), marketplace: join(dir, "market") }, argv, dir);
-    expect(r.data).toMatchObject({ reason: "private-data" });
-    expect(r.message).toContain("home path on line 2");
-    expect(r.message).not.toContain("someone");
-    expect(r.calls).toHaveLength(1);
+  /** gh in the checkout: it answers the repository's name, and `more`. */
+  const fake = (dir: string, more: object = {}) => ({
+    stdout: "qsmark-labs/qsm-marketplace",
+    marketplace: join(dir, "market"),
+    ...more,
   });
+  // built from pieces, so no secret scanner reads this file as holding one
+  const armour = (edge: string) => `-----${edge} OPENSSH PRIVATE KEY-----`;
+  const key = [armour("BEGIN"), "A".repeat(60), "A".repeat(60), armour("END")].join("\n");
 
-  it("refuses a suggested fix, and an area that names no plugin, as usage before any write", () => {
+  it.each([
+    ["home path", "It broke in /home/someone/work."],
+    ["email", "Mail someone@example.com."],
+    ["github-pat", `The token ghp_${"a".repeat(36)} leaked.`],
+    ["private-key", key],
+  ])(
+    "refuses a body with a %s by kind and line, never the text, before any gh call",
+    (kind, what) => {
+      const { dir, argv } = setup(sections(what));
+      const r = run(fake(dir), argv, dir);
+      expect(r.message).toBe(`the body carries private data: ${kind} on line 2`);
+      expect(r.calls).toEqual([]);
+    },
+  );
+
+  it("refuses a suggested fix, and an area that names no plugin, as usage before any gh call", () => {
     const fix = setup(`${sections("x")}## Suggested fix\nx\n`);
-    const market = (dir: string) => ({ stdout: linked([BOARD]), marketplace: join(dir, "market") });
-    expect(run(market(fix.dir), fix.argv, fix.dir).calls).toHaveLength(1);
+    expect(run(fake(fix.dir), fix.argv, fix.dir).calls).toEqual([]);
     const area = setup(sections("x"));
     const argv = area.argv.map((a) => (a === "qsm-tasks" ? "no-such-plugin" : a));
-    const r = run(market(area.dir), argv, area.dir);
+    const r = run(fake(area.dir), argv, area.dir);
     expect(r.exit).toBe(2);
-    expect(r.calls).toHaveLength(1);
+    expect(r.calls).toEqual([]);
   });
 
-  it("comments on the same feedback while it is open, and files no new issue", () => {
+  it("comments on the same feedback while it is open, found by its title, and files none", () => {
     const { dir, argv } = setup(sections("ready skipped task 5."));
-    const open = {
-      ...task(9, null),
-      title: "ready skips a task",
-      issueType: null,
-      labels: { nodes: [{ name: "feedback" }] },
-    };
-    const r = run(
-      { stdout: linked([BOARD]), search: found([open]), marketplace: join(dir, "market") },
-      argv,
-      dir,
-    );
+    const r = run(fake(dir, { list: "9" }), argv, dir);
     expect(r.message).toBe("#9 commented: the same feedback is open");
+    expect(r.calls[1]).toContain('--search "ready skips a task" in:title');
     expect(r.calls.some((c) => c.startsWith("issue create"))).toBe(false);
   });
 
   it("files a new one as a plain issue with its four labels, making only its area's", () => {
     const { dir, argv } = setup(sections("ready skipped task 5."));
     const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/91";
-    const r = run(
-      { stdout: linked([BOARD]), search: found([]), created, marketplace: join(dir, "market") },
-      argv,
-      dir,
-    );
+    const r = run(fake(dir, { list: "", created }), argv, dir);
     expect(r.message).toBe("#91 filed: ready skips a task");
     const made = r.calls.filter((c) => c.startsWith("label create"));
     expect(made).toEqual(["label create area:qsm-tasks --repo qsmark-labs/qsm-marketplace"]);
