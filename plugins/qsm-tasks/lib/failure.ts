@@ -23,6 +23,11 @@ interface Refused {
 /** A value, or the outcome the verb ends with. */
 export type Result<T> = { readonly ok: true; readonly value: T } | Refused;
 
+/** A call that cannot go on as given, found only once GitHub answered: `usage`, with no reason. */
+export function wrongCall(message: string): Refused {
+  return { ok: false, outcome: fail<Refusal>("usage", message) };
+}
+
 export function refuse<C extends keyof Reasons>(
   code: C,
   reason: Reasons[C],

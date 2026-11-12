@@ -2,7 +2,7 @@
 // stored default goes stale when the board moves (design.md decision 2): `--repo`, else the one gh
 // resolves; `--project`, else the one board linked to the repository. One query reads both ids.
 import { isRecord, UsageError } from "../../../../lib/outcome.ts";
-import { refuse, type Result } from "../failure.ts";
+import { refuse, type Result, wrongCall } from "../failure.ts";
 import { graphql, type Run } from "./gh.ts";
 
 interface Board {
@@ -18,9 +18,9 @@ export interface Target {
   readonly board: Board;
 }
 
-const REPO = "repository(owner:$owner,name:$name){id nameWithOwner";
-const LINKED = `query($owner:String!,$name:String!){${REPO} projectsV2(first:10){nodes{id number owner{...on Organization{login} ...on User{login}}}}}}`;
-const NAMED = `query($owner:String!,$name:String!,$login:String!,$number:Int!){${REPO}} repositoryOwner(login:$login){...on ProjectV2Owner{projectV2(number:$number){id number}}}}`;
+const BOARD = "id number owner{...on Organization{login} ...on User{login}}";
+// $login and $number default so the linked form can leave them out; @include skips the owner then.
+const QUERY = `query($owner:String!,$name:String!,$named:Boolean!,$login:String="",$number:Int=0){repository(owner:$owner,name:$name){id nameWithOwner projectsV2(first:10){nodes{${BOARD}}}} repositoryOwner(login:$login)@include(if:$named){...on ProjectV2Owner{projectV2(number:$number){${BOARD}}}}}`;
 
 function split(value: string, flag: "--repo" | "--project"): [string, string] {
   const shape = flag === "--repo" ? /^([\w.-]+)\/([\w.-]+)$/ : /^([\w.-]+)\/(\d+)$/;
@@ -32,7 +32,7 @@ function split(value: string, flag: "--repo" | "--project"): [string, string] {
   return [match[1], match[2]];
 }
 
-/** gh's `-F`/`-f` pairs naming the repository; gh fills `{owner}` and `{repo}` itself. */
+/** gh's field pairs naming the repository; gh fills `{owner}` and `{repo}` itself. */
 function repoFields(repo: string | undefined): string[] {
   if (repo === undefined) {
     return ["-F", "owner={owner}", "-F", "name={repo}"];
@@ -41,73 +41,79 @@ function repoFields(repo: string | undefined): string[] {
   return ["-f", `owner=${owner}`, "-f", `name=${name}`];
 }
 
-function readRepo(data: Record<string, unknown>): {
-  readonly id: string;
-  readonly nameWithOwner: string;
-  readonly projects: unknown;
-} {
-  const repo = data.repository;
-  if (!isRecord(repo) || typeof repo.id !== "string" || typeof repo.nameWithOwner !== "string") {
-    throw new Error(`gh answered without a repository: ${JSON.stringify(data)}`);
+/** gh's field pairs naming the board, or asking for the linked ones. */
+function boardFields(project: string | undefined): string[] {
+  if (project === undefined) {
+    return ["-F", "named=false"];
   }
-  return { id: repo.id, nameWithOwner: repo.nameWithOwner, projects: repo.projectsV2 };
+  const [login, number] = split(project, "--project");
+  return ["-F", "named=true", "-f", `login=${login}`, "-F", `number=${number}`];
 }
 
-function readBoard(node: unknown, owner?: string): Board | null {
+function readBoard(node: unknown): Board | null {
   if (!isRecord(node) || typeof node.id !== "string" || typeof node.number !== "number") {
     return null;
   }
-  const login = owner ?? (isRecord(node.owner) ? node.owner.login : undefined);
+  const login = isRecord(node.owner) ? node.owner.login : undefined;
   return typeof login === "string" ? { id: node.id, owner: login, number: node.number } : null;
 }
 
-/** The one board linked to the repository: none is `no-board`, several a usage naming them. */
-function linkedBoard(repo: string, projects: unknown): Result<Board> {
-  const nodes = isRecord(projects) && Array.isArray(projects.nodes) ? projects.nodes : [];
-  const boards = nodes.map((n) => readBoard(n)).filter((b) => b !== null);
-  const [only] = boards;
-  if (only === undefined) {
-    return refuse("missing", "no-board", `${repo} has no linked board`, "pass --project");
-  }
-  if (boards.length > 1) {
-    const names = boards.map((b) => `${b.owner}/${b.number}`).join(", ");
-    throw new UsageError(`${repo} has several linked boards (${names}): pass --project`);
-  }
-  return { ok: true, value: only };
+/** The board --project named, or every board linked to the repository. */
+function offered(data: Record<string, unknown>, named: boolean): Board[] {
+  const owner = data.repositoryOwner;
+  const linked =
+    isRecord(data.repository) && isRecord(data.repository.projectsV2)
+      ? data.repository.projectsV2.nodes
+      : [];
+  const nodes: unknown[] = named
+    ? [isRecord(owner) ? owner.projectV2 : null]
+    : Array.isArray(linked)
+      ? linked
+      : [];
+  return nodes.map((node) => readBoard(node)).filter((board) => board !== null);
 }
 
-/** The board `--project` names; an owner or number GitHub does not know is `not-found`. */
-function namedBoard(owned: unknown, [owner, number]: [string, string]): Result<Board> {
-  const board = readBoard(isRecord(owned) ? owned.projectV2 : undefined, owner);
-  return board === null
-    ? refuse("failed", "not-found", `no board ${owner}/${number} on GitHub`)
-    : { ok: true, value: board };
+/** The one board: none is `no-board` (linked) or `not-found` (named), several a wrong call. */
+function oneBoard(
+  repo: string,
+  boards: readonly Board[],
+  project: string | undefined,
+): Result<Board> {
+  const [board, ...more] = boards;
+  if (board === undefined) {
+    return project === undefined
+      ? refuse("missing", "no-board", `${repo} has no linked board`, "pass --project")
+      : refuse("failed", "not-found", `no board ${project} on GitHub`);
+  }
+  if (more.length > 0) {
+    const names = boards.map((b) => `${b.owner}/${b.number}`).join(", ");
+    return wrongCall(`${repo} has several linked boards (${names}): pass --project`);
+  }
+  return { ok: true, value: board };
 }
 
 export async function resolveTarget(
   run: Run,
   given: { readonly repo: string | undefined; readonly project: string | undefined },
 ): Promise<Result<Target>> {
-  const fields = repoFields(given.repo);
-  const project = given.project === undefined ? undefined : split(given.project, "--project");
-  const answer =
-    project === undefined
-      ? await graphql(run, LINKED, fields)
-      : await graphql(run, NAMED, [
-          ...fields,
-          "-f",
-          `login=${project[0]}`,
-          "-F",
-          `number=${project[1]}`,
-        ]);
+  const fields = [...repoFields(given.repo), ...boardFields(given.project)];
+  const answer = await graphql(run, QUERY, fields);
   if (!answer.ok) {
     return answer;
   }
-  const repo = readRepo(answer.value);
-  const board =
-    project === undefined
-      ? linkedBoard(repo.nameWithOwner, repo.projects)
-      : namedBoard(answer.value.repositoryOwner, project);
+  const repo = answer.value.repository;
+  if (!isRecord(repo) || typeof repo.id !== "string" || typeof repo.nameWithOwner !== "string") {
+    return refuse(
+      "failed",
+      "refused",
+      `gh answered without a repository: ${JSON.stringify(answer.value)}`,
+    );
+  }
+  const board = oneBoard(
+    repo.nameWithOwner,
+    offered(answer.value, given.project !== undefined),
+    given.project,
+  );
   return board.ok
     ? { ok: true, value: { repoId: repo.id, repo: repo.nameWithOwner, board: board.value } }
     : board;
