@@ -20,8 +20,23 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  feature(): Promise<unknown>;
-  add(): Promise<unknown>;
+  feature(options: {
+    goal: string;
+    intent: string;
+    spec?: string;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
+  add(options: {
+    title: string;
+    feature?: number;
+    after?: number;
+    priority?: string;
+    bodyFile?: string;
+    label?: (string)[];
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   feedback(): Promise<unknown>;
   edit(): Promise<unknown>;
   note(options: {
