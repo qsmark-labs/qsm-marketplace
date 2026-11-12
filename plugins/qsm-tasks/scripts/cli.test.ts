@@ -45,6 +45,8 @@ interface FakeGh {
   readonly added?: string;
   /** what it answers `gh issue list`: the number of the open feedback of a title, or nothing */
   readonly list?: string;
+  /** what it answers the read of the pull request `human` names */
+  readonly pull?: string;
   /** the address it answers an issue create with */
   readonly created?: string;
   /** the checkout QSM_MARKETPLACE names */
@@ -61,6 +63,7 @@ const ANSWERS = [
   ["issue", "*comments\\(first*"],
   ["health", "*issueTypes*"],
   ["list", "*issue\\ list*"],
+  ["pull", "*pullRequest\\(number*"],
 ] as const;
 
 /** The fake's case arms: a refused first edit when asked, then the named answers. */
@@ -201,7 +204,7 @@ describe("qsm-tasks note", () => {
 
 /** A move's card as GitHub answers it: the caller, the Status field and one task on the board. */
 function cardOf(status: string, assignees: readonly string[], more: object = {}): string {
-  const statuses = ["Todo", "In Dev", "Agent Review"];
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human"];
   const field = { id: "PVTSSF_1", options: statuses.map((name, i) => ({ id: `opt${i}`, name })) };
   const issue = {
     ...task(5, null, [], status),
@@ -247,6 +250,47 @@ describe("qsm-tasks moves a task", () => {
     ]);
     expect(again.posted).toBe("Deferred until 2026-12-01\n");
   });
+});
+
+describe("qsm-tasks human hands a task over", () => {
+  const card = cardOf("Agent Review", [], { parent: { number: 3, state: "OPEN" } });
+  const rollup = (state: string) => ({ nodes: [{ commit: { statusCheckRollup: { state } } }] });
+  /** The PR read as GitHub answers it, for task 5 under feature 3, ready unless `more` says not. */
+  const run5 = (more: object) => {
+    const ready = {
+      baseRefName: "feature/3",
+      body: "Builds the verb.\n\nCloses #5",
+      latestReviews: { nodes: [{ state: "APPROVED" }] },
+      commits: rollup("SUCCESS"),
+    };
+    const pull = JSON.stringify({ data: { node: { pullRequest: { ...ready, ...more } } } });
+    return run({ stdout: linked([BOARD]), card, pull }, ["human", "5", "--pr", "9"]);
+  };
+
+  it.each([
+    ["a base that is not feature/3", { baseRefName: "main" }, "based on main, not feature/3"],
+    ["no Closes #5", { body: "Closes #50" }, "does not say Closes #5"],
+    ["a failing check", { commits: rollup("FAILURE") }, "checks are FAILURE, not green"],
+    ["no approving review", { latestReviews: { nodes: [{ state: "COMMENTED" }] } }, "approving"],
+  ])("with %s is blocked and writes nothing", (_, more, said) => {
+    const r = run5(more);
+    expect(r.data).toMatchObject({ reason: "wrong-status" });
+    expect(r.message).toContain(said);
+    expect(r.calls.some((c) => c.includes("mutation"))).toBe(false);
+  });
+
+  it("with its ready PR moves the task to Ready For Human", () => {
+    const r = run5({});
+    expect(r.message).toBe("#5 Agent Review -> Ready For Human");
+    expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(true);
+  });
+
+  it.each([[["human", "5"]], [["human", "5", "--pr", "9", "--started"]]])(
+    "%p is a usage before any gh call",
+    (argv) => {
+      expect(run({ stdout: linked([BOARD]) }, argv).calls).toEqual([]);
+    },
+  );
 });
 
 describe("qsm-tasks moves a feature and a closed issue", () => {

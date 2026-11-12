@@ -363,7 +363,36 @@
         ]
       },
       "qsm-tasks human": {
-        "description": "Hand an approved task with green checks to the owner: Ready For Human, then Human Review"
+        "description": "Hand an approved task with green checks to the owner: Ready For Human, then Human Review",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the task"
+          },
+          {
+            "name": "pr",
+            "type": "number",
+            "description": "its pull request, based on feature/<parent>, saying Closes #<n>"
+          },
+          {
+            "name": "started",
+            "type": "boolean",
+            "description": "the owner started his review: Human Review"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks close": {
         "description": "Close an issue with its reason as a comment, as completed or not planned",

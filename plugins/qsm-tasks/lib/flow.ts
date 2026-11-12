@@ -197,7 +197,7 @@ const MOVES: readonly Move[] = [
     kinds: ["task"],
     from: [S.agentReview],
     to: S.readyForHuman,
-    when: "the PR approved and its checks green",
+    when: "--pr: based on feature/<parent>, Closes #<n>, approved, checks green",
   },
   { verb: "human --started", kinds: ["task"], from: [S.readyForHuman], to: S.humanReview },
   {

@@ -17,6 +17,8 @@ export interface Card extends Item, Facts {
   readonly id: string;
   /** its card on the board; null before it is added */
   readonly cardId: string | null;
+  /** the feature it is under; null when it has no parent */
+  readonly parent: number | null;
   readonly statusField: Field;
   /** null on a board that has no Priority field yet */
   readonly priorityField: Field | null;
@@ -74,9 +76,9 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
       `no issue #${number} in ${target.repo}, or no Status field`,
     );
   }
-  const { parentOpen, subIssues } = readFamily(issue);
+  const { parent, parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
-  const facts = { caller, parentOpen, openSubIssues };
+  const facts = { caller, parent, parentOpen, openSubIssues };
   const lastComment = text(nodes(isRecord(issue) ? issue.comments : undefined)[0], "body");
   const own = { id, cardId: read.cardId, statusField, priorityField, lastComment };
   return { ok: true, value: { ...read.item, ...facts, ...own } };
