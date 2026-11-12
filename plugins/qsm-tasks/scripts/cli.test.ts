@@ -80,7 +80,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
   const search = arms(gh, join(dir, "refused"));
   const stdin = join(dir, "stdin");
   // a body gh reads on stdin is kept; a create answers the new issue's address
-  const comment = `*"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
+  const comment = `*"--input"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done >> "${stdin}"; printf '%s' '{"data":{}}' ;; *"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
   const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const marketplace = gh.marketplace === undefined ? {} : { QSM_MARKETPLACE: gh.marketplace };
@@ -549,5 +549,54 @@ describe("qsm-tasks doctor", () => {
     expect(r.message).toContain(`failed  field Status: remove In Progress in ${url}/settings`);
     expect(r.message).toContain(`failed  field Epic stage: delete it in ${url}/settings`);
     expect(r.message).toContain("failed  feedback template");
+  });
+});
+
+describe("qsm-tasks setup", () => {
+  const option = (name: string, i: number) => ({
+    id: `opt${i}`,
+    name,
+    color: "GRAY",
+    description: "kept",
+  });
+  /** The read setup shares with doctor, as GitHub answers it: the fields with option ids, labels. */
+  function fieldsOf(statuses: string[], priority: string[] | null, labels: string[]): string {
+    const status = { id: "PVTSSF_status", name: "Status", options: statuses.map(option) };
+    const prio =
+      priority === null
+        ? []
+        : [{ id: "PVTSSF_prio", name: "Priority", options: priority.map(option) }];
+    const repo = { labels: { nodes: labels.map((name) => ({ name })) } };
+    return JSON.stringify({ data: { repo, board: { fields: { nodes: [status, ...prio] } } } });
+  }
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human", "Human Review", "Done"];
+  const all = [...statuses.slice(0, 5), "Ready For Test", "In Test", "Blocked", "Done"];
+  const labels = [
+    "deferred",
+    "feedback",
+    "kind:tool-broken",
+    "kind:tool-missing",
+    "kind:wrong-output",
+    "kind:guidance",
+    "kind:agent-mistake",
+    "from:user",
+    "from:main-agent",
+    "from:subagent",
+  ];
+
+  it("adds the missing options keeping each by id, creates Priority and the labels", () => {
+    const r = run({ stdout: linked([BOARD]), health: fieldsOf(statuses, null, []) }, ["setup"]);
+    expect(r.message).toContain("added to Status: Ready For Test, In Test, Blocked");
+    expect(r.message).toContain("created field Priority with P0, P1, P2");
+    expect(r.posted).toContain('"id":"opt0","name":"Todo"');
+    expect(r.posted).toContain("createProjectV2Field");
+    expect(r.calls).toContain("label create deferred --repo qsmark-labs/qsm-marketplace");
+  });
+
+  it("creates nothing on a second run and says so", () => {
+    const health = fieldsOf(all, ["P0", "P1", "P2"], labels);
+    const r = run({ stdout: linked([BOARD]), health }, ["setup"]);
+    expect(r.message).toContain("nothing to create");
+    expect(r.calls.some((c) => c.includes("--input") || c.startsWith("label create"))).toBe(false);
   });
 });

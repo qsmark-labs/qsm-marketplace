@@ -83,7 +83,23 @@ export async function graphql(
   query: string,
   fields: readonly string[],
 ): Promise<Result<Record<string, unknown>>> {
-  const answer = await run(["api", "graphql", "-f", `query=${query}`, ...fields]);
+  return dataOf(await run(["api", "graphql", "-f", `query=${query}`, ...fields]));
+}
+
+/** A GraphQL write whose variables hold lists of objects, which gh's fields cannot spell: the
+ * whole request goes to gh on stdin as JSON. */
+export async function graphqlJson(
+  run: Run,
+  query: string,
+  values: Readonly<Record<string, unknown>>,
+): Promise<Result<Record<string, unknown>>> {
+  return dataOf(
+    await run(["api", "graphql", "--input", "-"], JSON.stringify({ query, variables: values })),
+  );
+}
+
+/** GraphQL's `data` in gh's answer, or the failure in GitHub's words. */
+function dataOf(answer: GhAnswer): Result<Record<string, unknown>> {
   if (answer.exit !== 0) {
     return failureOf(answer);
   }

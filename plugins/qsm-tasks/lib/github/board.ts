@@ -158,7 +158,11 @@ export async function file(
 }
 
 /** Creates each label the repository lacks; one it has already is left as it is. */
-async function labels(run: Run, target: Repo, names: readonly string[]): Promise<Result<null>> {
+export async function labels(
+  run: Run,
+  target: Repo,
+  names: readonly string[],
+): Promise<Result<null>> {
   for (const name of names) {
     const made = await run(["label", "create", name, "--repo", target.repo]);
     // gh 2.103.3 answers a label that exists with this text and no code of its own

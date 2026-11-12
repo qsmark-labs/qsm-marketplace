@@ -48,7 +48,7 @@ const FIELDS: Record<"Status" | "Priority", readonly string[]> = {
   Status: Object.values(STATUS),
   Priority: PRIORITY_NAMES,
 };
-const LABELS = [
+export const LABELS = [
   DEFERRED,
   "feedback",
   ...FEEDBACK_KINDS.map((k) => `kind:${k}`),
@@ -130,7 +130,7 @@ export async function health(run: Run, target: Target): Promise<Result<Health>> 
 
 /** A field the flow needs against the board: the field, the options it lacks, and the ones the flow
  * does not name; all lacking when the board has no such field. */
-function fieldGap(at: Health, name: keyof typeof FIELDS) {
+export function fieldGap(at: Health, name: keyof typeof FIELDS) {
   const field = at.fields.find((f) => f.name === name);
   const present = field?.options.map((o) => o.name) ?? [];
   const missing = FIELDS[name].filter((o) => !present.includes(o));
