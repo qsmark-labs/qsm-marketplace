@@ -12,7 +12,7 @@ import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
-import { list, ready } from "./reads.ts";
+import { checkSpec, list, ready } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
@@ -23,8 +23,13 @@ interface OnBoard {
 }
 
 /** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
-function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>): Handler {
+function onBoard(
+  verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>,
+  check: (call: Call) => void = () => {},
+): Handler {
   return async (call) => {
+    // a wrong call throws usage here, before any gh call
+    check(call);
     const gh = connect();
     if (!gh.ok) {
       return gh.outcome;
@@ -53,7 +58,7 @@ if (import.meta.main) {
   process.exit(
     await runCli(manifest, "qsm-tasks", {
       ready: onBoard(ready),
-      list: onBoard(list),
+      list: onBoard(list, checkSpec),
       show: onBoard(notBuilt(58)),
       note: onBoard(notBuilt(58)),
       feature: onBoard(notBuilt(41)),

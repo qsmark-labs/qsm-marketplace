@@ -98,7 +98,10 @@ function task(number: number, priority: string | null, blockedBy: number[] = [],
     issueType: { name: "Task" },
     assignees: { nodes: [] },
     labels: { nodes: [] },
-    blockedBy: { nodes: blockedBy.map((n) => ({ number: n, state: "OPEN" })) },
+    blockedBy: {
+      pageInfo: { hasNextPage: false },
+      nodes: blockedBy.map((n) => ({ number: n, state: "OPEN" })),
+    },
     projectItems: { nodes: [card] },
   };
 }
@@ -130,5 +133,22 @@ describe("qsm-tasks reads the board", () => {
     expect(r.calls[1]).toEndWith(
       'q=repo:qsmark-labs/qsm-marketplace is:issue label:"change:add-x"',
     );
+  });
+});
+
+describe("qsm-tasks reads the board, its edges", () => {
+  it.each([['a" is:open type:Task'], ["x".repeat(60)]])(
+    "list --spec %p is a usage before any gh call",
+    (spec) => {
+      const r = run({ stdout: linked([BOARD]), search: found([]) }, ["list", "--spec", spec]);
+      expect(r.exit).toBe(2);
+      expect(r.calls).toEqual([]);
+    },
+  );
+
+  it("ready lists an open task the board has not added yet, as claim takes it", () => {
+    const off = { ...task(8, null), projectItems: { nodes: [] } };
+    const r = run({ stdout: linked([BOARD]), search: found([off]) });
+    expect(r.message.split(" ")[0]).toBe("#8");
   });
 });
