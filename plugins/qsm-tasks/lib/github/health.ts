@@ -2,11 +2,11 @@
 // template of the repository, the fields, workflows and views of its board, and the token's scopes.
 // A check is ok, failed with its fix, or manual where the API cannot answer (design.md, measured).
 import { fail, isRecord, type Outcome, ok } from "../../../../lib/outcome.ts";
-import type { Result } from "../failure.ts";
+import { refuse, type Result } from "../failure.ts";
 import { FEEDBACK_KINDS, FROM } from "../feedback.ts";
 import { DEFERRED, PRIORITY_NAMES, STATUS } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
-import { nodes, text } from "./items.ts";
+import { cut, nodes, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 export interface Check {
@@ -40,7 +40,7 @@ export interface Health {
   readonly views: readonly string[];
 }
 
-const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository{issueTypes(first:20){nodes{name}} labels(first:100){nodes{name}} template:object(expression:"HEAD:.github/ISSUE_TEMPLATE/feedback.yml"){...on Blob{byteSize}}}} board:node(id:$board){...on ProjectV2{url fields(first:50){nodes{...on ProjectV2FieldCommon{id name} ...on ProjectV2SingleSelectField{options{id name color description}}}} workflows(first:20){nodes{name enabled}} views(first:20){nodes{name}}}}}`;
+const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository{issueTypes(first:20){nodes{name}} labels(first:100){pageInfo{hasNextPage} nodes{name}} template:object(expression:"HEAD:.github/ISSUE_TEMPLATE/feedback.yml"){...on Blob{byteSize}}}} board:node(id:$board){...on ProjectV2{url fields(first:50){nodes{...on ProjectV2FieldCommon{id name} ...on ProjectV2SingleSelectField{options{id name color description}}}} workflows(first:20){nodes{name enabled}} views(first:20){nodes{name}}}}}`;
 
 /** What the flow needs of the board and the repository: each field's options, and the labels the
  * flow and feedback write. Doctor fails what is missing; setup creates it. */
@@ -117,6 +117,9 @@ export async function health(run: Run, target: Target): Promise<Result<Health>> 
     return answer;
   }
   const repo = isRecord(answer.value.repo) ? answer.value.repo : {};
+  if (cut(repo.labels)) {
+    return refuse("failed", "refused", `${target.repo} has over 100 labels: GitHub cut the list`);
+  }
   const repoPart = {
     types: names(repo.issueTypes),
     labels: names(repo.labels),

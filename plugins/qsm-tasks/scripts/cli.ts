@@ -6,7 +6,7 @@
 import { type Call, type Handler, optionalString, runCli } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
-import { refuse, type Result } from "../lib/failure.ts";
+import { refuse } from "../lib/failure.ts";
 import { flowOutcome } from "../lib/flow.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
@@ -15,7 +15,7 @@ import manifestJson from "../qsm.json" with { type: "json" };
 import { add, checkCreate, feature } from "./create.ts";
 import { doctor } from "./doctor.ts";
 import { checkEdit, close, edit } from "./edits.ts";
-import { checkout, feedback } from "./feedback.ts";
+import { feedback } from "./feedback.ts";
 import { setup } from "./setup.ts";
 import { claim, plan, qa, reopen, review, unclaim } from "./moves.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
@@ -28,21 +28,15 @@ interface OnBoard {
   readonly target: Target;
 }
 
-/** A verb on the board: gh found, then the repository and the board resolved once, before it runs;
- * gh runs where `cwd` says, when a verb names its own checkout. */
+/** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
 function onBoard(
   verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>,
   check: (call: Call) => void = () => {},
-  cwd?: () => Result<string>,
 ): Handler {
   return async (call) => {
     // a wrong call throws usage here, before any gh call
     check(call);
-    const room: Result<string | undefined> = cwd?.() ?? { ok: true, value: undefined };
-    if (!room.ok) {
-      return room.outcome;
-    }
-    const gh = connect(room.value);
+    const gh = connect();
     if (!gh.ok) {
       return gh.outcome;
     }
@@ -85,7 +79,7 @@ if (import.meta.main) {
       reopen: onBoard(reopen),
       plan: onBoard(plan),
       qa: onBoard(qa),
-      feedback: onBoard(feedback, undefined, checkout),
+      feedback,
       doctor: onBoard(doctor),
       setup: onBoard(setup),
     }),
