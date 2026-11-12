@@ -64,7 +64,7 @@ const STATUSES: readonly Status[] = [
   },
   {
     name: STATUS.readyForHuman,
-    means: { task: "The review agent approved and CI is green: waits for the owner" },
+    means: { task: "The review agent found nothing and CI is green: waits for the owner" },
   },
   {
     name: STATUS.humanReview,
@@ -197,7 +197,7 @@ const MOVES: readonly Move[] = [
     kinds: ["task"],
     from: [S.agentReview],
     to: S.readyForHuman,
-    when: "--pr: based on feature/<parent>, Closes #<n>, approved, checks green",
+    when: "--pr: based on feature/<parent>, Closes #<n>, checks green, no changes asked",
   },
   { verb: "human --started", kinds: ["task"], from: [S.readyForHuman], to: S.humanReview },
   {

@@ -172,7 +172,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `review <n>` | task, bug | In Dev, Agent Review or Human Review | Agent Review |
-| `human <n> --pr <m>` | task, bug | Agent Review; PR `<m>` based on `feature/<parent>`, saying `Closes #<n>`, approved by a review with none asking for changes, checks green | Ready For Human |
+| `human <n> --pr <m>` | task, bug | Agent Review; PR `<m>` based on `feature/<parent>`, saying `Closes #<n>`, checks green, no review asking for changes | Ready For Human |
 | `human <n> --started` | task, bug | Ready For Human | Human Review |
 
 #### Scenario: A task goes to review
@@ -188,7 +188,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 #### Scenario: A task is handed to the owner
 
 - **WHEN** `human 5 --pr 9` runs on a task at Agent Review under feature 3, and PR 9 is based on
-  `feature/3`, says `Closes #5`, has an approving review and green checks, and then
+  `feature/3`, says `Closes #5`, has green checks and no review asking for changes, and then
   `human 5 --started` runs after the owner's first review
 - **THEN** the task is at Ready For Human and then at Human Review; until `status-action` (#15)
   does the second move on the owner's first review, the agent runs `human --started` on seeing it
@@ -196,8 +196,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 #### Scenario: The named PR is not the task's ready PR
 
 - **WHEN** `human 5 --pr 9` runs on a task at Agent Review and PR 9 is based on another branch,
-  does not say `Closes #5`, has no approving review or one asking for changes, or a check that is
-  not green
+  does not say `Closes #5`, has a check that is not green, or has a review asking for changes
 - **THEN** it exits `blocked` with `wrong-status` naming what fails, writes nothing, and the task
   stays at Agent Review
 
@@ -320,15 +319,15 @@ verb's guard; no other copy of a name SHALL exist in the binary.
 
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
-| Ready For Human | Review agent approved, CI green: waits for the owner | not used | not used |
+| Ready For Human | The review agent found nothing, CI green: waits for the owner | not used | not used |
 | Human Review | The owner reviews, the agent fixes his comments; no review agent | not used | not used |
 
 #### Scenario: A task waits for the owner, then the owner reviews
 
 - **WHEN** `flow` runs
-- **THEN** the Ready For Human row reads that the review agent approved and the CI is green, and the
-  Human Review row reads that the owner reviews, the agent fixes his comments and the review agent
-  is not asked
+- **THEN** the Ready For Human row reads that the review agent found nothing and the CI is green,
+  and the Human Review row reads that the owner reviews, the agent fixes his comments and the review
+  agent is not asked
 
 ### Requirement: Ready For Test and In Test are defined per kind
 

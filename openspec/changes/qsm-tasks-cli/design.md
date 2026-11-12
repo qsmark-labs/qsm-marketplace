@@ -44,8 +44,10 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
     GitHub links a closing pull request to its issue only when it targets the default branch, and
     a task's targets `feature/<n>`, so the link is empty; the agent opened it and knows its number.
     One query reads its base, body, the latest review of each reviewer and the head commit's check
-    rollup, before any write: base `feature/<parent>`, `Closes #<n>`, an approval and no request
-    for changes, rollup `SUCCESS`.
+    rollup, before any write: base `feature/<parent>`, `Closes #<n>`, rollup `SUCCESS`, and no
+    review asking for changes. No approval is asked for (the owner's decision): nobody approves on
+    GitHub before Ready For Human, because the review bot's approval is off, the local review agent
+    posts nothing, the agent's workflow holds that step, and the owner approves last.
 
 ## Measured before the code
 

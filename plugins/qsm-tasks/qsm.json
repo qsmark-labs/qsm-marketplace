@@ -363,7 +363,7 @@
         ]
       },
       "qsm-tasks human": {
-        "description": "Hand an approved task with green checks to the owner: Ready For Human, then Human Review",
+        "description": "Hand a reviewed task with green checks to the owner: Ready For Human, then Human Review",
         "args": [
           {
             "name": "number",

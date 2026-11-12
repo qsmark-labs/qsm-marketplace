@@ -260,7 +260,7 @@ describe("qsm-tasks human hands a task over", () => {
     const ready = {
       baseRefName: "feature/3",
       body: "Builds the verb.\n\nCloses #5",
-      latestReviews: { nodes: [{ state: "APPROVED" }] },
+      latestReviews: { pageInfo: { hasNextPage: false }, nodes: [{ state: "COMMENTED" }] },
       commits: rollup("SUCCESS"),
     };
     const pull = JSON.stringify({ data: { node: { pullRequest: { ...ready, ...more } } } });
@@ -271,7 +271,11 @@ describe("qsm-tasks human hands a task over", () => {
     ["a base that is not feature/3", { baseRefName: "main" }, "based on main, not feature/3"],
     ["no Closes #5", { body: "Closes #50" }, "does not say Closes #5"],
     ["a failing check", { commits: rollup("FAILURE") }, "checks are FAILURE, not green"],
-    ["no approving review", { latestReviews: { nodes: [{ state: "COMMENTED" }] } }, "approving"],
+    [
+      "a review asking for changes",
+      { latestReviews: { nodes: [{ state: "CHANGES_REQUESTED" }] } },
+      "asking for changes",
+    ],
   ])("with %s is blocked and writes nothing", (_, more, said) => {
     const r = run5(more);
     expect(r.data).toMatchObject({ reason: "wrong-status" });
@@ -279,7 +283,7 @@ describe("qsm-tasks human hands a task over", () => {
     expect(r.calls.some((c) => c.includes("mutation"))).toBe(false);
   });
 
-  it("with its ready PR moves the task to Ready For Human", () => {
+  it("with its ready PR, approved by nobody, moves the task to Ready For Human", () => {
     const r = run5({});
     expect(r.message).toBe("#5 Agent Review -> Ready For Human");
     expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(true);
