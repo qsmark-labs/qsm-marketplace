@@ -14,7 +14,7 @@ function row(check: Check): string {
 }
 
 /** The lines and the verdict of every check. */
-function verdict(head: string, list: readonly Check[]): Outcome {
+export function verdict(head: string, list: readonly Check[]): Outcome {
   const message = [head, ...list.map(row)].join("\n");
   const data = { checks: list };
   if (list.some((c) => c.status === "failed")) {

@@ -107,7 +107,10 @@ export type Tasks = {
     project?: string;
   }): Promise<unknown>;
   flow(): Promise<unknown>;
-  setup(): Promise<unknown>;
+  setup(options: {
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
 };
 
 declare module 'claude-code' {

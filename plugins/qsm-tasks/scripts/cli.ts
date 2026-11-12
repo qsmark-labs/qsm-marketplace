@@ -16,6 +16,7 @@ import { add, checkCreate, feature } from "./create.ts";
 import { doctor } from "./doctor.ts";
 import { checkEdit, close, edit } from "./edits.ts";
 import { feedback } from "./feedback.ts";
+import { setup } from "./setup.ts";
 import { claim, plan, qa, reopen, review, unclaim } from "./moves.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
 
@@ -80,7 +81,7 @@ if (import.meta.main) {
       qa: onBoard(qa),
       feedback,
       doctor: onBoard(doctor),
-      setup: onBoard(notBuilt(45)),
+      setup: onBoard(setup),
     }),
   );
 }

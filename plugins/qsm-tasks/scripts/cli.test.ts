@@ -37,6 +37,8 @@ interface FakeGh {
   readonly issue?: string;
   /** what it answers doctor's one read of the repository and the board */
   readonly health?: string;
+  /** what it answers setup's read of the fields with their option ids */
+  readonly fields?: string;
   /** what it answers the read of a move's card */
   readonly card?: string;
   /** refuse the first `gh issue edit`, as GitHub refuses a write */
@@ -58,6 +60,7 @@ const ANSWERS = [
   ["added", "*addProjectV2ItemById*"],
   ["issue", "*comments\\(first*"],
   ["health", "*issueTypes*"],
+  ["fields", "*color*"],
 ] as const;
 
 /** The fake's case arms: a refused first edit when asked, then the named answers. */
@@ -77,7 +80,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
   const search = arms(gh, join(dir, "refused"));
   const stdin = join(dir, "stdin");
   // a body gh reads on stdin is kept; a create answers the new issue's address
-  const comment = `*"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
+  const comment = `*"--input"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done >> "${stdin}"; printf '%s' '{"data":{}}' ;; *"issue comment"*|*"issue create"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}"; printf '%s' '${gh.created ?? ""}' ;; `;
   const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const marketplace = gh.marketplace === undefined ? {} : { QSM_MARKETPLACE: gh.marketplace };
@@ -527,5 +530,58 @@ describe("qsm-tasks doctor", () => {
     expect(r.message).toContain(`failed  field Status: remove In Progress in ${url}/settings`);
     expect(r.message).toContain(`failed  field Epic stage: delete it in ${url}/settings`);
     expect(r.message).toContain("failed  feedback template");
+  });
+});
+
+describe("qsm-tasks setup", () => {
+  const option = (name: string, i: number) => ({
+    id: `opt${i}`,
+    name,
+    color: "GRAY",
+    description: "kept",
+  });
+  /** setup's read as GitHub answers it: the board's fields with option ids, the repository's labels. */
+  function fieldsOf(statuses: string[], priority: string[] | null, labels: string[]): string {
+    const status = { id: "PVTSSF_status", name: "Status", options: statuses.map(option) };
+    const prio =
+      priority === null
+        ? []
+        : [{ id: "PVTSSF_prio", name: "Priority", options: priority.map(option) }];
+    const repo = { labels: { nodes: labels.map((name) => ({ name })) } };
+    return JSON.stringify({ data: { repo, board: { fields: { nodes: [status, ...prio] } } } });
+  }
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human", "Human Review", "Done"];
+  const all = [...statuses.slice(0, 5), "Ready For Test", "In Test", "Blocked", "Done"];
+  const labels = [
+    "deferred",
+    "feedback",
+    "kind:tool-broken",
+    "kind:tool-missing",
+    "kind:wrong-output",
+    "kind:guidance",
+    "kind:agent-mistake",
+    "from:user",
+    "from:main-agent",
+    "from:subagent",
+  ];
+
+  it("adds the missing options keeping each by id, creates Priority and the labels", () => {
+    const fields = fieldsOf(statuses, null, []);
+    const r = run(
+      { stdout: linked([BOARD]), fields, health: fieldsOf(all, ["P0", "P1", "P2"], labels) },
+      ["setup"],
+    );
+    expect(r.message).toContain("added to Status: Ready For Test, In Test, Blocked");
+    expect(r.message).toContain("created field Priority with P0, P1, P2");
+    expect(r.posted).toContain('"id":"opt0","name":"Todo"');
+    expect(r.posted).toContain("createProjectV2Field");
+    expect(r.calls).toContain("label create deferred --repo qsmark-labs/qsm-marketplace");
+  });
+
+  it("creates nothing on a second run and says so", () => {
+    const fields = fieldsOf(all, ["P0", "P1", "P2"], labels);
+    const r = run({ stdout: linked([BOARD]), fields, health: fields }, ["setup"]);
+    expect(r.message).toContain("nothing to create");
+    expect(r.calls.some((c) => c.includes("--input") || c.startsWith("label create"))).toBe(false);
   });
 });

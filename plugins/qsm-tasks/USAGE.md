@@ -15,7 +15,9 @@ and `add` print `#<n> filed: <title>`; a body or an intent goes to GitHub on std
 files in `$QSM_MARKETPLACE`'s repository, refuses private data as `blocked` `private-data` naming
 the kind and line, and comments on the same open feedback instead of filing it twice. `doctor`
 prints one line per check, `ok`, `failed` with its fix, or `manual` where the API cannot read it,
-and exits `failed`, `partial` when only `manual` ones are left, or `ok`; it writes nothing. A move,
+and exits `failed`, `partial` when only `manual` ones are left, or `ok`; it writes nothing. `setup`
+creates the fields, options and labels doctor would fail, never renames or deletes, then prints
+doctor's lines; a second run prints `nothing to create`. A move,
 `claim`, `unclaim`, `review`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
 in `qsm-tasks flow` fails it exits `blocked` and changes nothing. Every verb but `flow` needs `gh`
 on PATH with a login that has the `project` scope.

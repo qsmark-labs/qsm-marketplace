@@ -483,7 +483,19 @@
         "description": "Print the Status and Priority tables: each Status per kind and each verb's guard"
       },
       "qsm-tasks setup": {
-        "description": "Create the board's missing fields, options and labels; never rename or delete"
+        "description": "Create the board's missing fields, options and labels; never rename or delete",
+        "args": [
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       }
     }
   }

@@ -97,6 +97,24 @@ const PRIORITIES = [
   { name: "P2", means: "Worth doing, no date" },
 ] as const;
 
+/** What a Status means for each kind that uses it, in one line. */
+function meaning(s: Status): string {
+  return KINDS.flatMap((k) =>
+    s.means[k] === undefined ? [] : [`${KIND_LABELS[k]}: ${s.means[k]}`],
+  ).join("; ");
+}
+
+/** Each option of the board's Status and Priority fields with its definition, as setup writes it. */
+export function definitions(): Record<
+  "Status" | "Priority",
+  { name: string; description: string }[]
+> {
+  return {
+    Status: STATUSES.map((s) => ({ name: s.name, description: meaning(s) })),
+    Priority: PRIORITIES.map((p) => ({ name: p.name, description: p.means })),
+  };
+}
+
 /** The Priority options the board's Priority field must hold, P0 first. */
 export const PRIORITY_NAMES: readonly string[] = PRIORITIES.map((p) => p.name);
 

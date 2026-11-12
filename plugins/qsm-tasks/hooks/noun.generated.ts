@@ -36,7 +36,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   qa: { words: ["qsm-tasks","qa"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   doctor: { words: ["qsm-tasks","doctor"], args: [{ name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   flow: { words: ["qsm-tasks","flow"], args: [] },
-  setup: { words: ["qsm-tasks","setup"], args: [] },
+  setup: { words: ["qsm-tasks","setup"], args: [{ name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
 };
 
 /** One verb's argv: its words, each option in declaration order, the

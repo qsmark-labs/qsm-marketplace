@@ -28,7 +28,7 @@ export interface Health {
 const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository{issueTypes(first:20){nodes{name}} labels(first:100){nodes{name}} template:object(expression:"HEAD:.github/ISSUE_TEMPLATE/feedback.yml"){...on Blob{byteSize}}}} board:node(id:$board){...on ProjectV2{url fields(first:50){nodes{...on ProjectV2FieldCommon{name} ...on ProjectV2SingleSelectField{options{name}}}} workflows(first:20){nodes{name enabled}} views(first:20){nodes{name}}}}}`;
 
 /** The labels the flow and feedback write; setup creates the ones the repository lacks. */
-const LABELS = [
+export const LABELS = [
   DEFERRED,
   "feedback",
   ...KINDS.map((k) => `kind:${k}`),
