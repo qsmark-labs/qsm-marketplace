@@ -38,7 +38,7 @@ const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
 const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
-const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
+const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){pageInfo{hasNextPage} nodes{author{login} createdAt body}}}}}}`;
 
 /** What a read asks for; an absent field does not narrow it. */
 export interface Filter {
@@ -182,6 +182,9 @@ export async function issue(
   const body = text(node, "body");
   if (!isRecord(node) || item === null || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
+  }
+  if (cut(node.comments)) {
+    return refuse("failed", "refused", `#${number} has over ${PAGE} comments: GitHub cut the list`);
   }
   const summary = node.subIssuesSummary;
   const subIssues = {

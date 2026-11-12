@@ -93,3 +93,13 @@ export async function graphql(
     ? { ok: true, value: parsed.value.data }
     : refuse("failed", "refused", `gh answered without data: ${answer.stdout.slice(0, 200)}`);
 }
+
+/** A gh command that is not GraphQL: what it printed, or GitHub's refusal in gh's words. */
+export async function gh(
+  run: Run,
+  args: readonly string[],
+  stdin?: string,
+): Promise<Result<string>> {
+  const answer = await run(args, stdin);
+  return answer.exit === 0 ? { ok: true, value: answer.stdout.trim() } : ghFailure(answer);
+}
