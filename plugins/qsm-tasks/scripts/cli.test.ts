@@ -35,6 +35,8 @@ interface FakeGh {
   readonly search?: string;
   /** what it answers the read of one issue */
   readonly issue?: string;
+  /** what it answers doctor's one read of the repository and the board */
+  readonly health?: string;
   /** what it answers the read of a move's card */
   readonly card?: string;
   /** refuse the first `gh issue edit`, as GitHub refuses a write */
@@ -57,6 +59,7 @@ const ANSWERS = [
   ["card", "*viewer\\{login\\}*"],
   ["added", "*addProjectV2ItemById*"],
   ["issue", "*comments\\(first*"],
+  ["health", "*issueTypes*"],
   ["list", "*issue\\ list*"],
 ] as const;
 
@@ -318,6 +321,13 @@ describe("qsm-tasks files the work", () => {
     expect(r.calls).toHaveLength(2);
   });
 
+  it("add --priority on a board with no such option is not-found and files nothing", () => {
+    // the field read gets the resolution's answer, which holds no Priority field
+    const r = run({ stdout: linked([BOARD]) }, ["add", "Write", "--priority", "P1"]);
+    expect(r.data).toMatchObject({ reason: "not-found" });
+    expect(r.calls.some((c) => c.startsWith("issue create"))).toBe(false);
+  });
+
   it.each([
     [["feature", "Export", "--intent", "x.md", "--spec", "x".repeat(60)]],
     [["add", "Write", "--priority", "P5"]],
@@ -459,5 +469,85 @@ describe("qsm-tasks feedback", () => {
     expect(r.calls.at(-1)).toBe(
       "issue create --repo qsmark-labs/qsm-marketplace --title ready skips a task --body-file - --label area:qsm-tasks --label feedback --label kind:tool-broken --label from:subagent",
     );
+  });
+});
+
+describe("qsm-tasks doctor", () => {
+  const url = "https://github.com/orgs/qsmark-labs/projects/1";
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human", "Human Review"];
+  const allStatuses = [...statuses, "Ready For Test", "In Test", "Blocked", "Done"];
+  const labels = [
+    "deferred",
+    "feedback",
+    "kind:tool-broken",
+    "kind:tool-missing",
+    "kind:wrong-output",
+  ];
+  const allLabels = [
+    ...labels,
+    "kind:guidance",
+    "kind:agent-mistake",
+    "from:user",
+    "from:main-agent",
+    "from:subagent",
+  ];
+  const workflows = [
+    "Auto-add to project",
+    "Auto-add sub-issues to project",
+    "Item added to project",
+    "Item closed",
+    "Pull request linked to issue",
+  ];
+
+  /** doctor's read as GitHub answers it, in the shape a recorded answer has. */
+  function healthOf(
+    fields: { name: string; options: string[] }[],
+    more: { template?: boolean } = {},
+  ): string {
+    const nodes = (list: readonly string[]) => ({ nodes: list.map((name) => ({ name })) });
+    const repo = {
+      issueTypes: nodes(["Task", "Bug", "Feature"]),
+      labels: { pageInfo: { hasNextPage: false }, ...nodes(allLabels) },
+      template: more.template === false ? null : { byteSize: 925 },
+    };
+    const board = {
+      url,
+      fields: {
+        nodes: fields.map((f) => ({
+          id: `PVTSSF_${f.name}`,
+          name: f.name,
+          options: f.options.map((name) => ({ id: name, name, color: "GRAY", description: "" })),
+        })),
+      },
+      workflows: { nodes: workflows.map((name) => ({ name, enabled: true })) },
+      views: nodes(["Tasks", "Features"]),
+    };
+    return JSON.stringify({ data: { repo, board } });
+  }
+
+  it("is partial when only what the API cannot read is left", () => {
+    const fields = [
+      { name: "Status", options: allStatuses },
+      { name: "Priority", options: ["P0", "P1", "P2"] },
+    ];
+    const r = run({ stdout: linked([BOARD]), health: healthOf(fields) }, ["doctor"]);
+    expect(r.exit).toBe(0);
+    expect(r.message).toContain("manual  workflow Item closed: check it sets Done");
+    expect(r.message).not.toContain("failed");
+  });
+
+  it("fails a leftover by the web page, never setup, and a missing template", () => {
+    const fields = [
+      { name: "Status", options: [...allStatuses, "In Progress"] },
+      { name: "Priority", options: ["P0", "P1", "P2"] },
+      { name: "Epic stage", options: [] },
+    ];
+    const r = run({ stdout: linked([BOARD]), health: healthOf(fields, { template: false }) }, [
+      "doctor",
+    ]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain(`failed  field Status: remove In Progress in ${url}/settings`);
+    expect(r.message).toContain(`failed  field Epic stage: delete it in ${url}/settings`);
+    expect(r.message).toContain("failed  feedback template");
   });
 });

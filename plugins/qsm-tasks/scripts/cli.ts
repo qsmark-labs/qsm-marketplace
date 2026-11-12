@@ -13,6 +13,7 @@ import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
 import { add, checkCreate, feature } from "./create.ts";
+import { doctor } from "./doctor.ts";
 import { checkEdit, close, edit } from "./edits.ts";
 import { feedback } from "./feedback.ts";
 import { claim, plan, qa, reopen, review, unclaim } from "./moves.ts";
@@ -78,7 +79,7 @@ if (import.meta.main) {
       plan: onBoard(plan),
       qa: onBoard(qa),
       feedback,
-      doctor: onBoard(notBuilt(45)),
+      doctor: onBoard(doctor),
       setup: onBoard(notBuilt(45)),
     }),
   );

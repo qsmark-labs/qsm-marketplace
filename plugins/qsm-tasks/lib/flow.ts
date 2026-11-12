@@ -97,6 +97,9 @@ const PRIORITIES = [
   { name: "P2", means: "Worth doing, no date" },
 ] as const;
 
+/** The Priority options the board's Priority field must hold, P0 first. */
+export const PRIORITY_NAMES: readonly string[] = PRIORITIES.map((p) => p.name);
+
 /** A --priority value the table names, or a wrong call listing the names. */
 export function priorityOf(value: string): string {
   const names = PRIORITIES.map((p) => p.name);
