@@ -4,7 +4,7 @@
 import { type Call, optionalString } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
 import { DEFERRED, moveOf } from "../lib/flow.ts";
-import { type Card, comment, edit, reopen as reopenIssue, setStatus } from "../lib/github/board.ts";
+import { type Card, comment, edit, reopen as reopenIssue, setField } from "../lib/github/board.ts";
 import { type At, onIssue, type Write } from "./on-issue.ts";
 
 /** A move: card read, guard checked, then `around`'s writes before and after the Status, up to the
@@ -21,7 +21,9 @@ function moving(
     const { to } = move.value;
     const { before = [], after = [] } = around(call, on, at);
     const status: Write[] =
-      at.status === to && at.cardId !== null ? [] : [() => setStatus(on.run, on.target, at, to)];
+      at.status === to && at.cardId !== null
+        ? []
+        : [() => setField(on.run, on.target, at, "Status", to)];
     const said = `#${at.number} ${at.status ?? "no Status"} -> ${to}`;
     return { ok: true, value: { steps: [...before, ...status, ...after], said } };
   });

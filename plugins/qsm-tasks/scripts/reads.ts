@@ -16,7 +16,7 @@ import { comment } from "../lib/github/board.ts";
 import { issue, type Item, search } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
 
-interface At {
+export interface At {
   readonly run: Run;
   readonly target: Target;
 }

@@ -4,14 +4,11 @@ import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
 import type { Facts } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
-import { FAMILY, ITEM, type Item, readCard, readFamily, text } from "./items.ts";
+import { FAMILY, ITEM, type Item, nodes, readCard, readFamily, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 /** A single-select field of the board: its id and its options' ids by name. */
-interface Field {
-  readonly id: string;
-  readonly options: ReadonlyMap<string, string>;
-}
+type Field = Readonly<{ id: string; options: ReadonlyMap<string, string> }>;
 
 /** An issue as a move sees it: the item, what its guard reads, and the ids its writes need. */
 export interface Card extends Item, Facts {
@@ -31,19 +28,27 @@ const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updatePro
 
 /** The single-select field of this name on the board, or null when it has none. */
 function fieldOf(board: unknown, wanted: string): Field | null {
-  const fields =
-    isRecord(board) && isRecord(board.fields) && Array.isArray(board.fields.nodes)
-      ? board.fields.nodes
-      : [];
+  const fields = nodes(isRecord(board) ? board.fields : undefined);
   const field: unknown = fields.find((f) => text(f, "name") === wanted);
   const id = text(field, "id");
-  const options = isRecord(field) && Array.isArray(field.options) ? field.options : [];
-  const named = options.flatMap((o) => {
-    const name = text(o, "name");
-    const option = text(o, "id");
+  const named = nodes({ nodes: isRecord(field) ? field.options : undefined }).flatMap((o) => {
+    const [name, option] = [text(o, "name"), text(o, "id")];
     return name === null || option === null ? [] : [[name, option] as const];
   });
   return id === null ? null : { id, options: new Map(named) };
+}
+
+const FIELDS = `query($board:ID!){board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}}}`;
+
+/** Whether the board's Priority has the option, read before anything is written. */
+export async function hasPriority(run: Run, target: Target, value: string): Promise<Result<null>> {
+  const answer = await graphql(run, FIELDS, variables({ board: target.board.id }));
+  if (!answer.ok) {
+    return answer;
+  }
+  return fieldOf(answer.value.board, "Priority")?.options.has(value) === true
+    ? { ok: true, value: null }
+    : refuse("failed", "not-found", `the board's Priority has no option ${value}`);
 }
 
 export async function card(run: Run, target: Target, number: number): Promise<Result<Card>> {
@@ -110,15 +115,6 @@ export async function setField(
   return set.ok ? { ok: true, value: null } : set;
 }
 
-export function setStatus(
-  run: Run,
-  target: Target,
-  at: Card,
-  status: string,
-): Promise<Result<null>> {
-  return setField(run, target, at, "Status", status);
-}
-
 /** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. The
  * labels in `make` it creates when missing and puts on; one in `flags` must exist, or gh fails. */
 export async function file(
@@ -128,7 +124,7 @@ export async function file(
     kind: "task" | "feature";
     title: string;
     body: string;
-    flags: readonly string[];
+    flags?: readonly string[];
     make?: readonly string[];
   },
 ): Promise<Result<number>> {
@@ -139,7 +135,11 @@ export async function file(
   const type = issue.kind === "task" ? "Task" : "Feature";
   const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
   const put = (issue.make ?? []).flatMap((name) => ["--label", name]);
-  const made = await gh(run, [...args, "--body-file", "-", ...put, ...issue.flags], issue.body);
+  const made = await gh(
+    run,
+    [...args, "--body-file", "-", ...put, ...(issue.flags ?? [])],
+    issue.body,
+  );
   if (!made.ok) {
     return made;
   }

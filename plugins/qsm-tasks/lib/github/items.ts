@@ -68,7 +68,7 @@ function qualifiers(repo: string, filter: Filter): string {
     .join(" ");
 }
 
-function nodes(connection: unknown): unknown[] {
+export function nodes(connection: unknown): unknown[] {
   return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
 }
 
