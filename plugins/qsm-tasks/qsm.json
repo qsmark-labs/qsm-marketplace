@@ -57,7 +57,31 @@
         ]
       },
       "qsm-tasks show": {
-        "description": "Print one issue: its facts, blockers, sub-issue counts, body and comments"
+        "description": "Print one issue: its facts, blockers, sub-issue counts, body and comments",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the issue"
+          },
+          {
+            "name": "comments",
+            "type": "boolean",
+            "description": "its comments too, oldest first"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks feature": {
         "description": "File a Feature at Todo from an intent file"
@@ -72,7 +96,33 @@
         "description": "Change an issue's title, priority, body, assignee, feature, order or change"
       },
       "qsm-tasks note": {
-        "description": "Post one comment on an issue, the text unchanged"
+        "description": "Post one comment on an issue, the text unchanged",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the issue"
+          },
+          {
+            "name": "text",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the comment"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks claim": {
         "description": "Take a Todo task or bug: In Dev, assigned to the caller, on the board"

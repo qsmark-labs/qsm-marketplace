@@ -42,13 +42,16 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
   // builtins only: the PATH holds the fake and the runtime, no cat
   const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
   const search = gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `;
-  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}*) ${answer} ;; esac`;
+  const stdin = join(dir, "stdin");
+  const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
+  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}${comment}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
   const r = runBin(CLI, [...argv, "--json"], { env });
   const out = envelopeOf(r.stdout);
   const recorded = existsSync(calls) ? readFileSync(calls, "utf8").trim().split("\n") : [];
-  return { exit: r.exit, data: out.data, message: out.message, calls: recorded };
+  const posted = existsSync(stdin) ? readFileSync(stdin, "utf8") : null;
+  return { exit: r.exit, data: out.data, message: out.message, calls: recorded, posted };
 }
 
 describe("qsm-tasks resolves the board", () => {
@@ -130,5 +133,15 @@ describe("qsm-tasks reads the board", () => {
     expect(r.calls[1]).toEndWith(
       'q=repo:qsmark-labs/qsm-marketplace is:issue label:"change:add-x"',
     );
+  });
+});
+
+describe("qsm-tasks note", () => {
+  it("posts the text on stdin, unchanged, and nothing as an argument", () => {
+    const text = 'waiting for the "API" key\nand a second line';
+    const r = run({ stdout: linked([BOARD]) }, ["note", "5", text]);
+    expect(r.exit).toBe(0);
+    expect(r.posted).toBe(`${text}\n`);
+    expect(r.calls[1]).toBe("issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -");
   });
 });

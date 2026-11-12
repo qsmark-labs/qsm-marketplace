@@ -1,7 +1,7 @@
 // Issues as the verbs see them: plain items with their kind, Status and Priority on the board, read
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
-import { type Result, wrongCall } from "../failure.ts";
+import { refuse, type Result, wrongCall } from "../failure.ts";
 import type { Kind } from "../flow.ts";
 import { graphql, type Run } from "./gh.ts";
 import type { Target } from "./target.ts";
@@ -20,10 +20,25 @@ export interface Item {
   readonly blockers: readonly number[];
 }
 
+interface Comment {
+  readonly author: string;
+  readonly at: string;
+  readonly body: string;
+}
+
+/** An item and what `show` adds to it. */
+export interface Issue extends Item {
+  readonly body: string;
+  readonly parent: number | null;
+  readonly subIssues: { readonly total: number; readonly closed: number };
+  readonly comments: readonly Comment[];
+}
+
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
 const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:30){nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
+const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
 
 /** What a read asks for; an absent field does not narrow it. */
 export interface Filter {
@@ -113,4 +128,67 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
     return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
   }
   return { ok: true, value: nodes(found).flatMap((node) => readItem(node, target.board.id) ?? []) };
+}
+
+function readComment(node: unknown): Comment {
+  // GitHub answers a deleted account with no author; its own pages call it ghost
+  const author = isRecord(node) ? text(node.author, "login") : null;
+  return {
+    author: author ?? "ghost",
+    at: text(node, "createdAt") ?? "",
+    body: text(node, "body") ?? "",
+  };
+}
+
+/** One issue with its body, parent, sub-issue counts and, when asked, its comments oldest first. */
+export async function issue(
+  run: Run,
+  target: Target,
+  number: number,
+  comments: boolean,
+): Promise<Result<Issue>> {
+  const fields = [
+    "-f",
+    `repo=${target.repoId}`,
+    "-F",
+    `number=${number}`,
+    "-F",
+    `comments=${comments}`,
+  ];
+  const answer = await graphql(run, ISSUE, fields);
+  if (!answer.ok) {
+    return answer;
+  }
+  const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
+  const item = readItem(node, target.board.id);
+  const body = text(node, "body");
+  if (!isRecord(node) || item === null || body === null) {
+    return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
+  }
+  const summary = node.subIssuesSummary;
+  const subIssues = {
+    total: count(summary, "total") ?? 0,
+    closed: count(summary, "completed") ?? 0,
+  };
+  const parent = count(node.parent, "number");
+  return {
+    ok: true,
+    value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },
+  };
+}
+
+/** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
+export async function comment(
+  run: Run,
+  target: Target,
+  number: number,
+  body: string,
+): Promise<Result<string>> {
+  const args = ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"];
+  const answer = await run(args, body);
+  const said = answer.stderr.trim();
+  if (answer.exit !== 0) {
+    return refuse("failed", "refused", said === "" ? `gh exited ${answer.exit}` : said);
+  }
+  return { ok: true, value: answer.stdout.trim() };
 }
