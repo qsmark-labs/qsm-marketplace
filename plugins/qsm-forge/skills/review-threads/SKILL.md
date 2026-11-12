@@ -37,7 +37,8 @@ Two roles, because a finding is closed by a reader or by a test, never by the cl
 - As the implementer, push the fix first, to the thread's own branch or to a stacked pull request
   above it, because a reply that names a commit the forge does not have points the reviewer at
   nothing. Then `reply <number> <comment-id> --message "<text>"` to every comment, on both forges.
-  Say where the fix landed ("Fixed in abc1234, PR #119") or why not; "done" proves nothing.
+  Say where the fix landed (`Fixed in abc1234, in pull request #<number>`) or why not; "done"
+  proves nothing.
 - Resolve your own thread only when a test that fails without the fix proves it, and name the
   test in the message (`resolve <number> <comment-id> --message "Fixed in abc1234. Test: ..."`).
   Without such a test, reply and leave the thread open for the reviewer.
