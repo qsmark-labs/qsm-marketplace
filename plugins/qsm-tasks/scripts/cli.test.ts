@@ -498,7 +498,11 @@ describe("qsm-tasks doctor", () => {
     const board = {
       url,
       fields: {
-        nodes: fields.map((f) => ({ name: f.name, options: f.options.map((name) => ({ name })) })),
+        nodes: fields.map((f) => ({
+          id: `PVTSSF_${f.name}`,
+          name: f.name,
+          options: f.options.map((name) => ({ id: name, name, color: "GRAY", description: "" })),
+        })),
       },
       workflows: { nodes: workflows.map((name) => ({ name, enabled: true })) },
       views: nodes(["Tasks", "Features"]),
