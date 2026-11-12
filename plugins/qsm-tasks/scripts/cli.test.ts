@@ -1,5 +1,5 @@
-// The board resolution as a verb meets it, with a recording fake gh: the cases the live repository
-// cannot show, because it has exactly one linked board. Answers are recorded from the real gh.
+// qsm-tasks as a shell meets it, through the real entry. Where a live repository cannot show a
+// case, a recording fake gh answers what the real gh answered.
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,6 +8,16 @@ import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 const CLI = join(import.meta.dir, "cli.ts");
+
+describe("qsm-tasks without gh", () => {
+  it("exits missing no-gh on a verb on the board", () => {
+    const env = isolatedEnv(sandboxDir("qsm-tasks-"), { PATH: bareRuntimePath() });
+    const r = runBin(CLI, ["ready", "--json"], { env });
+    expect(r.exit).toBe(4);
+    expect(envelopeOf(r.stdout).data).toMatchObject({ reason: "no-gh" });
+  });
+});
+
 const BOARD = { id: "PVT_kwDOFMPqAc4Bo0vN", number: 1, owner: { login: "qsmark-labs" } };
 
 function linked(nodes: readonly unknown[]): string {
