@@ -5,8 +5,14 @@ import { execFile } from "node:child_process";
 import type { Guard } from "./shape.ts";
 
 /** Runs `command` with `args`, resolves with its stdout, rejects with an
- * Error carrying what the command said. */
-export type Run = (command: string, args: readonly string[], stdin?: string) => Promise<string>;
+ * Error carrying what the command said. `env` is added to this process's
+ * environment for that one child only. */
+export type Run = (
+  command: string,
+  args: readonly string[],
+  stdin?: string,
+  env?: Readonly<Record<string, string>>,
+) => Promise<string>;
 
 /**
  * A review payload with inline comments is the largest thing that crosses this boundary; a pull
@@ -18,12 +24,15 @@ function firstNonEmpty(candidates: readonly string[]): string {
   return candidates.map((c) => c.trim()).find((c) => c.length > 0) ?? "";
 }
 
-export const runCommand: Run = (command, args, stdin) =>
+export const runCommand: Run = (command, args, stdin, env) =>
   new Promise<string>((resolve, reject) => {
     const child = execFile(
       command,
       [...args],
-      { maxBuffer: MAX_OUTPUT_BYTES },
+      {
+        maxBuffer: MAX_OUTPUT_BYTES,
+        env: env === undefined ? process.env : { ...process.env, ...env },
+      },
       (error, stdout, stderr) => {
         if (error === null) {
           resolve(stdout);

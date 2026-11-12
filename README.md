@@ -57,6 +57,7 @@ flowchart LR
   qsm_openspec["qsm-openspec"]
   qsm_plan["qsm-plan"]
   qsm_review["qsm-review"]
+  qsm_secrets["qsm-secrets"]
   qsm_setup["qsm-setup"]
   qsm_tasks["qsm-tasks"]
   qsm_langdev --> qsm_langdev_dotnet_group
@@ -64,6 +65,7 @@ flowchart LR
   qsm_tasks --> qsm_memory
   qsm_openspec --> qsm_builder
   qsm_tasks --> qsm_builder
+  qsm_secrets --> qsm_forge
   qsm_essentials --> qsm_knowledge
   qsm_essentials --> qsm_openspec
   qsm_tasks --> qsm_openspec
@@ -74,8 +76,8 @@ flowchart LR
 ```
 
 These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm-ccr`,
-`qsm-book-to-skill`, `qsm-index`, `qsm-opencode`, `qsm-secrets`, `qsm-statusline`, `qsm-usage`,
-`qsm-toolbox`, `qsm-uix`, `qsm-web`, `qsm-worktrunk`, `qsm-bpmn`, `qsm-c4`, `qsm-docs`.
+`qsm-book-to-skill`, `qsm-index`, `qsm-opencode`, `qsm-statusline`, `qsm-usage`, `qsm-toolbox`,
+`qsm-uix`, `qsm-web`, `qsm-worktrunk`, `qsm-bpmn`, `qsm-c4`, `qsm-docs`.
 
 ## Catalog
 

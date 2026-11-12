@@ -4,6 +4,7 @@
 qsm-forge gh status 12
 qsm-forge gl reply 7 42 --message "Fixed in abc1234"
 qsm-forge gh submit-review 12 --file review.json
+qsm-forge gh pr-open --head my-branch --base main --title "Fix x" --body-file body.md
 ```
 
 `qsm-forge gh --help` and `qsm-forge gl --help` list verbs and flags. `--json` prints one envelope
@@ -14,6 +15,10 @@ on stdout.
 and `originalCommit` (the commit it sits on now and the one it was written on), and `commentLine`,
 `originalLine`, `startLine`, `originalStartLine`. A value GitHub does not have is `null`. The text
 columns do not change.
+
+`gh pr-open` opens the pull request as the GitHub App: set `QSM_FORGE_APP_ID` and
+`QSM_FORGE_APP_KEY` (the vault key holding the base64 PEM). A token is minted per call and never
+printed; the person's own gh login becomes assignee and reviewer. `--json` carries `url` and `repo`.
 
 Review payload (`--file`, or stdin):
 

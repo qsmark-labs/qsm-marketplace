@@ -197,6 +197,40 @@
           }
         ]
       },
+      "qsm-forge gh pr-open": {
+        "description": "Open a pull request as the qsmark-bot GitHub App (token minted from the vault key on each call), assigned to and requesting review from the person running it",
+        "args": [
+          {
+            "name": "head",
+            "type": "string",
+            "description": "branch with the changes",
+            "required": true
+          },
+          {
+            "name": "base",
+            "type": "string",
+            "description": "branch to merge into",
+            "required": true
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "description": "pull request title",
+            "required": true
+          },
+          {
+            "name": "bodyFile",
+            "type": "string",
+            "description": "path of the description file",
+            "required": true
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name (default: the origin remote)"
+          }
+        ]
+      },
       "qsm-forge gl status": {
         "description": "Print a merge request's state, merge readiness, pipeline result, and unresolved-thread count",
         "args": [
