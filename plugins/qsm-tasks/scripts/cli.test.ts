@@ -33,6 +33,8 @@ interface FakeGh {
   readonly exit?: number;
   /** what it answers a search */
   readonly search?: string;
+  /** what it answers the read of one issue */
+  readonly issue?: string;
   /** what it answers the read of a move's card */
   readonly card?: string;
   /** refuse the first `gh issue edit`, as GitHub refuses a write */
@@ -56,6 +58,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
     gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
     gh.card === undefined ? "" : `*viewer\\{login\\}*) printf '%s' '${gh.card}' ;; `,
     gh.added === undefined ? "" : `*addProjectV2ItemById*) printf '%s' '${gh.added}' ;; `,
+    gh.issue === undefined ? "" : `*comments\\(first*) printf '%s' '${gh.issue}' ;; `,
   ].join("");
   const stdin = join(dir, "stdin");
   const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
@@ -260,5 +263,17 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
       "api graphql",
     ]);
     expect(r.calls[3]).toContain("addProjectV2ItemById");
+  });
+});
+
+describe("qsm-tasks show", () => {
+  it("refuses an issue whose blockers GitHub cut, as ready and list do", () => {
+    const cutBlockers = { pageInfo: { hasNextPage: true }, nodes: [] };
+    const family = { parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    const node = { ...task(5, null), blockedBy: cutBlockers, body: "", ...family };
+    const issue = JSON.stringify({ data: { node: { issue: node } } });
+    const r = run({ stdout: linked([BOARD]), issue }, ["show", "5"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("over 100 blockers");
   });
 });
