@@ -310,6 +310,14 @@ describe("qsm-tasks human hands a task over", () => {
     expect(r.calls.some((c) => c.includes("mutation"))).toBe(false);
   });
 
+  it("with reviews GitHub cut is refused, as a change request past the page goes unseen", () => {
+    const cutReviews = { pageInfo: { hasNextPage: true }, ...review("COMMENTED", "c2") };
+    const r = run5({ latestReviews: cutReviews });
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("more reviews than GitHub answered");
+    expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(false);
+  });
+
   it("on a task under no feature is blocked before the PR is read", () => {
     const gh = { stdout: linked([BOARD]), card: cardOf("Agent Review", []) };
     const r = run(gh, ["human", "5", "--pr", "9"]);
