@@ -1,9 +1,9 @@
-// Issues as the verbs see them: plain items with their kind, Status and Priority on the board, read
+// Issues as the verbs read them: plain items with their kind, Status and Priority on the board, read
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
 import type { Kind } from "../flow.ts";
-import { gh, graphql, type Run } from "./gh.ts";
+import { graphql, type Run, variables } from "./gh.ts";
 import type { Target } from "./target.ts";
 
 export interface Item {
@@ -37,8 +37,10 @@ export interface Issue extends Item {
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
 export const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:30){nodes{number state}} projectItems(first:10){nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+/** Where an issue sits in the tree: its parent and its sub-issues. */
+export const FAMILY = "parent{number state} subIssuesSummary{total completed}";
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
-const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
+const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body ${FAMILY} comments(first:${PAGE})@include(if:$comments){nodes{author{login} createdAt body}}}}}}`;
 
 /** What a read asks for; an absent field does not narrow it. */
 export interface Filter {
@@ -47,7 +49,7 @@ export interface Filter {
   /** the sub-issues of this feature */
   readonly feature?: number | undefined;
   readonly label?: string | undefined;
-  readonly without?: string;
+  readonly without?: string | undefined;
 }
 
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */
@@ -66,7 +68,7 @@ function qualifiers(repo: string, filter: Filter): string {
     .join(" ");
 }
 
-export function nodes(connection: unknown): unknown[] {
+function nodes(connection: unknown): unknown[] {
   return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
 }
 
@@ -90,7 +92,11 @@ function kindOf(type: string | null, labels: readonly string[]): Kind | null {
   return labels.includes("feedback") ? "feedback" : null;
 }
 
-export function readItem(node: unknown, board: string): Item | null {
+/** An issue as a read sees it, and the id of its card on the board, which only a write needs. */
+export function readCard(
+  node: unknown,
+  board: string,
+): { item: Item; cardId: string | null } | null {
   const number = count(node, "number");
   const title = text(node, "title");
   if (!isRecord(node) || number === null || title === null) {
@@ -101,7 +107,7 @@ export function readItem(node: unknown, board: string): Item | null {
     (p) => isRecord(p) && text(p.project, "id") === board,
   );
   const card = isRecord(onBoard) ? onBoard : {};
-  return {
+  const item = {
     number,
     title,
     open: node.state === "OPEN",
@@ -113,6 +119,22 @@ export function readItem(node: unknown, board: string): Item | null {
     blockers: nodes(node.blockedBy).flatMap((b) =>
       text(b, "state") === "OPEN" ? (count(b, "number") ?? []) : [],
     ),
+  };
+  return { item, cardId: text(card, "id") };
+}
+
+/** The parent and sub-issue counts `FAMILY` reads; no parent is null. */
+export function readFamily(node: unknown): {
+  parent: number | null;
+  parentOpen: boolean | null;
+  subIssues: { total: number; closed: number };
+} {
+  const parent = isRecord(node) ? node.parent : undefined;
+  const summary = isRecord(node) ? node.subIssuesSummary : undefined;
+  return {
+    parent: count(parent, "number"),
+    parentOpen: isRecord(parent) ? parent.state === "OPEN" : null,
+    subIssues: { total: count(summary, "total") ?? 0, closed: count(summary, "completed") ?? 0 },
   };
 }
 
@@ -127,7 +149,10 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   if (isRecord(found) && isRecord(found.pageInfo) && found.pageInfo.hasNextPage === true) {
     return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
   }
-  return { ok: true, value: nodes(found).flatMap((node) => readItem(node, target.board.id) ?? []) };
+  return {
+    ok: true,
+    value: nodes(found).flatMap((node) => readCard(node, target.board.id)?.item ?? []),
+  };
 }
 
 function readComment(node: unknown): Comment {
@@ -147,46 +172,19 @@ export async function issue(
   number: number,
   comments: boolean,
 ): Promise<Result<Issue>> {
-  const fields = [
-    "-f",
-    `repo=${target.repoId}`,
-    "-F",
-    `number=${number}`,
-    "-F",
-    `comments=${comments}`,
-  ];
-  const answer = await graphql(run, ISSUE, fields);
+  const answer = await graphql(run, ISSUE, variables({ repo: target.repoId, number, comments }));
   if (!answer.ok) {
     return answer;
   }
   const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
-  const item = readItem(node, target.board.id);
+  const item = readCard(node, target.board.id)?.item;
   const body = text(node, "body");
-  if (!isRecord(node) || item === null || body === null) {
+  if (!isRecord(node) || item === undefined || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
   }
-  const summary = node.subIssuesSummary;
-  const subIssues = {
-    total: count(summary, "total") ?? 0,
-    closed: count(summary, "completed") ?? 0,
-  };
-  const parent = count(node.parent, "number");
+  const { parent, subIssues } = readFamily(node);
   return {
     ok: true,
     value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },
   };
-}
-
-/** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
-export function comment(
-  run: Run,
-  target: Target,
-  number: number,
-  body: string,
-): Promise<Result<string>> {
-  return gh(
-    run,
-    ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"],
-    body,
-  );
 }

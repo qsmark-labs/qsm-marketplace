@@ -41,7 +41,7 @@ interface Status {
 
 const STATUSES: readonly Status[] = [
   {
-    name: "Todo",
+    name: STATUS.todo,
     means: {
       task: "Not started",
       feature: "Being planned: intent, models, specs",
@@ -49,36 +49,36 @@ const STATUSES: readonly Status[] = [
     },
   },
   {
-    name: "In Dev",
+    name: STATUS.inDev,
     means: { task: "Claimed and being built", feature: "Split into tasks, built on feature/<n>" },
   },
   {
-    name: "Agent Review",
+    name: STATUS.agentReview,
     means: {
       task: "PR open: CI, the gates and the review agent run; each finding is fixed at once, with a reply in its thread and a new review asked",
     },
   },
   {
-    name: "Ready For Human",
+    name: STATUS.readyForHuman,
     means: { task: "The review agent approved and CI is green: waits for the owner" },
   },
   {
-    name: "Human Review",
+    name: STATUS.humanReview,
     means: {
       task: "The owner reviews and the agent fixes his comments; the review agent is not asked",
     },
   },
   {
-    name: "Ready For Test",
+    name: STATUS.readyForTest,
     means: { feature: "Every task closed and feature/<n> up to date with main: waits for QA" },
   },
   {
-    name: "In Test",
+    name: STATUS.inTest,
     means: { feature: "The QA agent runs the scenarios of the cover in a sandbox" },
   },
-  { name: "Blocked", means: { feature: "QA found something: a fix task is open" } },
+  { name: STATUS.blocked, means: { feature: "QA found something: a fix task is open" } },
   {
-    name: "Done",
+    name: STATUS.done,
     means: {
       task: "Merged into feature/<n> by the owner with Closes #N",
       feature: "The owner merged the feature pull request into main",
@@ -99,72 +99,109 @@ export function priorityRank(name: string | null): number {
   return at === -1 ? PRIORITIES.length : at;
 }
 
-/** A move one verb makes: the kinds it takes, the Statuses it starts from, what else must hold. */
+/** What a guard reads of an issue besides its kind and Status. */
+export interface Facts {
+  readonly number: number;
+  readonly labels: readonly string[];
+  readonly assignees: readonly string[];
+  /** the login running the verb */
+  readonly caller: string;
+  /** null when it has no parent */
+  readonly parentOpen: boolean | null;
+  readonly openSubIssues: number;
+}
+
+/** A move one verb makes: the kinds it takes, the Statuses it starts from, and what else must hold,
+ * `when` in words for the table and `holds` as the check that refuses it. */
 interface Move {
   readonly verb: string;
   readonly kinds: readonly Kind[];
   readonly from: readonly StatusName[];
   readonly to: StatusName;
   readonly when?: string;
+  readonly holds?: (at: Facts) => Result<null>;
 }
 
-const REVIEW: readonly StatusName[] = ["Agent Review", "Ready For Human", "Human Review"];
+const HOLDS: Result<null> = { ok: true, value: null };
+const S = STATUS;
+const REVIEW: readonly StatusName[] = [S.agentReview, S.readyForHuman, S.humanReview];
 
 const MOVES: readonly Move[] = [
   {
     verb: "claim",
     kinds: ["task"],
-    from: ["Todo"],
-    to: "In Dev",
+    from: [S.todo],
+    to: S.inDev,
     when: "unassigned or the caller's",
+    holds: (at) => {
+      const others = at.assignees.filter((login) => login !== at.caller);
+      return others.length === 0
+        ? HOLDS
+        : refuse("blocked", "held", `#${at.number} is held by ${others.join(", ")}`);
+    },
   },
-  { verb: "unclaim", kinds: ["task"], from: ["In Dev", ...REVIEW], to: "Todo" },
+  { verb: "unclaim", kinds: ["task"], from: [S.inDev, ...REVIEW], to: S.todo },
   {
     verb: "unclaim",
     kinds: ["task"],
-    from: ["Todo"],
-    to: "Todo",
-    when: "labelled deferred",
+    from: [S.todo],
+    to: S.todo,
+    when: `labelled ${DEFERRED}`,
+    holds: (at) =>
+      at.labels.includes(DEFERRED)
+        ? HOLDS
+        : refuse("blocked", "wrong-status", `#${at.number} is at Todo and not ${DEFERRED}`),
   },
   {
     verb: "review",
     kinds: ["task"],
-    from: ["In Dev", "Agent Review", "Human Review"],
-    to: "Agent Review",
+    from: [S.inDev, S.agentReview, S.humanReview],
+    to: S.agentReview,
   },
   {
     verb: "human",
     kinds: ["task"],
-    from: ["Agent Review"],
-    to: "Ready For Human",
+    from: [S.agentReview],
+    to: S.readyForHuman,
     when: "the PR approved and its checks green",
   },
-  {
-    verb: "human --started",
-    kinds: ["task"],
-    from: ["Ready For Human"],
-    to: "Human Review",
-  },
+  { verb: "human --started", kinds: ["task"], from: [S.readyForHuman], to: S.humanReview },
   {
     verb: "reopen",
     kinds: ["task", "feedback"],
-    from: ["Done"],
-    to: "Todo",
+    from: [S.done],
+    to: S.todo,
     when: "its parent open",
+    holds: (at) =>
+      at.parentOpen === false
+        ? refuse("blocked", "wrong-status", `#${at.number}'s parent is closed`)
+        : HOLDS,
   },
-  { verb: "plan", kinds: ["feature"], from: ["In Dev", "Ready For Test", "Blocked"], to: "Todo" },
+  { verb: "plan", kinds: ["feature"], from: [S.inDev, S.readyForTest, S.blocked], to: S.todo },
   {
     verb: "qa",
     kinds: ["feature"],
-    from: ["Ready For Test"],
-    to: "In Test",
+    from: [S.readyForTest],
+    to: S.inTest,
     when: "no open sub-issue",
+    holds: (at) =>
+      at.openSubIssues === 0
+        ? HOLDS
+        : refuse(
+            "blocked",
+            "wrong-status",
+            `#${at.number} has ${at.openSubIssues} open sub-issues`,
+          ),
   },
 ];
 
-/** The move `verb` makes on an issue of `kind` at `status`, or why it may not: the kind is not
- * one it takes, or the Status is not one it starts from. What `when` adds the verb checks. */
-export function moveOf(verb: string, kind: Kind | null, status: string | null): Result<Move> {
+/** The move `verb` makes on an issue, or why it may not: the kind is not one it takes, the Status
+ * is not one it starts from, or what else must hold does not. */
+export function moveOf(
+  verb: string,
+  at: Facts & { readonly kind: Kind | null; readonly status: string | null },
+): Result<Move> {
+  const { kind, status } = at;
   const moves = MOVES.filter((m) => m.verb === verb);
   if (kind === null || !moves.some((m) => m.kinds.includes(kind))) {
     const takes = [...new Set(moves.flatMap((m) => m.kinds))].map((k) => KIND_LABELS[k]);
@@ -180,7 +217,8 @@ export function moveOf(verb: string, kind: Kind | null, status: string | null): 
       `${verb} needs ${from}; it is at ${status ?? "no Status"}`,
     );
   }
-  return { ok: true, value: row };
+  const holds = row.holds?.(at) ?? HOLDS;
+  return holds.ok ? { ok: true, value: row } : holds;
 }
 
 function rows(table: readonly (readonly string[])[]): string[] {

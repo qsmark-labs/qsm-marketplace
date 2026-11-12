@@ -65,7 +65,7 @@ if (import.meta.main) {
       claim: onBoard(claim),
       unclaim: onBoard(unclaim),
       review: onBoard(review),
-      human: onBoard(notBuilt(43)),
+      human: onBoard(notBuilt(59)),
       reopen: onBoard(reopen),
       plan: onBoard(plan),
       qa: onBoard(qa),

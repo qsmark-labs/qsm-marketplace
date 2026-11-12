@@ -187,11 +187,10 @@ describe("qsm-tasks moves a task", () => {
       "2026-12-01",
     ]);
     expect(r.exit).toBe(0);
-    expect(r.message).toBe("#5 In Dev -> Todo\n#5 deferred until 2026-12-01");
+    expect(r.message).toBe("#5 In Dev -> Todo");
     expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
       "api graphql",
-      "issue edit 5 --repo qsmark-labs/qsm-marketplace --remove-assignee Questi0nM4rk",
-      "issue edit 5 --repo qsmark-labs/qsm-marketplace --add-label deferred",
+      "issue edit 5 --repo qsmark-labs/qsm-marketplace --remove-assignee Questi0nM4rk --add-label deferred",
       "issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -",
     ]);
     expect(r.posted).toBe("Deferred until 2026-12-01\n");
@@ -218,7 +217,7 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     const closed = { state: "CLOSED", parent: { state: "CLOSED" } };
     const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], closed) }, ["reopen", "5"]);
     expect(r.exit).toBe(5);
-    expect(r.message).toContain("open parent");
+    expect(r.message).toContain("parent is closed");
     expect(r.calls).toHaveLength(2);
   });
 });
