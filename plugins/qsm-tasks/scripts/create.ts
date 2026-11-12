@@ -70,6 +70,27 @@ async function prioritize({ run, target }: At, n: number, value: string): Promis
   return at.ok ? setField(run, target, at.value, "Priority", value) : at;
 }
 
+/** The writes after the filing, the order and then the Priority; a refusal ends in an outcome that
+ * names the filed issue and the `edit` that finishes it, and none is null. */
+async function afterFiling(
+  on: At,
+  n: number,
+  after: number | undefined,
+  priority: string | undefined,
+): Promise<Outcome | null> {
+  const ordered =
+    after === undefined
+      ? done
+      : await edit(on.run, on.target, n, ["--add-blocked-by", String(after)]);
+  const set = !ordered.ok || priority === undefined ? ordered : await prioritize(on, n, priority);
+  if (set.ok) {
+    return null;
+  }
+  const flag = ordered.ok ? `--priority ${priority}` : `--after ${after}`;
+  const said = `#${n} is filed, but ${set.outcome.message ?? "a write was refused"}`;
+  return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flag}`).outcome;
+}
+
 /** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and
  * the Priority option are read first, so a refusal files nothing. What follows the filing, the
  * order and the Priority, names the issue and the `edit` that finishes it, never a second filing. */
@@ -96,22 +117,6 @@ export async function add(call: Call, on: At): Promise<Outcome> {
     return filed.outcome;
   }
   const n = filed.value;
-  const steps: [string, () => Promise<Result<null>>][] = [
-    ...(after === undefined
-      ? []
-      : ([
-          [`--after ${after}`, () => edit(run, target, n, ["--add-blocked-by", String(after)])],
-        ] as const)),
-    ...(priority === undefined
-      ? []
-      : ([[`--priority ${priority}`, () => prioritize(on, n, priority)]] as const)),
-  ];
-  for (const [flag, step] of steps) {
-    const set = await step();
-    if (!set.ok) {
-      const said = `#${n} is filed, but ${set.outcome.message ?? "a write was refused"}`;
-      return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flag}`).outcome;
-    }
-  }
-  return ok({ number: n }, `#${n} filed: ${title}`);
+  const unfinished = await afterFiling(on, n, after, priority);
+  return unfinished ?? ok({ number: n }, `#${n} filed: ${title}`);
 }
