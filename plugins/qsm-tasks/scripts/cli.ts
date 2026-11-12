@@ -12,6 +12,7 @@ import { connect, type Run } from "../lib/github/gh.ts";
 import { resolveTarget, type Target } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
+import { claim, unclaim } from "./moves.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
@@ -66,13 +67,13 @@ if (import.meta.main) {
       edit: onBoard(notBuilt(41)),
       close: onBoard(notBuilt(41)),
       flow: flowOutcome,
-      claim: onBoard(notBuilt(43)),
-      unclaim: onBoard(notBuilt(43)),
-      review: onBoard(notBuilt(43)),
-      human: onBoard(notBuilt(43)),
-      reopen: onBoard(notBuilt(43)),
-      plan: onBoard(notBuilt(43)),
-      qa: onBoard(notBuilt(43)),
+      claim: onBoard(claim),
+      unclaim: onBoard(unclaim),
+      review: onBoard(notBuilt(59)),
+      human: onBoard(notBuilt(59)),
+      reopen: onBoard(notBuilt(59)),
+      plan: onBoard(notBuilt(59)),
+      qa: onBoard(notBuilt(59)),
       feedback: notBuilt(44),
       doctor: onBoard(notBuilt(45)),
       setup: onBoard(notBuilt(45)),

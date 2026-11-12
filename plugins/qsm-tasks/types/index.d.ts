@@ -30,8 +30,17 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  claim(): Promise<unknown>;
-  unclaim(): Promise<unknown>;
+  claim(options: {
+    number: number;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
+  unclaim(options: {
+    number: number;
+    until?: string;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   review(): Promise<unknown>;
   human(): Promise<unknown>;
   close(): Promise<unknown>;

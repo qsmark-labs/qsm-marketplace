@@ -2,6 +2,7 @@
 // per kind, and the guard of each move, so a verb checks a move against this table and no other
 // copy of a name exists in the binary.
 import { type Outcome, ok, UsageError } from "../../../lib/outcome.ts";
+import { refuse, type Result } from "./failure.ts";
 
 /** The Status options by what a verb asks for; the rows below name them with the same words. */
 export const STATUS = {
@@ -102,14 +103,27 @@ export function priorityRank(name: string | null): number {
   return at === -1 ? PRIORITIES.length : at;
 }
 
-/** A move one verb makes: the kinds it takes, the Statuses it starts from, what else must hold. */
+/** What a guard reads of an issue besides its kind and Status. */
+export interface Facts {
+  readonly number: number;
+  readonly labels: readonly string[];
+  readonly assignees: readonly string[];
+  /** the login running the verb */
+  readonly caller: string;
+}
+
+/** A move one verb makes: the kinds it takes, the Statuses it starts from, and what else must hold,
+ * `when` in words for the table and `holds` as the check that refuses it. */
 interface Move {
   readonly verb: string;
   readonly kinds: readonly Kind[];
   readonly from: readonly StatusName[];
   readonly to: StatusName;
   readonly when?: string;
+  readonly holds?: (at: Facts) => Result<null>;
 }
+
+const HOLDS: Result<null> = { ok: true, value: null };
 
 const REVIEW: readonly StatusName[] = ["Agent Review", "Ready For Human", "Human Review"];
 
@@ -117,17 +131,26 @@ const MOVES: readonly Move[] = [
   {
     verb: "claim",
     kinds: ["task"],
-    from: ["Todo"],
-    to: "In Dev",
+    from: [STATUS.todo],
+    to: STATUS.inDev,
     when: "unassigned or the caller's",
+    holds: (at) => {
+      const others = at.assignees.filter((login) => login !== at.caller);
+      const held = `#${at.number} is held by ${others.join(", ")}`;
+      return others.length === 0 ? HOLDS : refuse("blocked", "held", held);
+    },
   },
-  { verb: "unclaim", kinds: ["task"], from: ["In Dev", ...REVIEW], to: "Todo" },
+  { verb: "unclaim", kinds: ["task"], from: [STATUS.inDev, ...REVIEW], to: STATUS.todo },
   {
     verb: "unclaim",
     kinds: ["task"],
-    from: ["Todo"],
-    to: "Todo",
-    when: "labelled deferred",
+    from: [STATUS.todo],
+    to: STATUS.todo,
+    when: `labelled ${DEFERRED}`,
+    holds: (at) =>
+      at.labels.includes(DEFERRED)
+        ? HOLDS
+        : refuse("blocked", "wrong-status", `#${at.number} is at Todo and not ${DEFERRED}`),
   },
   {
     verb: "review",
@@ -164,6 +187,32 @@ const MOVES: readonly Move[] = [
     when: "no open sub-issue",
   },
 ];
+
+/** The move `verb` makes on an issue, or why it may not: the kind is not one it takes, the Status
+ * is not one it starts from, or what else must hold does not. */
+export function moveOf(
+  verb: string,
+  at: Facts & { readonly kind: Kind | null; readonly status: string | null },
+): Result<Move> {
+  const { kind, status } = at;
+  const moves = MOVES.filter((m) => m.verb === verb);
+  if (kind === null || !moves.some((m) => m.kinds.includes(kind))) {
+    const takes = [...new Set(moves.flatMap((m) => m.kinds))].map((k) => KIND_LABELS[k]);
+    const is = kind === null ? "an issue of no kind" : KIND_LABELS[kind];
+    return refuse("blocked", "wrong-kind", `${verb} takes ${takes.join(", ")}, not ${is}`);
+  }
+  const row = moves.find((m) => m.kinds.includes(kind) && m.from.some((from) => from === status));
+  if (row === undefined) {
+    const from = [...new Set(moves.flatMap((m) => m.from))].join(", ");
+    return refuse(
+      "blocked",
+      "wrong-status",
+      `${verb} needs ${from}; it is at ${status ?? "no Status"}`,
+    );
+  }
+  const holds = row.holds?.(at) ?? HOLDS;
+  return holds.ok ? { ok: true, value: row } : holds;
+}
 
 function rows(table: readonly (readonly string[])[]): string[] {
   const widths = table.reduce<number[]>(

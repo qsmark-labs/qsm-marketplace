@@ -94,6 +94,14 @@ export async function graphql(
     : refuse("failed", "refused", `gh answered without data: ${answer.stdout.slice(0, 200)}`);
 }
 
+/** GraphQL variables as gh's pairs: a string verbatim (`-f`), a number typed (`-F`). */
+export function variables(values: Readonly<Record<string, string | number>>): string[] {
+  return Object.entries(values).flatMap(([k, v]) => [
+    typeof v === "string" ? "-f" : "-F",
+    `${k}=${v}`,
+  ]);
+}
+
 /** A gh command that is not GraphQL: what it printed, or GitHub's refusal in gh's words. */
 export async function gh(
   run: Run,

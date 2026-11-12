@@ -36,7 +36,7 @@ export interface Issue extends Item {
 
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
-const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+export const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
 const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){pageInfo{hasNextPage} nodes{author{login} createdAt body}}}}}}`;
 
@@ -70,7 +70,7 @@ function nodes(connection: unknown): unknown[] {
   return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
 }
 
-function text(record: unknown, key: string): string | null {
+export function text(record: unknown, key: string): string | null {
   const value = isRecord(record) ? record[key] : undefined;
   return typeof value === "string" ? value : null;
 }
@@ -90,7 +90,11 @@ function kindOf(type: string | null, labels: readonly string[]): Kind | null {
   return labels.includes("feedback") ? "feedback" : null;
 }
 
-function readItem(node: unknown, board: string): Item | null {
+/** An issue as a read sees it, and the id of its card on the board, which only a write needs. */
+export function readCard(
+  node: unknown,
+  board: string,
+): { item: Item; cardId: string | null } | null {
   const number = count(node, "number");
   const title = text(node, "title");
   if (!isRecord(node) || number === null || title === null) {
@@ -104,7 +108,7 @@ function readItem(node: unknown, board: string): Item | null {
   const open = node.state === "OPEN";
   // off the board, an issue is where "Item added" or "Item closed" will put it (decision 9)
   const offBoard = open ? STATUS.todo : STATUS.done;
-  return {
+  const item = {
     number,
     title,
     open,
@@ -117,6 +121,7 @@ function readItem(node: unknown, board: string): Item | null {
       text(b, "state") === "OPEN" ? (count(b, "number") ?? []) : [],
     ),
   };
+  return { item, cardId: text(card, "id") };
 }
 
 /** The repository's issues the filter finds, one page; more than a page is a call to narrow. */
@@ -135,7 +140,7 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   if (blocked !== undefined) {
     return refuse("failed", "refused", `an issue has over ${PAGE} blockers: GitHub cut the list`);
   }
-  return { ok: true, value: issues.flatMap((node) => readItem(node, target.board.id) ?? []) };
+  return { ok: true, value: issues.flatMap((node) => readCard(node, target.board.id)?.item ?? []) };
 }
 
 /** A connection GitHub cut at its page size: reading it as whole would lie. */
@@ -183,7 +188,7 @@ export async function issue(
     return answer;
   }
   const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
-  const item = readItem(node, target.board.id);
+  const item = readCard(node, target.board.id)?.item ?? null;
   const body = text(node, "body");
   if (!isRecord(node) || item === null || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
