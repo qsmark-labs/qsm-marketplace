@@ -1,9 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type ExtractDeps, extractSources, htmlToText, type RunResult } from "./extract.ts";
+import {
+  type ExtractDeps,
+  extractSources,
+  htmlToText,
+  type RunResult,
+  systemDeps,
+} from "./extract.ts";
 import { type Source, scanInputs } from "./sources.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { ended, plantLeftovers } from "../../../lib/fixtures/dead-run.ts";
+import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 /** A PATH holding fake converters, so extraction can be driven without any
  * of the real binaries being installed. */
@@ -107,5 +114,30 @@ describe("extractSources when a source fails", () => {
     const result = extractSources(sourcesIn(dir), deps({ pathValue: fakePath([]) }));
     expect(result.text).toBe("");
     expect(result.failed.map((f) => f.path.endsWith(".mobi"))).toEqual([true, true]);
+  });
+});
+
+describe("the real converters", () => {
+  test("a converter's leftover child ends with the call, and a crashed earlier run's leftovers end first", async () => {
+    const dir = sandboxDir("qsm-book-to-skill-extract-");
+    const pidFile = join(dir, "grandchild.pid");
+    writeFileSync(join(dir, "book.mobi"), "binary");
+    const bin = sandboxDir("qsm-book-to-skill-bin-");
+    const convert = join(bin, "ebook-convert");
+    writeFileSync(
+      convert,
+      `#!/bin/sh\nsleep 300 >/dev/null 2>&1 &\necho $! > "${pidFile}"\necho converted > "$2"\n`,
+    );
+    chmodSync(convert, 0o755);
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path ?? ""}`;
+    atTestEnd(() => {
+      process.env.PATH = path;
+    });
+    const left = plantLeftovers("qsm-book-to-skill");
+    const result = extractSources(sourcesIn(dir), systemDeps(process.env));
+    expect(result.failed).toEqual([]);
+    expect(await ended(Number(readFileSync(pidFile, "utf8")))).toBe(true);
+    expect(await left.gone()).toBe(true);
   });
 });

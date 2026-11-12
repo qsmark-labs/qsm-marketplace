@@ -1,4 +1,4 @@
-// The one-shot reply socket: a 0600 socket in a 0700 directory named by a random nonce, under the
+// The one-shot reply socket: a 0600 socket in a 0700 directory named by the helper's pid, under the
 // runtime directory. The binary listens, the pane writes one JSON line, the first valid line is the
 // answer, and the directory is gone when the call ends.
 
@@ -8,12 +8,15 @@ import { dirname, join } from "node:path";
 import { listen } from "bun";
 import { isRecord } from "../../../../lib/outcome.ts";
 import { type Env, runtimeDir } from "../../../../lib/paths.ts";
+import { runTempDir, sweepNamed } from "../../../../lib/reap.ts";
 import { fail } from "../errors.ts";
 import type { Action, Reply } from "./types.ts";
 
 const ACTIONS: ReadonlySet<unknown> = new Set<Action>(["allow", "deny", "cancel"]);
 
 const isAction = (value: unknown): value is Action => ACTIONS.has(value);
+/** The directory is named `askpass.<pid>.<random>`, so the next run knows a dead helper's. */
+const TOOL = "askpass";
 const MAX_LINE = 64 * 1024;
 
 export interface ReplySocket {
@@ -48,8 +51,10 @@ export function openReplySocket(env: Env): ReplySocket {
       "missing",
     );
   const nonce = randomBytes(16).toString("hex");
-  const dir = join(runtime, "qsm-askpass", nonce);
-  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const base = join(runtime, "qsm-askpass");
+  mkdirSync(base, { recursive: true });
+  sweepNamed(TOOL, base);
+  const dir = runTempDir(TOOL, base);
   chmodSync(dir, 0o700);
   const path = join(dir, "reply.sock");
 

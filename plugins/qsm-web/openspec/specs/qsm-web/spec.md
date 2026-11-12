@@ -276,6 +276,17 @@ the browser.
 - **THEN** qsm-web browserbox SHALL report `missing` with the cause and SHALL
   NOT leave a partially started instance
 
+#### Scenario: A fetch's own container does not outlive its run
+
+- **WHEN** a fetch starts its own instance (no `--in`, no `--keep`)
+- **THEN** it SHALL remove that instance when the verb ends, by error or by SIGINT, SIGTERM or
+  SIGHUP
+- **AND** it SHALL label the instance with the run's pid (`qsm-owner=browserbox:<pid>`)
+- **AND** `start`, `ls` and `fetch` SHALL first remove each instance whose owning run is dead,
+  naming it on stderr
+- **AND** an instance from `start` or `fetch --keep` SHALL carry no owner and SHALL stay until
+  `browserbox stop`
+
 #### Scenario: Listing instances fails
 
 - **WHEN** the container runtime fails to list instances
