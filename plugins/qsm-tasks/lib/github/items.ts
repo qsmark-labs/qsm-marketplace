@@ -161,7 +161,7 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
 }
 
 /** A connection GitHub cut at its page size: reading it as whole would lie. */
-function cut(connection: unknown): boolean {
+export function cut(connection: unknown): boolean {
   return (
     isRecord(connection) &&
     isRecord(connection.pageInfo) &&

@@ -500,7 +500,7 @@ describe("qsm-tasks doctor", () => {
     const nodes = (list: readonly string[]) => ({ nodes: list.map((name) => ({ name })) });
     const repo = {
       issueTypes: nodes(["Task", "Bug", "Feature"]),
-      labels: nodes(allLabels),
+      labels: { pageInfo: { hasNextPage: false }, ...nodes(allLabels) },
       template: more.template === false ? null : { byteSize: 925 },
     };
     const board = {

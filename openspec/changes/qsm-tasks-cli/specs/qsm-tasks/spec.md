@@ -441,8 +441,9 @@ rest as `doctor` does.
 
 ### Requirement: Install compiles and links the binary
 
-`scripts/install.ts` SHALL be one `installScript(import.meta)` call: it compiles `qsm-tasks`,
-links it onto PATH and writes completions, and a second run SHALL change nothing.
+`scripts/install.ts` SHALL be one `installScript` call: it compiles `qsm-tasks`, links it onto
+PATH and writes completions, and probes `gh`, which every verb but `flow` runs, and `br` while the
+skills still drive it, naming how to install each one missing. A second run SHALL change nothing.
 
 #### Scenario: Installed on a clean machine
 
@@ -466,7 +467,7 @@ only. Its one prerequisite is `gh` on PATH with a login that has the `project` s
 
 ### Requirement: Install puts br on the machine or says how
 
-**Reason**: The install now compiles and links `qsm-tasks`; there is no `br` to probe.
+**Reason**: The install now compiles and links `qsm-tasks`, and probes `br` beside `gh` there.
 
 **Migration**: "Install compiles and links the binary".
 
