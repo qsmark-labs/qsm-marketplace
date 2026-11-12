@@ -19,6 +19,10 @@ is the writing skill; worktrees are the worktrunk skill; threads are the review-
    landing. Name a skipped step.
    - Where main requires a pull request, the landing is one. It says `Closes #<n>`, a side
      change included: it gets its issue first, so the board shows all work with its status.
+   - A task that builds on another task not yet merged is a stacked pull request: its branch is
+     cut from that task's branch and its base is that branch, so each pull request shows only its
+     own lines and the next task need not wait for the merge. GitHub retargets it when the one
+     below merges.
    - The person merges it, and an admin merge is theirs, on the web: the merge is their acceptance.
    - Where the organization has a bot App, the agent opens the pull request as the bot
      (`qsm-forge gh pr-open`), so the person can approve it. Every other write stays the
