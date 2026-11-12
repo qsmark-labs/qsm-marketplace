@@ -154,16 +154,14 @@ async function labels(run: Run, target: Target, names: readonly string[]): Promi
   for (const name of names) {
     const made = await run(["label", "create", name, "--repo", target.repo]);
     // gh 2.103.3 answers a label that exists with this text and no code of its own
-    const exists = made.exit !== 0 && made.stderr.includes("already exists");
-    if (made.exit !== 0 && !exists) {
+    if (made.exit !== 0 && !made.stderr.includes("already exists")) {
       return refuse("failed", "refused", made.stderr.trim());
     }
   }
   return { ok: true, value: null };
 }
 
-/** `gh issue edit` with the given flags in one call; a body given goes on stdin, and the labels in
- * `make` are created when missing and added, as `file` does. */
+/** `gh issue edit` in one call: a body goes on stdin, the labels in `make` are made as `file` does. */
 export async function edit(
   run: Run,
   target: Target,
@@ -188,16 +186,8 @@ export async function close(
   number: number,
   notPlanned: boolean,
 ): Promise<Result<null>> {
-  const reason = notPlanned ? "not planned" : "completed";
-  const done = await gh(run, [
-    "issue",
-    "close",
-    String(number),
-    "--repo",
-    target.repo,
-    "--reason",
-    reason,
-  ]);
+  const args = ["issue", "close", String(number), "--repo", target.repo, "--reason"];
+  const done = await gh(run, [...args, notPlanned ? "not planned" : "completed"]);
   return done.ok ? { ok: true, value: null } : done;
 }
 

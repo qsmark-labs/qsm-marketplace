@@ -348,12 +348,8 @@ describe("qsm-tasks edits and closes the work", () => {
   });
 
   it("edit --spec on a task is blocked wrong-kind and changes nothing", () => {
-    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, [
-      "edit",
-      "12",
-      "--spec",
-      "x",
-    ]);
+    const argv = ["edit", "12", "--spec", "x"];
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", []) }, argv);
     expect(r.data).toMatchObject({ reason: "wrong-kind" });
     expect(r.calls).toHaveLength(2);
   });
