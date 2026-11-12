@@ -39,6 +39,8 @@ interface FakeGh {
   readonly card?: string;
   /** refuse the first `gh issue edit`, as GitHub refuses a write */
   readonly refuseEditOnce?: true;
+  /** what it answers adding an issue to the board */
+  readonly added?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call; a run in the
@@ -55,6 +57,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
   const search = [
     gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
     gh.card === undefined ? "" : `*viewer\\{login\\}*) printf '%s' '${gh.card}' ;; `,
+    gh.added === undefined ? "" : `*addProjectV2ItemById*) printf '%s' '${gh.added}' ;; `,
     gh.issue === undefined ? "" : `*comments\\(first*) printf '%s' '${gh.issue}' ;; `,
   ].join("");
   const stdin = join(dir, "stdin");
@@ -177,13 +180,14 @@ describe("qsm-tasks note", () => {
 });
 
 /** A move's card as GitHub answers it: the caller, the Status field and one task on the board. */
-function cardOf(status: string, assignees: readonly string[]): string {
+function cardOf(status: string, assignees: readonly string[], more: object = {}): string {
   const statuses = ["Todo", "In Dev", "Agent Review"];
   const field = { id: "PVTSSF_1", options: statuses.map((name, i) => ({ id: `opt${i}`, name })) };
   const issue = {
     ...task(5, null, [], status),
     id: "I_5",
     assignees: { nodes: assignees.map((login) => ({ login })) },
+    ...more,
   };
   return JSON.stringify({
     data: { viewer: { login: "Questi0nM4rk" }, board: { field }, repo: { issue } },
@@ -218,6 +222,47 @@ describe("qsm-tasks moves a task", () => {
       "issue comment 5 --repo qsmark-labs/qsm-marketplace --body-file -",
     ]);
     expect(again.posted).toBe("Deferred until 2026-12-01\n");
+  });
+});
+
+describe("qsm-tasks moves a feature and a closed issue", () => {
+  it("qa on a feature with an open sub-issue is blocked wrong-status, and writes nothing", () => {
+    const feature = {
+      issueType: { name: "Feature" },
+      subIssuesSummary: { total: 3, completed: 2 },
+    };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Ready For Test", [], feature) }, [
+      "qa",
+      "5",
+    ]);
+    expect(r.exit).toBe(5);
+    expect(r.data).toMatchObject({ reason: "wrong-status" });
+    expect(r.message).toContain("has 1");
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it("reopen under a closed parent is blocked wrong-status, and writes nothing", () => {
+    const closed = { state: "CLOSED", parent: { state: "CLOSED" } };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], closed) }, ["reopen", "5"]);
+    expect(r.exit).toBe(5);
+    expect(r.message).toContain("parent is closed");
+    expect(r.calls).toHaveLength(2);
+  });
+
+  it("reopen on a closed issue off the board takes it as Done, adds the card and sets Todo", () => {
+    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+    const added = JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "PVTI_5" } } } });
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off), added }, [
+      "reopen",
+      "5",
+    ]);
+    expect(r.message).toBe("#5 Done -> Todo");
+    expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
+      "issue reopen 5 --repo qsmark-labs/qsm-marketplace",
+      "api graphql",
+      "api graphql",
+    ]);
+    expect(r.calls[3]).toContain("addProjectV2ItemById");
   });
 });
 

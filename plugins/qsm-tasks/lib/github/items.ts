@@ -3,7 +3,7 @@
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
 import { type Kind, STATUS } from "../flow.ts";
-import { graphql, type Run } from "./gh.ts";
+import { graphql, type Run, variables } from "./gh.ts";
 import type { Target } from "./target.ts";
 
 export interface Item {
@@ -37,8 +37,10 @@ export interface Issue extends Item {
 const PAGE = 100;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
 export const ITEM = `number title state issueType{name} assignees(first:10){nodes{login}} labels(first:30){nodes{name}} blockedBy(first:${PAGE}){pageInfo{hasNextPage} nodes{number state}} projectItems(first:10){nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
+/** Where an issue sits in the tree: its parent and its sub-issues. */
+export const FAMILY = "parent{number state} subIssuesSummary{total completed}";
 const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
-const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body parent{number} subIssuesSummary{total completed} comments(first:${PAGE})@include(if:$comments){pageInfo{hasNextPage} nodes{author{login} createdAt body}}}}}}`;
+const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body ${FAMILY} comments(first:${PAGE})@include(if:$comments){pageInfo{hasNextPage} nodes{author{login} createdAt body}}}}}}`;
 
 /** What a read asks for; an absent field does not narrow it. */
 export interface Filter {
@@ -124,6 +126,21 @@ export function readCard(
   return { item, cardId: text(card, "id") };
 }
 
+/** The parent and sub-issue counts `FAMILY` reads; no parent is null. */
+export function readFamily(node: unknown): {
+  parent: number | null;
+  parentOpen: boolean | null;
+  subIssues: { total: number; closed: number };
+} {
+  const parent = isRecord(node) ? node.parent : undefined;
+  const summary = isRecord(node) ? node.subIssuesSummary : undefined;
+  return {
+    parent: count(parent, "number"),
+    parentOpen: isRecord(parent) ? parent.state === "OPEN" : null,
+    subIssues: { total: count(summary, "total") ?? 0, closed: count(summary, "completed") ?? 0 },
+  };
+}
+
 /** The repository's issues the filter finds, one page; more than a page is a call to narrow. */
 export async function search(run: Run, target: Target, filter: Filter): Promise<Result<Item[]>> {
   const q = qualifiers(target.repo, filter);
@@ -175,34 +192,21 @@ export async function issue(
   number: number,
   comments: boolean,
 ): Promise<Result<Issue>> {
-  const fields = [
-    "-f",
-    `repo=${target.repoId}`,
-    "-F",
-    `number=${number}`,
-    "-F",
-    `comments=${comments}`,
-  ];
-  const answer = await graphql(run, ISSUE, fields);
+  const answer = await graphql(run, ISSUE, variables({ repo: target.repoId, number, comments }));
   if (!answer.ok) {
     return answer;
   }
   const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
-  const item = readCard(node, target.board.id)?.item ?? null;
+  const item = readCard(node, target.board.id)?.item;
   const body = text(node, "body");
-  if (!isRecord(node) || item === null || body === null) {
+  if (!isRecord(node) || item === undefined || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);
   }
   const [, list] = LISTS.find(([key]) => cut(node[key])) ?? [];
   if (list !== undefined) {
     return refuse("failed", "refused", `#${number} has over ${PAGE} ${list}: GitHub cut the list`);
   }
-  const summary = node.subIssuesSummary;
-  const subIssues = {
-    total: count(summary, "total") ?? 0,
-    closed: count(summary, "completed") ?? 0,
-  };
-  const parent = count(node.parent, "number");
+  const { parent, subIssues } = readFamily(node);
   return {
     ok: true,
     value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },

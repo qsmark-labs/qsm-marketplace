@@ -45,7 +45,7 @@ interface Status {
 
 const STATUSES: readonly Status[] = [
   {
-    name: "Todo",
+    name: STATUS.todo,
     means: {
       task: "Not started",
       feature: "Being planned: intent, models, specs",
@@ -53,36 +53,36 @@ const STATUSES: readonly Status[] = [
     },
   },
   {
-    name: "In Dev",
+    name: STATUS.inDev,
     means: { task: "Claimed and being built", feature: "Split into tasks, built on feature/<n>" },
   },
   {
-    name: "Agent Review",
+    name: STATUS.agentReview,
     means: {
       task: "PR open: CI, the gates and the review agent run; each finding is fixed at once, with a reply in its thread and a new review asked",
     },
   },
   {
-    name: "Ready For Human",
+    name: STATUS.readyForHuman,
     means: { task: "The review agent approved and CI is green: waits for the owner" },
   },
   {
-    name: "Human Review",
+    name: STATUS.humanReview,
     means: {
       task: "The owner reviews and the agent fixes his comments; the review agent is not asked",
     },
   },
   {
-    name: "Ready For Test",
+    name: STATUS.readyForTest,
     means: { feature: "Every task closed and feature/<n> up to date with main: waits for QA" },
   },
   {
-    name: "In Test",
+    name: STATUS.inTest,
     means: { feature: "The QA agent runs the scenarios of the cover in a sandbox" },
   },
-  { name: "Blocked", means: { feature: "QA found something: a fix task is open" } },
+  { name: STATUS.blocked, means: { feature: "QA found something: a fix task is open" } },
   {
-    name: "Done",
+    name: STATUS.done,
     means: {
       task: "Merged into feature/<n> by the owner with Closes #N",
       feature: "The owner merged the feature pull request into main",
@@ -110,6 +110,9 @@ export interface Facts {
   readonly assignees: readonly string[];
   /** the login running the verb */
   readonly caller: string;
+  /** null when it has no parent */
+  readonly parentOpen: boolean | null;
+  readonly openSubIssues: number;
 }
 
 /** A move one verb makes: the kinds it takes, the Statuses it starts from, and what else must hold,
@@ -124,28 +127,29 @@ interface Move {
 }
 
 const HOLDS: Result<null> = { ok: true, value: null };
-
-const REVIEW: readonly StatusName[] = ["Agent Review", "Ready For Human", "Human Review"];
+const S = STATUS;
+const REVIEW: readonly StatusName[] = [S.agentReview, S.readyForHuman, S.humanReview];
 
 const MOVES: readonly Move[] = [
   {
     verb: "claim",
     kinds: ["task"],
-    from: [STATUS.todo],
-    to: STATUS.inDev,
+    from: [S.todo],
+    to: S.inDev,
     when: "unassigned or the caller's",
     holds: (at) => {
       const others = at.assignees.filter((login) => login !== at.caller);
-      const held = `#${at.number} is held by ${others.join(", ")}`;
-      return others.length === 0 ? HOLDS : refuse("blocked", "held", held);
+      return others.length === 0
+        ? HOLDS
+        : refuse("blocked", "held", `#${at.number} is held by ${others.join(", ")}`);
     },
   },
-  { verb: "unclaim", kinds: ["task"], from: [STATUS.inDev, ...REVIEW], to: STATUS.todo },
+  { verb: "unclaim", kinds: ["task"], from: [S.inDev, ...REVIEW], to: S.todo },
   {
     verb: "unclaim",
     kinds: ["task"],
-    from: [STATUS.todo],
-    to: STATUS.todo,
+    from: [S.todo],
+    to: S.todo,
     when: `labelled ${DEFERRED}`,
     holds: (at) =>
       at.labels.includes(DEFERRED)
@@ -155,36 +159,43 @@ const MOVES: readonly Move[] = [
   {
     verb: "review",
     kinds: ["task"],
-    from: ["In Dev", "Agent Review", "Human Review"],
-    to: "Agent Review",
+    from: [S.inDev, S.agentReview, S.humanReview],
+    to: S.agentReview,
   },
   {
     verb: "human",
     kinds: ["task"],
-    from: ["Agent Review"],
-    to: "Ready For Human",
+    from: [S.agentReview],
+    to: S.readyForHuman,
     when: "the PR approved and its checks green",
   },
-  {
-    verb: "human --started",
-    kinds: ["task"],
-    from: ["Ready For Human"],
-    to: "Human Review",
-  },
+  { verb: "human --started", kinds: ["task"], from: [S.readyForHuman], to: S.humanReview },
   {
     verb: "reopen",
     kinds: ["task", "feedback"],
-    from: ["Done"],
-    to: "Todo",
+    from: [S.done],
+    to: S.todo,
     when: "its parent open",
+    holds: (at) =>
+      at.parentOpen === false
+        ? refuse("blocked", "wrong-status", `#${at.number}'s parent is closed`)
+        : HOLDS,
   },
-  { verb: "plan", kinds: ["feature"], from: ["In Dev", "Ready For Test", "Blocked"], to: "Todo" },
+  { verb: "plan", kinds: ["feature"], from: [S.inDev, S.readyForTest, S.blocked], to: S.todo },
   {
     verb: "qa",
     kinds: ["feature"],
-    from: ["Ready For Test"],
-    to: "In Test",
+    from: [S.readyForTest],
+    to: S.inTest,
     when: "no open sub-issue",
+    holds: (at) =>
+      at.openSubIssues === 0
+        ? HOLDS
+        : refuse(
+            "blocked",
+            "wrong-status",
+            `#${at.number} has ${at.openSubIssues} open sub-issues`,
+          ),
   },
 ];
 

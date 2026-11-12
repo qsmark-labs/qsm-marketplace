@@ -5,7 +5,14 @@ import { type Call, optionalString, requiredNumber } from "../../../lib/cli-base
 import { type Outcome, ok } from "../../../lib/outcome.ts";
 import type { Result } from "../lib/failure.ts";
 import { DEFERRED, moveOf } from "../lib/flow.ts";
-import { type Card, card, comment, edit, setStatus } from "../lib/github/board.ts";
+import {
+  type Card,
+  card,
+  comment,
+  edit,
+  reopen as reopenIssue,
+  setStatus,
+} from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import type { Target } from "../lib/github/target.ts";
 
@@ -71,3 +78,17 @@ export const unclaim = moving("unclaim", (call, { run, target }, at) => {
     : [];
   return { before: release, after: note };
 });
+
+/** In Dev, Agent Review or Human Review: Agent Review. */
+export const review = moving("review");
+
+/** A feature at In Dev, Ready For Test or Blocked: back to Todo for planning. */
+export const plan = moving("plan");
+
+/** A feature at Ready For Test whose sub-issues are all closed: In Test. */
+export const qa = moving("qa");
+
+/** A closed task, bug or feedback whose parent is open: open again, at Todo. */
+export const reopen = moving("reopen", (_call, { run, target }, at) => ({
+  before: [() => reopenIssue(run, target, at.number)],
+}));

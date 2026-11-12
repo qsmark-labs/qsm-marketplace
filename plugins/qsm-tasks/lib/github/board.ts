@@ -4,7 +4,7 @@ import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
 import type { Facts } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
-import { ITEM, type Item, readCard, text } from "./items.ts";
+import { FAMILY, ITEM, type Item, readCard, readFamily, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 /** An issue as a move sees it: the item, what its guard reads, and the ids its writes need. */
@@ -15,7 +15,7 @@ export interface Card extends Item, Facts {
   readonly field: { readonly id: string; readonly options: ReadonlyMap<string, string> };
 }
 
-const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{field(name:"Status"){...on ProjectV2SingleSelectField{id options{id name}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM}}}}}`;
+const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{field(name:"Status"){...on ProjectV2SingleSelectField{id options{id name}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} ${FAMILY}}}}}`;
 const ADD = `mutation($board:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$board,contentId:$issue}){item{id}}}`;
 const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(input:{projectId:$board,itemId:$card,fieldId:$field,value:{singleSelectOptionId:$option}}){clientMutationId}}`;
 
@@ -49,7 +49,10 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
     );
   }
   const field = { id: fieldId, options: optionsOf(status) };
-  return { ok: true, value: { ...read.item, id, cardId: read.cardId, caller, field } };
+  const { parentOpen, subIssues } = readFamily(issue);
+  const openSubIssues = subIssues.total - subIssues.closed;
+  const facts = { caller, parentOpen, openSubIssues };
+  return { ok: true, value: { ...read.item, ...facts, id, cardId: read.cardId, field } };
 }
 
 /** The card's id, adding the issue to the board first when it is not on it yet. */
@@ -96,6 +99,12 @@ export async function edit(
   flags: readonly string[],
 ): Promise<Result<null>> {
   const done = await gh(run, ["issue", "edit", String(number), "--repo", target.repo, ...flags]);
+  return done.ok ? { ok: true, value: null } : done;
+}
+
+/** Opens a closed issue again. */
+export async function reopen(run: Run, target: Target, number: number): Promise<Result<null>> {
+  const done = await gh(run, ["issue", "reopen", String(number), "--repo", target.repo]);
   return done.ok ? { ok: true, value: null } : done;
 }
 

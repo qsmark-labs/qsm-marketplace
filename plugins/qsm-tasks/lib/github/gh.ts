@@ -94,8 +94,8 @@ export async function graphql(
     : refuse("failed", "refused", `gh answered without data: ${answer.stdout.slice(0, 200)}`);
 }
 
-/** GraphQL variables as gh's pairs: a string verbatim (`-f`), a number typed (`-F`). */
-export function variables(values: Readonly<Record<string, string | number>>): string[] {
+/** GraphQL variables as gh's pairs: a string verbatim (`-f`), a number or boolean typed (`-F`). */
+export function variables(values: Readonly<Record<string, string | number | boolean>>): string[] {
   return Object.entries(values).flatMap(([k, v]) => [
     typeof v === "string" ? "-f" : "-F",
     `${k}=${v}`,
