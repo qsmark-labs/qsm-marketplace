@@ -275,13 +275,18 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
 
 describe("qsm-tasks files the work", () => {
   const feature = { issueType: { name: "Feature" } };
+  /** show's read of one issue as GitHub answers it. */
+  const issueOf = (more: object) => {
+    const family = { body: "", parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    return JSON.stringify({ data: { node: { issue: { ...task(3, null), ...family, ...more } } } });
+  };
   const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/77";
 
   it("add files a sub-issue of an open feature with its body on stdin, unchanged", () => {
     const dir = sandboxDir("qsm-tasks-");
     const body = 'Write the "CSV"\nwith two lines';
     writeIn(dir, "body.md", body);
-    const gh = { stdout: linked([BOARD]), card: cardOf("In Dev", [], feature), created };
+    const gh = { stdout: linked([BOARD]), issue: issueOf(feature), created };
     const argv = ["add", "Write the CSV", "--feature", "3", "--body-file", join(dir, "body.md")];
     const r = run(gh, argv, dir);
     expect(r.message).toBe("#77 filed: Write the CSV");
@@ -293,7 +298,7 @@ describe("qsm-tasks files the work", () => {
 
   it("add under a closed feature is blocked wrong-status and files nothing", () => {
     const closed = { ...feature, state: "CLOSED" };
-    const gh = { stdout: linked([BOARD]), card: cardOf("Done", [], closed), created };
+    const gh = { stdout: linked([BOARD]), issue: issueOf(closed), created };
     const r = run(gh, ["add", "Write the CSV", "--feature", "3"]);
     expect(r.data).toMatchObject({ reason: "wrong-status" });
     expect(r.calls).toHaveLength(2);
