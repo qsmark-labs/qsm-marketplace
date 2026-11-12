@@ -406,6 +406,14 @@ describe("qsm-tasks files the work", () => {
     expect(r.posted).toBe(`${body}\n`);
   });
 
+  it("add --after refused once the issue is filed names the issue and the edit that finishes it", () => {
+    const gh = { stdout: linked([BOARD]), created, refuseEditOnce: true } as const;
+    const r = run(gh, ["add", "Write the CSV", "--after", "2"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("#77 is filed");
+    expect(r.data).toMatchObject({ next: "qsm-tasks edit 77 --after 2" });
+  });
+
   it("add under a closed feature is blocked wrong-status and files nothing", () => {
     const closed = { ...feature, state: "CLOSED" };
     const gh = { stdout: linked([BOARD]), issue: issueOf(closed), created };

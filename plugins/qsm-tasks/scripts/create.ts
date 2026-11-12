@@ -12,7 +12,7 @@ import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { done, refuse, type Result } from "../lib/failure.ts";
 import { readText } from "../lib/files.ts";
 import { changeLabel, priorityOf } from "../lib/flow.ts";
-import { card, file, hasPriority, setField } from "../lib/github/board.ts";
+import { card, edit, file, hasPriority, setField } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import { issue } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
@@ -55,14 +55,12 @@ async function parentOf(run: Run, target: Target, number: number): Promise<Resul
   return parent.value.open ? done : refuse("blocked", "wrong-status", `#${number} is closed`);
 }
 
-/** gh's flags for a task's labels, which must exist, its parent and the task it comes after. */
+/** gh's flags for a task's labels, which must exist, and its parent. */
 function taskFlags(call: Call): string[] {
   const under = optionalNumber(call, "feature");
-  const after = optionalNumber(call, "after");
   return [
     ...stringList(call, "label").flatMap((name) => ["--label", name]),
     ...(under === undefined ? [] : ["--parent", String(under)]),
-    ...(after === undefined ? [] : ["--blocked-by", String(after)]),
   ];
 }
 
@@ -73,10 +71,12 @@ async function prioritize({ run, target }: At, n: number, value: string): Promis
 }
 
 /** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and
- * the Priority option are read first, so a refusal files nothing and a rerun no duplicate. */
+ * the Priority option are read first, so a refusal files nothing. What follows the filing, the
+ * order and the Priority, names the issue and the `edit` that finishes it, never a second filing. */
 export async function add(call: Call, on: At): Promise<Outcome> {
   const { run, target } = on;
   const under = optionalNumber(call, "feature");
+  const after = optionalNumber(call, "after");
   const priority = optionalString(call, "priority");
   const parent = under === undefined ? done : await parentOf(run, target, under);
   if (!parent.ok) {
@@ -95,6 +95,23 @@ export async function add(call: Call, on: At): Promise<Outcome> {
   if (!filed.ok) {
     return filed.outcome;
   }
-  const set = priority === undefined ? done : await prioritize(on, filed.value, priority);
-  return set.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : set.outcome;
+  const n = filed.value;
+  const steps: [string, () => Promise<Result<null>>][] = [
+    ...(after === undefined
+      ? []
+      : ([
+          [`--after ${after}`, () => edit(run, target, n, ["--add-blocked-by", String(after)])],
+        ] as const)),
+    ...(priority === undefined
+      ? []
+      : ([[`--priority ${priority}`, () => prioritize(on, n, priority)]] as const)),
+  ];
+  for (const [flag, step] of steps) {
+    const set = await step();
+    if (!set.ok) {
+      const said = `#${n} is filed, but ${set.outcome.message ?? "a write was refused"}`;
+      return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flag}`).outcome;
+    }
+  }
+  return ok({ number: n }, `#${n} filed: ${title}`);
 }
