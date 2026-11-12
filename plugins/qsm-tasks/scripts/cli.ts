@@ -4,31 +4,32 @@
 // agent never composes a gh, jq or GraphQL call itself.
 
 import { type Call, type Handler, runCli } from "../../../lib/cli-base.ts";
-import { fail, type Outcome } from "../../../lib/outcome.ts";
+import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
+import { refuse } from "../lib/failure.ts";
 import { connect, type Run } from "../lib/github/gh.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
+/** What a verb on the board is handed beside its call. */
 interface OnBoard {
-  readonly call: Call;
   readonly run: Run;
 }
 
 /** A verb on the board: gh found first, or `missing` `no-gh` and nothing runs. */
-function onBoard(verb: (at: OnBoard) => Outcome | Promise<Outcome>): Handler {
+function onBoard(verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>): Handler {
   return (call) => {
     const gh = connect();
-    return gh.ok ? verb({ call, run: gh.value }) : gh.outcome;
+    return gh.ok ? verb(call, { run: gh.value }) : gh.outcome;
   };
 }
 
-/** A declared verb whose task has not landed yet: it fails naming that task. */
-function notBuilt(issue: number): (at: { readonly call: Call }) => Outcome {
-  return ({ call }) =>
-    fail("failed", `${call.verb}: not built yet, see issue #${issue}`, { reason: "not-built" });
+/** A declared verb whose issue has not landed yet: it fails naming that issue. */
+function notBuilt(issue: number): Handler {
+  return (call) =>
+    refuse("failed", "not-built", `${call.verb}: not built yet, see issue #${issue}`).outcome;
 }
 
 if (import.meta.main) {
@@ -42,7 +43,7 @@ if (import.meta.main) {
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),
       close: onBoard(notBuilt(41)),
-      flow: (call) => notBuilt(42)({ call }),
+      flow: notBuilt(42),
       claim: onBoard(notBuilt(43)),
       unclaim: onBoard(notBuilt(43)),
       review: onBoard(notBuilt(43)),
@@ -50,7 +51,7 @@ if (import.meta.main) {
       reopen: onBoard(notBuilt(43)),
       plan: onBoard(notBuilt(43)),
       qa: onBoard(notBuilt(43)),
-      feedback: (call) => notBuilt(44)({ call }),
+      feedback: notBuilt(44),
       doctor: onBoard(notBuilt(45)),
       setup: onBoard(notBuilt(45)),
     }),
