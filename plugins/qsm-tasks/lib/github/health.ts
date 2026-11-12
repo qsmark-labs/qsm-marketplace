@@ -1,11 +1,12 @@
 // What doctor checks on GitHub, read in one query: the issue types, the labels and the feedback
 // template of the repository, the fields, workflows and views of its board, and the token's scopes.
 // A check is ok, failed with its fix, or manual where the API cannot answer (design.md, measured).
-import { isRecord } from "../../../../lib/outcome.ts";
+import { fail, isRecord, type Outcome, ok } from "../../../../lib/outcome.ts";
 import type { Result } from "../failure.ts";
-import { FROM, KINDS } from "../feedback.ts";
+import { FEEDBACK_KINDS, FROM } from "../feedback.ts";
 import { DEFERRED, PRIORITY_NAMES, STATUS } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
+import { nodes, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 export interface Check {
@@ -14,26 +15,46 @@ export interface Check {
   readonly fix?: string;
 }
 
+/** A single-select option as GitHub holds it; its id keeps a card's value when the field changes. */
+interface Option {
+  readonly id: string;
+  readonly name: string;
+  readonly color: string;
+  readonly description: string;
+}
+
+interface Field {
+  readonly id: string;
+  readonly name: string;
+  readonly options: readonly Option[];
+}
+
 export interface Health {
   readonly url: string;
   readonly scopes: readonly string[] | null;
   readonly types: readonly string[];
   readonly labels: readonly string[];
   readonly template: boolean;
-  readonly fields: readonly { readonly name: string; readonly options: readonly string[] }[];
+  readonly fields: readonly Field[];
   readonly workflows: readonly { readonly name: string; readonly enabled: boolean }[];
   readonly views: readonly string[];
 }
 
-const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository{issueTypes(first:20){nodes{name}} labels(first:100){nodes{name}} template:object(expression:"HEAD:.github/ISSUE_TEMPLATE/feedback.yml"){...on Blob{byteSize}}}} board:node(id:$board){...on ProjectV2{url fields(first:50){nodes{...on ProjectV2FieldCommon{name} ...on ProjectV2SingleSelectField{options{name}}}} workflows(first:20){nodes{name enabled}} views(first:20){nodes{name}}}}}`;
+const HEALTH = `query($repo:ID!,$board:ID!){repo:node(id:$repo){...on Repository{issueTypes(first:20){nodes{name}} labels(first:100){nodes{name}} template:object(expression:"HEAD:.github/ISSUE_TEMPLATE/feedback.yml"){...on Blob{byteSize}}}} board:node(id:$board){...on ProjectV2{url fields(first:50){nodes{...on ProjectV2FieldCommon{id name} ...on ProjectV2SingleSelectField{options{id name color description}}}} workflows(first:20){nodes{name enabled}} views(first:20){nodes{name}}}}}`;
 
-/** The labels the flow and feedback write; setup creates the ones the repository lacks. */
+/** What the flow needs of the board and the repository: each field's options, and the labels the
+ * flow and feedback write. Doctor fails what is missing; setup creates it. */
+const FIELDS: Record<"Status" | "Priority", readonly string[]> = {
+  Status: Object.values(STATUS),
+  Priority: PRIORITY_NAMES,
+};
 export const LABELS = [
   DEFERRED,
   "feedback",
-  ...KINDS.map((k) => `kind:${k}`),
+  ...FEEDBACK_KINDS.map((k) => `kind:${k}`),
   ...FROM.map((f) => `from:${f}`),
 ];
+const SETUP_MAKES = "qsm-tasks setup creates it";
 
 /** Each built-in workflow doctor needs on, and the Status it sets, which the API cannot read. */
 const WORKFLOWS: readonly (readonly [string, string | null])[] = [
@@ -47,9 +68,8 @@ const WORKFLOWS: readonly (readonly [string, string | null])[] = [
 /** A field the old board had and this flow does not: the owner deletes it in the web UI. */
 const LEFTOVER_FIELDS = ["Epic stage"];
 
-function names(connection: unknown, key = "name"): string[] {
-  const nodes = isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
-  return nodes.flatMap((n) => (isRecord(n) && typeof n[key] === "string" ? [n[key]] : []));
+function names(connection: unknown): string[] {
+  return nodes(connection).flatMap((n) => text(n, "name") ?? []);
 }
 
 /** The token's scopes from GitHub's response header; null when the token reports none. */
@@ -59,40 +79,31 @@ async function scopesOf(run: Run): Promise<Result<string[] | null>> {
     return head;
   }
   const line = head.value.split("\n").find((l) => l.toLowerCase().startsWith("x-oauth-scopes:"));
-  return {
-    ok: true,
-    value:
-      line === undefined
-        ? null
-        : line
-            .slice(line.indexOf(":") + 1)
-            .split(",")
-            .map((s) => s.trim()),
-  };
+  const scopes = line?.slice(line.indexOf(":") + 1).split(",");
+  return { ok: true, value: scopes?.map((s) => s.trim()) ?? null };
 }
 
-function nodesOf(connection: unknown): unknown[] {
-  return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
+function optionOf(node: unknown): Option[] {
+  const [id, name] = [text(node, "id"), text(node, "name")];
+  const [color, description] = [text(node, "color"), text(node, "description")];
+  return id === null || name === null || color === null || description === null
+    ? []
+    : [{ id, name, color, description }];
 }
 
 /** The board's half of the answer: its fields with their options, workflows and views. */
-function boardOf(
-  board: Record<string, unknown>,
-): Pick<Health, "url" | "fields" | "workflows" | "views"> {
-  return {
-    url: typeof board.url === "string" ? board.url : "",
-    fields: nodesOf(board.fields).flatMap((f) =>
-      isRecord(f) && typeof f.name === "string"
-        ? [{ name: f.name, options: names({ nodes: f.options }) }]
-        : [],
-    ),
-    workflows: nodesOf(board.workflows).flatMap((w) =>
-      isRecord(w) && typeof w.name === "string"
-        ? [{ name: w.name, enabled: w.enabled === true }]
-        : [],
-    ),
-    views: names(board.views),
-  };
+function boardOf(board: unknown): Pick<Health, "url" | "fields" | "workflows" | "views"> {
+  const fields = nodes(isRecord(board) ? board.fields : undefined).flatMap((f) => {
+    const [id, name] = [text(f, "id"), text(f, "name")];
+    const options = nodes({ nodes: isRecord(f) ? f.options : undefined }).flatMap(optionOf);
+    return id === null || name === null ? [] : [{ id, name, options }];
+  });
+  const workflows = nodes(isRecord(board) ? board.workflows : undefined).flatMap((w) => {
+    const name = text(w, "name");
+    return name === null ? [] : [{ name, enabled: isRecord(w) && w.enabled === true }];
+  });
+  const views = names(isRecord(board) ? board.views : undefined);
+  return { url: text(board, "url") ?? "", fields, workflows, views };
 }
 
 export async function health(run: Run, target: Target): Promise<Result<Health>> {
@@ -100,101 +111,94 @@ export async function health(run: Run, target: Target): Promise<Result<Health>> 
   if (!scopes.ok) {
     return scopes;
   }
-  const answer = await graphql(
-    run,
-    HEALTH,
-    variables({ repo: target.repoId, board: target.board.id }),
-  );
+  const ids = variables({ repo: target.repoId, board: target.board.id });
+  const answer = await graphql(run, HEALTH, ids);
   if (!answer.ok) {
     return answer;
   }
   const repo = isRecord(answer.value.repo) ? answer.value.repo : {};
-  const board = isRecord(answer.value.board) ? answer.value.board : {};
   const repoPart = {
     types: names(repo.issueTypes),
     labels: names(repo.labels),
     template: isRecord(repo.template),
   };
-  return { ok: true, value: { scopes: scopes.value, ...repoPart, ...boardOf(board) } };
+  return { ok: true, value: { scopes: scopes.value, ...repoPart, ...boardOf(answer.value.board) } };
 }
 
-/** A field's line: there, with exactly the options the flow names; a missing option setup adds, an
- * option the flow does not name the owner removes in the web UI. */
-function fieldCheck(at: Health, name: string, wanted: readonly string[]): Check {
+/** A field the flow needs against the board: the field, the options it lacks, and the ones the flow
+ * does not name; all lacking when the board has no such field. */
+export function fieldGap(at: Health, name: keyof typeof FIELDS) {
   const field = at.fields.find((f) => f.name === name);
-  if (field === undefined) {
-    return { name: `field ${name}`, status: "failed", fix: "qsm-tasks setup creates it" };
-  }
-  const extra = field.options.filter((o) => !wanted.includes(o));
+  const present = field?.options.map((o) => o.name) ?? [];
+  const missing = FIELDS[name].filter((o) => !present.includes(o));
+  return { field, missing, extra: present.filter((o) => !FIELDS[name].includes(o)) };
+}
+
+/** ok when it is there, else failed with what fixes it. */
+function has(name: string, present: boolean, fix: string): Check {
+  return present ? { name, status: "ok" } : { name, status: "failed", fix };
+}
+
+/** A field's line: a missing field or option setup adds, an option the flow does not name the
+ * owner removes in the web UI. */
+function fieldCheck(at: Health, name: keyof typeof FIELDS): Check {
+  const { field, missing, extra } = fieldGap(at, name);
   if (extra.length > 0) {
-    return {
-      name: `field ${name}`,
-      status: "failed",
-      fix: `remove ${extra.join(", ")} in ${at.url}/settings`,
-    };
+    const fix = `remove ${extra.join(", ")} in ${at.url}/settings`;
+    return { name: `field ${name}`, status: "failed", fix };
   }
-  const missing = wanted.filter((o) => !field.options.includes(o));
-  return missing.length === 0
-    ? { name: `field ${name}`, status: "ok" }
-    : {
-        name: `field ${name}`,
-        status: "failed",
-        fix: `qsm-tasks setup adds ${missing.join(", ")}`,
-      };
+  const fix = field === undefined ? SETUP_MAKES : `qsm-tasks setup adds ${missing.join(", ")}`;
+  return has(`field ${name}`, missing.length === 0, fix);
 }
 
 function workflowCheck(at: Health, [name, sets]: readonly [string, string | null]): Check {
   const on = at.workflows.some((w) => w.name === name && w.enabled);
-  if (!on) {
-    return { name: `workflow ${name}`, status: "failed", fix: `turn it on in ${at.url}/workflows` };
+  if (!on || sets === null) {
+    return has(`workflow ${name}`, on, `turn it on in ${at.url}/workflows`);
   }
-  return sets === null
-    ? { name: `workflow ${name}`, status: "ok" }
-    : {
-        name: `workflow ${name}`,
-        status: "manual",
-        fix: `check it sets ${sets} in ${at.url}/workflows`,
-      };
+  const fix = `check it sets ${sets} in ${at.url}/workflows`;
+  return { name: `workflow ${name}`, status: "manual", fix };
 }
 
 /** Every check doctor prints, in its order. */
 export function checks(at: Health): Check[] {
   const scope = at.scopes === null ? "manual" : at.scopes.includes("project") ? "ok" : "failed";
+  const types = ["Feature", "Task", "Bug"];
+  const leftovers = LEFTOVER_FIELDS.filter((f) => at.fields.some((x) => x.name === f));
   return [
     { name: "gh login with the project scope", status: scope, fix: "gh auth refresh -s project" },
-    ...["Feature", "Task", "Bug"].map((t): Check =>
-      at.types.includes(t)
-        ? { name: `issue type ${t}`, status: "ok" }
-        : {
-            name: `issue type ${t}`,
-            status: "failed",
-            fix: "add it in the organization's settings",
-          },
+    ...types.map((t) =>
+      has(`issue type ${t}`, at.types.includes(t), "add it in the organization's settings"),
     ),
-    fieldCheck(at, "Status", Object.values(STATUS)),
-    fieldCheck(at, "Priority", PRIORITY_NAMES),
-    ...LEFTOVER_FIELDS.filter((f) => at.fields.some((x) => x.name === f)).map((f): Check => ({
-      name: `field ${f}`,
-      status: "failed",
-      fix: `delete it in ${at.url}/settings`,
-    })),
-    ...LABELS.map((l): Check =>
-      at.labels.includes(l)
-        ? { name: `label ${l}`, status: "ok" }
-        : { name: `label ${l}`, status: "failed", fix: "qsm-tasks setup creates it" },
-    ),
+    fieldCheck(at, "Status"),
+    fieldCheck(at, "Priority"),
+    ...leftovers.map((f) => has(`field ${f}`, false, `delete it in ${at.url}/settings`)),
+    ...LABELS.map((l) => has(`label ${l}`, at.labels.includes(l), SETUP_MAKES)),
     ...WORKFLOWS.map((w) => workflowCheck(at, w)),
     ...["Tasks", "Features"].map((v): Check =>
       at.views.includes(v)
         ? { name: `view ${v}`, status: "manual", fix: `check its filter in ${at.url}` }
-        : { name: `view ${v}`, status: "failed", fix: `create it in ${at.url}` },
+        : has(`view ${v}`, false, `create it in ${at.url}`),
     ),
-    at.template
-      ? { name: "feedback template", status: "ok" }
-      : {
-          name: "feedback template",
-          status: "failed",
-          fix: "add .github/ISSUE_TEMPLATE/feedback.yml",
-        },
+    has("feedback template", at.template, "add .github/ISSUE_TEMPLATE/feedback.yml"),
   ];
+}
+
+/** `ok`, `failed` or `manual`, the check, and what fixes it. */
+function row(check: Check): string {
+  const fix = check.status === "ok" || check.fix === undefined ? "" : `: ${check.fix}`;
+  return `  ${check.status.padEnd(6)}  ${check.name}${fix}`;
+}
+
+/** The lines and the verdict of every check: failed when any failed, partial when only manual ones
+ * remain, ok when every one is ok. */
+export function verdict(head: string, list: readonly Check[]): Outcome {
+  const message = [head, ...list.map(row)].join("\n");
+  const data = { checks: list };
+  if (list.some((c) => c.status === "failed")) {
+    return fail("failed", message, data);
+  }
+  return list.some((c) => c.status === "manual")
+    ? { code: "partial", message, data }
+    : ok(data, message);
 }

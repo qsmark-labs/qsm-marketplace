@@ -47,8 +47,8 @@ function fieldOf(board: unknown, wanted: string): Field | null {
 }
 
 export async function card(run: Run, target: Target, number: number): Promise<Result<Card>> {
-  const vars = variables({ repo: target.repoId, board: target.board.id, number });
-  const answer = await graphql(run, CARD, vars);
+  const ids = variables({ repo: target.repoId, board: target.board.id, number });
+  const answer = await graphql(run, CARD, ids);
   if (!answer.ok) {
     return answer;
   }
@@ -68,8 +68,8 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   const { parentOpen, subIssues } = readFamily(issue);
   const openSubIssues = subIssues.total - subIssues.closed;
   const facts = { caller, parentOpen, openSubIssues };
-  const ids = { id, cardId: read.cardId, statusField, priorityField };
-  return { ok: true, value: { ...read.item, ...facts, ...ids } };
+  const own = { id, cardId: read.cardId, statusField, priorityField };
+  return { ok: true, value: { ...read.item, ...facts, ...own } };
 }
 
 /** The card's id, adding the issue to the board first when it is not on it yet. */
@@ -89,13 +89,14 @@ async function cardOn(run: Run, target: Target, at: Card): Promise<Result<string
 }
 
 /** Sets one of the card's fields, adding the card first when the issue is not on the board. */
-async function setOption(
+export async function setField(
   run: Run,
   target: Target,
   at: Card,
-  [name, field]: readonly [string, Field | null],
+  name: "Status" | "Priority",
   value: string,
 ): Promise<Result<null>> {
+  const field = name === "Status" ? at.statusField : at.priorityField;
   const option = field?.options.get(value);
   if (field === null || option === undefined) {
     return refuse("failed", "not-found", `the board's ${name} has no option ${value}`);
@@ -115,30 +116,33 @@ export function setStatus(
   at: Card,
   status: string,
 ): Promise<Result<null>> {
-  return setOption(run, target, at, ["Status", at.statusField], status);
+  return setField(run, target, at, "Status", status);
 }
 
-export function setPriority(
-  run: Run,
-  target: Target,
-  at: Card,
-  value: string,
-): Promise<Result<null>> {
-  return setOption(run, target, at, ["Priority", at.priorityField], value);
-}
-
-/** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. */
+/** Files an issue of the kind's type, its body on stdin; it answers the new issue's number. The
+ * labels in `make` it creates when missing and puts on; one in `flags` must exist, or gh fails. */
 export async function file(
   run: Run,
   target: Target,
-  issue: { kind: Kind; title: string; body: string; flags: readonly string[] },
+  issue: {
+    kind: Kind;
+    title: string;
+    body: string;
+    flags: readonly string[];
+    make?: readonly string[];
+  },
 ): Promise<Result<number>> {
+  const labelled = await labels(run, target, issue.make ?? []);
+  if (!labelled.ok) {
+    return labelled;
+  }
   // feedback is a plain issue with no type: its label names its kind
   const type = { task: ["--type", "Task"], feature: ["--type", "Feature"], feedback: [] }[
     issue.kind
   ];
   const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, ...type];
-  const made = await gh(run, [...args, "--body-file", "-", ...issue.flags], issue.body);
+  const put = (issue.make ?? []).flatMap((name) => ["--label", name]);
+  const made = await gh(run, [...args, "--body-file", "-", ...put, ...issue.flags], issue.body);
   if (!made.ok) {
     return made;
   }
@@ -148,24 +152,36 @@ export async function file(
     : refuse("failed", "refused", `gh filed no issue it could name: ${made.value}`);
 }
 
-/** Creates a label the repository lacks; one it has already is left as it is. */
-export async function label(run: Run, target: Target, name: string): Promise<Result<null>> {
-  const made = await run(["label", "create", name, "--repo", target.repo]);
-  // gh 2.103.3 answers a label that exists with this text and no code of its own
-  const exists = made.exit !== 0 && made.stderr.includes("already exists");
-  const done = made.exit === 0 || exists ? null : made.stderr.trim();
-  return done === null ? { ok: true, value: null } : refuse("failed", "refused", done);
+/** Creates each label the repository lacks; one it has already is left as it is. */
+export async function labels(
+  run: Run,
+  target: Target,
+  names: readonly string[],
+): Promise<Result<null>> {
+  for (const name of names) {
+    const made = await run(["label", "create", name, "--repo", target.repo]);
+    // gh 2.103.3 answers a label that exists with this text and no code of its own
+    if (made.exit !== 0 && !made.stderr.includes("already exists")) {
+      return refuse("failed", "refused", made.stderr.trim());
+    }
+  }
+  return { ok: true, value: null };
 }
 
-/** `gh issue edit` with the given flags in one call; a body given goes on stdin. */
+/** `gh issue edit` in one call: a body goes on stdin, the labels in `make` are made as `file` does. */
 export async function edit(
   run: Run,
   target: Target,
   number: number,
   flags: readonly string[],
-  body?: string,
+  { body, make = [] }: { body?: string | undefined; make?: readonly string[] } = {},
 ): Promise<Result<null>> {
-  const args = ["issue", "edit", String(number), "--repo", target.repo, ...flags];
+  const made = await labels(run, target, make);
+  if (!made.ok) {
+    return made;
+  }
+  const added = make.flatMap((name) => ["--add-label", name]);
+  const args = ["issue", "edit", String(number), "--repo", target.repo, ...flags, ...added];
   const done = await gh(run, body === undefined ? args : [...args, "--body-file", "-"], body);
   return done.ok ? { ok: true, value: null } : done;
 }
@@ -177,16 +193,8 @@ export async function close(
   number: number,
   notPlanned: boolean,
 ): Promise<Result<null>> {
-  const reason = notPlanned ? "not planned" : "completed";
-  const done = await gh(run, [
-    "issue",
-    "close",
-    String(number),
-    "--repo",
-    target.repo,
-    "--reason",
-    reason,
-  ]);
+  const args = ["issue", "close", String(number), "--repo", target.repo, "--reason"];
+  const done = await gh(run, [...args, notPlanned ? "not planned" : "completed"]);
   return done.ok ? { ok: true, value: null } : done;
 }
 
