@@ -2,6 +2,7 @@
 // case, a recording fake gh answers what the real gh answered.
 import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
@@ -530,6 +531,7 @@ describe("qsm-tasks feedback", () => {
   it.each([
     ["home path", "It broke in /home/someone/work."],
     ["email", "Mail someone@example.com."],
+    ["hostname", `It ran on ${hostname()}.`],
     ["github-pat", `The token ghp_${"a".repeat(36)} leaked.`],
     ["private-key", key],
   ])(

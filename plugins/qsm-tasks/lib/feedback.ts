@@ -48,11 +48,14 @@ function privateIn(line: string, login: string, host: string): string | null {
   if (line.split(/\s/).some((word) => isEmail(word))) {
     return "email";
   }
-  const words = line.split(/[^\w.-]+/);
-  if (login !== "" && words.includes(login)) {
+  // a word ends a sentence with a dot, and a dash can open or close it: neither belongs to a name
+  const words = new Set(
+    line.split(/[^\w.-]+/).map((word) => word.replaceAll(/^[.-]+|[.-]+$/g, "")),
+  );
+  if (login !== "" && words.has(login)) {
     return "login";
   }
-  return host !== "" && words.includes(host) ? "hostname" : null;
+  return host !== "" && words.has(host) ? "hostname" : null;
 }
 
 /** The first private data in the text, named by its kind and line, never by the text itself; a
