@@ -10,9 +10,9 @@ qsm-tasks <verb> --help
 the open issues, and with `--feature` or `--spec` the whole tree or binding, open and closed.
 `show` prints that row, the facts, the sub-issue counts and the body, and with `--comments` the
 comments oldest first; `note` posts its text unchanged and prints `#<n> comment added`. A move,
-`claim` or `unclaim`, prints `#<n> <from> -> <to>`; when its guard in `qsm-tasks flow` fails it
-exits `blocked` and changes nothing. Every verb but `flow` needs `gh` on PATH with a login that has
-the `project` scope.
+`claim`, `unclaim`, `review`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
+in `qsm-tasks flow` fails it exits `blocked` and changes nothing. Every verb but `flow` needs `gh`
+on PATH with a login that has the `project` scope.
 
 Every verb but `flow` and `feedback` acts on a repository and its board, resolved on each run and
 never stored: `--repo owner/name` where the verb takes it, else the repository `gh` resolves in the

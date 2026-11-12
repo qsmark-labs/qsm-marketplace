@@ -13,12 +13,25 @@ export interface Card extends Item {
   readonly cardId: string | null;
   /** the login running the verb */
   readonly caller: string;
+  /** null when it has no parent */
+  readonly parentOpen: boolean | null;
+  readonly openSubIssues: number;
   readonly field: { readonly id: string; readonly options: ReadonlyMap<string, string> };
 }
 
-const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{field(name:"Status"){...on ProjectV2SingleSelectField{id options{id name}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM}}}}}`;
+const CARD = `query($repo:ID!,$board:ID!,$number:Int!){viewer{login} board:node(id:$board){...on ProjectV2{field(name:"Status"){...on ProjectV2SingleSelectField{id options{id name}}}}} repo:node(id:$repo){...on Repository{issue(number:$number){id ${ITEM} parent{state} subIssuesSummary{total completed}}}}}`;
 const ADD = `mutation($board:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$board,contentId:$issue}){item{id}}}`;
 const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(input:{projectId:$board,itemId:$card,fieldId:$field,value:{singleSelectOptionId:$option}}){clientMutationId}}`;
+
+/** Whether its parent is open (null with no parent), and how many of its sub-issues are. */
+function family(issue: unknown): { parentOpen: boolean | null; openSubIssues: number } {
+  const node = isRecord(issue) ? issue : {};
+  const summary = isRecord(node.subIssuesSummary) ? node.subIssuesSummary : {};
+  const total = typeof summary.total === "number" ? summary.total : 0;
+  const done = typeof summary.completed === "number" ? summary.completed : 0;
+  const parentOpen = isRecord(node.parent) ? node.parent.state === "OPEN" : null;
+  return { parentOpen, openSubIssues: total - done };
+}
 
 function optionsOf(field: unknown): Map<string, string> {
   const options = isRecord(field) && Array.isArray(field.options) ? field.options : [];
@@ -55,6 +68,7 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
     id,
     cardId: text(onBoard, "id"),
     caller,
+    ...family(issue),
     field: { id: fieldId, options: optionsOf(field) },
   };
   return { ok: true, value: { ...item, ...at } };
@@ -98,13 +112,15 @@ export async function setStatus(
     : set;
 }
 
-/** `gh issue edit` with the given flags: assignees and labels; it prints nothing of its own. */
+/** `gh issue edit` with the given flags, assignees and labels, or `gh issue reopen`; it prints
+ * nothing of its own. */
 export async function edit(
   run: Run,
   target: Target,
   number: number,
   flags: readonly string[],
+  command: "edit" | "reopen" = "edit",
 ): Promise<Result<null>> {
-  const done = await gh(run, ["issue", "edit", String(number), "--repo", target.repo, ...flags]);
+  const done = await gh(run, ["issue", command, String(number), "--repo", target.repo, ...flags]);
   return done.ok ? { ok: true, value: null } : done;
 }

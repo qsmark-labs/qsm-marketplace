@@ -1,6 +1,5 @@
-// The moves that take and give back a task: claim and unclaim. Each checks its guard in
-// lib/flow.ts first and changes nothing when it fails; its writes are idempotent, so running it
-// again finishes it.
+// The moves of a task and a feature. Each checks its guard in lib/flow.ts first and changes
+// nothing when it fails; its writes are idempotent, so running it again finishes it.
 
 import { type Call, optionalString, requiredNumber } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
@@ -99,3 +98,55 @@ export const unclaim = onCard((call, { run, target }, at) => {
     ...(until === undefined ? (at.labels.includes(DEFERRED) ? [bringBack] : []) : defer),
   ]);
 });
+
+const ALLOWED: Result<null> = { ok: true, value: null };
+
+/** A move that sets one Status: its guard in the flow table, what else must hold, and the writes
+ * that go before the Status. */
+function moving(
+  verb: string,
+  holds: (at: Card) => Result<null> = () => ALLOWED,
+  before: (on: At, at: Card) => Write[] = () => [],
+): (call: Call, on: At) => Promise<Outcome> {
+  return onCard((_call, on, at) => {
+    const move = moveOf(verb, at.kind, at.status);
+    if (!move.ok) {
+      return move.outcome;
+    }
+    const allowed = holds(at);
+    if (!allowed.ok) {
+      return allowed.outcome;
+    }
+    return writes(at.number, [
+      ...before(on, at),
+      () => setStatus(on.run, on.target, at, move.value.to),
+    ]);
+  });
+}
+
+/** In Dev, Agent Review or Human Review: Agent Review. */
+export const review = moving("review");
+
+/** A feature at In Dev, Ready For Test or Blocked: back to Todo for planning. */
+export const plan = moving("plan");
+
+/** A feature at Ready For Test whose sub-issues are all closed: In Test. */
+export const qa = moving("qa", (at) =>
+  at.openSubIssues === 0
+    ? ALLOWED
+    : refuse(
+        "blocked",
+        "wrong-status",
+        `qa needs no open sub-issue; #${at.number} has ${at.openSubIssues}`,
+      ),
+);
+
+/** A closed task, bug or feedback whose parent is open: open again, at Todo. */
+export const reopen = moving(
+  "reopen",
+  (at) =>
+    at.parentOpen === false
+      ? refuse("blocked", "wrong-status", `reopen needs an open parent; #${at.number}'s is closed`)
+      : ALLOWED,
+  ({ run, target }, at) => [() => edit(run, target, at.number, [], "reopen")],
+);

@@ -41,12 +41,28 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  review(): Promise<unknown>;
+  review(options: {
+    number: number;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   human(): Promise<unknown>;
   close(): Promise<unknown>;
-  reopen(): Promise<unknown>;
-  plan(): Promise<unknown>;
-  qa(): Promise<unknown>;
+  reopen(options: {
+    number: number;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
+  plan(options: {
+    number: number;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
+  qa(options: {
+    number: number;
+    repo?: string;
+    project?: string;
+  }): Promise<unknown>;
   doctor(): Promise<unknown>;
   flow(): Promise<unknown>;
   setup(): Promise<unknown>;
