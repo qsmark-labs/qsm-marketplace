@@ -214,7 +214,7 @@ describe("qsm-tasks note", () => {
 
 /** A move's card as GitHub answers it: the caller, the Status field and one task on the board. */
 function cardOf(status: string, assignees: readonly string[], more: object = {}): string {
-  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human"];
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human", "Done"];
   const field = { id: "PVTSSF_1", options: statuses.map((name, i) => ({ id: `opt${i}`, name })) };
   const issue = {
     ...task(5, null, [], status),
@@ -357,7 +357,7 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("reopen on a closed issue off the board takes it as Done, adds the card and sets Todo", () => {
+  it("reopen on a closed issue off the board takes it as Done, adds the card at Done, reopens and sets Todo", () => {
     const off = { state: "CLOSED", projectItems: { nodes: [] } };
     const added = JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "PVTI_5" } } } });
     const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off), added }, [
@@ -366,11 +366,20 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     ]);
     expect(r.message).toBe("#5 Done -> Todo");
     expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
+      "api graphql",
+      "api graphql",
       "issue reopen 5 --repo qsmark-labs/qsm-marketplace",
       "api graphql",
       "api graphql",
     ]);
-    expect(r.calls[3]).toContain("addProjectV2ItemById");
+    expect(r.calls[2]).toContain("addProjectV2ItemById");
+  });
+
+  it("reopen off the board reopens nothing when adding the card fails, so a rerun still reads Done", () => {
+    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off) }, ["reopen", "5"]);
+    expect(r.exit).not.toBe(0);
+    expect(r.calls.join("\n")).not.toContain("issue reopen");
   });
 });
 

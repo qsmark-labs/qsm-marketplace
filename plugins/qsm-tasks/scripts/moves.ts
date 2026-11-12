@@ -9,7 +9,7 @@ import {
   requiredNumber,
 } from "../../../lib/cli-base.ts";
 import { type Outcome, UsageError } from "../../../lib/outcome.ts";
-import { DEFERRED, moveOf } from "../lib/flow.ts";
+import { DEFERRED, moveOf, STATUS } from "../lib/flow.ts";
 import { type Card, comment, edit, reopen as reopenIssue, setField } from "../lib/github/board.ts";
 import { readyPull } from "../lib/github/pulls.ts";
 import { type At, onIssue, type Write } from "./on-issue.ts";
@@ -100,7 +100,12 @@ export const plan = moving("plan");
 /** A feature at Ready For Test whose sub-issues are all closed: In Test. */
 export const qa = moving("qa");
 
-/** A closed task, bug or feedback whose parent is open: open again, at Todo. */
+/** A closed task, bug or feedback whose parent is open: open again, at Todo. Off the board, the
+ * card is added at Done first: a refusal after the reopen would leave an open issue read as Todo,
+ * which no reopen takes, so whatever a refusal leaves, a rerun still reads Done and finishes. */
 export const reopen = moving("reopen", (_call, { run, target }, at) => ({
-  before: [() => reopenIssue(run, target, at.number)],
+  before: [
+    ...(at.cardId === null ? [() => setField(run, target, at, "Status", STATUS.done)] : []),
+    () => reopenIssue(run, target, at.number),
+  ],
 }));
