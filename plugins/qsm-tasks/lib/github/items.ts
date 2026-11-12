@@ -66,7 +66,7 @@ function qualifiers(repo: string, filter: Filter): string {
     .join(" ");
 }
 
-export function nodes(connection: unknown): unknown[] {
+function nodes(connection: unknown): unknown[] {
   return isRecord(connection) && Array.isArray(connection.nodes) ? connection.nodes : [];
 }
 
@@ -90,7 +90,11 @@ function kindOf(type: string | null, labels: readonly string[]): Kind | null {
   return labels.includes("feedback") ? "feedback" : null;
 }
 
-export function readItem(node: unknown, board: string): Item | null {
+/** An issue as a read sees it, and the id of its card on the board, which only a write needs. */
+export function readCard(
+  node: unknown,
+  board: string,
+): { item: Item; cardId: string | null } | null {
   const number = count(node, "number");
   const title = text(node, "title");
   if (!isRecord(node) || number === null || title === null) {
@@ -101,7 +105,7 @@ export function readItem(node: unknown, board: string): Item | null {
     (p) => isRecord(p) && text(p.project, "id") === board,
   );
   const card = isRecord(onBoard) ? onBoard : {};
-  return {
+  const item = {
     number,
     title,
     open: node.state === "OPEN",
@@ -114,6 +118,7 @@ export function readItem(node: unknown, board: string): Item | null {
       text(b, "state") === "OPEN" ? (count(b, "number") ?? []) : [],
     ),
   };
+  return { item, cardId: text(card, "id") };
 }
 
 /** The repository's issues the filter finds, one page; more than a page is a call to narrow. */
@@ -127,7 +132,10 @@ export async function search(run: Run, target: Target, filter: Filter): Promise<
   if (isRecord(found) && isRecord(found.pageInfo) && found.pageInfo.hasNextPage === true) {
     return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
   }
-  return { ok: true, value: nodes(found).flatMap((node) => readItem(node, target.board.id) ?? []) };
+  return {
+    ok: true,
+    value: nodes(found).flatMap((node) => readCard(node, target.board.id)?.item ?? []),
+  };
 }
 
 function readComment(node: unknown): Comment {
@@ -160,7 +168,7 @@ export async function issue(
     return answer;
   }
   const node = isRecord(answer.value.node) ? answer.value.node.issue : undefined;
-  const item = readItem(node, target.board.id);
+  const item = readCard(node, target.board.id)?.item ?? null;
   const body = text(node, "body");
   if (!isRecord(node) || item === null || body === null) {
     return refuse("failed", "not-found", `no issue #${number} in ${target.repo}`);

@@ -1,18 +1,17 @@
-// A move's reads and writes on the board: one query reads the issue, its card, the Status field's
-// ids and the caller, and each write is idempotent, so running a verb again finishes it.
+// The writes on an issue, and the one read a move makes before them: the issue, its card, the
+// Status field's ids and the caller. Each write is idempotent, so running a verb again finishes it.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
+import type { Facts } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
-import { ITEM, type Item, nodes, readItem, text } from "./items.ts";
+import { ITEM, type Item, readCard, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
-/** An issue as a move sees it: the item, and the ids its writes need. */
-export interface Card extends Item {
+/** An issue as a move sees it: the item, what its guard reads, and the ids its writes need. */
+export interface Card extends Item, Facts {
   readonly id: string;
   /** its card on the board; null before it is added */
   readonly cardId: string | null;
-  /** the login running the verb */
-  readonly caller: string;
   readonly field: { readonly id: string; readonly options: ReadonlyMap<string, string> };
 }
 
@@ -39,25 +38,18 @@ export async function card(run: Run, target: Target, number: number): Promise<Re
   }
   const { viewer, board, repo } = answer.value;
   const issue = isRecord(repo) ? repo.issue : undefined;
-  const item = readItem(issue, target.board.id);
-  const field = isRecord(board) ? board.field : undefined;
-  const [id, caller, fieldId] = [text(issue, "id"), text(viewer, "login"), text(field, "id")];
-  if (item === null || id === null || caller === null || fieldId === null) {
+  const read = readCard(issue, target.board.id);
+  const status = isRecord(board) ? board.field : undefined;
+  const [id, caller, fieldId] = [text(issue, "id"), text(viewer, "login"), text(status, "id")];
+  if (read === null || id === null || caller === null || fieldId === null) {
     return refuse(
       "failed",
       "not-found",
       `no issue #${number} in ${target.repo}, or no Status field`,
     );
   }
-  const cards = nodes(isRecord(issue) ? issue.projectItems : undefined);
-  const onBoard = cards.find((p) => isRecord(p) && text(p.project, "id") === target.board.id);
-  const at = {
-    id,
-    cardId: text(onBoard, "id"),
-    caller,
-    field: { id: fieldId, options: optionsOf(field) },
-  };
-  return { ok: true, value: { ...item, ...at } };
+  const field = { id: fieldId, options: optionsOf(status) };
+  return { ok: true, value: { ...read.item, id, cardId: read.cardId, caller, field } };
 }
 
 /** The card's id, adding the issue to the board first when it is not on it yet. */
@@ -76,13 +68,13 @@ async function cardOn(run: Run, target: Target, at: Card): Promise<Result<string
     : { ok: true, value: id };
 }
 
-/** Sets the card's Status and returns the write as `#<n> <from> -> <to>`. */
+/** Sets the card's Status, adding the card first when the issue is not on the board. */
 export async function setStatus(
   run: Run,
   target: Target,
   at: Card,
   status: string,
-): Promise<Result<string>> {
+): Promise<Result<null>> {
   const option = at.field.options.get(status);
   if (option === undefined) {
     return refuse("failed", "not-found", `the board's Status has no option ${status}`);
@@ -93,12 +85,10 @@ export async function setStatus(
   }
   const ids = variables({ board: target.board.id, card: placed.value, field: at.field.id, option });
   const set = await graphql(run, SET, ids);
-  return set.ok
-    ? { ok: true, value: `#${at.number} ${at.status ?? "no Status"} -> ${status}` }
-    : set;
+  return set.ok ? { ok: true, value: null } : set;
 }
 
-/** `gh issue edit` with the given flags: assignees and labels; it prints nothing of its own. */
+/** `gh issue edit` with the given flags: assignees and labels, in one call. */
 export async function edit(
   run: Run,
   target: Target,
@@ -110,15 +100,17 @@ export async function edit(
 }
 
 /** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
-export function comment(
+export async function comment(
   run: Run,
   target: Target,
   number: number,
   body: string,
 ): Promise<Result<string>> {
-  return gh(
-    run,
-    ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"],
-    body,
-  );
+  const args = ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"];
+  const answer = await run(args, body);
+  const said = answer.stderr.trim();
+  if (answer.exit !== 0) {
+    return refuse("failed", "refused", said === "" ? `gh exited ${answer.exit}` : said);
+  }
+  return { ok: true, value: answer.stdout.trim() };
 }
