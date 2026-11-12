@@ -30,6 +30,11 @@ export function changeLabel(id: string): string {
   return `change:${id}`;
 }
 
+/** The branch a feature's tasks are built on, and their pull requests are based on. */
+export function featureBranch(feature: number): string {
+  return `feature/${feature}`;
+}
+
 /** The kinds the flow tells apart: an issue of type Task or Bug is the kind `task`, because the
  * flow treats them alike; Feedback is the label `feedback`, not an issue type. */
 const KIND_LABELS = { task: "Task and Bug", feature: "Feature", feedback: "Feedback" } as const;
@@ -142,6 +147,8 @@ export interface Facts {
   readonly caller: string;
   /** null when it has no parent */
   readonly parentOpen: boolean | null;
+  /** the feature it is under; null when it has no parent */
+  readonly parent: number | null;
   readonly openSubIssues: number;
 }
 
@@ -157,15 +164,18 @@ interface Move {
 }
 
 const HOLDS: Result<null> = { ok: true, value: null };
-const S = STATUS;
-const REVIEW: readonly StatusName[] = [S.agentReview, S.readyForHuman, S.humanReview];
+const REVIEW: readonly StatusName[] = [
+  STATUS.agentReview,
+  STATUS.readyForHuman,
+  STATUS.humanReview,
+];
 
 const MOVES: readonly Move[] = [
   {
     verb: "claim",
     kinds: ["task"],
-    from: [S.todo],
-    to: S.inDev,
+    from: [STATUS.todo],
+    to: STATUS.inDev,
     when: "unassigned or the caller's",
     holds: (at) => {
       const others = at.assignees.filter((login) => login !== at.caller);
@@ -174,12 +184,12 @@ const MOVES: readonly Move[] = [
         : refuse("blocked", "held", `#${at.number} is held by ${others.join(", ")}`);
     },
   },
-  { verb: "unclaim", kinds: ["task"], from: [S.inDev, ...REVIEW], to: S.todo },
+  { verb: "unclaim", kinds: ["task"], from: [STATUS.inDev, ...REVIEW], to: STATUS.todo },
   {
     verb: "unclaim",
     kinds: ["task"],
-    from: [S.todo],
-    to: S.todo,
+    from: [STATUS.todo],
+    to: STATUS.todo,
     when: `labelled ${DEFERRED}`,
     holds: (at) =>
       at.labels.includes(DEFERRED)
@@ -189,34 +199,49 @@ const MOVES: readonly Move[] = [
   {
     verb: "review",
     kinds: ["task"],
-    from: [S.inDev, S.agentReview, S.humanReview],
-    to: S.agentReview,
+    from: [STATUS.inDev, STATUS.agentReview, STATUS.humanReview],
+    to: STATUS.agentReview,
   },
   {
     verb: "human",
     kinds: ["task"],
-    from: [S.agentReview],
-    to: S.readyForHuman,
+    from: [STATUS.agentReview],
+    to: STATUS.readyForHuman,
     when: "--pr: based on feature/<parent>, Closes #<n>, checks green, no changes asked",
+    // the PR's base names the feature, so a task under none has no PR to hand over
+    holds: (at) =>
+      at.parent === null
+        ? refuse("blocked", "wrong-status", `#${at.number} is under no feature`)
+        : HOLDS,
   },
-  { verb: "human --started", kinds: ["task"], from: [S.readyForHuman], to: S.humanReview },
+  {
+    verb: "human --started",
+    kinds: ["task"],
+    from: [STATUS.readyForHuman],
+    to: STATUS.humanReview,
+  },
   {
     verb: "reopen",
     kinds: ["task", "feedback"],
-    from: [S.done],
-    to: S.todo,
+    from: [STATUS.done],
+    to: STATUS.todo,
     when: "its parent open",
     holds: (at) =>
       at.parentOpen === false
         ? refuse("blocked", "wrong-status", `#${at.number}'s parent is closed`)
         : HOLDS,
   },
-  { verb: "plan", kinds: ["feature"], from: [S.inDev, S.readyForTest, S.blocked], to: S.todo },
+  {
+    verb: "plan",
+    kinds: ["feature"],
+    from: [STATUS.inDev, STATUS.readyForTest, STATUS.blocked],
+    to: STATUS.todo,
+  },
   {
     verb: "qa",
     kinds: ["feature"],
-    from: [S.readyForTest],
-    to: S.inTest,
+    from: [STATUS.readyForTest],
+    to: STATUS.inTest,
     when: "no open sub-issue",
     holds: (at) =>
       at.openSubIssues === 0

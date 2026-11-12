@@ -17,8 +17,6 @@ export interface Card extends Item, Facts {
   readonly id: string;
   /** its card on the board; null before it is added */
   readonly cardId: string | null;
-  /** the feature it is under; null when it has no parent */
-  readonly parent: number | null;
   readonly statusField: Field;
   /** null on a board that has no Priority field yet */
   readonly priorityField: Field | null;

@@ -3,14 +3,10 @@
 
 import type { Call } from "../../../lib/cli-base.ts";
 import type { Outcome } from "../../../lib/outcome.ts";
-import type { Run } from "../lib/github/gh.ts";
+import type { At } from "./on-issue.ts";
 import { checks, health, verdict } from "../lib/github/health.ts";
-import type { Target } from "../lib/github/target.ts";
 
-export async function doctor(
-  _call: Call,
-  { run, target }: { run: Run; target: Target },
-): Promise<Outcome> {
+export async function doctor(_call: Call, { run, target }: At): Promise<Outcome> {
   const at = await health(run, target);
   const head = `repository ${target.repo}, board ${target.board.owner}/${target.board.number}`;
   return at.ok ? verdict(head, checks(at.value)) : at.outcome;

@@ -260,7 +260,7 @@ describe("qsm-tasks human hands a task over", () => {
     const ready = {
       baseRefName: "feature/3",
       body: "Builds the verb.\n\nCloses #5",
-      latestReviews: { pageInfo: { hasNextPage: false }, nodes: [{ state: "COMMENTED" }] },
+      latestReviews: { nodes: [{ state: "COMMENTED" }] },
       commits: rollup("SUCCESS"),
     };
     const pull = JSON.stringify({ data: { node: { pullRequest: { ...ready, ...more } } } });
@@ -281,6 +281,13 @@ describe("qsm-tasks human hands a task over", () => {
     expect(r.data).toMatchObject({ reason: "wrong-status" });
     expect(r.message).toContain(said);
     expect(r.calls.some((c) => c.includes("mutation"))).toBe(false);
+  });
+
+  it("on a task under no feature is blocked before the PR is read", () => {
+    const gh = { stdout: linked([BOARD]), card: cardOf("Agent Review", []) };
+    const r = run(gh, ["human", "5", "--pr", "9"]);
+    expect(r.message).toBe("#5 is under no feature");
+    expect(r.calls).toHaveLength(2);
   });
 
   it("with its ready PR, approved by nobody, moves the task to Ready For Human", () => {

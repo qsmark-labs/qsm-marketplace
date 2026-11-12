@@ -7,8 +7,8 @@ import { type Call, type Handler, optionalString, runCli } from "../../../lib/cl
 import type { Outcome } from "../../../lib/outcome.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
 import { flowOutcome } from "../lib/flow.ts";
-import { connect, type Run } from "../lib/github/gh.ts";
-import { resolveTarget, type Target } from "../lib/github/target.ts";
+import { connect } from "../lib/github/gh.ts";
+import { resolveTarget } from "../lib/github/target.ts";
 // A static import: bun's compiler inlines it, so `--help` needs no checkout in the room.
 import manifestJson from "../qsm.json" with { type: "json" };
 import { add, checkCreate, feature } from "./create.ts";
@@ -17,19 +17,14 @@ import { checkEdit, close, edit } from "./edits.ts";
 import { feedback } from "./feedback.ts";
 import { setup } from "./setup.ts";
 import { checkHuman, claim, human, plan, qa, reopen, review, unclaim } from "./moves.ts";
+import type { At } from "./on-issue.ts";
 import { checkSpec, list, note, ready, show } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
-/** What a verb on the board is handed beside its call. */
-interface OnBoard {
-  readonly run: Run;
-  readonly target: Target;
-}
-
 /** A verb on the board: gh found, then the repository and the board resolved once, before it runs. */
 function onBoard(
-  verb: (call: Call, at: OnBoard) => Outcome | Promise<Outcome>,
+  verb: (call: Call, at: At) => Outcome | Promise<Outcome>,
   check: (call: Call) => void = () => {},
 ): Handler {
   return async (call) => {
