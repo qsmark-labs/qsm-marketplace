@@ -27,9 +27,12 @@ function linked(nodes: readonly unknown[], hasNextPage = false): string {
 }
 
 interface FakeGh {
+  /** what it answers the resolution, or any call when `search` is absent */
   readonly stdout: string;
   readonly stderr?: string;
   readonly exit?: number;
+  /** what it answers a search */
+  readonly search?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call. */
@@ -37,7 +40,9 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"]) {
   const dir = sandboxDir("qsm-tasks-");
   const calls = join(dir, "calls");
   // builtins only: the PATH holds the fake and the runtime, no cat
-  const body = `printf '%s\\n' "$*" >> "${calls}"; printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
+  const answer = `printf '%s' '${gh.stdout}'; printf '%s' '${gh.stderr ?? ""}' >&2; exit ${gh.exit ?? 0}`;
+  const search = gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `;
+  const body = `printf '%s\\n' "$*" >> "${calls}"\ncase "$*" in ${search}*) ${answer} ;; esac`;
   fakeBin(dir, "gh", body);
   const env = isolatedEnv(dir, { PATH: `${dir}:${bareRuntimePath()}` });
   const r = runBin(CLI, [...argv, "--json"], { env });
@@ -77,5 +82,53 @@ describe("qsm-tasks resolves the board", () => {
     const r = run({ stdout: linked([BOARD]) }, ["ready", "--bogus"]);
     expect(r.exit).toBe(2);
     expect(r.calls).toEqual([]);
+  });
+});
+
+function task(number: number, priority: string | null, blockedBy: number[] = [], status = "Todo") {
+  const card = {
+    project: { id: BOARD.id },
+    status: { name: status },
+    priority: priority === null ? null : { name: priority },
+  };
+  return {
+    number,
+    title: `task ${number}`,
+    state: "OPEN",
+    issueType: { name: "Task" },
+    assignees: { nodes: [] },
+    labels: { nodes: [] },
+    blockedBy: { nodes: blockedBy.map((n) => ({ number: n, state: "OPEN" })) },
+    projectItems: { nodes: [card] },
+  };
+}
+
+function found(nodes: readonly unknown[]): string {
+  return JSON.stringify({ data: { search: { pageInfo: { hasNextPage: false }, nodes } } });
+}
+
+describe("qsm-tasks reads the board", () => {
+  it("ready lists P0 first and no priority last, and leaves out the blocked and what is not Todo", () => {
+    const ready = [task(4, "P2"), task(7, "P0"), task(9, null), task(11, "P0"), task(1, "P0")];
+    const others = [task(2, "P0", [1]), task(5, "P0", [], "In Dev")];
+    const r = run({ stdout: linked([BOARD]), search: found([...ready, ...others]) });
+    expect(r.exit).toBe(0);
+    expect(r.message.split("\n").map((line) => line.split(" ")[0])).toEqual([
+      "#1",
+      "#7",
+      "#11",
+      "#4",
+      "#9",
+    ]);
+    expect(r.calls[1]).toContain('-label:"deferred"');
+  });
+
+  it("list --spec reads a change's feature by its exact label, in any state, in one search", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, ["list", "--spec", "add-x"]);
+    expect(r.message).toBe("none");
+    expect(r.calls).toHaveLength(2);
+    expect(r.calls[1]).toEndWith(
+      'q=repo:qsmark-labs/qsm-marketplace is:issue label:"change:add-x"',
+    );
   });
 });

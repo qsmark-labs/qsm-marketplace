@@ -7,10 +7,54 @@
     "noun": "tasks",
     "commands": {
       "qsm-tasks ready": {
-        "description": "List the open Todo tasks and bugs, unblocked and not deferred, by Priority then number"
+        "description": "List the open Todo tasks and bugs, unblocked and not deferred, by Priority then number",
+        "args": [
+          {
+            "name": "feature",
+            "type": "number",
+            "description": "only the sub-issues of this feature"
+          },
+          {
+            "name": "qa",
+            "type": "boolean",
+            "description": "the features at Ready For Test instead"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks list": {
-        "description": "List the issues on the board, filtered by feature, kind, Status, priority, label or change"
+        "description": "List the open issues; with --feature or --spec, a feature's sub-issues or a change's feature, open and closed",
+        "args": [
+          {
+            "name": "feature",
+            "type": "number",
+            "description": "the sub-issues of this feature"
+          },
+          {
+            "name": "spec",
+            "type": "string",
+            "description": "the feature labelled change:<id>"
+          },
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name; default: gh's repository"
+          },
+          {
+            "name": "project",
+            "type": "string",
+            "description": "owner/number; default: the linked board"
+          }
+        ]
       },
       "qsm-tasks show": {
         "description": "Print one issue: its facts, blockers, sub-issue counts, body and comments"

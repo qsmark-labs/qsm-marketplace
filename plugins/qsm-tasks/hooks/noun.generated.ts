@@ -18,8 +18,8 @@ export interface VerbRow {
 }
 
 export const verbs: Readonly<Record<string, VerbRow>> = {
-  ready: { words: ["qsm-tasks","ready"], args: [] },
-  list: { words: ["qsm-tasks","list"], args: [] },
+  ready: { words: ["qsm-tasks","ready"], args: [{ name: "feature", flag: "--feature" }, { name: "qa", flag: "--qa", boolean: true }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
+  list: { words: ["qsm-tasks","list"], args: [{ name: "feature", flag: "--feature" }, { name: "spec", flag: "--spec" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   show: { words: ["qsm-tasks","show"], args: [] },
   feature: { words: ["qsm-tasks","feature"], args: [] },
   add: { words: ["qsm-tasks","add"], args: [] },
