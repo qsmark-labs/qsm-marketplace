@@ -89,8 +89,12 @@ async function afterFiling(
   // a refused order left the Priority unwritten too, so the edit carries both
   const prioritized = priority === undefined ? [] : ["--priority", priority];
   const flags = ordered.ok ? prioritized : ["--after", String(after), ...prioritized];
+  // the edit names the repository and the board the issue was filed on, not the shell's defaults
+  const { repo, board } = on.target;
+  const where = ["--repo", repo, "--project", `${board.owner}/${board.number}`];
   const said = `#${n} is filed, but ${set.outcome.message ?? "a write was refused"}`;
-  return refuse("failed", "refused", said, `qsm-tasks edit ${n} ${flags.join(" ")}`).outcome;
+  const next = ["qsm-tasks", "edit", String(n), ...where, ...flags].join(" ");
+  return refuse("failed", "refused", said, next).outcome;
 }
 
 /** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and

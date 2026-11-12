@@ -436,7 +436,9 @@ describe("qsm-tasks files the work", () => {
     const r = run(gh, ["add", "Write the CSV", "--after", "2"]);
     expect(r.exit).toBe(1);
     expect(r.message).toContain("#77 is filed");
-    expect(r.data).toMatchObject({ next: "qsm-tasks edit 77 --after 2" });
+    expect(r.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --after 2",
+    });
   });
 
   it("add refused after the filing names the edit that writes every flag still unwritten", () => {
@@ -451,7 +453,9 @@ describe("qsm-tasks files the work", () => {
       "--priority",
       "P1",
     ]);
-    expect(ordered.data).toMatchObject({ next: "qsm-tasks edit 77 --after 2 --priority P1" });
+    expect(ordered.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --after 2 --priority P1",
+    });
     const prioritized = run({ stdout, created, card: cardOf("Todo", []) }, [
       "add",
       "Write the CSV",
@@ -459,7 +463,9 @@ describe("qsm-tasks files the work", () => {
       "P1",
     ]);
     expect(prioritized.message).toContain("#77 is filed");
-    expect(prioritized.data).toMatchObject({ next: "qsm-tasks edit 77 --priority P1" });
+    expect(prioritized.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --priority P1",
+    });
   });
 
   it("add under a closed feature is blocked wrong-status and files nothing", () => {

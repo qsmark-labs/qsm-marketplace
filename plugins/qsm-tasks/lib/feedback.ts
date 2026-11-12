@@ -49,8 +49,9 @@ function privateIn(line: string, login: string, host: string): string | null {
     return "email";
   }
   // a word ends a sentence with a dot, and a dash can open or close it: neither belongs to a name
+  // both forms, because a name may itself end in a dot or a dash
   const words = new Set(
-    line.split(/[^\w.-]+/).map((word) => word.replaceAll(/^[.-]+|[.-]+$/g, "")),
+    line.split(/[^\w.-]+/).flatMap((word) => [word, word.replaceAll(/^[.-]+|[.-]+$/g, "")]),
   );
   if (login !== "" && words.has(login)) {
     return "login";
