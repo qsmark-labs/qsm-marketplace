@@ -12,15 +12,11 @@ import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { done, refuse, type Result } from "../lib/failure.ts";
 import { readText } from "../lib/files.ts";
 import { changeLabel, priorityOf } from "../lib/flow.ts";
-import { card, file, hasOption, setField } from "../lib/github/board.ts";
+import { card, file, hasPriority, setField } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import { issue } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
-
-interface At {
-  readonly run: Run;
-  readonly target: Target;
-}
+import type { At } from "./reads.ts";
 
 /** The checks a create makes before any gh call: the change id fits a label, the Priority is one. */
 export function checkCreate(call: Call): void {
@@ -43,13 +39,7 @@ export async function feature(call: Call, { run, target }: At): Promise<Outcome>
   const spec = optionalString(call, "spec");
   const make = spec === undefined ? [] : [changeLabel(spec)];
   const title = requiredString(call, "goal");
-  const filed = await file(run, target, {
-    kind: "feature",
-    title,
-    body: intent.value,
-    flags: [],
-    make,
-  });
+  const filed = await file(run, target, { kind: "feature", title, body: intent.value, make });
   return filed.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : filed.outcome;
 }
 
@@ -96,7 +86,7 @@ export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   if (!parent.ok) {
     return parent.outcome;
   }
-  const can = priority === undefined ? done : await hasOption(run, target, "Priority", priority);
+  const can = priority === undefined ? done : await hasPriority(run, target, priority);
   if (!can.ok) {
     return can.outcome;
   }
@@ -104,13 +94,8 @@ export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   if (!body.ok) {
     return body.outcome;
   }
-  const title = requiredString(call, "title");
-  const filed = await file(run, target, {
-    kind: "task",
-    title,
-    body: body.value,
-    flags: taskFlags(call),
-  });
+  const [title, flags] = [requiredString(call, "title"), taskFlags(call)];
+  const filed = await file(run, target, { kind: "task", title, body: body.value, flags });
   if (!filed.ok) {
     return filed.outcome;
   }

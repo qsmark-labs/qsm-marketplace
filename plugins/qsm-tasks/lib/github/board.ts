@@ -4,7 +4,7 @@ import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
 import type { Facts } from "../flow.ts";
 import { gh, graphql, type Run, variables } from "./gh.ts";
-import { FAMILY, ITEM, type Item, readCard, readFamily, text } from "./items.ts";
+import { FAMILY, ITEM, type Item, nodes, readCard, readFamily, text } from "./items.ts";
 import type { Target } from "./target.ts";
 
 /** A single-select field of the board: its id and its options' ids by name. */
@@ -31,10 +31,7 @@ const SET = `mutation($board:ID!,$card:ID!,$field:ID!,$option:String!){updatePro
 
 /** The single-select field of this name on the board, or null when it has none. */
 function fieldOf(board: unknown, wanted: string): Field | null {
-  const fields =
-    isRecord(board) && isRecord(board.fields) && Array.isArray(board.fields.nodes)
-      ? board.fields.nodes
-      : [];
+  const fields = nodes(isRecord(board) ? board.fields : undefined);
   const field: unknown = fields.find((f) => text(f, "name") === wanted);
   const id = text(field, "id");
   const options = isRecord(field) && Array.isArray(field.options) ? field.options : [];
@@ -48,17 +45,16 @@ function fieldOf(board: unknown, wanted: string): Field | null {
 
 const FIELDS = `query($board:ID!){board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}}}`;
 
-/** Whether the board's field of this name has the option, read before anything is written. */
-export async function hasOption(
+/** Whether the board's Priority has the option, read before anything is written. */
+export async function hasPriority(
   run: Run,
   target: Target,
-  name: string,
   value: string,
 ): Promise<Result<unknown>> {
   const answer = await graphql(run, FIELDS, variables({ board: target.board.id }));
-  const there = answer.ok && fieldOf(answer.value.board, name)?.options.has(value) === true;
+  const there = answer.ok && fieldOf(answer.value.board, "Priority")?.options.has(value) === true;
   return answer.ok && !there
-    ? refuse("failed", "not-found", `the board's ${name} has no option ${value}`)
+    ? refuse("failed", "not-found", `the board's Priority has no option ${value}`)
     : answer;
 }
 
@@ -144,7 +140,7 @@ export async function file(
     kind: "task" | "feature";
     title: string;
     body: string;
-    flags: readonly string[];
+    flags?: readonly string[];
     make?: readonly string[];
   },
 ): Promise<Result<number>> {
@@ -157,7 +153,11 @@ export async function file(
   const type = issue.kind === "task" ? "Task" : "Feature";
   const args = ["issue", "create", "--repo", target.repo, "--title", issue.title, "--type", type];
   const labels = (issue.make ?? []).flatMap((name) => ["--label", name]);
-  const made = await gh(run, [...args, "--body-file", "-", ...labels, ...issue.flags], issue.body);
+  const made = await gh(
+    run,
+    [...args, "--body-file", "-", ...labels, ...(issue.flags ?? [])],
+    issue.body,
+  );
   if (!made.ok) {
     return made;
   }
