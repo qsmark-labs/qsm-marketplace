@@ -37,6 +37,8 @@ interface FakeGh {
   readonly card?: string;
   /** refuse the first `gh issue edit`, as GitHub refuses a write */
   readonly refuseEditOnce?: true;
+  /** what it answers adding an issue to the board */
+  readonly added?: string;
 }
 
 /** Runs `qsm-tasks <argv> --json` with a gh that answers `gh` and records each call; a run in the
@@ -53,6 +55,7 @@ function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("
   const search = [
     gh.search === undefined ? "" : `*search\\(*) printf '%s' '${gh.search}' ;; `,
     gh.card === undefined ? "" : `*viewer\\{login\\}*) printf '%s' '${gh.card}' ;; `,
+    gh.added === undefined ? "" : `*addProjectV2ItemById*) printf '%s' '${gh.added}' ;; `,
   ].join("");
   const stdin = join(dir, "stdin");
   const comment = `*"issue comment"*) while IFS= read -r l || [ -n "$l" ]; do printf '%s\\n' "$l"; done > "${stdin}" ;; `;
@@ -241,5 +244,21 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     expect(r.exit).toBe(5);
     expect(r.message).toContain("parent is closed");
     expect(r.calls).toHaveLength(2);
+  });
+
+  it("reopen on a closed issue off the board takes it as Done, adds the card and sets Todo", () => {
+    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+    const added = JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "PVTI_5" } } } });
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off), added }, [
+      "reopen",
+      "5",
+    ]);
+    expect(r.message).toBe("#5 Done -> Todo");
+    expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
+      "issue reopen 5 --repo qsmark-labs/qsm-marketplace",
+      "api graphql",
+      "api graphql",
+    ]);
+    expect(r.calls[3]).toContain("addProjectV2ItemById");
   });
 });
