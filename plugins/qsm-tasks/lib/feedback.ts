@@ -41,18 +41,22 @@ function isEmail(word: string): boolean {
 }
 
 /** The kind of private data a line carries, or null. */
-function privateIn(line: string, login: string, host: string): string | null {
+export function privateIn(line: string, login: string, host: string): string | null {
   if (HOMES.some((home) => line.includes(home))) {
     return "home path";
   }
   if (line.split(/\s/).some((word) => isEmail(word))) {
     return "email";
   }
-  const words = line.split(/[^\w.-]+/);
-  if (login !== "" && words.includes(login)) {
+  // a word may end a sentence with a dot or carry a dash around it, and a name may itself end in
+  // one: each word is matched as written and trimmed
+  const words = new Set(
+    line.split(/[^\w.-]+/).flatMap((word) => [word, word.replaceAll(/^[.-]+|[.-]+$/g, "")]),
+  );
+  if (login !== "" && words.has(login)) {
     return "login";
   }
-  return host !== "" && words.includes(host) ? "hostname" : null;
+  return host !== "" && words.has(host) ? "hostname" : null;
 }
 
 /** The first private data in the text, named by its kind and line, never by the text itself; a

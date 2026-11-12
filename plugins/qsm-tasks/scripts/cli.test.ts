@@ -2,6 +2,7 @@
 // case, a recording fake gh answers what the real gh answered.
 import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
@@ -20,10 +21,11 @@ describe("qsm-tasks without gh", () => {
 
 const BOARD = { id: "PVT_kwDOFMPqAc4Bo0vN", number: 1, owner: { login: "qsmark-labs" } };
 
-function linked(nodes: readonly unknown[], hasNextPage = false): string {
+/** The resolution's answer; `more` adds what another read finds in the same answer. */
+function linked(nodes: readonly unknown[], hasNextPage = false, more: object = {}): string {
   const repo = { id: "R_kgDOVGCdTA", nameWithOwner: "qsmark-labs/qsm-marketplace" };
   const projectsV2 = { pageInfo: { hasNextPage }, nodes };
-  return JSON.stringify({ data: { repository: { ...repo, projectsV2 } } });
+  return JSON.stringify({ data: { repository: { ...repo, projectsV2 }, ...more } });
 }
 
 interface FakeGh {
@@ -129,6 +131,11 @@ describe("qsm-tasks resolves the board", () => {
   });
 });
 
+/** A list of an issue as GitHub answers it: its nodes and the page check a read demands. */
+function whole(nodes: readonly unknown[]) {
+  return { pageInfo: { hasNextPage: false }, nodes };
+}
+
 function task(number: number, priority: string | null, blockedBy: number[] = [], status = "Todo") {
   const card = {
     id: `PVTI_${number}`,
@@ -141,13 +148,10 @@ function task(number: number, priority: string | null, blockedBy: number[] = [],
     title: `task ${number}`,
     state: "OPEN",
     issueType: { name: "Task" },
-    assignees: { nodes: [] },
-    labels: { nodes: [] },
-    blockedBy: {
-      pageInfo: { hasNextPage: false },
-      nodes: blockedBy.map((n) => ({ number: n, state: "OPEN" })),
-    },
-    projectItems: { nodes: [card] },
+    assignees: whole([]),
+    labels: whole([]),
+    blockedBy: whole(blockedBy.map((n) => ({ number: n, state: "OPEN" }))),
+    projectItems: whole([card]),
   };
 }
 
@@ -186,8 +190,28 @@ describe("qsm-tasks reads the board", () => {
     }
   });
 
+  it("ready refuses an issue whose boards GitHub cut, instead of reading it as off the board", () => {
+    const cut = {
+      ...task(8, null, [], "In Dev"),
+      projectItems: { pageInfo: { hasNextPage: true }, nodes: [] },
+    };
+    const r = run({ stdout: linked([BOARD]), search: found([cut]) });
+    expect(r.exit).not.toBe(0);
+    expect(r.message).toContain("#8: GitHub left out its projectItems");
+  });
+
+  it("ready refuses an issue whose labels come with no page check, or not at all", () => {
+    const { labels: _, ...without } = task(8, null);
+    const unchecked = { ...without, labels: { nodes: [] } };
+    for (const issue of [unchecked, without]) {
+      const r = run({ stdout: linked([BOARD]), search: found([issue]) });
+      expect(r.exit).not.toBe(0);
+      expect(r.message).toContain("#8: GitHub left out its labels");
+    }
+  });
+
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
-    const off = { ...task(8, null), projectItems: { nodes: [] } };
+    const off = { ...task(8, null), projectItems: whole([]) };
     expect(run({ stdout: linked([BOARD]), search: found([off]) }).message).toStartWith("#8 ");
   });
 });
@@ -204,12 +228,12 @@ describe("qsm-tasks note", () => {
 
 /** A move's card as GitHub answers it: the caller, the Status field and one task on the board. */
 function cardOf(status: string, assignees: readonly string[], more: object = {}): string {
-  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human"];
+  const statuses = ["Todo", "In Dev", "Agent Review", "Ready For Human", "Done"];
   const field = { id: "PVTSSF_1", options: statuses.map((name, i) => ({ id: `opt${i}`, name })) };
   const issue = {
     ...task(5, null, [], status),
     id: "I_5",
-    assignees: { nodes: assignees.map((login) => ({ login })) },
+    assignees: whole(assignees.map((login) => ({ login }))),
     ...more,
   };
   return JSON.stringify({
@@ -250,12 +274,25 @@ describe("qsm-tasks moves a task", () => {
     ]);
     expect(again.posted).toBe("Deferred until 2026-12-01\n");
   });
+
+  it("unclaim of a deferred task off the board keeps the label when adding the card fails", () => {
+    const deferred = { labels: whole([{ name: "deferred" }]), projectItems: whole([]) };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Todo", [], deferred) }, [
+      "unclaim",
+      "5",
+    ]);
+    expect(r.exit).not.toBe(0);
+    expect(r.calls.join("\n")).not.toContain("--remove-label");
+  });
 });
 
 describe("qsm-tasks human hands a task over", () => {
   const card = cardOf("Agent Review", [], { parent: { number: 3, state: "OPEN" } });
   const rollup = (state: string) => ({ nodes: [{ commit: { statusCheckRollup: { state } } }] });
-  const review = (state: string, oid: string) => ({ nodes: [{ state, commit: { oid } }] });
+  const review = (state: string, oid: string) => ({
+    pageInfo: { hasNextPage: false },
+    nodes: [{ state, commit: { oid } }],
+  });
   /** The PR read as GitHub answers it, for task 5 under feature 3, ready unless `more` says not;
    * its head is the commit `c2`. */
   const run5 = (more: object) => {
@@ -287,6 +324,14 @@ describe("qsm-tasks human hands a task over", () => {
     expect(r.data).toMatchObject({ reason: "wrong-status" });
     expect(r.message).toContain(said);
     expect(r.calls.some((c) => c.includes("mutation"))).toBe(false);
+  });
+
+  it("with reviews GitHub cut is refused, as a change request past the page goes unseen", () => {
+    const cutReviews = { ...review("COMMENTED", "c2"), pageInfo: { hasNextPage: true } };
+    const r = run5({ latestReviews: cutReviews });
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("the reviews of PR #9 came back cut");
+    expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(false);
   });
 
   it("on a task under no feature is blocked before the PR is read", () => {
@@ -337,8 +382,8 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("reopen on a closed issue off the board takes it as Done, adds the card and sets Todo", () => {
-    const off = { state: "CLOSED", projectItems: { nodes: [] } };
+  it("reopen on a closed issue off the board takes it as Done, adds the card at Done, reopens and sets Todo", () => {
+    const off = { state: "CLOSED", projectItems: whole([]) };
     const added = JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "PVTI_5" } } } });
     const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off), added }, [
       "reopen",
@@ -346,11 +391,20 @@ describe("qsm-tasks moves a feature and a closed issue", () => {
     ]);
     expect(r.message).toBe("#5 Done -> Todo");
     expect(r.calls.slice(2).map((c) => c.split(" -f ")[0])).toEqual([
+      "api graphql",
+      "api graphql",
       "issue reopen 5 --repo qsmark-labs/qsm-marketplace",
       "api graphql",
       "api graphql",
     ]);
-    expect(r.calls[3]).toContain("addProjectV2ItemById");
+    expect(r.calls[2]).toContain("addProjectV2ItemById");
+  });
+
+  it("reopen off the board reopens nothing when adding the card fails, so a rerun still reads Done", () => {
+    const off = { state: "CLOSED", projectItems: whole([]) };
+    const r = run({ stdout: linked([BOARD]), card: cardOf("Done", [], off) }, ["reopen", "5"]);
+    expect(r.exit).not.toBe(0);
+    expect(r.calls.join("\n")).not.toContain("issue reopen");
   });
 });
 
@@ -375,6 +429,43 @@ describe("qsm-tasks files the work", () => {
       "issue create --repo qsmark-labs/qsm-marketplace --title Write the CSV --type Task --body-file - --parent 3",
     );
     expect(r.posted).toBe(`${body}\n`);
+  });
+
+  it("add --after refused once the issue is filed names the issue and the edit that finishes it", () => {
+    const gh = { stdout: linked([BOARD]), created, refuseEditOnce: true } as const;
+    const r = run(gh, ["add", "Write the CSV", "--after", "2"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("#77 is filed");
+    expect(r.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --after 2",
+    });
+  });
+
+  it("add refused after the filing names the edit that writes every flag still unwritten", () => {
+    // one answer for the resolution and the Priority read: the board has P1
+    const priority = { id: "PVTSSF_prio", name: "Priority", options: [{ id: "o1", name: "P1" }] };
+    const stdout = linked([BOARD], false, { board: { fields: { nodes: [priority] } } });
+    const ordered = run({ stdout, created, refuseEditOnce: true }, [
+      "add",
+      "Write the CSV",
+      "--after",
+      "2",
+      "--priority",
+      "P1",
+    ]);
+    expect(ordered.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --after 2 --priority P1",
+    });
+    const prioritized = run({ stdout, created, card: cardOf("Todo", []) }, [
+      "add",
+      "Write the CSV",
+      "--priority",
+      "P1",
+    ]);
+    expect(prioritized.message).toContain("#77 is filed");
+    expect(prioritized.data).toMatchObject({
+      next: "qsm-tasks edit 77 --repo qsmark-labs/qsm-marketplace --project qsmark-labs/1 --priority P1",
+    });
   });
 
   it("add under a closed feature is blocked wrong-status and files nothing", () => {
@@ -493,6 +584,7 @@ describe("qsm-tasks feedback", () => {
   it.each([
     ["home path", "It broke in /home/someone/work."],
     ["email", "Mail someone@example.com."],
+    ["hostname", `It ran on ${hostname()}.`],
     ["github-pat", `The token ghp_${"a".repeat(36)} leaked.`],
     ["private-key", key],
   ])(
@@ -504,6 +596,16 @@ describe("qsm-tasks feedback", () => {
       expect(r.calls).toEqual([]);
     },
   );
+
+  it("refuses a title with private data by kind, never the text, before any gh call", () => {
+    const { dir, argv } = setup(sections("x"));
+    const titled = argv.map((a) =>
+      a === "ready skips a task" ? "broke in /home/someone/work" : a,
+    );
+    const r = run(fake(dir), titled, dir);
+    expect(r.message).toBe("the title carries private data: home path on line 1");
+    expect(r.calls).toEqual([]);
+  });
 
   it("refuses a suggested fix, and an area that names no plugin, as usage before any gh call", () => {
     const fix = setup(`${sections("x")}## Suggested fix\nx\n`);

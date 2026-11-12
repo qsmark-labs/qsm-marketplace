@@ -4,11 +4,12 @@ import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
 import { featureBranch } from "../flow.ts";
 import { graphql, type Run, variables } from "./gh.ts";
-import { nodes, text } from "./items.ts";
+import { nodes, text, whole } from "./items.ts";
 import type { Target } from "./target.ts";
 
-// latestReviews holds one review per reviewer, so twenty is more than a task's PR ever has
-const PULL = `query($repo:ID!,$pr:Int!){node(id:$repo){...on Repository{pullRequest(number:$pr){state baseRefName body headRefOid latestReviews(first:20){nodes{state commit{oid}}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}`;
+// latestReviews holds one review per reviewer, so twenty is more than a task's PR ever has; a list
+// that is cut is refused all the same, as a change request past it would go unseen
+const PULL = `query($repo:ID!,$pr:Int!){node(id:$repo){...on Repository{pullRequest(number:$pr){state baseRefName body headRefOid latestReviews(first:20){pageInfo{hasNextPage} nodes{state commit{oid}}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}`;
 
 /** Whether a review asks for changes on the head; one on an older commit was answered by the
  * commits after it, and stays in latestReviews until its author reviews again (decision 14). */
@@ -62,6 +63,13 @@ export async function readyPull(
   const pull = isRecord(answer.value.node) ? answer.value.node.pullRequest : null;
   if (!isRecord(pull)) {
     return refuse("failed", "not-found", `no PR #${pr} in ${target.repo}`);
+  }
+  if (!whole(pull.latestReviews)) {
+    return refuse(
+      "failed",
+      "refused",
+      `the reviews of PR #${pr} came back cut or without their page check`,
+    );
   }
   const why = unready(pull, pr, n, parent);
   return why === null ? { ok: true, value: null } : refuse("blocked", "wrong-status", why);

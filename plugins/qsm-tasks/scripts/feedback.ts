@@ -112,6 +112,10 @@ async function prepare(call: Call): Promise<Result<Given>> {
     return plugins;
   }
   const values = valuesOf(call, plugins.value);
+  const found = privateData(requiredString(call, "title"));
+  if (found !== null) {
+    return refuse("blocked", "private-data", `the title carries private data: ${found}`);
+  }
   const body = await bodyOf(call);
   return body.ok ? { ok: true, value: { path: path.value, values, body: body.value } } : body;
 }
