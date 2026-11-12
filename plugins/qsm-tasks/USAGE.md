@@ -21,8 +21,8 @@ doctor's lines; a second run prints `nothing to create`. A move, `claim`, `uncla
 `human`, `reopen`, `plan` or `qa`, prints `#<n> <from> -> <to>`; when its guard
 in `qsm-tasks flow` fails it exits `blocked` and changes nothing. Every verb but `flow` needs `gh`
 on PATH with a login that has the `project` scope. `human <n> --pr <m>` reads PR `<m>` first and
-moves the task only when it is based on `feature/<parent>`, says `Closes #<n>`, is green, and no
-review asks for changes.
+moves the task only when it is open, based on `feature/<parent>`, says `Closes #<n>`, is green, and
+no review asks for changes on its head commit.
 
 Every verb but `flow` and `feedback` acts on a repository and its board, resolved on each run and
 never stored: `--repo owner/name` where the verb takes it, else the repository `gh` resolves in the

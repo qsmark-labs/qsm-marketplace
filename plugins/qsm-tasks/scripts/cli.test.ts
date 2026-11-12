@@ -255,12 +255,16 @@ describe("qsm-tasks moves a task", () => {
 describe("qsm-tasks human hands a task over", () => {
   const card = cardOf("Agent Review", [], { parent: { number: 3, state: "OPEN" } });
   const rollup = (state: string) => ({ nodes: [{ commit: { statusCheckRollup: { state } } }] });
-  /** The PR read as GitHub answers it, for task 5 under feature 3, ready unless `more` says not. */
+  const review = (state: string, oid: string) => ({ nodes: [{ state, commit: { oid } }] });
+  /** The PR read as GitHub answers it, for task 5 under feature 3, ready unless `more` says not;
+   * its head is the commit `c2`. */
   const run5 = (more: object) => {
     const ready = {
+      state: "OPEN",
       baseRefName: "feature/3",
       body: "Builds the verb.\n\nCloses #5",
-      latestReviews: { nodes: [{ state: "COMMENTED" }] },
+      headRefOid: "c2",
+      latestReviews: review("COMMENTED", "c2"),
       commits: rollup("SUCCESS"),
     };
     const pull = JSON.stringify({ data: { node: { pullRequest: { ...ready, ...more } } } });
@@ -271,10 +275,12 @@ describe("qsm-tasks human hands a task over", () => {
     ["a base that is not feature/3", { baseRefName: "main" }, "based on main, not feature/3"],
     ["no Closes #5", { body: "Closes #50" }, "does not say Closes #5"],
     ["a failing check", { commits: rollup("FAILURE") }, "checks are FAILURE, not green"],
+    ["a merged PR", { state: "MERGED" }, "is merged, not open"],
+    ["a closed PR", { state: "CLOSED" }, "is closed, not open"],
     [
-      "a review asking for changes",
-      { latestReviews: { nodes: [{ state: "CHANGES_REQUESTED" }] } },
-      "asking for changes",
+      "a review asking for changes on its head",
+      { latestReviews: review("CHANGES_REQUESTED", "c2") },
+      "asking for changes on its head",
     ],
   ])("with %s is blocked and writes nothing", (_, more, said) => {
     const r = run5(more);
@@ -290,8 +296,11 @@ describe("qsm-tasks human hands a task over", () => {
     expect(r.calls).toHaveLength(2);
   });
 
-  it("with its ready PR, approved by nobody, moves the task to Ready For Human", () => {
-    const r = run5({});
+  it.each([
+    ["approved by nobody", {}],
+    ["with changes asked on an older commit", { latestReviews: review("CHANGES_REQUESTED", "c1") }],
+  ])("with its ready PR, %s, moves the task to Ready For Human", (_, more) => {
+    const r = run5(more);
     expect(r.message).toBe("#5 Agent Review -> Ready For Human");
     expect(r.calls.some((c) => c.includes("updateProjectV2ItemFieldValue"))).toBe(true);
   });

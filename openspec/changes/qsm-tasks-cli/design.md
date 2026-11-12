@@ -41,13 +41,15 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
 13. **Ghost mode**: the binary's only own texts are the label `deferred` and the comment `Deferred
     until <value>`; `from:` names an agent by the owner's choice.
 14. **`human` reads the pull request the agent names, `--pr <m>`** (the owner's decision on #67).
-    GitHub links a closing pull request to its issue only when it targets the default branch, and
-    a task's targets `feature/<n>`, so the link is empty; the agent opened it and knows its number.
-    One query reads its base, body, the latest review of each reviewer and the head commit's check
-    rollup, before any write: base `feature/<parent>`, `Closes #<n>`, rollup `SUCCESS`, and no
-    review asking for changes. No approval is asked for (the owner's decision): nobody approves on
-    GitHub before Ready For Human, because the review bot's approval is off, the local review agent
-    posts nothing, the agent's workflow holds that step, and the owner approves last.
+    GitHub links a closing pull request to its issue only when it targets the default branch, and a
+    task's targets `feature/<n>`, so the link is empty; the agent opened it and knows its number.
+    One query reads its state, base, body, head commit, the latest review of each reviewer and the
+    head commit's check rollup, before any write: open, base `feature/<parent>`, `Closes #<n>`,
+    rollup `SUCCESS`, and no review asking for changes on the head commit, because the owner's
+    request stays the latest until he reviews again, and the commits after it answered it. No
+    approval is asked for (the owner's decision): nobody approves on GitHub before Ready For Human,
+    because the review bot's approval is off, the local review agent posts nothing, the agent's
+    workflow holds that step, and the owner approves last.
 
 ## Measured before the code
 

@@ -207,7 +207,7 @@ const MOVES: readonly Move[] = [
     kinds: ["task"],
     from: [STATUS.agentReview],
     to: STATUS.readyForHuman,
-    when: "--pr: based on feature/<parent>, Closes #<n>, checks green, no changes asked",
+    when: "--pr: open, on feature/<parent>, Closes #<n>, green, no changes asked on its head",
     // the PR's base names the feature, so a task under none has no PR to hand over
     holds: (at) =>
       at.parent === null
