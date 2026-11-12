@@ -5,11 +5,11 @@ The task tool for an agent that must remember unfinished work between sessions, 
 ## Why it exists
 
 Work that outlives a session is lost unless one place outside the conversation holds it. This
-plug-in is that place for the task port: the role the planning flow names when it says "the task",
-served here by `br`. It holds the model of what an epic and a task are, so every flow reads the same
-one, and it keeps the tracker's name and commands in one skill so a different tracker could replace
-it. It is not a project-management tool, and it would have no reason to exist if the harness kept
-its own task list across sessions.
+plug-in is that place for the task port: the role the planning flow names when it says "the task".
+Its skills hold the model of what a piece of work is, so every flow reads the same one, and its
+binary `qsm-tasks` is the agent's one door to GitHub issues and the board, so no agent composes a
+`gh`, `jq` or GraphQL call itself. It is not a project-management tool, and it would have no reason
+to exist if GitHub's own CLI kept the flow of a task.
 
 ## What you get
 
@@ -17,9 +17,10 @@ its own task list across sessions.
 | --- | --- | --- |
 | Skill | `task-tool` | The task model: what an epic and a task are, when each is created and closed, and the `br` commands |
 | Skill | `task-writing` | How to write the text of an epic or task: skeleton, before and after, done-when, plain summary for a first-time reader |
+| Binary | `qsm-tasks` | Nineteen verbs over GitHub issues and the board; `qsm-tasks --help` lists them |
 
-The skill is the only file in the marketplace that names `br` and its commands. A fix is a commit
-only, with no epic and no task. Every epic ends with a test-it task that runs the real path.
+The skills still drive `br` until they move to the binary; the binary's verbs land one at a time,
+and a verb not built yet says so and names its issue.
 
 ## Install
 
@@ -28,8 +29,7 @@ claude plugin install qsm-tasks@qsm-marketplace
 qsm-setup install qsm-tasks
 ```
 
-The plug-in has no binary and no dependency. `qsm-setup install` runs the check for `br`, which
-no command can install unattended.
+`INSTALL.md` has the detail; `USAGE.md` has the verbs' outcomes.
 
 ## Use
 
@@ -45,3 +45,4 @@ a finding is not the ask.
 - `br` is the Rust tool `beads_rust`, not `bd`. The check exits non-zero when it is missing and
   prints the upstream install line. That is the report, not a failed install.
 - One tracker per repository: `.beads/` at the root is committed, the cache beside it is not.
+- `qsm-tasks` needs `gh` on PATH with a login that has the `project` scope.

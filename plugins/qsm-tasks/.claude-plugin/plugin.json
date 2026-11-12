@@ -1,13 +1,8 @@
 {
   "name": "qsm-tasks",
-  "description": "The task port served by br (beads_rust): one skill that holds the task model (an epic holds the intent and acceptance criteria of a piece of work, one task per spec change, a final test-it task, close rules) and names the commands, and an install that checks br is on the machine.",
-  "keywords": [
-    "tasks",
-    "epic",
-    "tracker",
-    "beads",
-    "br"
-  ],
+  "description": "The task port: skills that hold the task model (an epic holds the intent and acceptance criteria of a piece of work, one task per spec change, a final test-it task, close rules) and drive br until they move, and one compiled binary, qsm-tasks, that is the agent's door to GitHub issues and the board, one verb per step of the task flow.",
+  "types": "./types/index.d.ts",
+  "keywords": ["tasks", "epic", "tracker", "github", "issues", "beads", "br"],
   "author": {
     "name": "qsm"
   }

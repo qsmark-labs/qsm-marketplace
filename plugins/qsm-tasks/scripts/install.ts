@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// qsm-tasks ships no binary and writes no file: its skill is loaded by the harness from the
-// plugin, so the shared install base only probes br, which no command can install unattended.
+// The shared install base compiles qsm-tasks onto PATH from qsm.json; its skills are loaded by the
+// harness from the plugin, and br, which the skills still drive, is probed: no command installs it.
 
 import { installScript } from "../../../lib/install-base.ts";
 

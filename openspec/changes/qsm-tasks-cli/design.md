@@ -39,11 +39,23 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
 13. **Ghost mode**: the binary's only own texts are the label `deferred` and the comment `Deferred
     until <value>`; `from:` names an agent by the owner's choice.
 
-## Unmeasured, measured before the code
+## Measured before the code
 
-1. Can GraphQL add and rename a Status option, create the field Priority, and read the board's
-   workflows and views? Each answer makes a `setup` and `doctor` line `ok` or `manual`.
-2. Which view filter separates issues closed as not planned (`reason:"not planned"`)?
+Read from GitHub's GraphQL schema by introspection and from the docs, never by a write.
+
+1. **Fields: yes.** `updateProjectV2Field` takes `singleSelectOptions`, which overwrite the
+   options, so `setup` adds a Status option by sending the existing ones with their `id` (an
+   option sent without its `id` clears the items that hold it) plus the new one; the same call
+   could rename, which `setup` never does. `createProjectV2Field` creates Priority as
+   `SINGLE_SELECT` with its options, and each option takes a `description`, so the definitions are
+   written too. **Workflows: read, not set.** `ProjectV2.workflows` reads each one's `name` and
+   `enabled`; no field reads the Status a workflow sets and no mutation creates or enables one, so
+   a workflow's name and state are `ok` or `failed`, and its Status is `manual`. **Views: read and
+   created.** `ProjectV2.views` reads each one's `name`, `layout` and `filter`;
+   `createProjectV2View` makes a view and `updateProjectV2View` sets its `filter`, so the proposal's
+   "views cannot be created" no longer holds.
+2. **`reason:"not planned"`** selects the items closed as not planned, and `-reason:"not planned"`
+   leaves them out (GitHub Docs, "Filtering projects": filter by close reason, negating a filter).
 
 ## Open decisions
 
