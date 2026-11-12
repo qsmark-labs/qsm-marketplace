@@ -1,5 +1,6 @@
-// The moves of a task: claim, unclaim and review. Each checks its guard in lib/flow.ts first and
-// changes nothing when it fails; its writes are idempotent, so running it again finishes it.
+// The moves that take and give back a task: claim and unclaim. Each checks its guard in
+// lib/flow.ts first and changes nothing when it fails; its writes are idempotent, so running it
+// again finishes it.
 
 import { type Call, optionalString, requiredNumber } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
@@ -97,12 +98,4 @@ export const unclaim = onCard((call, { run, target }, at) => {
     ...(at.assignees.length === 0 ? [] : [release]),
     ...(until === undefined ? (at.labels.includes(DEFERRED) ? [bringBack] : []) : defer),
   ]);
-});
-
-/** In Dev, Agent Review or Human Review: Agent Review. */
-export const review = onCard((_call, { run, target }, at) => {
-  const move = moveOf("review", at.kind, at.status);
-  return move.ok
-    ? writes(at.number, [() => setStatus(run, target, at, move.value.to)])
-    : move.outcome;
 });

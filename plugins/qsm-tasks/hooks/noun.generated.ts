@@ -28,7 +28,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   note: { words: ["qsm-tasks","note"], args: [{ name: "number", flag: null }, { name: "text", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   claim: { words: ["qsm-tasks","claim"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   unclaim: { words: ["qsm-tasks","unclaim"], args: [{ name: "number", flag: null }, { name: "until", flag: "--until" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
-  review: { words: ["qsm-tasks","review"], args: [{ name: "number", flag: null }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
+  review: { words: ["qsm-tasks","review"], args: [] },
   human: { words: ["qsm-tasks","human"], args: [] },
   close: { words: ["qsm-tasks","close"], args: [] },
   reopen: { words: ["qsm-tasks","reopen"], args: [] },

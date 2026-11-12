@@ -41,11 +41,7 @@ export type Tasks = {
     repo?: string;
     project?: string;
   }): Promise<unknown>;
-  review(options: {
-    number: number;
-    repo?: string;
-    project?: string;
-  }): Promise<unknown>;
+  review(): Promise<unknown>;
   human(): Promise<unknown>;
   close(): Promise<unknown>;
   reopen(): Promise<unknown>;
