@@ -32,7 +32,7 @@ export interface Filter {
   /** the sub-issues of this feature */
   readonly feature?: number | undefined;
   readonly label?: string | undefined;
-  readonly without?: string;
+  readonly without?: string | undefined;
 }
 
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */

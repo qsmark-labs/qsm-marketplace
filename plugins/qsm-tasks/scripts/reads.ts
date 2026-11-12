@@ -32,22 +32,24 @@ function byRank(a: Item, b: Item): number {
   return priorityRank(a.priority) - priorityRank(b.priority) || a.number - b.number;
 }
 
+/** What `ready` lists in each mode: the work to take, or with --qa the features to test. */
+const READY = {
+  work: { kind: "task", status: STATUS.todo, unblocked: true, without: DEFERRED },
+  qa: { kind: "feature", status: STATUS.readyForTest, unblocked: false, without: undefined },
+} as const;
+
 /** Todo tasks and bugs nothing open blocks, not deferred; with --qa, features at Ready For Test. */
 export async function ready(call: Call, { run, target }: At): Promise<Outcome> {
-  const qa = flagArg(call, "qa");
+  const mode = READY[flagArg(call, "qa") ? "qa" : "work"];
   const feature = optionalNumber(call, "feature");
-  const found = await search(
-    run,
-    target,
-    qa
-      ? { kind: "feature", open: true, feature }
-      : { kind: "task", open: true, feature, without: DEFERRED },
-  );
+  const filter = { kind: mode.kind, open: true, feature, without: mode.without } as const;
+  const found = await search(run, target, filter);
   if (!found.ok) {
     return found.outcome;
   }
-  const status = qa ? STATUS.readyForTest : STATUS.todo;
-  const picked = found.value.filter((i) => i.status === status && (qa || i.blockers.length === 0));
+  const picked = found.value.filter(
+    (i) => i.status === mode.status && (!mode.unblocked || i.blockers.length === 0),
+  );
   return rows(picked.toSorted(byRank));
 }
 

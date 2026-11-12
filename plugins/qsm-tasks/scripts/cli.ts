@@ -54,8 +54,8 @@ if (import.meta.main) {
     await runCli(manifest, "qsm-tasks", {
       ready: onBoard(ready),
       list: onBoard(list),
-      show: onBoard(notBuilt(40)),
-      note: onBoard(notBuilt(40)),
+      show: onBoard(notBuilt(58)),
+      note: onBoard(notBuilt(58)),
       feature: onBoard(notBuilt(41)),
       add: onBoard(notBuilt(41)),
       edit: onBoard(notBuilt(41)),
