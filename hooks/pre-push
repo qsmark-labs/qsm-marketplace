@@ -66,11 +66,18 @@ while read -r _ local_sha _ _; do
 done <"$pushed_refs"
 
 # The size check of the pull request this branch becomes, run before it exists. Its base is the
-# branch it was cut from: of origin/main and every origin/feature/*, the one whose merge base is
-# nearest to the pushed commit. main and feature/* are bases themselves and are not measured.
+# branch it was cut from, the one whose merge base is nearest to the pushed commit: origin/main,
+# every origin/feature/*, or a task branch whose tip the commit already holds, so a branch stacked
+# on another task's branch counts only its own lines. A sibling branch is never a base, because it
+# shares history without being where this one started. main and feature/* are bases themselves and
+# are not measured.
 nearest_base() {
-  local sha=$1 best="" best_count="" candidate count
-  for candidate in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/main 'refs/remotes/origin/feature/*'); do
+  local sha=$1 own=$2 best="" best_count="" candidate count
+  for candidate in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/); do
+    if [[ $candidate != origin/main && $candidate != origin/feature/* ]]; then
+      [[ $candidate == origin/HEAD || $candidate == origin || $candidate == "origin/$own" ]] && continue
+      git merge-base --is-ancestor "$candidate" "$sha" || continue
+    fi
     count=$(git rev-list --count "$(git merge-base "$candidate" "$sha")..$sha") || return 1
     if [[ -z $best_count || $count -lt $best_count ]]; then
       best=$candidate best_count=$count
@@ -83,11 +90,28 @@ nearest_base() {
   echo "$best"
 }
 
+# A merge whose every parent is already on origin/main or an origin/feature/* (main taken into a
+# feature branch) brings only lines reviewed where they landed, so it has none of its own.
+merges_bases() {
+  local parent base
+  for parent in $(git rev-list --parents -n 1 "$1" | cut -d' ' -f2-); do
+    for base in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/main 'refs/remotes/origin/feature/*'); do
+      git merge-base --is-ancestor "$parent" "$base" && continue 2
+    done
+    return 1
+  done
+  [[ $(git rev-list --parents -n 1 "$1" | wc -w) -gt 2 ]]
+}
+
 while read -r _ local_sha remote_ref _; do
   if [[ $local_sha =~ ^0+$ || $remote_ref == refs/heads/main || $remote_ref == refs/heads/feature/* ]]; then
     continue
   fi
-  base=$(nearest_base "$local_sha") || exit 1
+  if merges_bases "$local_sha"; then
+    echo "pre-push: ${remote_ref#refs/heads/} merges reviewed bases, nothing of its own to measure" >&2
+    continue
+  fi
+  base=$(nearest_base "$local_sha" "${remote_ref#refs/heads/}") || exit 1
   echo "pre-push: pull request size of ${remote_ref#refs/heads/} against $base" >&2
   .gates/pr-size.sh "$base" "$local_sha" >&2 || exit 1
 done <"$pushed_refs"
