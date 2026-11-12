@@ -1,4 +1,4 @@
-// Issues as the verbs see them: plain items with their kind, Status and Priority on the board, read
+// Issues as the verbs read them: plain items with their kind, Status and Priority on the board, read
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result, wrongCall } from "../failure.ts";
@@ -175,20 +175,4 @@ export async function issue(
     ok: true,
     value: { ...item, body, parent, subIssues, comments: nodes(node.comments).map(readComment) },
   };
-}
-
-/** One comment on an issue, its text on stdin so quotes and newlines reach GitHub unchanged. */
-export async function comment(
-  run: Run,
-  target: Target,
-  number: number,
-  body: string,
-): Promise<Result<string>> {
-  const args = ["issue", "comment", String(number), "--repo", target.repo, "--body-file", "-"];
-  const answer = await run(args, body);
-  const said = answer.stderr.trim();
-  if (answer.exit !== 0) {
-    return refuse("failed", "refused", said === "" ? `gh exited ${answer.exit}` : said);
-  }
-  return { ok: true, value: answer.stdout.trim() };
 }
