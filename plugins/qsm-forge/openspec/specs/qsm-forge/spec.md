@@ -84,8 +84,8 @@ or thread identity.
 #### Scenario: Effect on thread resolution
 
 - **WHEN** the reply is posted
-- **THEN** the GitHub bin SHALL resolve that thread afterward unless the
-  caller opts out, and the GitLab bin SHALL leave the thread unresolved
+- **THEN** both bins SHALL leave the thread unresolved, because resolving
+  is the reviewer's act
 
 ### Requirement: Resolve a review thread
 

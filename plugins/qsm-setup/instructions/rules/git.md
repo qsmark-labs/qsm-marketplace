@@ -17,8 +17,8 @@ is the writing skill; worktrees are the worktrunk skill; threads are the review-
    never pushes.
 3. Work lands in this order: a worktree, a local test, `/simplify`, a local review agent, then the
    landing. Name a skipped step.
-   - Where main requires a pull request, the landing is one. It says `Closes #<n>`, or
-     `Side change: <why>` when no issue holds the work.
+   - Where main requires a pull request, the landing is one. It says `Closes #<n>`, a side
+     change included: it gets its issue first, so the board shows all work with its status.
    - The person merges it, and an admin merge is theirs, on the web: the merge is their acceptance.
    - Where the organization has a bot App, the agent opens the pull request as the bot
      (`qsm-forge gh pr-open`), so the person can approve it. Every other write stays the
