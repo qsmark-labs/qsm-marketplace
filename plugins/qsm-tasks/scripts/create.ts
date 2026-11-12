@@ -12,7 +12,7 @@ import { type Outcome, ok } from "../../../lib/outcome.ts";
 import { done, refuse, type Result } from "../lib/failure.ts";
 import { readText } from "../lib/files.ts";
 import { changeLabel, priorityOf } from "../lib/flow.ts";
-import { card, file, setField } from "../lib/github/board.ts";
+import { card, file, hasOption, setField } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import { issue } from "../lib/github/items.ts";
 import type { Target } from "../lib/github/target.ts";
@@ -87,12 +87,18 @@ async function prioritize(
   return at.ok ? setField(run, target, at.value, "Priority", value) : at;
 }
 
-/** A Task, under --feature, after --after, with --priority, --body-file and --label. */
+/** A Task, under --feature, after --after, with --priority, --body-file and --label; the parent and
+ * the Priority option are read first, so a refusal files nothing and a rerun no duplicate. */
 export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   const under = optionalNumber(call, "feature");
+  const priority = optionalString(call, "priority");
   const parent = under === undefined ? done : await parentOf(run, target, under);
   if (!parent.ok) {
     return parent.outcome;
+  }
+  const can = priority === undefined ? done : await hasOption(run, target, "Priority", priority);
+  if (!can.ok) {
+    return can.outcome;
   }
   const body = await readText(optionalString(call, "bodyFile"));
   if (!body.ok) {
@@ -108,7 +114,6 @@ export async function add(call: Call, { run, target }: At): Promise<Outcome> {
   if (!filed.ok) {
     return filed.outcome;
   }
-  const priority = optionalString(call, "priority");
   const set = priority === undefined ? done : await prioritize(run, target, filed.value, priority);
   return set.ok ? ok({ number: filed.value }, `#${filed.value} filed: ${title}`) : set.outcome;
 }

@@ -46,6 +46,22 @@ function fieldOf(board: unknown, wanted: string): Field | null {
   return id === null ? null : { id, options: new Map(named) };
 }
 
+const FIELDS = `query($board:ID!){board:node(id:$board){...on ProjectV2{fields(first:50){nodes{${SELECT}}}}}}`;
+
+/** Whether the board's field of this name has the option, read before anything is written. */
+export async function hasOption(
+  run: Run,
+  target: Target,
+  name: string,
+  value: string,
+): Promise<Result<unknown>> {
+  const answer = await graphql(run, FIELDS, variables({ board: target.board.id }));
+  const there = answer.ok && fieldOf(answer.value.board, name)?.options.has(value) === true;
+  return answer.ok && !there
+    ? refuse("failed", "not-found", `the board's ${name} has no option ${value}`)
+    : answer;
+}
+
 export async function card(run: Run, target: Target, number: number): Promise<Result<Card>> {
   const ids = variables({ repo: target.repoId, board: target.board.id, number });
   const answer = await graphql(run, CARD, ids);
