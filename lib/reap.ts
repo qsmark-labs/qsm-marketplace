@@ -100,6 +100,25 @@ function marked(tool: string): { stat: Stat; runPid: number }[] {
   });
 }
 
+/** Every value `name` has in the environment of a live process, read in one scan; this process is
+ * left out. The environment is searched as bytes before any of it is decoded. */
+export function envValues(name: string): Set<string> {
+  const prefix = `${name}=`;
+  return new Set(
+    pids().flatMap((pid) => {
+      const env = pid === process.pid ? null : procFile(pid, "environ");
+      const entry =
+        env?.includes(prefix) === true
+          ? env
+              .toString()
+              .split("\0")
+              .find((e) => e.startsWith(prefix))
+          : undefined;
+      return entry === undefined ? [] : [entry.slice(prefix.length)];
+    }),
+  );
+}
+
 /** The live processes this run of `tool` started. */
 function owned(tool: string): Proc[] {
   return withCmd(
@@ -168,7 +187,7 @@ export function runTempDir(tool: string, base: string = tmpdir()): string {
 
 /** The temp directories under `base` that runs of `tool` made and that ended without removing
  * them; a live run's directory is not listed. */
-function deadRunDirs(tool: string, base: string = tmpdir()): string[] {
+export function deadRunDirs(tool: string, base: string = tmpdir()): string[] {
   const prefix = `${tool}.`;
   return readdirSync(base)
     .filter((name) => name.startsWith(prefix))

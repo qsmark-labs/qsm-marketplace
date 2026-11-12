@@ -3,7 +3,7 @@
 import { binPath, exitOf, fail, type Outcome, ok, renderText } from "../../../lib/outcome.ts";
 import { fromThrown } from "../../../lib/qsm-error.ts";
 import type { Env } from "../../../lib/paths.ts";
-import { isolatedHome, isIsolated } from "./claude-home.ts";
+import { isolatedHome, isIsolated, removeHome } from "./claude-home.ts";
 import { appendLaunchLog, loadModels, prepareRouted, runClaude } from "./launch.ts";
 import { placesOf } from "./places.ts";
 import { retag } from "./retag.ts";
@@ -34,6 +34,8 @@ interface Prepared {
   readonly launch: Outcome<{
     readonly args: string[];
     readonly env: Record<string, string>;
+    /** the env names a private home this launch made and must remove */
+    readonly isolated: boolean;
   }>;
 }
 
@@ -41,14 +43,14 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
   const places = placesOf(env);
   const route = resolveTeammate(name, () => loadModels(places));
   if (route.kind === "claude") {
+    const isolated = isIsolated(env);
     return {
       provider: "claude",
       model: flagValue(argv, "--model") ?? "-",
       launch: ok({
         args: launchArgs(argv, CLAUDE),
-        env: isIsolated(env)
-          ? isolatedHome(launchEnv(env, CLAUDE), places)
-          : launchEnv(env, CLAUDE),
+        isolated,
+        env: isolated ? isolatedHome(launchEnv(env, CLAUDE), places) : launchEnv(env, CLAUDE),
       }),
     };
   }
@@ -67,7 +69,11 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
     launch:
       launch === undefined
         ? retag(prepared)
-        : ok({ args: launchArgs(argv, launch), env: isolatedHome(launchEnv(env, launch), places) }),
+        : ok({
+            args: launchArgs(argv, launch),
+            env: isolatedHome(launchEnv(env, launch), places),
+            isolated: true,
+          }),
   };
 }
 
@@ -111,10 +117,16 @@ export async function runTeammate(argv: readonly string[], env: Env): Promise<nu
   if (launch.data === undefined) {
     return refuse(stateDir, line, launch);
   }
-  const claude = binPath("claude", env);
-  if (claude === null) {
-    return refuse(stateDir, line, fail("missing", "claude is not on PATH"));
+  try {
+    const claude = binPath("claude", env);
+    if (claude === null) {
+      return refuse(stateDir, line, fail("missing", "claude is not on PATH"));
+    }
+    appendLaunchLog(stateDir, { ...line, outcome: "started" });
+    return await runClaude(claude, launch.data.args, launch.data.env);
+  } finally {
+    if (launch.data.isolated) {
+      removeHome(launch.data.env, placesOf(env));
+    }
   }
-  appendLaunchLog(stateDir, { ...line, outcome: "started" });
-  return runClaude(claude, launch.data.args, launch.data.env);
 }
