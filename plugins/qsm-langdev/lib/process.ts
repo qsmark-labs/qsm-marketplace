@@ -19,7 +19,7 @@ const NO_BUILD_SERVERS = {
 
 /** Kills what a dead run left of its checkers, naming each. */
 export function reapOrphans(): void {
-  reapNamed(TOOL, orphaned(TOOL), "left by a run that ended before its cleanup");
+  reapNamed(TOOL, () => orphaned(TOOL), "left by a run that ended before its cleanup");
 }
 
 export type Spawned = Pick<
@@ -59,7 +59,7 @@ function armCleanup(): void {
   armed = true;
   reapOrphans();
   process.on("exit", () => {
-    reapNamed(TOOL, owned(TOOL), "left running when the run ended");
+    reapNamed(TOOL, () => owned(TOOL), "left running when the run ended");
   });
   for (const [signal, code] of [
     ["SIGTERM", 143],
