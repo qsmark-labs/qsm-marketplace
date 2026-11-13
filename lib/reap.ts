@@ -4,7 +4,7 @@
 // orphan under PID 1 included. One scan of /proc then finds them when a call ends (forward
 // cleanup, `owned`) and, after a run that crashed before its cleanup, when the next run of the tool
 // starts (backward cleanup, `orphaned`). A temp directory carries its run's pid in its name for
-// the same two sweeps (`runTempDir`, `sweepTempDirs`).
+// the same two sweeps (`runTempDir`, `sweepNamed`).
 
 import {
   spawnSync,
@@ -14,11 +14,15 @@ import {
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { sleepSync } from "bun";
 import { isAlive } from "./detach.ts";
+import { QsmError } from "./qsm-error.ts";
 
 export const OWNER_VAR = "QSM_OWNER";
 const MARK = `${OWNER_VAR}=`;
 const LEFT_BY_CRASH = "left by a run that ended before its cleanup";
+const REAP_LIMIT_MS = 5_000;
+const REAP_PAUSE_MS = 20;
 
 export type Proc = { readonly pid: number; readonly ppid: number; readonly cmd: string };
 type Stat = { readonly pid: number; readonly ppid: number };
@@ -118,25 +122,29 @@ function orphaned(tool: string): Proc[] {
   );
 }
 
-/** Kills each process with SIGKILL, never this one; one that already ended is skipped. */
-function reap(procs: readonly Proc[]): void {
-  for (const { pid } of procs) {
-    if (pid === process.pid) {
-      continue;
+/** Kills with SIGKILL what `find` lists, naming each on stderr as `<tool>: killed <pid> <cmd>,
+ * <why>`, and scans again until it lists nothing: a killed process ends a moment after the signal,
+ * and a child forked before it shows only in the next scan. A zombie counts as ended, one that
+ * ended first is skipped; a process that refuses the signal, or one listed past the limit, throws. */
+function reapNamed(tool: string, find: () => readonly Proc[], why: string): void {
+  const deadline = Date.now() + REAP_LIMIT_MS;
+  const killed = new Set<number>();
+  for (let left = find(); left.length > 0; left = find()) {
+    if (Date.now() > deadline) {
+      throw new QsmError("failed", `${tool}: ${left.map((p) => p.pid).join(" ")} outlived SIGKILL`);
     }
-    try {
-      process.kill(pid, "SIGKILL");
-    } catch {
-      continue;
+    for (const p of left.filter((l) => !killed.has(l.pid))) {
+      try {
+        process.kill(p.pid, "SIGKILL");
+        console.error(`${tool}: killed ${p.pid} ${p.cmd}, ${why}`);
+      } catch (cause) {
+        if (!(cause instanceof Error && "code" in cause && cause.code === "ESRCH")) {
+          throw new QsmError("failed", `${tool}: cannot kill ${p.pid} ${p.cmd}`, { cause });
+        }
+      }
+      killed.add(p.pid);
     }
-  }
-}
-
-/** `reap` that names each process on stderr as `<tool>: killed <pid> <cmd>, <why>`. */
-function reapNamed(tool: string, procs: readonly Proc[], why: string): void {
-  reap(procs);
-  for (const p of procs) {
-    console.error(`${tool}: killed ${p.pid} ${p.cmd}, ${why}`);
+    sleepSync(REAP_PAUSE_MS);
   }
 }
 
@@ -150,18 +158,18 @@ export function spawnMarked(
   args: readonly string[],
   options: Omit<SpawnSyncOptionsWithStringEncoding, "encoding">,
 ): SpawnSyncReturns<string> {
-  reapNamed(tool, orphaned(tool), LEFT_BY_CRASH);
+  reapNamed(tool, () => orphaned(tool), LEFT_BY_CRASH);
   const result = spawnSync(command, [...args], {
     ...options,
     encoding: "utf8",
     env: { ...(options.env ?? process.env), ...ownerEnv(tool) },
   });
-  reapNamed(tool, owned(tool), `left running by ${command}`);
+  reapNamed(tool, () => owned(tool), `left running by ${command}`);
   return result;
 }
 
 /** A fresh temp directory under `base` named `<tool>.<this pid>.<random>`, so a later run can tell
- * whose it is; the caller removes it in a finally, and `sweepTempDirs` removes it after a crash. */
+ * whose it is; the caller removes it in a finally, and `sweepNamed` removes it after a crash. */
 export function runTempDir(tool: string, base: string = tmpdir()): string {
   return mkdtempSync(join(base, `${tool}.${process.pid}.`));
 }
@@ -179,18 +187,10 @@ function deadRunDirs(tool: string, base: string = tmpdir()): string[] {
     .map((name) => join(base, name));
 }
 
-/** Removes the directories `deadRunDirs` lists and answers their paths. */
-function sweepTempDirs(tool: string, base: string = tmpdir()): string[] {
-  const swept = deadRunDirs(tool, base);
-  for (const dir of swept) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-  return swept;
-}
-
-/** `sweepTempDirs` that names each removed directory on stderr as `<tool>: removed <dir>, <why>`. */
+/** Removes what `deadRunDirs` lists, naming each on stderr as `<tool>: removed <dir>, <why>`. */
 export function sweepNamed(tool: string, base: string = tmpdir(), why = LEFT_BY_CRASH): void {
-  for (const dir of sweepTempDirs(tool, base)) {
+  for (const dir of deadRunDirs(tool, base)) {
+    rmSync(dir, { recursive: true, force: true });
     console.error(`${tool}: removed ${dir}, ${why}`);
   }
 }
