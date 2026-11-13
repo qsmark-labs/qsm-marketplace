@@ -1,10 +1,11 @@
 // The kind registry through the real entry: a kind whose converter and diff are fake executables,
 // added, listed, used by create and diff, and removed while its snapshots stay.
 import { describe, expect, it } from "bun:test";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { dataOf, envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
+import { ended, plantLeftovers } from "../../../lib/fixtures/dead-run.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { isRecord } from "../../../lib/outcome.ts";
 
@@ -131,5 +132,24 @@ describe("the kind registry", () => {
     expect(diff.stderr).toContain("install qsm-fake");
     expect(k.run(["create", "fake", "a.fake", ...AT]).exit).toBe(4);
     expect(k.run(["kind", "remove", "json"]).exit).toBe(2);
+  });
+
+  it("ends a converter's leftover child, and first ends what a crashed earlier run left", async () => {
+    const k = registry();
+    const pidFile = join(k.home, "grandchild.pid");
+    k.manifest.convert = [
+      fakeBin(
+        k.home,
+        "leaky-convert",
+        `sleep 300 >/dev/null 2>&1 & echo $! > "${pidFile}"; echo '{}'`,
+      ),
+      "{file}",
+    ];
+    writeIn(k.plugin, "fake.json", JSON.stringify(k.manifest));
+    k.run(["kind", "add", k.file]);
+    const left = plantLeftovers("qsm-docs");
+    k.create("fake", "a.fake", "good");
+    expect(await ended(Number(readFileSync(pidFile, "utf8")))).toBe(true);
+    expect(await left.gone()).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 // One way to call a local command, and one way to describe what came back.
 
-import { spawnSync } from "node:child_process";
+import { spawnMarked } from "../../../lib/reap.ts";
 import type { Env } from "./paths.ts";
 
 export interface RunResult {
@@ -29,10 +29,12 @@ function timedOut(error: Error | undefined): boolean {
 
 /** A runner that runs a command with `env` and never throws: a missing binary, a non-zero exit
  * and a run past `timeoutMs` all come back as `ok: false` with the cause in `detail`. With no
- * `timeoutMs` the command runs until it ends. */
+ * `timeoutMs` the command runs until it ends. The command runs marked, so what it leaves running
+ * is killed after it: graphify's worker processes outlived graphify when it crashed or a timeout
+ * stopped it, and held 2 GB of swap for 8 days. */
 export function timedRunner(timeoutMs: number | undefined, env: Env): Runner {
   return (command, args) => {
-    const result = spawnSync(command, [...args], { encoding: "utf8", timeout: timeoutMs, env });
+    const result = spawnMarked("qsm-index", command, args, { timeout: timeoutMs, env });
     const stdout = cap(result.stdout ?? "");
     if (timedOut(result.error)) {
       return {
