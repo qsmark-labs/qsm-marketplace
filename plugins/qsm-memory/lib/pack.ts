@@ -258,7 +258,7 @@ async function archiveSessions(
     }
     renameSync(part, target);
   } finally {
-    reapNamed(TOOL, owned(TOOL), "left running by the pack");
+    reapNamed(TOOL, () => owned(TOOL), "left running by the pack");
     rmSync(part, { force: true });
   }
 }
@@ -352,7 +352,7 @@ export async function pack(
   const liveIds = () => liveSessionIds(home, (path) => readSessionFile(path, read));
   const archiveDir = join(dirname(resolveDbPath(env)), "transcripts");
   try {
-    reapNamed(TOOL, orphaned(TOOL), "left by a pack that ended before its cleanup");
+    reapNamed(TOOL, () => orphaned(TOOL), "left by a pack that ended before its cleanup");
     removeStaleParts(archiveDir);
     requireTools(env);
     const taken = idleTranscripts(db, env, now, liveIds).map((jsonl) => takeSession(home, jsonl));

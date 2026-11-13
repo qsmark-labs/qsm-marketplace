@@ -359,7 +359,7 @@ async function startPipewire(pw: Pipewire): Promise<void> {
     env: { ...process.env, ...ownerEnv(TOOL) },
   });
   const endPipewire = (): void => {
-    reapNamed(TOOL, owned(TOOL), "left running by the fake machine");
+    reapNamed(TOOL, () => owned(TOOL), "left running by the fake machine");
   };
   process.on("exit", endPipewire);
   for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const)
