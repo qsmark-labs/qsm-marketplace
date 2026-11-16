@@ -179,7 +179,7 @@ list reads as the board does:
 - A pull request whose head is `features/*` or `sync/*` is not measured by `pr-size`: every line it
   carries was measured in the task pull request that brought it, or on `main`. So a feature lands
   with a normal approval, never an admin merge.
-- A feature merges into `main` only after its QA passed.
+- A feature's pull request into `main` is opened only after its QA passed.
 
 ## Before a commit
 
