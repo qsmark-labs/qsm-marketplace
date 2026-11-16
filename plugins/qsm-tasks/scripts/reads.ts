@@ -35,6 +35,11 @@ function byRank(a: Item, b: Item): number {
   return priorityRank(a.priority) - priorityRank(b.priority) || a.number - b.number;
 }
 
+/** The rows whose card is at this Status: the one place that owns the cut. */
+function atStatus(items: readonly Item[], status: string): Item[] {
+  return items.filter((i) => i.status === status);
+}
+
 /** What `ready` lists in each mode: the work to take, or with --qa the features to test. */
 const READY = {
   work: { kind: "task", status: STATUS.todo, unblocked: true, without: DEFERRED },
@@ -50,8 +55,8 @@ export async function ready(call: Call, { run, target }: At): Promise<Outcome> {
   if (!found.ok) {
     return found.outcome;
   }
-  const picked = found.value.filter(
-    (i) => i.status === mode.status && (!mode.unblocked || i.blockers.length === 0),
+  const picked = atStatus(found.value, mode.status).filter(
+    (i) => !mode.unblocked || i.blockers.length === 0,
   );
   return rows(picked.toSorted(byRank));
 }
@@ -75,13 +80,14 @@ export async function list(call: Call, { run, target }: At): Promise<Outcome> {
   const spec = optionalString(call, "spec");
   const label = spec === undefined ? undefined : changeLabel(spec);
   const whole = feature !== undefined || spec !== undefined;
-  const narrow = { status: optionalString(call, "status"), words: optionalString(call, "search") };
-  const found = await search(
-    run,
-    target,
-    whole ? { feature, label, ...narrow } : { open: true, ...narrow },
-  );
-  return found.ok ? rows(found.value.toSorted((a, b) => a.number - b.number)) : found.outcome;
+  const status = optionalString(call, "status");
+  const filter = whole ? { feature, label } : { open: true as const };
+  const found = await search(run, target, { ...filter, words: optionalString(call, "search") });
+  if (!found.ok) {
+    return found.outcome;
+  }
+  const kept = status === undefined ? found.value : atStatus(found.value, status);
+  return rows(kept.toSorted((a, b) => a.number - b.number));
 }
 
 export async function show(call: Call, { run, target }: At): Promise<Outcome> {

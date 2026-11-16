@@ -190,15 +190,16 @@ describe("qsm-tasks reads the board", () => {
     }
   });
 
-  it("list --status sends the Status in the query and prints the rows", () => {
-    const r = run({ stdout: linked([BOARD]), search: found([task(5, "P1", [], "In Dev")]) }, [
-      "list",
-      "--status",
-      "In Dev",
-    ]);
+  it("list --status prints only the rows at that Status and puts no status in the query", () => {
+    const rows = [
+      task(5, "P1", [], "In Dev"),
+      task(6, "P1", [], "Todo"),
+      task(7, null, [], "In Dev"),
+    ];
+    const r = run({ stdout: linked([BOARD]), search: found(rows) }, ["list", "--status", "In Dev"]);
     expect(r.exit).toBe(0);
-    expect(r.message).toStartWith("#5 [In Dev]");
-    expect(r.calls[1]).toContain('status:"In Dev"');
+    expect(r.message.split("\n").map((line) => line.split(" ")[0])).toEqual(["#5", "#7"]);
+    expect(r.calls[1]).not.toContain("status:");
   });
 
   it("list --status refuses a Status the flow does not know, naming the known ones, with no call", () => {
@@ -217,11 +218,13 @@ describe("qsm-tasks reads the board", () => {
     expect(r.calls[1]).toContain("login bug in:title");
   });
 
-  it("list combines --status, --search and --feature in one query", () => {
+  it("list combines --status, --search and --feature", () => {
     const argv = ["list", "--feature", "9", "--status", "Todo", "--search", "login"];
-    const r = run({ stdout: linked([BOARD]), search: found([]) }, argv);
+    const rows = [task(5, null, [], "In Dev"), task(6, null, [], "Todo")];
+    const r = run({ stdout: linked([BOARD]), search: found(rows) }, argv);
+    expect(r.message).toStartWith("#6 ");
     expect(r.calls[1]).toEndWith(
-      'is:issue parent-issue:qsmark-labs/qsm-marketplace#9 status:"Todo" login in:title',
+      "is:issue parent-issue:qsmark-labs/qsm-marketplace#9 login in:title",
     );
   });
 

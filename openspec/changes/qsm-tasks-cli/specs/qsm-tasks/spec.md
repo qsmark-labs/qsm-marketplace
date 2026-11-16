@@ -110,8 +110,8 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 #### Scenario: Status and words narrow the read
 
 - **WHEN** `list --feature 9 --status Todo --search login` runs
-- **THEN** one GitHub search holds the feature, the Status and the words, and no row is filtered
-  in the binary
+- **THEN** one GitHub search holds the feature and the words, and no `status:` text; the rows are
+  cut to those whose card is at Todo, by the code `ready` uses
 
 ### Requirement: show and note read and comment on one issue
 
