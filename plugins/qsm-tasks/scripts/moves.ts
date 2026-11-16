@@ -9,7 +9,7 @@ import {
   requiredNumber,
 } from "../../../lib/cli-base.ts";
 import { type Outcome, UsageError } from "../../../lib/outcome.ts";
-import { DEFERRED, moveOf, STATUS } from "../lib/flow.ts";
+import { DEFERRED, moveOf, NO_STATUS, STATUS } from "../lib/flow.ts";
 import { type Card, comment, edit, reopen as reopenIssue, setField } from "../lib/github/board.ts";
 import { readyPull } from "../lib/github/pulls.ts";
 import { type At, onIssue, type Write } from "./on-issue.ts";
@@ -32,7 +32,7 @@ function moving(
       from === to && at.cardId !== null
         ? []
         : [() => setField(on.run, on.target, at, "Status", to)];
-    const said = `#${at.number} ${from ?? "no Status"} -> ${to}`;
+    const said = `#${at.number} ${from ?? NO_STATUS} -> ${to}`;
     return { ok: true, value: { steps: [...before, ...status, ...after], said } };
   });
 }

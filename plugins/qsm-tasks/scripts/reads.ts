@@ -10,7 +10,7 @@ import {
   requiredString,
 } from "../../../lib/cli-base.ts";
 import { type Outcome, ok } from "../../../lib/outcome.ts";
-import { changeLabel, DEFERRED, priorityRank, STATUS, statusOf } from "../lib/flow.ts";
+import { changeLabel, DEFERRED, NO_STATUS, priorityRank, STATUS, statusOf } from "../lib/flow.ts";
 import { comment } from "../lib/github/board.ts";
 import { issue, type Item, search } from "../lib/github/items.ts";
 import type { At } from "./on-issue.ts";
@@ -19,7 +19,7 @@ import type { At } from "./on-issue.ts";
 function row(item: Item): string {
   const blocked = item.blockers.map((n) => `#${n}`).join(", ");
   return [
-    `#${item.number} [${item.status ?? "not on the board"}] ${item.title}`,
+    `#${item.number} [${item.status ?? NO_STATUS}] ${item.title}`,
     ...(item.priority === null ? [] : [item.priority]),
     ...item.assignees.map((login) => `@${login}`),
     ...(blocked === "" ? [] : [`blocked by ${blocked}`]),
