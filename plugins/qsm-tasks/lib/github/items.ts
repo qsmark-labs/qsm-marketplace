@@ -1,7 +1,7 @@
 // Issues as the verbs read them: plain items with their kind, Status and Priority on the board, read
 // by one GraphQL query each (design.md decision 3), so no verb names a field, a type or an id.
 import { isRecord } from "../../../../lib/outcome.ts";
-import { refuse, type Result, wrongCall } from "../failure.ts";
+import { refuse, type Result } from "../failure.ts";
 import { type Kind, STATUS } from "../flow.ts";
 import { graphql, type Run, variables } from "./gh.ts";
 import type { Target } from "./target.ts";
@@ -35,6 +35,9 @@ export interface Issue extends Item {
 }
 
 const PAGE = 100;
+/** Ten pages of PAGE: GitHub's search answers no more than 1000 results for a query, so a read
+ * past it could never end. */
+const MAX_PAGES = 10;
 const SELECT = "...on ProjectV2ItemFieldSingleSelectValue{name}";
 const WHOLE = "pageInfo{hasNextPage}";
 export const ITEM = `number title state issueType{name} assignees(first:10){${WHOLE} nodes{login}} labels(first:30){${WHOLE} nodes{name}} blockedBy(first:${PAGE}){${WHOLE} nodes{number state}} projectItems(first:10){${WHOLE} nodes{id project{id} status:fieldValueByName(name:"Status"){${SELECT}} priority:fieldValueByName(name:"Priority"){${SELECT}}}}`;
@@ -42,7 +45,7 @@ export const ITEM = `number title state issueType{name} assignees(first:10){${WH
 const ITEM_LISTS = ["assignees", "labels", "blockedBy", "projectItems"] as const;
 /** Where an issue sits in the tree: its parent and its sub-issues. */
 export const FAMILY = "parent{number state} subIssuesSummary{total completed}";
-const SEARCH = `query($q:String!){search(type:ISSUE,first:${PAGE},query:$q){pageInfo{hasNextPage} nodes{...on Issue{${ITEM}}}}}`;
+const SEARCH = `query($q:String!,$after:String){search(type:ISSUE,first:${PAGE},query:$q,after:$after){pageInfo{hasNextPage endCursor} nodes{...on Issue{${ITEM}}}}}`;
 const ISSUE = `query($repo:ID!,$number:Int!,$comments:Boolean!){node(id:$repo){...on Repository{issue(number:$number){${ITEM} body ${FAMILY} comments(first:${PAGE})@include(if:$comments){pageInfo{hasNextPage} nodes{author{login} createdAt body}}}}}}`;
 
 /** What a read asks for; an absent field does not narrow it. */
@@ -149,29 +152,53 @@ export function readFamily(node: unknown): {
   };
 }
 
-/** The repository's issues the filter finds, one page; more than a page is a call to narrow. */
-export async function search(run: Run, target: Target, filter: Filter): Promise<Result<Item[]>> {
-  const q = qualifiers(target.repo, filter);
-  const answer = await graphql(run, SEARCH, ["-f", `q=${q}`]);
+/** One page of a search: its items and the cursor of the next page, null on the last. */
+async function searchPage(
+  run: Run,
+  board: string,
+  q: string,
+  after: string | null,
+): Promise<Result<{ items: Item[]; next: string | null }>> {
+  const fields = ["-f", `q=${q}`, ...(after === null ? [] : ["-f", `after=${after}`])];
+  const answer = await graphql(run, SEARCH, fields);
   if (!answer.ok) {
     return answer;
   }
   const found = answer.value.search;
-  if (cut(found)) {
-    return wrongCall(`more than ${PAGE} issues match ${q}: narrow the read`);
-  }
-  if (!whole(found)) {
+  const next = isRecord(found) ? text(found.pageInfo, "endCursor") : null;
+  if (!(cut(found) ? next !== null : whole(found))) {
     return refuse("failed", "refused", "GitHub answered the search without its issues");
   }
   const items: Item[] = [];
   for (const node of nodes(found)) {
-    const read = readCard(node, target.board.id);
+    const read = readCard(node, board);
     if (!read.ok) {
       return read;
     }
     items.push(read.value.item);
   }
-  return { ok: true, value: items };
+  return { ok: true, value: { items, next: cut(found) ? next : null } };
+}
+
+/** The repository's issues the filter finds, read page by page by cursor, each once and in the
+ * order GitHub gave them; past MAX_PAGES pages the read is refused. */
+export async function search(run: Run, target: Target, filter: Filter): Promise<Result<Item[]>> {
+  const q = qualifiers(target.repo, filter);
+  const items: Item[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const read = await searchPage(run, target.board.id, q, after);
+    if (!read.ok) {
+      return read;
+    }
+    items.push(...read.value.items);
+    after = read.value.next;
+    if (after === null) {
+      return { ok: true, value: items };
+    }
+  }
+  const said = `${q} matches past ${MAX_PAGES} pages of ${PAGE} issues; the read stopped at ${items.length}`;
+  return refuse("failed", "refused", said);
 }
 
 /** A connection GitHub cut at its page size: reading it as whole would lie. */

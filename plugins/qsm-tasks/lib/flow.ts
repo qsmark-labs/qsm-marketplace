@@ -18,6 +18,9 @@ export const STATUS = {
 } as const;
 type StatusName = (typeof STATUS)[keyof typeof STATUS];
 
+/** What a read and a refusal call a card on the board that has no Status. */
+export const NO_STATUS = "no Status";
+
 /** The label that keeps a task out of `ready` until it is brought back. */
 export const DEFERRED = "deferred";
 
@@ -279,7 +282,7 @@ export function moveOf(
     return refuse(
       "blocked",
       "wrong-status",
-      `${verb} needs ${from}; it is at ${status ?? "no Status"}`,
+      `${verb} needs ${from}; it is at ${status ?? NO_STATUS}`,
     );
   }
   const holds = row.holds?.(at) ?? HOLDS;

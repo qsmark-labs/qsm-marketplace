@@ -107,6 +107,18 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
   labelled `change:add-x` is closed
 - **THEN** only the closed feature labelled `change:add-x` is printed
 
+#### Scenario: A long search is read whole, up to a cap
+
+- **WHEN** GitHub cuts a search into three pages
+- **THEN** the read follows the cursor, and each row is printed once, in the order GitHub gave it
+- **WHEN** the search runs past ten pages of 100 issues, the most GitHub's search answers
+- **THEN** the read fails `refused`, naming the cap and the rows it reached
+
+#### Scenario: A card with no Status
+
+- **WHEN** a card on the board has no Status
+- **THEN** `list` and `show` print it as `no Status`, the words `claim` refuses it in
+
 ### Requirement: show and note read and comment on one issue
 
 `show` and `note` SHALL do what their row says.
