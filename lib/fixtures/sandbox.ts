@@ -53,17 +53,22 @@ export async function untilGone(pid: number, limitMs = 20_000): Promise<void> {
   }
 }
 
-/** Removes run dirs whose run died before its afterAll, naming each; a live run is left alone. */
+/** Ends the processes and removes the run dirs of runs that died before their afterAll, naming
+ * each; a live run is left alone. A process is a dead run's by the same test as a live one's. */
 function cleanBefore(base: string): void {
   for (const name of readdirSync(base)) {
     const pid = Number(name.slice(RUN_PREFIX.length).split(".")[0]);
     if (!name.startsWith(RUN_PREFIX) || !Number.isInteger(pid) || isAlive(pid)) {
       continue;
     }
-    rmSync(join(base, name), { recursive: true, force: true });
-    console.error(
-      `test-run: removed ${join(base, name)}, left by run ${pid} that ended before its cleanup`,
-    );
+    const dir = join(base, name);
+    for (const line of stopLeft(pids(), dir)) {
+      console.error(
+        `test-run: killed ${line.trim()}, left by run ${pid} that ended before its cleanup`,
+      );
+    }
+    rmSync(dir, { recursive: true, force: true });
+    console.error(`test-run: removed ${dir}, left by run ${pid} that ended before its cleanup`);
   }
 }
 
@@ -79,35 +84,39 @@ if (!existsSync(bunfig) || !readFileSync(bunfig, "utf8").includes("lib/fixtures/
 
 // The run: every temp path below points into one directory of this process. A nested `bun test`
 // inherits TMPDIR, so the runs' parent is passed down too and its run sits beside this one.
-const runs = process.env.QSM_TEST_RUNS ?? join(tmpdir(), "qsm-test-runs");
-process.env.QSM_TEST_RUNS = runs;
-mkdirSync(runs, { recursive: true });
-cleanBefore(runs);
-const run = mkdtempSync(join(runs, `${RUN_PREFIX}${process.pid}.`));
-process.env.TMPDIR = run;
-
 // A process a test started and left running keeps writing into homes the cleanup removes, so a
 // test fails by name when one outlives it.
 if (!existsSync("/proc/self/environ")) {
   throw new Error("test-run: the process guard reads /proc, which this system does not have");
 }
 
-const pids = (): Set<number> =>
-  new Set(
+const runs = process.env.QSM_TEST_RUNS ?? join(tmpdir(), "qsm-test-runs");
+process.env.QSM_TEST_RUNS = runs;
+mkdirSync(runs, { recursive: true });
+cleanBefore(runs);
+const run = mkdtempSync(join(runs, `${RUN_PREFIX}${process.pid}.`));
+process.env.TMPDIR = run;
+/** The directory every temp path of this run is made in. */
+export const TEST_TMP = run;
+
+function pids(): Set<number> {
+  return new Set(
     readdirSync("/proc")
       .filter((n) => /^\d+$/.test(n))
       .map(Number),
   );
+}
 
-/** The command line of `pid` when it is alive and belongs to this run, else null. A child belongs
- * to the run when its working directory or any of its environment values points into the run:
- * a fixture may hand a child its own env with no TMPDIR, but its HOME or cwd still sits here. */
-function ofThisRun(pid: number): string | null {
+/** The command line of `pid` when it is alive and belongs to the run of `runDir`, else null. A
+ * child belongs to the run when its working directory or any of its environment values points
+ * into the run: a fixture may hand a child its own env with no TMPDIR, but its HOME or cwd still
+ * sits here. */
+function ofRun(pid: number, runDir: string): string | null {
   if (pid === process.pid) {
     return null;
   }
   try {
-    const inRun = (path: string): boolean => path === run || path.startsWith(`${run}/`);
+    const inRun = (path: string): boolean => path === runDir || path.startsWith(`${runDir}/`);
     const env = readFileSync(`/proc/${pid}/environ`, "utf8").split("\0");
     const values = env.map((entry) => entry.slice(entry.indexOf("=") + 1));
     if (!inRun(readlinkSync(`/proc/${pid}/cwd`)) && !values.some(inRun)) {
@@ -126,11 +135,11 @@ function ofThisRun(pid: number): string | null {
   }
 }
 
-/** Ends what a test left running and names it. */
-function stopLeft(candidates: Iterable<number>): string[] {
+/** Ends what a test of the run in `runDir` left running and names it. */
+function stopLeft(candidates: Iterable<number>, runDir: string): string[] {
   const left: string[] = [];
   for (const pid of candidates) {
-    const command = ofThisRun(pid);
+    const command = ofRun(pid, runDir);
     if (command !== null) {
       left.push(`  ${pid} ${command}`);
       try {
@@ -162,7 +171,10 @@ afterEach(async () => {
       failed.push(cause);
     }
   }
-  const left = stopLeft([...pids()].filter((pid) => !before.has(pid)));
+  const left = stopLeft(
+    [...pids()].filter((pid) => !before.has(pid)),
+    run,
+  );
   for (const dir of sandboxes.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -182,7 +194,7 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-  const running = stopLeft(pids());
+  const running = stopLeft(pids(), run);
   const left = readdirSync(run);
   const lines = left.map((name) => `  ${join(run, name)}`);
   rmSync(run, { recursive: true, force: true });
