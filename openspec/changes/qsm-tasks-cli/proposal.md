@@ -42,7 +42,7 @@ own binary, `qsm-tasks`, so the agent never composes a backend call.
 
 ## Not in this feature
 
-The Action that derives a feature's Status and closes what a merge into `feature/*` names
+The Action that derives a feature's Status and closes what a merge into `features/*` names
 (`status-action`, #15), the `qsmark-bot` identity (`agent-identity`, #14), pull requests and review
 threads (qsm-forge), git, GitLab, the skills that call the verbs and the move off `br`
 (`tasks-on-github-issues`), views and built-in workflows (the API cannot create them), the QA
@@ -69,8 +69,8 @@ deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters
    its test and no review.
 6. **One door, nothing duplicated**: nothing GitHub already does is built again, and one tasks
    tool is the agent's only way to the board.
-7. **The feature branch and the accept**: task pull requests target `feature/<n>`, the Action
-   closes what they name, and the owner's merge of the feature pull request into main is the
+7. **The feature branch and the accept**: task pull requests target `features/<n>-<title>`, the
+   Action closes what they name, and the owner's merge of the feature pull request into main is the
    accept; the spec binds to the feature; tasks are created at the split, not at planning.
 8. **Split into three features**: the binary (#13), the bot (#14) and the Action (#15), each
    working alone, in that order.

@@ -41,16 +41,16 @@ one feature pull request whose merge into main is the owner's accept.
 - **Step 1, the request**: two issue forms, feature request and issue, whose fields are the five
   questions of the implementation rule.
 - **Step 2, planning** writes the change models first, and its plan opens with a Feasibility
-  section: what can be done, what cannot and why, and how many task pull requests it
-  takes, which the owner reads before his yes. After the yes in the session it commits the change
-  onto the local branch `feature/<n>` and updates the feature issue with a one-screen summary. A
-  request too big for one feature ends in a proposed split: after the yes the agent files one new
-  feature issue per part, each planned on its own, and closes the original with a comment linking
-  them. It opens no pull request and creates no task.
+  section: what can be done, what cannot and why, and how many task pull requests it takes, which
+  the owner reads before his yes. After the yes in the session it commits the change onto the local
+  branch `features/<n>-<title>` and updates the feature issue with a one-screen summary. A request
+  too big for one feature ends in a proposed split: after the yes the agent files one new feature
+  issue per part, each planned on its own, and closes the original with a comment linking them. It
+  opens no pull request and creates no task.
 - **Step 3, the split**: the owner and the agent cut the feature into tasks, each a reviewable
-  pull request, with fakes that let each part run; `feature/<n>` is pushed first.
+  pull request, with fakes that let each part run; `features/<n>-<title>` is pushed first.
 - **Step 4, a task is built in one session**: context first, a whiteboard in the chat, the code,
-  `/simplify`, a self-review, then a pull request into `feature/<n>` from the template.
+  `/simplify`, a self-review, then a pull request into `features/<n>-<title>` from the template.
 - **Step 5** is the existing review workflow, reading the task against its feature's change.
 - **Step 9**: the agent opens the feature pull request to main with before and after for the
   whole feature; after the owner accepts it the agent archives the change and the owner merges.
@@ -67,11 +67,11 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 
 | Order | Feature (change) | Intent | Depends on | State |
 | --- | --- | --- | --- | --- |
-| 1 | `qsm-tasks-cli` | One binary is the agents' only door to the board; an Action derives a feature's Status, brings `feature/<n>` up to date with main, and closes the tasks a merge into `feature/*` names | nothing | spec, revised to this flow |
+| 1 | `qsm-tasks-cli` | One binary is the agents' only door to the board; an Action derives a feature's Status, brings `features/<n>-<title>` up to date with main, and closes the tasks a merge into `features/*` names | nothing | spec, revised to this flow |
 | 1 | `strict-visual-models` | One BPMN and one C4 graph per project with one tool that lints, renders, walks and link-checks them | `qsm-docs` (epic qsm-vgw0) | spec, revised to epic qsm-vgw0 |
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
-| 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
+| 4 | `qa-agent` | Step 8: a QA agent deploys `features/<n>-<title>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
 | 1 | `agent-identity` | Agents open pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | none | built |
 | 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
@@ -85,10 +85,10 @@ The owner picks from this table. Order is a suggestion: the same number can run 
    clear from every side before anything is built.
 3. **Near the loop**: the owner takes each problem apart himself, so a spec is pictures and short
    requirements, never one long file of text.
-4. **The feature branch and the accept**: `feature/<n>` is cut at the split, task pull requests
-   target it, a conflict with main is resolved and reviewed before QA, and the feature pull
-   request to main is the accept. QA catches contract and business bugs, because code bugs are
-   the review's.
+4. **The feature branch and the accept**: `features/<n>-<title>` is cut at the split, task pull
+   requests target it, a conflict with main is resolved and reviewed before QA, and the feature pull
+   request to main is the accept. QA catches contract and business bugs, because code bugs are the
+   review's.
 5. **GitHub first**: nothing GitHub already does is built again.
 6. **Task pull requests stay reviewable**: the required check `pr-size` fails one past 400
    changed lines; `.gitattributes` marks generated files, a BPMN's layout included, as not

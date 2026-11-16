@@ -30,9 +30,10 @@ export function changeLabel(id: string): string {
   return `change:${id}`;
 }
 
-/** The branch a feature's tasks are built on, and their pull requests are based on. */
-export function featureBranch(feature: number): string {
-  return `feature/${feature}`;
+/** What a feature branch name starts with: `features/<n>-`, then its title. A task's pull request
+    is based on a branch that starts so. */
+export function featureBranchPrefix(feature: number): string {
+  return `features/${feature}-`;
 }
 
 /** The kinds the flow tells apart: an issue of type Task or Bug is the kind `task`, because the
@@ -59,7 +60,10 @@ const STATUSES: readonly Status[] = [
   },
   {
     name: STATUS.inDev,
-    means: { task: "Claimed and being built", feature: "Split into tasks, built on feature/<n>" },
+    means: {
+      task: "Claimed and being built",
+      feature: "Split into tasks, built on features/<n>-<title>",
+    },
   },
   {
     name: STATUS.agentReview,
@@ -79,7 +83,9 @@ const STATUSES: readonly Status[] = [
   },
   {
     name: STATUS.readyForTest,
-    means: { feature: "Every task closed and feature/<n> up to date with main: waits for QA" },
+    means: {
+      feature: "Every task closed and features/<n>-<title> up to date with main: waits for QA",
+    },
   },
   {
     name: STATUS.inTest,
@@ -89,7 +95,7 @@ const STATUSES: readonly Status[] = [
   {
     name: STATUS.done,
     means: {
-      task: "Merged into feature/<n> by the owner with Closes #N",
+      task: "Merged into features/<n>-<title> by the owner with Closes #N",
       feature: "The owner merged the feature pull request into main",
       feedback: "Read and settled",
     },
@@ -207,7 +213,7 @@ const MOVES: readonly Move[] = [
     kinds: ["task"],
     from: [STATUS.agentReview],
     to: STATUS.readyForHuman,
-    when: "--pr: open, on feature/<parent>, Closes #<n>, green, no changes asked on its head",
+    when: "--pr: open, on features/<parent>-<title>, Closes #<n>, green, no changes asked on its head",
     // the PR's base names the feature, so a task under none has no PR to hand over
     holds: (at) =>
       at.parent === null

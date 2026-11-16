@@ -50,19 +50,20 @@ when a sub-issue of a Feature opens, closes or reopens. It SHALL use `gh` and th
 ### Requirement: The last closed task merges main into the feature branch
 
 When the last open task closes and at least one task of the feature closed as completed, the
-workflow SHALL merge main into `feature/<n>` and set Ready For Test only when that is clean; on a
-conflict it SHALL file one task `Resolve the conflict of feature/<n> with main` under the feature.
+workflow SHALL merge main into `features/<n>-<title>` and set Ready For Test only when that is
+clean; on a conflict it SHALL file one task `Resolve the conflict of features/<n>-<title> with main`
+under the feature.
 
 #### Scenario: The last task closes and main merges in clean (path p-b8fc2e)
 
 - **WHEN** the last open sub-issue of a feature at In Dev or Blocked closes, one of them completed,
-  and main merges into `feature/<n>` without a conflict
+  and main merges into `features/<n>-<title>` without a conflict
 - **THEN** the feature is Ready For Test within a minute
 
 #### Scenario: The last task closes and main conflicts (path p-d90e26)
 
 - **WHEN** the last open sub-issue closes, one of them completed, and merging main into
-  `feature/<n>` conflicts
+  `features/<n>-<title>` conflicts
 - **THEN** a conflict task is open under the feature, the Status stays In Dev, and Ready For Test
   follows the merge of its resolution pull request
 
@@ -76,17 +77,17 @@ conflict it SHALL file one task `Resolve the conflict of feature/<n> with main` 
 
 "Item closed" SHALL set Done for every closed issue, never a verb. GitHub SHALL close a feature when
 the feature pull request with `Closes #<feature>` merges into main. When a pull request merges
-into `feature/*`, `.github/workflows/qsm-tasks.yml` SHALL close as completed each issue its body
+into `features/*`, `.github/workflows/qsm-tasks.yml` SHALL close as completed each issue its body
 names with `Closes #N`, because GitHub does that only for the default branch.
 
 #### Scenario: A task pull request merges into the feature branch
 
-- **WHEN** a pull request with `Closes #12` merges into `feature/3`
+- **WHEN** a pull request with `Closes #12` merges into `features/3-<title>`
 - **THEN** task 12 is closed as completed within a minute and `show 12` prints Status Done
 
 #### Scenario: A pull request into a feature branch is closed unmerged
 
-- **WHEN** a pull request into `feature/3` that names `Closes #12` is closed unmerged
+- **WHEN** a pull request into `features/3-<title>` that names `Closes #12` is closed unmerged
 - **THEN** task 12 stays open
 
 ### Requirement: The Action derives with the flow table's names

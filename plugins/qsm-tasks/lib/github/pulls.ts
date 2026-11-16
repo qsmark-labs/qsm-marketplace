@@ -2,7 +2,7 @@
 // GitHub does not link a task's pull request to its issue, so the agent names it.
 import { isRecord } from "../../../../lib/outcome.ts";
 import { refuse, type Result } from "../failure.ts";
-import { featureBranch } from "../flow.ts";
+import { featureBranchPrefix } from "../flow.ts";
 import { graphql, type Run, variables } from "./gh.ts";
 import { nodes, text, whole } from "./items.ts";
 import type { Target } from "./target.ts";
@@ -30,7 +30,7 @@ function unready(
   parent: number,
 ): string | null {
   const [state, base] = [text(pull, "state"), text(pull, "baseRefName")];
-  const branch = featureBranch(parent);
+  const prefix = featureBranchPrefix(parent);
   // every number the body closes, whole: `Closes #50` is 50, never 5
   const closed = [...(text(pull, "body") ?? "").matchAll(/\bcloses #(\d+)/gi)].map((m) => m[1]);
   const commit: unknown = nodes(pull.commits)[0];
@@ -39,7 +39,10 @@ function unready(
   const checks = text(rollup, "state") ?? "not reported";
   const faults: [boolean, string][] = [
     [state !== "OPEN", `PR #${pr} is ${state?.toLowerCase() ?? "in no state"}, not open`],
-    [base !== branch, `PR #${pr} is based on ${base ?? "nothing"}, not ${branch}`],
+    [
+      base === null || !base.startsWith(prefix),
+      `PR #${pr} is based on ${base ?? "nothing"}, not ${prefix}<title>`,
+    ],
     [!closed.includes(String(n)), `PR #${pr} does not say Closes #${n}`],
     [checks !== "SUCCESS", `PR #${pr}'s checks are ${checks}, not green`],
     [changesAsked(pull), `PR #${pr} has a review asking for changes on its head`],
