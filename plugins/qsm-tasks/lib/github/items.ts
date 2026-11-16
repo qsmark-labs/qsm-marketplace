@@ -53,6 +53,10 @@ export interface Filter {
   readonly feature?: number | undefined;
   readonly label?: string | undefined;
   readonly without?: string | undefined;
+  /** the Status of its card on the board */
+  readonly status?: string | undefined;
+  /** words its title holds */
+  readonly words?: string | undefined;
 }
 
 const TYPES = { task: "type:Task,Bug", feature: "type:Feature" } as const;
@@ -66,6 +70,8 @@ function qualifiers(repo: string, filter: Filter): string {
     filter.feature === undefined ? "" : `parent-issue:${repo}#${filter.feature}`,
     filter.label === undefined ? "" : `label:"${filter.label}"`,
     filter.without === undefined ? "" : `-label:"${filter.without}"`,
+    filter.status === undefined ? "" : `status:"${filter.status}"`,
+    filter.words === undefined ? "" : `${filter.words} in:title`,
   ]
     .filter((q) => q !== "")
     .join(" ");

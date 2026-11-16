@@ -18,7 +18,7 @@ import { feedback } from "./feedback.ts";
 import { setup } from "./setup.ts";
 import { checkHuman, claim, human, plan, qa, reopen, review, unclaim } from "./moves.ts";
 import type { At } from "./on-issue.ts";
-import { checkSpec, list, note, ready, show } from "./reads.ts";
+import { checkList, list, note, ready, show } from "./reads.ts";
 
 const manifest = parseManifest(manifestJson, "qsm-tasks/qsm.json");
 
@@ -45,7 +45,7 @@ if (import.meta.main) {
   process.exit(
     await runCli(manifest, "qsm-tasks", {
       ready: onBoard(ready),
-      list: onBoard(list, checkSpec),
+      list: onBoard(list, checkList),
       show: onBoard(show),
       note: onBoard(note),
       feature: onBoard(feature, checkCreate),

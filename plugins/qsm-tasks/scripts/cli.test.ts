@@ -190,6 +190,41 @@ describe("qsm-tasks reads the board", () => {
     }
   });
 
+  it("list --status sends the Status in the query and prints the rows", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([task(5, "P1", [], "In Dev")]) }, [
+      "list",
+      "--status",
+      "In Dev",
+    ]);
+    expect(r.exit).toBe(0);
+    expect(r.message).toStartWith("#5 [In Dev]");
+    expect(r.calls[1]).toContain('status:"In Dev"');
+  });
+
+  it("list --status refuses a Status the flow does not know, naming the known ones, with no call", () => {
+    const r = run({ stdout: linked([BOARD]) }, ["list", "--status", "Reviewing"]);
+    expect(r.exit).not.toBe(0);
+    expect(r.message).toContain("Todo, In Dev, Agent Review");
+    expect(r.calls).toEqual([]);
+  });
+
+  it("list --search sends the words in the query", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, [
+      "list",
+      "--search",
+      "login bug",
+    ]);
+    expect(r.calls[1]).toContain("login bug in:title");
+  });
+
+  it("list combines --status, --search and --feature in one query", () => {
+    const argv = ["list", "--feature", "9", "--status", "Todo", "--search", "login"];
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, argv);
+    expect(r.calls[1]).toEndWith(
+      'is:issue parent-issue:qsmark-labs/qsm-marketplace#9 status:"Todo" login in:title',
+    );
+  });
+
   it("ready refuses an issue whose boards GitHub cut, instead of reading it as off the board", () => {
     const cut = {
       ...task(8, null, [], "In Dev"),

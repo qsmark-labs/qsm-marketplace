@@ -7,7 +7,8 @@ qsm-tasks <verb> --help
 
 `--json` prints one envelope on stdout. `ready` and `list` print one row per issue,
 `#<n> [<Status>] <title>` with its priority, assignees and open blockers, or `none`; `list` reads
-the open issues, and with `--feature` or `--spec` the whole tree or binding, open and closed.
+the open issues, and with `--feature` or `--spec` the whole tree or binding, open and closed;
+`--status <name>` and `--search <words>` narrow them, one Status or the words of a title.
 `show` prints that row, the facts, the sub-issue counts and the body, and with `--comments` the
 comments oldest first; `note` posts its text unchanged and prints `#<n> comment added`. `feature`
 and `add` print `#<n> filed: <title>`; a body or an intent goes to GitHub on stdin. `edit` prints

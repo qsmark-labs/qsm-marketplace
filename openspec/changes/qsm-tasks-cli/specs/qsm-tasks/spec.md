@@ -93,7 +93,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `ready [--feature n] [--qa]` | read | | open Todo tasks and bugs, unblocked, not `deferred`, by Priority then number; `--qa`: features at Ready For Test |
-| `list` | read | | `--feature`, `--kind`, `--status`, `--priority`, `--mine`, `--blocked`, `--label`, `--search`, `--spec <id>` (any state), `--state`, `--limit` |
+| `list` | read | | the open issues; `--feature n`, `--spec <id>` (any state), `--status <name>` and `--search <words>` (title) narrow them and combine |
 
 #### Scenario: P0 comes first, blocked and deferred stay out
 
@@ -106,6 +106,12 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 - **WHEN** `list --spec add-x` runs, a feature labelled `change:add-x-more` exists and the feature
   labelled `change:add-x` is closed
 - **THEN** only the closed feature labelled `change:add-x` is printed
+
+#### Scenario: Status and words narrow the read
+
+- **WHEN** `list --feature 9 --status Todo --search login` runs
+- **THEN** one GitHub search holds the feature, the Status and the words, and no row is filtered
+  in the binary
 
 ### Requirement: show and note read and comment on one issue
 
