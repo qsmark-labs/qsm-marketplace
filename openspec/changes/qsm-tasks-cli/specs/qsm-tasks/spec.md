@@ -150,6 +150,16 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 - **WHEN** `close 3 --reason "dropped" --not-planned` runs on a feature with an open sub-issue
 - **THEN** it exits `blocked` with `wrong-status` and the feature stays open
 
+#### Scenario: edit under a parent that add would refuse
+
+- **WHEN** `edit 12 --feature 7` runs and issue 7 is a task or a closed feature
+- **THEN** it exits `blocked` as `add` does, before any write
+
+#### Scenario: edit with a relation the issue holds
+
+- **WHEN** `edit` names a blocker or a parent the issue already has, beside a new change
+- **THEN** it sends no call for the held relation and still sends the new change
+
 ### Requirement: claim and unclaim take a task or give it back
 
 `claim` and `unclaim` SHALL do what their row says.
@@ -262,6 +272,11 @@ is `marketplace` or a plugin of
 
 - **WHEN** `feedback` runs with `--area` naming no plugin of `marketplace.json`
 - **THEN** it exits `usage` and nothing is posted
+
+#### Scenario: The number of the issue filed
+
+- **WHEN** `feedback --json` files an issue or comments on an open one
+- **THEN** its data carries the issue's `number`
 
 ### Requirement: A feedback body has fixed sections and no fix
 
