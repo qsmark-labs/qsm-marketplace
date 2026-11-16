@@ -116,9 +116,11 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 #### Scenario: A long search is read whole, up to a cap
 
 - **WHEN** GitHub cuts a search into three pages
-- **THEN** the read follows the cursor, and each row is printed once, in the order GitHub gave it
-- **WHEN** the search runs past ten pages of 100 issues, the most GitHub's search answers
-- **THEN** the read fails `refused`, naming the cap and the rows it reached
+- **THEN** the read follows the cursor and takes every row of every page once, and the verb
+  prints them in its own order
+- **WHEN** GitHub counts more matches than the rows read, as it does past ten pages of 100 issues,
+  the most its search answers
+- **THEN** the read fails `refused`, naming the count, the cap and the rows it reached
 
 #### Scenario: A card with no Status
 

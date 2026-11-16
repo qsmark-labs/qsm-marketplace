@@ -160,9 +160,13 @@ function task(number: number, priority: string | null, blockedBy: number[] = [],
   };
 }
 
-function found(nodes: readonly unknown[], next: string | null = null): string {
+function found(
+  nodes: readonly unknown[],
+  next: string | null = null,
+  issueCount = nodes.length,
+): string {
   const pageInfo = { hasNextPage: next !== null, endCursor: next };
-  return JSON.stringify({ data: { search: { pageInfo, nodes } } });
+  return JSON.stringify({ data: { search: { issueCount, pageInfo, nodes } } });
 }
 
 /** A task on the board whose card has no Status. */
@@ -297,6 +301,13 @@ describe("qsm-tasks reads the board", () => {
       "#4",
       "#5",
     ]);
+  });
+
+  it("ready refuses a last page when GitHub counts more matches than the rows read", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([task(1, null)], null, 1200) });
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("matches 1200 issues");
+    expect(r.message).toContain("stopped at 1");
   });
 
   it("ready refuses a search past ten pages, naming the cap and the rows it reached", () => {
