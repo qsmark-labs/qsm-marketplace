@@ -4,7 +4,7 @@
 
 Pull requests an agent opens and reviews an agent posts SHALL be made with the organization's
 App identity, and the owner's approval SHALL be the one GitHub requires before a merge into main
-or into `feature/*`.
+or into `features/*`.
 
 #### Scenario: The review agent posts a review
 

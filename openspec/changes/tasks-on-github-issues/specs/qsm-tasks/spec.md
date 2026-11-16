@@ -19,8 +19,8 @@ created at the split. No task SHALL be created at planning, and no test-it task 
 
 ### Requirement: A task closes when its pull request merges into the feature branch
 
-The Action SHALL close a task when its pull request merges into `feature/<n>` with `Closes #<n>`;
-`close --reason` SHALL close it when no pull request exists.
+The Action SHALL close a task when its pull request merges into `features/<n>-<title>` with
+`Closes #<n>`; `close --reason` SHALL close it when no pull request exists.
 
 #### Scenario: A task without a pull request
 

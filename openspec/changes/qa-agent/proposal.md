@@ -3,15 +3,15 @@ models, specs and design come at its planning.
 
 ## Why
 
-Step 8 of the flow has no owner yet. When the Action has brought `feature/<n>` up to date with main
-and set Ready For Test, nothing tests the whole feature as a user meets it. QA catches contract and
-business bugs, not code bugs. Code review already happened on every task; QA is the blackbox proof
-that the feature does what its models say.
+Step 8 of the flow has no owner yet. When the Action has brought `features/<n>-<title>` up to date
+with main and set Ready For Test, nothing tests the whole feature as a user meets it. QA catches
+contract and business bugs, not code bugs. Code review already happened on every task; QA is the
+blackbox proof that the feature does what its models say.
 
 ## What
 
 - **A QA agent** (new, in qsm-review): it takes a feature from `qsm-tasks ready --qa`, runs `qa`,
-  deploys the branch into a sandbox (a worktree of `feature/<n>`, a fresh Claude home, the
+  deploys the branch into a sandbox (a worktree of `features/<n>-<title>`, a fresh Claude home, the
   marketplace installed from that worktree), and runs the spec scenarios that cite the cover
   paths of the feature's BPMN, as a user would, without reading the code.
 - **A finding** is a fix task under the feature (`qsm-tasks add --feature`); no finding is a

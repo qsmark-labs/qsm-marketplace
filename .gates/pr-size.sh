@@ -3,9 +3,15 @@
 # defects (Cisco's review study). A file the base's .gitattributes marks linguist-generated is
 # not read, so it does not count. Every attribute, -diff included, comes from the base, so a
 # pull request cannot exempt itself; -z keeps an unusual file name unquoted.
-# Usage: .gates/pr-size.sh <base> <head>, run by CI and by the pre-push hook.
+# A head branch named features/* or sync/* is not measured: every line it carries was measured in
+# the task pull request that brought it, or on main.
+# Usage: .gates/pr-size.sh <base> <head> <head-branch>, run by CI and by the pre-push hook.
 set -euo pipefail
-BASE=$1 HEAD=$2 LIMIT=400
+BASE=$1 HEAD=$2 BRANCH=$3 LIMIT=400
+if [[ $BRANCH == features/* || $BRANCH == sync/* ]]; then
+  echo "pr-size: $BRANCH carries only lines measured where they landed, nothing to measure"
+  exit 0
+fi
 numstat=$(mktemp)
 trap 'rm -f "$numstat"' EXIT
 # A file, not a process substitution, so a failed diff stops the script under -e.
