@@ -221,13 +221,25 @@ scenarios QA ran, and close the feature with `Closes #<feature>`.
 
 The check `pr-size` SHALL fail a pull request whose changed lines, added plus deleted, pass 400,
 counting no file the base's `.gitattributes` marks `linguist-generated`, and SHALL name the count
-and the limit. Main and `feature/*` SHALL require it.
+and the limit. It SHALL pass a pull request whose head branch is `features/*` or `sync/*` without
+counting, naming the branch, because every line it carries was measured in the task pull request
+that brought it, or on main. Main and `features/*` SHALL require it.
 
 #### Scenario: A task too big to review
 
 - **WHEN** a task pull request changes 520 lines outside generated files
 - **THEN** `pr-size` fails naming 520 changed lines and the limit 400, and the pull request cannot
   merge
+
+#### Scenario: Main is taken into a feature
+
+- **WHEN** a pull request from `sync/7-<title>` into `features/3-<title>` changes 2000 lines
+- **THEN** `pr-size` passes naming the branch and counts nothing
+
+#### Scenario: A feature lands whole
+
+- **WHEN** a pull request from `features/3-<title>` into main changes 4000 lines
+- **THEN** `pr-size` passes naming the branch and counts nothing
 
 #### Scenario: A model change is read through its picture
 
