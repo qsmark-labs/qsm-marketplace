@@ -172,7 +172,7 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 | Verb | Kind | Needs | Does |
 | --- | --- | --- | --- |
 | `review <n>` | task, bug | In Dev, Agent Review or Human Review | Agent Review |
-| `human <n> --pr <m>` | task, bug | Agent Review; PR `<m>` open, based on `feature/<parent>`, saying `Closes #<n>`, checks green, no review asking for changes on the current head | Ready For Human |
+| `human <n> --pr <m>` | task, bug | Agent Review; PR `<m>` open, based on `features/<parent>-<title>`, saying `Closes #<n>`, checks green, no review asking for changes on the current head | Ready For Human |
 | `human <n> --started` | task, bug | Ready For Human | Human Review |
 
 #### Scenario: A task goes to review
@@ -188,18 +188,25 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 #### Scenario: A task is handed to the owner
 
 - **WHEN** `human 5 --pr 9` runs on a task at Agent Review under feature 3, and PR 9 is based on
-  `feature/3`, says `Closes #5`, has green checks and no review asking for changes on its head, and
-  then `human 5 --started` runs after the owner's first review
+  `features/3-<title>`, says `Closes #5`, has green checks and no review asking for changes on its
+  head, and then `human 5 --started` runs after the owner's first review
 - **THEN** the task is at Ready For Human and then at Human Review; until `status-action` (#15)
   does the second move on the owner's first review, the agent runs `human --started` on seeing it
 
 #### Scenario: The named PR is not the task's ready PR
 
 - **WHEN** `human 5 --pr 9` runs on a task at Agent Review and PR 9 is closed or merged, is based
-  on another branch, does not say `Closes #5`, has a check that is not green, or has a review
-  asking for changes on its head commit
+  on another branch (`main`, `features/30-<title>`), does not say `Closes #5`, has a check that
+  is not green, or has a review asking for changes on its head commit
 - **THEN** it exits `blocked` with `wrong-status` naming what fails, writes nothing, and the task
   stays at Agent Review
+
+#### Scenario: Only the feature number of the base decides
+
+- **WHEN** `human 5 --pr 9` runs on a task under feature 3
+- **THEN** a base of `features/3-anything` passes, while `features/30-x`, `features/3` and `main`
+  exit `blocked` with `wrong-status` and write nothing, as the guard checks the prefix
+  `features/3-` and not the title after it
 
 ### Requirement: reopen and plan return work to Todo, qa starts the test
 
@@ -305,7 +312,7 @@ verb's guard; no other copy of a name SHALL exist in the binary.
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
 | Todo | Not started | Being planned: intent, models, specs | Filed, not yet read |
-| In Dev | Claimed and being built | Split into tasks, built on `feature/<n>` | not used |
+| In Dev | Claimed and being built | Split into tasks, built on `features/<n>-<title>` | not used |
 | Agent Review | PR open: CI, gates and the review agent run; findings fixed at once | not used | not used |
 
 #### Scenario: A task has a pull request open
@@ -336,14 +343,14 @@ verb's guard; no other copy of a name SHALL exist in the binary.
 
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
-| Ready For Test | not used | Every task closed and `feature/<n>` up to date with main: waits for QA | not used |
+| Ready For Test | not used | Every task closed and `features/<n>-<title>` up to date with main: waits for QA | not used |
 | In Test | not used | The QA agent runs the scenarios of the cover in a sandbox | not used |
 
 #### Scenario: A feature waits for QA
 
 - **WHEN** `flow` runs
-- **THEN** the Ready For Test row reads that every task is closed and `feature/<n>` is up to date
-  with main
+- **THEN** the Ready For Test row reads that every task is closed and `features/<n>-<title>` is up
+  to date with main
 
 ### Requirement: Blocked and Done are defined per kind
 
@@ -352,7 +359,7 @@ verb's guard; no other copy of a name SHALL exist in the binary.
 | Status | Task and Bug | Feature | Feedback |
 | --- | --- | --- | --- |
 | Blocked | not used | QA found something: a fix task is open | not used |
-| Done | Merged into `feature/<n>` by the owner with Closes #N | The owner merged the feature pull request into main | Read and settled |
+| Done | Merged into `features/<n>-<title>` by the owner with Closes #N | The owner merged the feature pull request into main | Read and settled |
 
 #### Scenario: QA found something
 

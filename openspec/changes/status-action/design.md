@@ -11,13 +11,13 @@ The behaviour is the spec and `feature_status_process` of `models/marketplace.bp
    `qa` needs Ready For Test, which only the Action sets after a clean update from main.
    `edit --feature` moves an issue without an event, so both parents may lag until their next
    child event.
-2. **The Action brings `feature/<n>` up to date with main** when the last task closes (agreed
-   step 7). A conflict becomes a task under the feature, `Resolve the conflict of feature/<n> with
-   main`, so it goes through the same build, review and merge as any task, the review agent first;
-   its merge closes the last task again and the update runs again. The task is the Action's only
-   post: it is how an agent learns of the conflict.
-3. **The Action also closes what a merge into `feature/*` names.** GitHub closes `Closes #N` only
-   on the default branch. On `pull_request: closed` with `merged` and a base `feature/*`, the
+2. **The Action brings `features/<n>-<title>` up to date with main** when the last task closes
+   (agreed step 7). A conflict becomes a task under the feature, `Resolve the conflict of
+   features/<n>-<title> with main`, so it goes through the same build, review and merge as any task,
+   the review agent first; its merge closes the last task again and the update runs again. The task
+   is the Action's only post: it is how an agent learns of the conflict.
+3. **The Action also closes what a merge into `features/*` names.** GitHub closes `Closes #N` only
+   on the default branch. On `pull_request: closed` with `merged` and a base `features/*`, the
    Action closes each issue the body names as completed; "Item closed" then sets Done. One file,
    `.github/workflows/qsm-tasks.yml`, two jobs.
 4. **The Action writes as the owner**, with the owner's token stored as a repository secret:
@@ -27,9 +27,9 @@ The behaviour is the spec and `feature_status_process` of `models/marketplace.bp
 
 1. Does an Action on `issues: opened` see the parent of an issue made with `add --feature`? If not,
    decision 1 is revised before the Action is built, with no silent second route.
-2. Does the owner's token let the Action close the issues a merge into `feature/*` names, and
-   bring main into `feature/<n>`, which the `feature` ruleset lets change only through a pull
-   request?
+2. Does the owner's token let the Action close the issues a merge into `features/*` names, and
+   bring main into `features/<n>-<title>`, which the `feature` ruleset lets change only through a
+   pull request?
 
 ## Critiques
 

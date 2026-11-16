@@ -3,14 +3,14 @@
 ### Requirement: A feature moves from request to main along one process
 
 A feature SHALL move along `feature_flow_process` of `models/marketplace.bpmn`, the agreed steps 1
-to 9: request, planning, the split, every open task built, main merged into `feature/<n>`, QA, and
-landing on main. An activity SHALL carry its step number, and N.k when step N has several activities
-in one diagram. A step of several actions SHALL be a call activity with its own diagram. Every cover
-path of every diagram SHALL have a scenario here.
+to 9: request, planning, the split, every open task built, main merged into `features/<n>-<title>`,
+QA, and landing on main. An activity SHALL carry its step number, and N.k when step N has several
+activities in one diagram. A step of several actions SHALL be a call activity with its own diagram.
+Every cover path of every diagram SHALL have a scenario here.
 
 #### Scenario: Main moved and the update conflicts (path p-b4b42a)
 
-- **WHEN** every open task is built and merging main into `feature/<n>` conflicts
+- **WHEN** every open task is built and merging main into `features/<n>-<title>` conflicts
 - **THEN** a conflict task is filed under the feature and built like any task, main is merged
   again, and QA starts only after a clean merge
 
@@ -41,20 +41,21 @@ path of every diagram SHALL have a scenario here.
 
 Step 2 SHALL follow `plan_process` of `models/marketplace.bpmn`: the agent gathers the context,
 writes the intent and the feasibility, asks the open questions, draws the models and writes the
-specs; the owner reads the plan. The change is committed on the local branch `feature/<n>` only
-after the owner's yes (`record_plan_process`). Answering split, the owner has the agent file the new
-feature issues and close the original with links (`decouple_process`). No pull request is opened.
+specs; the owner reads the plan. The change is committed on the local branch `features/<n>-<title>`
+only after the owner's yes (`record_plan_process`). Answering split, the owner has the agent file
+the new feature issues and close the original with links (`decouple_process`). No pull request is
+opened.
 
 #### Scenario: The owner asks for changes, then approves (path p-72bc2c)
 
 - **WHEN** the owner reads the plan and asks for changes
 - **THEN** the agent asks the open questions again and revises; after the owner's yes the change is
-  committed onto `feature/<n>` and the feature issue is updated
+  committed onto `features/<n>-<title>` and the feature issue is updated
 
 #### Scenario: The approved plan is recorded (path p-f77c56)
 
 - **WHEN** the owner says yes to the plan
-- **THEN** the agent commits the change onto `feature/<n>`, then updates the feature issue
+- **THEN** the agent commits the change onto `features/<n>-<title>`, then updates the feature issue
 
 #### Scenario: The owner drops the feature (path p-3ddc2c)
 
@@ -64,7 +65,7 @@ feature issues and close the original with links (`decouple_process`). No pull r
 #### Scenario: The owner splits the feature (path p-a65734)
 
 - **WHEN** the owner reads a plan that proposes a split and answers split
-- **THEN** the agent decouples the feature and nothing is committed onto `feature/<n>`
+- **THEN** the agent decouples the feature and nothing is committed onto `features/<n>-<title>`
 
 #### Scenario: The feature is decoupled into new features (path p-ab5c6d)
 
@@ -74,9 +75,9 @@ feature issues and close the original with links (`decouple_process`). No pull r
 
 ### Requirement: The split pushes the branch and files the tasks
 
-Step 3 SHALL follow `split_process` of `models/marketplace.bpmn`: the agent pushes `feature/<n>`,
-cuts the feature into tasks a person can review, with fakes and mocks so each task leaves working
-code, and files them under the feature once the owner agrees.
+Step 3 SHALL follow `split_process` of `models/marketplace.bpmn`: the agent pushes
+`features/<n>-<title>`, cuts the feature into tasks a person can review, with fakes and mocks so
+each task leaves working code, and files them under the feature once the owner agrees.
 
 #### Scenario: The owner asks for a different cut (path p-dd7cc5)
 
@@ -93,7 +94,7 @@ the checks that run again: a review finding, a red CI, or the changes the owner 
 #### Scenario: Nothing found and the owner wants no changes (path p-ca9997)
 
 - **WHEN** the review agent finds nothing, the CI is green and the owner wants no changes
-- **THEN** the owner merges the pull request into `feature/<n>` and the task is Done
+- **THEN** the owner merges the pull request into `features/<n>-<title>` and the task is Done
 
 #### Scenario: One review finding (path p-e6c8bd)
 
@@ -153,8 +154,8 @@ the checks that run again: a review finding, a red CI, or the changes the owner 
 #### Scenario: The task becomes a pull request (path p-b868f0)
 
 - **WHEN** an agent consumes an open task
-- **THEN** it claims the task, which is In Dev, and the pull request it opens targets `feature/<n>`
-  only after the simplify pass and its own review
+- **THEN** it claims the task, which is In Dev, and the pull request it opens targets
+  `features/<n>-<title>` only after the simplify pass and its own review
 
 ### Requirement: The owner lands the feature on main
 
@@ -165,8 +166,8 @@ the owner merge.
 #### Scenario: The owner accepts (path p-de66ab)
 
 - **WHEN** the owner accepts the feature pull request
-- **THEN** the agent archives the change in a commit on `feature/<n>`, and the owner's merge into
-  main closes the feature
+- **THEN** the agent archives the change in a commit on `features/<n>-<title>`, and the owner's
+  merge into main closes the feature
 
 #### Scenario: The owner asks for changes (path p-530307)
 
@@ -207,14 +208,14 @@ Feature and the issue form the type Bug.
 ### Requirement: A pull request says before, after, what it solves and what it closes
 
 The repository SHALL hold a pull request template with the sections Before, After, What it solves
-and Closes. A task pull request SHALL target `feature/<n>` and close its task with `Closes #N`; a
-feature pull request SHALL target main, describe the whole feature before and after, list the
-scenarios QA ran, and close the feature with `Closes #<feature>`.
+and Closes. A task pull request SHALL target `features/<n>-<title>` and close its task with
+`Closes #N`; a feature pull request SHALL target main, describe the whole feature before and
+after, list the scenarios QA ran, and close the feature with `Closes #<feature>`.
 
 #### Scenario: A task pull request is opened
 
 - **WHEN** an agent opens the pull request of task 12 of feature 3
-- **THEN** its base is `feature/3`, its body has the four sections, and its last line is
+- **THEN** its base is `features/3-<title>`, its body has the four sections, and its last line is
   `Closes #12`
 
 ### Requirement: A pull request is small enough to review in one sitting
