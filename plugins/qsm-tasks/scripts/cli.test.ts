@@ -199,7 +199,7 @@ describe("qsm-tasks reads the board", () => {
     const r = run({ stdout: linked([BOARD]), search: found(rows) }, ["list", "--status", "In Dev"]);
     expect(r.exit).toBe(0);
     expect(r.message.split("\n").map((line) => line.split(" ")[0])).toEqual(["#5", "#7"]);
-    expect(r.calls[1]).not.toContain("status:");
+    expect(r.calls[1]).toEndWith("-f q=repo:qsmark-labs/qsm-marketplace is:issue is:open");
   });
 
   it("list --status refuses a Status the flow does not know, naming the known ones, with no call", () => {
