@@ -597,6 +597,39 @@ describe("qsm-tasks edits and closes the work", () => {
     expect(r.calls).toHaveLength(2);
   });
 
+  /** the read of the feature `edit --feature` names, as GitHub answers it */
+  const parentRead = (more: object) => {
+    const family = { body: "", parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    const node = { ...task(7, null), ...family, ...more };
+    return JSON.stringify({ data: { node: { issue: node } } });
+  };
+
+  it.each([
+    ["a task", {}, "wrong-kind"],
+    ["a closed feature", { ...feature, state: "CLOSED" }, "wrong-status"],
+  ])("edit --feature onto %s is refused as add refuses it, with no write", (_, more, reason) => {
+    const gh = { stdout: linked([BOARD]), card: cardOf("Todo", []), issue: parentRead(more) };
+    const r = run(gh, ["edit", "12", "--feature", "7", "--title", "x"]);
+    expect(r.data).toMatchObject({ reason });
+    expect(r.calls.some((c) => c.startsWith("issue edit"))).toBe(false);
+  });
+
+  it("edit sends no call for a blocker or a parent the card holds, and still sends a new one", () => {
+    const held = {
+      blockedBy: whole([{ number: 2, state: "OPEN" }]),
+      parent: { number: 7, state: "OPEN" },
+    };
+    const gh = { stdout: linked([BOARD]), card: cardOf("Todo", [], held) };
+    const edits = (argv: string[]) =>
+      run(gh, ["edit", "5", "--title", "x", ...argv]).calls.filter((c) =>
+        c.startsWith("issue edit"),
+      );
+    const [same] = edits(["--after", "2", "--feature", "7"]);
+    expect(same).toBe("issue edit 5 --repo qsmark-labs/qsm-marketplace --title x");
+    const [more] = edits(["--after", "3"]);
+    expect(more).toContain("--add-blocked-by 3");
+  });
+
   it("edit refused by GitHub, as a cycle is, exits failed with GitHub's words", () => {
     const gh = { stdout: linked([BOARD]), card: cardOf("Todo", []), refuseEditOnce: true } as const;
     const r = run(gh, ["edit", "1", "--after", "2"]);
@@ -691,6 +724,7 @@ describe("qsm-tasks feedback", () => {
     const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/91";
     const r = run(fake(dir, { list: "", created }), argv, dir);
     expect(r.message).toBe("#91 filed: ready skips a task");
+    expect(r.data).toMatchObject({ number: 91 });
     const made = r.calls.filter((c) => c.startsWith("label create"));
     expect(made).toEqual(["label create area:qsm-tasks --repo qsmark-labs/qsm-marketplace"]);
     expect(r.calls.at(-1)).toBe(
@@ -718,18 +752,19 @@ describe("qsm-tasks doctor", () => {
     "from:main-agent",
     "from:subagent",
   ];
+  const LINKED = "Pull request linked to issue";
   const workflows = [
     "Auto-add to project",
     "Auto-add sub-issues to project",
     "Item added to project",
     "Item closed",
-    "Pull request linked to issue",
+    LINKED,
   ];
 
   /** doctor's read as GitHub answers it, in the shape a recorded answer has. */
   function healthOf(
     fields: { name: string; options: string[] }[],
-    more: { template?: boolean } = {},
+    more: { template?: boolean; linkedOn?: boolean } = {},
   ): string {
     const nodes = (list: readonly string[]) => ({ nodes: list.map((name) => ({ name })) });
     const repo = {
@@ -746,7 +781,12 @@ describe("qsm-tasks doctor", () => {
           options: f.options.map((name) => ({ id: name, name, color: "GRAY", description: "" })),
         })),
       },
-      workflows: { nodes: workflows.map((name) => ({ name, enabled: true })) },
+      workflows: {
+        nodes: workflows.map((name) => ({
+          name,
+          enabled: name === LINKED ? more.linkedOn === true : true,
+        })),
+      },
       views: nodes(["Tasks", "Features"]),
     };
     return JSON.stringify({ data: { repo, board } });
@@ -761,6 +801,32 @@ describe("qsm-tasks doctor", () => {
     expect(r.exit).toBe(0);
     expect(r.message).toContain("manual  workflow Item closed: check it sets Done");
     expect(r.message).not.toContain("failed");
+  });
+
+  const board = [
+    { name: "Status", options: allStatuses },
+    { name: "Priority", options: ["P0", "P1", "P2"] },
+  ];
+
+  it("fails the pull request workflow when it is on and names the switch", () => {
+    const health = healthOf(board, { linkedOn: true });
+    const r = run({ stdout: linked([BOARD]), health }, ["doctor"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain(
+      `failed  workflow ${LINKED}: turn it off in ${url}/workflows, it moves a feature to Agent Review`,
+    );
+  });
+
+  it("passes the pull request workflow when it is off", () => {
+    const r = run({ stdout: linked([BOARD]), health: healthOf(board) }, ["doctor"]);
+    expect(r.message).toContain(`ok      workflow ${LINKED}`);
+  });
+
+  it("gives a failed doctor its reason in --json", () => {
+    const health = healthOf(board, { template: false });
+    const r = run({ stdout: linked([BOARD]), health }, ["doctor"]);
+    expect(r.exit).toBe(1);
+    expect(r.data).toMatchObject({ reason: "not-found" });
   });
 
   it("fails a leftover by the web page, never setup, and a missing template", () => {

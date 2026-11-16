@@ -162,6 +162,16 @@ Each verb SHALL do one step and, outside its guard, exit `blocked` with `wrong-k
 - **WHEN** `close 3 --reason "dropped" --not-planned` runs on a feature with an open sub-issue
 - **THEN** it exits `blocked` with `wrong-status` and the feature stays open
 
+#### Scenario: edit under a parent that add would refuse
+
+- **WHEN** `edit 12 --feature 7` runs and issue 7 is a task or a closed feature
+- **THEN** it exits `blocked` as `add` does, before any write
+
+#### Scenario: edit with a relation the issue holds
+
+- **WHEN** `edit` names a blocker or a parent the issue already has, beside a new change
+- **THEN** it sends no call for the held relation and still sends the new change
+
 ### Requirement: claim and unclaim take a task or give it back
 
 `claim` and `unclaim` SHALL do what their row says.
@@ -274,6 +284,11 @@ is `marketplace` or a plugin of
 
 - **WHEN** `feedback` runs with `--area` naming no plugin of `marketplace.json`
 - **THEN** it exits `usage` and nothing is posted
+
+#### Scenario: The number of the issue filed
+
+- **WHEN** `feedback --json` files an issue or comments on an open one
+- **THEN** its data carries the issue's `number`
 
 ### Requirement: A feedback body has fixed sections and no fix
 
@@ -421,7 +436,8 @@ GraphQL query.
 ### Requirement: doctor prints one line per check and exits by the worst
 
 `doctor` SHALL print one line per check, `ok`, `failed` or `manual`, and exit `ok`, `partial` when
-only `manual` remain, else `missing` or `failed`.
+only `manual` remain, `missing` when `gh`, the repository or the board is absent, else `failed`
+with `data.reason` `not-found`.
 
 #### Scenario: Only manual checks remain
 
@@ -442,8 +458,14 @@ names, and the labels `feedback`, `deferred`, `kind:*` and `from:*`.
 ### Requirement: doctor checks the board's workflows, views and the feedback template
 
 `doctor` SHALL check the built-in workflows "Auto-add to project", "Auto-add sub-issues to
-project", "Item added to project" (Todo), "Item closed" (Done) and "Pull request linked to issue"
-(Agent Review), the views Tasks and Features, and `.github/ISSUE_TEMPLATE/feedback.yml`.
+project", "Item added to project" (Todo) and "Item closed" (Done) on, "Pull request linked to
+issue" off, the views Tasks and Features, and `.github/ISSUE_TEMPLATE/feedback.yml`.
+
+#### Scenario: The pull request workflow is on
+
+- **WHEN** the board's "Pull request linked to issue" workflow is on
+- **THEN** `doctor` prints it as `failed`, tells the person to turn it off in the board's UI because
+  it moves a feature to Agent Review, and never switches it itself
 
 #### Scenario: The feedback template is missing
 
