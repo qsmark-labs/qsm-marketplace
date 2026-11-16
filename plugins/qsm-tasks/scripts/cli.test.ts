@@ -227,7 +227,16 @@ describe("qsm-tasks reads the board", () => {
       "--search",
       "login bug",
     ]);
-    expect(r.calls[1]).toContain("login bug in:title");
+    expect(r.calls[1]).toContain('"login" "bug" in:title');
+  });
+
+  it("list --search sends a word that looks like a qualifier as a quoted word", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, [
+      "list",
+      "--search",
+      'repo:x do"c',
+    ]);
+    expect(r.calls[1]).toEndWith('is:open "repo:x" "do\\"c" in:title');
   });
 
   it("list combines --status, --search and --feature", () => {
@@ -236,7 +245,7 @@ describe("qsm-tasks reads the board", () => {
     const r = run({ stdout: linked([BOARD]), search: found(rows) }, argv);
     expect(r.message).toStartWith("#6 ");
     expect(r.calls[1]).toEndWith(
-      "is:issue parent-issue:qsmark-labs/qsm-marketplace#9 login in:title",
+      'is:issue parent-issue:qsmark-labs/qsm-marketplace#9 "login" in:title',
     );
   });
 
