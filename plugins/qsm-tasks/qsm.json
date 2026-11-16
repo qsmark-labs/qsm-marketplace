@@ -375,7 +375,7 @@
           {
             "name": "pr",
             "type": "number",
-            "description": "its pull request, based on feature/<parent>, saying Closes #<n>"
+            "description": "its pull request, based on features/<parent>-<title>, saying Closes #<n>"
           },
           {
             "name": "started",

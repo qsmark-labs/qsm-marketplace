@@ -298,7 +298,7 @@ describe("qsm-tasks human hands a task over", () => {
   const run5 = (more: object) => {
     const ready = {
       state: "OPEN",
-      baseRefName: "feature/3",
+      baseRefName: "features/3-anything",
       body: "Builds the verb.\n\nCloses #5",
       headRefOid: "c2",
       latestReviews: review("COMMENTED", "c2"),
@@ -309,7 +309,9 @@ describe("qsm-tasks human hands a task over", () => {
   };
 
   it.each([
-    ["a base that is not feature/3", { baseRefName: "main" }, "based on main, not feature/3"],
+    ["a base of main", { baseRefName: "main" }, "based on main, not features/3-<title>"],
+    ["a base of feature 30", { baseRefName: "features/30-x" }, "based on features/30-x, not"],
+    ["a base without the dash", { baseRefName: "features/3" }, "based on features/3, not"],
     ["no Closes #5", { body: "Closes #50" }, "does not say Closes #5"],
     ["a failing check", { commits: rollup("FAILURE") }, "checks are FAILURE, not green"],
     ["a merged PR", { state: "MERGED" }, "is merged, not open"],
