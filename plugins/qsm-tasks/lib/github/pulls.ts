@@ -40,7 +40,7 @@ function unready(
   const faults: [boolean, string][] = [
     [state !== "OPEN", `PR #${pr} is ${state?.toLowerCase() ?? "in no state"}, not open`],
     [
-      !(base ?? "").startsWith(prefix),
+      base === null || !base.startsWith(prefix),
       `PR #${pr} is based on ${base ?? "nothing"}, not ${prefix}<title>`,
     ],
     [!closed.includes(String(n)), `PR #${pr} does not say Closes #${n}`],
