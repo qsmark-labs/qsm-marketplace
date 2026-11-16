@@ -12,7 +12,7 @@ import {
   type Painted,
   type Rect,
   ROUNDING,
-  type Seg,
+  type Segment,
   STEP,
   sidesOf,
   spanOf,
@@ -223,7 +223,7 @@ const labelOf = (text: string, px: number, chars = 24): Label => {
 /** The straight stretches of a line. ELK splits a stretch where it crosses into a boundary and may
  * shift it by a fraction of a pixel there; a point within a pixel of the run through its neighbours
  * is no bend, so the stretch stays one. */
-function segsOf(ed: ElkExtendedEdge): Seg[] {
+function segsOf(ed: ElkExtendedEdge): Segment[] {
   return (ed.sections ?? []).flatMap((s) => {
     const q = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint];
     const bends = q.filter((p, i) => {
@@ -237,14 +237,14 @@ function segsOf(ed: ElkExtendedEdge): Seg[] {
         )
       );
     });
-    return bends.slice(1).map((v, i): Seg => [bends[i] ?? v, v]);
+    return bends.slice(1).map((v, i): Segment => [bends[i] ?? v, v]);
   });
 }
 
 /** A line as drawn: its title, its stretches and its label. */
 interface DrawnLine {
   readonly title: string;
-  readonly segs: Seg[];
+  readonly segs: Segment[];
   readonly label: Rect;
 }
 
@@ -434,7 +434,7 @@ interface RoutedLine {
   readonly ed: ElkExtendedEdge;
   readonly rel: Edge;
   readonly label: Label;
-  readonly segs: Seg[];
+  readonly segs: Segment[];
   readonly at: Rect;
 }
 

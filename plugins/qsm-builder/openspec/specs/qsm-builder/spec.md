@@ -79,7 +79,7 @@ SHALL point to the skill-standards skill for the quality bar instead of repeatin
 
 - **WHEN** a developer asks to add a skill to a plugin
 - **THEN** the skill SHALL plan the eval cases with the skill, and SHALL NOT call the work done
-  until the gates, `bun run eval <plugin>` and the review pass
+  until the gates and the review pass
 
 ### Requirement: Adding to the shared kit
 
@@ -132,25 +132,17 @@ size cap, hold one subject, and carry no references directory.
 - **THEN** the standard SHALL ask for the behaviour wanted and the reason
   beside each rule
 
-### Requirement: Eval before a skill is kept
+### Requirement: Every skill ships its eval cases
 
 Every skill and agent SHALL ship evals under its plugin's `evals/`: a case
 tagged `fire`, a case tagged `scenario` graded on the agent's thought process
-and output in one to three points, and one `negative` case per plugin. A change
-to a skill SHALL be kept only if its eval, run with `claude plugin eval`, does
-not get worse; a skill whose scenario still passes without the plugin after it
-was made harder SHALL be proposed for removal.
+and output in one to three points, and one `negative` case per plugin.
 
-#### Scenario: The fire case fails
+#### Scenario: A skill is added
 
-- **WHEN** a realistic prompt that should load the skill does not
-- **THEN** the description SHALL be rewritten and the eval run again
-
-#### Scenario: The scenario passes without the plugin
-
-- **WHEN** a scenario passes in 2 of 3 runs without the plugin
-- **THEN** the scenario SHALL be made harder, and if it still passes the
-  skill SHALL be proposed for removal
+- **WHEN** a developer adds a skill to a plugin
+- **THEN** the plugin's `evals/` holds a `fire` case and a `scenario` case for
+  it, and the plugin's `negative` case
 
 ### Requirement: Prompting reference
 

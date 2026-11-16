@@ -27,8 +27,10 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
    issues. A task is never bound: it is a sub-issue of the bound feature.
 8. **Cancel is a close as not planned**, never a Status; GitHub keeps the reason and the views
    filter by it.
-9. **Done is GitHub's**: "Item closed" sets it for every kind; no verb writes Done and no verb adds
-   to the board except `claim`, which may run before auto-add did.
+9. **Done is GitHub's**: "Item closed" sets it for every kind; no verb writes Done. A verb adds an
+   issue to the board only when it must write a field the auto-add has not given a card yet,
+   because a field lives only on a card: `claim`, a move on an issue off the board such as
+   `reopen`, and `add --priority`.
 10. **Errors**: `blocked` (`wrong-kind`, `wrong-status`, `held`, `private-data`), `missing`
     (`no-gh`, `no-repo`, `no-board`, `no-file`), `failed` (`refused`, `not-found`). No retry, no
     second route, no rollback; each write is idempotent, so a repeat finishes a half-done verb.
@@ -38,12 +40,34 @@ and `issueType`. The Action that derives a feature's Status is `status-action` (
     private-data patterns. Feedback has no issue type: the label `feedback` names the kind.
 13. **Ghost mode**: the binary's only own texts are the label `deferred` and the comment `Deferred
     until <value>`; `from:` names an agent by the owner's choice.
+14. **`human` reads the pull request the agent names, `--pr <m>`** (the owner's decision on #67).
+    GitHub links a closing pull request to its issue only when it targets the default branch, and a
+    task's targets `feature/<n>`, so the link is empty; the agent opened it and knows its number.
+    One query reads its state, base, body, head commit, the latest review of each reviewer and the
+    head commit's check rollup, before any write: open, base `feature/<parent>`, `Closes #<n>`,
+    rollup `SUCCESS`, and no review asking for changes on the head commit, because the owner's
+    request stays the latest until he reviews again, and the commits after it answered it. No
+    approval is asked for (the owner's decision): nobody approves on GitHub before Ready For Human,
+    because the review bot's approval is off, the local review agent posts nothing, the agent's
+    workflow holds that step, and the owner approves last.
 
-## Unmeasured, measured before the code
+## Measured before the code
 
-1. Can GraphQL add and rename a Status option, create the field Priority, and read the board's
-   workflows and views? Each answer makes a `setup` and `doctor` line `ok` or `manual`.
-2. Which view filter separates issues closed as not planned (`reason:"not planned"`)?
+Read from GitHub's GraphQL schema by introspection and from the docs, never by a write.
+
+1. **Fields: yes.** `updateProjectV2Field` takes `singleSelectOptions`, which overwrite the
+   options, so `setup` adds a Status option by sending the existing ones with their `id` (an
+   option sent without its `id` clears the items that hold it) plus the new one; the same call
+   could rename, which `setup` never does. `createProjectV2Field` creates Priority as
+   `SINGLE_SELECT` with its options, and each option takes a `description`, so the definitions are
+   written too. **Workflows: read, not set.** `ProjectV2.workflows` reads each one's `name` and
+   `enabled`; no field reads the Status a workflow sets and no mutation creates or enables one, so
+   a workflow's name and state are `ok` or `failed`, and its Status is `manual`. **Views: read and
+   created.** `ProjectV2.views` reads each one's `name`, `layout` and `filter`;
+   `createProjectV2View` makes a view and `updateProjectV2View` sets its `filter`, so the proposal's
+   "views cannot be created" no longer holds.
+2. **`reason:"not planned"`** selects the items closed as not planned, and `-reason:"not planned"`
+   leaves them out (GitHub Docs, "Filtering projects": filter by close reason, negating a filter).
 
 ## Open decisions
 

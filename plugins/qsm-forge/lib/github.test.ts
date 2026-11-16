@@ -328,7 +328,7 @@ describe("Identity does not exist", () => {
   test("Identity does not exist", async () => {
     const { forge, calls } = recordedForge({});
     await expectRejection(
-      replyToThread(forge, { pr: PR, commentId: 999_999, message: "hi", keepOpen: false }),
+      replyToThread(forge, { pr: PR, commentId: 999_999, message: "hi" }),
       UsageError,
     );
     expect(calls.every((call) => !call.includes("--method"))).toBe(true);
@@ -336,30 +336,16 @@ describe("Identity does not exist", () => {
 });
 
 describe("Effect on thread resolution", () => {
-  test("a reply closes the thread it answered", async () => {
+  test("a reply never resolves the thread it answered", async () => {
     const { forge, calls } = recordedForge({ resolveReviewThread: RESOLVED_OK });
     const anchor = mapThreads(FULL, REPO, PR).at(0)?.comments.at(0)?.id ?? 0;
     const outcome = await replyToThread(forge, {
       pr: PR,
       commentId: anchor,
       message: "Fixed in abc1234",
-      keepOpen: false,
-    });
-    expect(outcome.resolved).toBe(true);
-    expect(calls.some((call) => call.join(" ").includes("replies"))).toBe(true);
-    expect(calls.some((call) => call.join(" ").includes("resolveReviewThread"))).toBe(true);
-  });
-
-  test("keepOpen replies and stops", async () => {
-    const { forge, calls } = recordedForge({ resolveReviewThread: RESOLVED_OK });
-    const anchor = mapThreads(FULL, REPO, PR).at(0)?.comments.at(0)?.id ?? 0;
-    const outcome = await replyToThread(forge, {
-      pr: PR,
-      commentId: anchor,
-      message: "still thinking",
-      keepOpen: true,
     });
     expect(outcome.resolved).toBe(false);
+    expect(calls.some((call) => call.join(" ").includes("replies"))).toBe(true);
     expect(calls.some((call) => call.join(" ").includes("resolveReviewThread"))).toBe(false);
   });
 });

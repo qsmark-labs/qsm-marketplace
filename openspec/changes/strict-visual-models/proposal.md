@@ -17,8 +17,8 @@ reviewer before an edit is written into the graph.
 
 ## Why
 
-The owner wants every side to see the same thing: "vsude strict defined theorem visual models, tak
-aby bylo jasne na vsechny strany really co chceme". Before this change nothing in the marketplace
+Every side should see the same thing: strictly defined visual models, so that what is wanted is
+clear to everyone. Before this change nothing in the marketplace
 drew a process, nothing checked a diagram, and a spec was text only. A model an agent can write but
 nobody checks is a picture that drifts; a strict one is a contract the owner reads and QA tests.
 This feature adds two tools, one that makes BPMN strict and one that makes C4 strict, each working
@@ -77,37 +77,36 @@ with this revision, local mode.
 2. **C4 as `.drawio.svg`** (2026-11-01): one file, an SVG with the draw.io diagram inside, that
    GitHub shows and draw.io opens. Built that way. The source an agent writes is LikeC4 `.c4`
    (decision 6).
-3. **Strict layout, more colour, clear layers** (2026-11-01): "aby ty graph items byly bliz u sebe,
-   a mely lepsi structure", "vice barvicek, a vice layer separation", and rules and a workflow "jak
-   udelat cokoliv do BPMN a do C4, od mensiho tasku, do celeho codebase", reviewed after creation,
-   with an optional strong agent that "bude chodit po tom grafu a bude se snazit simplifikovat ten
-   model".
+3. **Strict layout, more colour, clear layers**: graph items close together with a better
+   structure, more colour and more layer separation, and rules and a workflow for turning anything
+   into BPMN and C4, from a small task to the whole codebase, reviewed after creation, with an
+   optional strong agent that walks the graph and simplifies the model.
 4. **Colour by actor, the GitHub Action as a lane, at most 10 activities a level** (2026-11-01):
    the owner took the three recommendations where the sources disagree (design decision 13).
-5. **One activity, one action** (2026-11-01), the owner's own words on a merged step: "ta jedna
-   aktivita dela dve akce, a ma delat jednu, protoze je to jedna aktivita".
+5. **One activity, one action**: a step that merged two actions under one activity is split,
+   because an activity is one action.
 6. **One graph per kind per project, standard sources, pure-business BPMN** (2026-11-04, epic
    qsm-vgw0): "One graph per kind per project, never a copy per change or per plugin." BPMN 2.0 XML
    and LikeC4 `.c4`, validated by bpmnlint and `likec4 validate`; the BPMN graph "knows nothing
    about code"; links are optional, and "every link must resolve or the gate fails". This revised
    the change: the lane-is-a-C4-actor rule, the model per change merged at archive, the lens's
    model view and the open C4 format are gone.
-7. **A first build for visualization, static pages and no store** (2026-11-05): the tools are an MVP
-   for visualization, "absolute bare bones: generate, show proper models, with validation rules and
-   proper modeling". It validated, rendered and wrote one HTML per graph kind into
+7. **A first build for visualization, static pages and no store**: the tools are an MVP for
+   visualization, bare bones: generate, show proper models, with validation rules and proper
+   modeling. It validated, rendered and wrote one HTML per graph kind into
    `<repo>/.qsm/models/`; the pages request nothing outside the file.
 8. **No link between Gherkin and tests** (2026-11-05): the owner writes Gherkin scenarios in a
    task's `documentation` on its details page; no tags, no results, no generation. `models-pages`
    holds the notes.
-9. **Two self-contained tools, one neutral link, checks in the generators** (2026-11-06): "Chci 2
-   separate tools, ktere mi zobrazi grafy modelu podle nasich rules, super strict checks, easy to
-   work with for agents, default self history, never delete only add. BPMN will have optional
-   gherkin features per step. Everything is multilayers. Currently in MVP build currently for one
-   project - qsm marketplace - only. The two tools are selfcontained, only with some options for
-   connections between them using c4 ids or something in the bpmn, that is not qsm tool specific."
-   On the checks: "Ten check co je v langdev ma byt v tech generatorech samotnych, kdyz to chcec
-   vygenerovat in or out, or for the web, musi to projit vsema kontrolama, vcetne agents, teda web
-   nemusi agents, protoze to se generuje read only z toho co mame ted locally." The history is the
+9. **Two self-contained tools, one neutral link, checks in the generators**: two separate tools
+   show the model graphs by our rules, with strict checks, easy for agents to work with, a default
+   self history that is only added to, and optional Gherkin features per step in BPMN. Everything
+   is multilayered, and the MVP serves one project, the marketplace. The two tools are
+   self-contained, with only optional connections between them through a neutral id, such as a C4
+   id, that is specific to no tool. On the checks: the check that lives in langdev belongs in the
+   generators themselves, so whatever is generated, in or out or for the web, passes every check,
+   agents included; the web page needs no agent check, because it is generated read-only from what
+   exists locally. The history is the
    qsm-docs store (create, get, and delete only by the owner, never an edit), every local edit on
    a page is a proposal, and the PR picture is show-only; those belong to `models-pages` and
    `models-pr-pictures`, which the owner revises next. This revision split the plugin, kept one

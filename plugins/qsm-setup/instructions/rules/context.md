@@ -65,11 +65,11 @@ already said.
    that prints each iteration) and has an iteration cap and a wall-clock timeout, because a
    silent long run looks like a hang.
 8. A run that loads the person's machine on purpose (CPU burners, a stress test, a load to
-   measure under) is asked for first, because it is their machine while they work on it. The
-   person in their words: "nedosuj mi PC".
+   measure under) is asked for first, because it is their machine while they work on it, and a
+   load they did not expect slows what they are doing.
 9. When the person asked to clean up and prepare work, not to finish it, a review's findings
-   become task lines with their decisions, never code in the same round. The person: "zase to
-   neprehanej s tou implementaci ted".
+   become task lines with their decisions, never code in the same round, because mixing the two
+   turns a preparation into an implementation nobody asked for yet.
 10. After two failed attempts at debugging below the application (kernel, drivers, filesystem,
    boot), stop and search the exact error message, because someone has hit it and blind
    iteration costs boot cycles.
@@ -95,7 +95,7 @@ answers).
 | Work | Who | Why |
 | ------ | ----- | ----- |
 | Most work: search, research, reading, audit, verify, a runner, a small bounded edit | haiku | The default and the best fast all-rounder: Haiku 5.5 is as good as sonnet, it only plans less far ahead and links fewer things together |
-| A review, a job that needs thinking, an implementation of several steps or files that must fit together | sonnet; a review is never haiku | Needs the foresight and the links haiku makes less of; the person said: "review by mel byt vzdy sonnet nebo opus, nikdy haiku" |
+| A review, a job that needs thinking, an implementation of several steps or files that must fit together | sonnet; a review is never haiku | Needs the foresight and the links haiku makes less of; a cheap tier misses what a stronger one finds in a review |
 | An end-to-end delivery, the review of a large or risky change, one agent carrying a whole big job | opus | Costs several times more, so only where one mind must hold the whole |
 | Build something from zero on the side, when we know what it should do but not how | fable, forked with a summary of this context and the full intent, treated as a teammate, not a worker | Needs the whole picture |
 
@@ -115,8 +115,8 @@ after 23 idle minutes wrote its whole 92k-token context again. Past five minutes
 keeps its context, so it reads no file twice, but pays the write again. The one-hour cache
 (`subagentPromptCacheTtl`) is not worth it here: a one-hour write costs 2x the input price against
 1.25x, and only 3% of this marketplace's subagent cache writes, measured, followed a gap over five
-minutes. The person said: "prefer less agents, that have more
-work, so that we dont burn the cache".
+minutes. Fewer agents with more work each is the rule, because every new agent
+pays for its context in full.
 
 A subagent that edits works in its own worktree, cut through wt from the main agent's branch at
 dispatch (the implementer declares `isolation: worktree`). The main agent reviews the branch there
@@ -130,10 +130,9 @@ working tree does not have; `qsm-worktrunk ahead` names every branch still ahead
 
 The shape of the work decides, not the count of agents. A chain whose stages feed each other (check,
 implement, review) is a Workflow. Independent work, such as four unrelated tasks or the parallel
-agents a skill asks for, goes out as plain subagents in one message, as many as the work has. The
-person in their words: "workflow je based on the agent, if its 4 unrelated things, or if its a
-dirrect skill, than run it normally as subagents. If its a check - implement - review, than its a
-workflow." For a Workflow, find the work list yourself, then hand it to the workflow, and use
+agents a skill asks for, goes out as plain subagents in one message, as many as the work has: a
+workflow is for stages that feed each other, and unrelated items gain nothing from one. For a
+Workflow, find the work list yourself, then hand it to the workflow, and use
 `parallel()` only when a stage needs all results at once. A workflow mixes the tiers side by side,
 each step on the tier the table above gives its work: haiku by default, sonnet for a review or a
 step that needs thinking, opus for an end-to-end step. Never fable inside a workflow.
@@ -165,10 +164,9 @@ space of the temporary filesystem first and deletes recordings and captures once
 A finished workflow whose work the person has confirmed ends with a lessons pass before the next
 one starts: read what went wrong or cost a retry (the journal, the fix reports, the person's
 corrections), and fix each cause where it lives: the code, the tool, the gate, the hook, or the
-skill or rule that misled, in every repository the work touched, the marketplace included. The
-person asked for it in their words: "po kazdem done workflow, a confirmed work from user, tak udelej
-review what we learned, a uprav skills, docs", and "FIX IT FIRST ALWAYS. To je ten learn, self
-improvement loop". A note that describes a problem without removing it is no lesson, because the
+skill or rule that misled, in every repository the work touched, the marketplace included. A lesson
+is fixed first, before the next work, because that is how the loop improves itself. A note that
+describes a problem without removing it is no lesson, because the
 next agent repeats the problem and reads the note too late.
 
 Every dispatch, alone or inside a workflow: one task in, a short briefing plus a file path out.

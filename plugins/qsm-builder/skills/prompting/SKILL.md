@@ -74,8 +74,6 @@ the model version, so the eval is the only record of what a line does.
 - When a rule must hold every time and lives only in prose, name the hook that holds it, because
   prose is forgotten under pressure.
 - When you cannot write a line's reason, delete the line, because it is a habit and not a rule.
-- When a table of per-model lines is about to be added, run the eval first, because without a
-  measurement it is a guess that outlives the model version.
 
 ## Say it in the reply
 

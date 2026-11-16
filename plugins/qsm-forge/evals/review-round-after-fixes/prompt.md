@@ -6,8 +6,9 @@ max_turns: 8
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-PR 42 of this repo has five unresolved review threads. I pushed commit 9f3c2ab that fixes four of
-them. The fifth is a style nit I disagree with, and I want to say so to the reviewer and leave it
-open. There is no network and no forge access in this sandbox, so do not try to call it: write
-out the exact commands you would run, in order, say how many calls the whole round takes, and why
-each one is needed. Then say what the reviewer will see on the PR afterwards.
+PR 42 of this repo has five unresolved review threads. I committed 9f3c2ab on the PR's branch, not
+pushed yet, and it fixes four of them. Two of those four come with a test that fails without the
+fix; the other two have none. The fifth is a style nit I disagree with, and I want to say so to the
+reviewer and leave it open. There is no network and no forge access in this sandbox, so do not try
+to call it: write out the exact commands you would run, in order, say how many calls the whole
+round takes, and why each one is needed. Then say what the reviewer will see on the PR afterwards.

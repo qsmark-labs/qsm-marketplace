@@ -53,8 +53,6 @@ edits a file of it.
 ## Caveats
 
 - The skills are guidance; only the manifest check enforces anything.
-- `evals/` holds the fire, scenario and negative cases for these skills; run them with `bun run eval
-  qsm-builder`, which evals a copy without `dependencies` because the eval sandbox cannot resolve
-  them.
+- `evals/` holds the fire, scenario and negative cases for these skills.
 - The check runs on `Write` and `Edit` only, not on shell or patch edits, and needs function hooks
   enabled in the harness. Registration and name-matches-directory are the commit-time gate's job.

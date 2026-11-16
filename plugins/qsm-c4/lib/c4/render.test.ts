@@ -9,7 +9,7 @@ import { defectsOf } from "./render.ts";
 
 type Point = { x: number; y: number };
 type Rect = Point & { w: number; h: number };
-type Seg = [Point, Point];
+type Segment = [Point, Point];
 
 const isPoint = (v: unknown): v is Point =>
   isRecord(v) && typeof v.x === "number" && typeof v.y === "number";
@@ -20,7 +20,8 @@ const isRect = (v: unknown): v is Rect =>
   typeof v.w === "number" &&
   "h" in v &&
   typeof v.h === "number";
-const isSeg = (v: unknown): v is Seg => Array.isArray(v) && v.length === 2 && v.every(isPoint);
+const isSegment = (v: unknown): v is Segment =>
+  Array.isArray(v) && v.length === 2 && v.every(isPoint);
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
 const rectOf = (v: unknown): Rect => {
@@ -29,7 +30,7 @@ const rectOf = (v: unknown): Rect => {
   }
   throw new Error(`not a box: ${JSON.stringify(v)}`);
 };
-const shapeOf = (v: unknown): Rect | Seg => (isSeg(v) ? v : rectOf(v));
+const shapeOf = (v: unknown): Rect | Segment => (isSegment(v) ? v : rectOf(v));
 const listOf = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 /** What drawView painted for one view, as recorded in lib/fixtures, and what defectsOf names. */
@@ -53,7 +54,7 @@ function recorded(name: string): string[] {
     .filter(isRecord)
     .map((l) => ({
       title: String(l.title),
-      segs: listOf(l.segs).filter(isSeg),
+      segs: listOf(l.segs).filter(isSegment),
       label: rectOf(l.label),
     }));
   return defectsOf(painted, drawn);
