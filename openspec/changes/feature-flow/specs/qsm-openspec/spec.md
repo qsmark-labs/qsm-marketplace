@@ -39,8 +39,8 @@ edit no code, and commit the change only after the owner's yes.
 Triggered by a request to build a task, spec-apply SHALL build one task of a planned feature in one
 session: gather context (the feature, its change, memory, the code index, related pull requests),
 show a whiteboard (the C4 component view it touches, interfaces, contracts), implement, run
-`/simplify` and a self-review, and open a pull request into `feature/<n>` that closes the task.
-It SHALL refuse a task whose feature change is a draft.
+`/simplify` and a self-review, and open a pull request into `features/<n>-<title>` that closes the
+task. It SHALL refuse a task whose feature change is a draft.
 
 #### Scenario: Code without verification
 
@@ -50,8 +50,8 @@ It SHALL refuse a task whose feature change is a draft.
 #### Scenario: The task's pull request is opened
 
 - **WHEN** the task's code runs, `/simplify` and the self-review are done
-- **THEN** spec-apply SHALL open one pull request into `feature/<n>` from the template, closing
-  the task, and SHALL name the review agent as the next step and SHALL NOT merge it
+- **THEN** spec-apply SHALL open one pull request into `features/<n>-<title>` from the template,
+  closing the task, and SHALL name the review agent as the next step and SHALL NOT merge it
 
 #### Scenario: Plan invalidated during implementation
 
@@ -89,7 +89,7 @@ qsm-openspec SHALL declare `qsm-essentials`, `qsm-tasks`, `qsm-models` and `qsm-
 - `qsm-essentials`: the core; spec-apply hands disjoint work to its subagents skill.
 - `qsm-tasks`: serves the task port, where a change is bound to its feature.
 - `qsm-models`: spec-propose lints, renders and walks the change's models.
-- `qsm-forge`: spec-apply opens the task's pull request into `feature/<n>`.
+- `qsm-forge`: spec-apply opens the task's pull request into `features/<n>-<title>`.
 
 qsm-openspec SHALL NOT depend on `qsm-plan`: the flow calls the spec port, never the reverse.
 
