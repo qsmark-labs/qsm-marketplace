@@ -424,7 +424,8 @@ GraphQL query.
 ### Requirement: doctor prints one line per check and exits by the worst
 
 `doctor` SHALL print one line per check, `ok`, `failed` or `manual`, and exit `ok`, `partial` when
-only `manual` remain, else `missing` or `failed`.
+only `manual` remain, `missing` when `gh`, the repository or the board is absent, else `failed`
+with `data.reason` `not-found`.
 
 #### Scenario: Only manual checks remain
 
@@ -445,8 +446,14 @@ names, and the labels `feedback`, `deferred`, `kind:*` and `from:*`.
 ### Requirement: doctor checks the board's workflows, views and the feedback template
 
 `doctor` SHALL check the built-in workflows "Auto-add to project", "Auto-add sub-issues to
-project", "Item added to project" (Todo), "Item closed" (Done) and "Pull request linked to issue"
-(Agent Review), the views Tasks and Features, and `.github/ISSUE_TEMPLATE/feedback.yml`.
+project", "Item added to project" (Todo) and "Item closed" (Done) on, "Pull request linked to
+issue" off, the views Tasks and Features, and `.github/ISSUE_TEMPLATE/feedback.yml`.
+
+#### Scenario: The pull request workflow is on
+
+- **WHEN** the board's "Pull request linked to issue" workflow is on
+- **THEN** `doctor` prints it as `failed`, tells the person to turn it off in the board's UI because
+  it moves a feature to Agent Review, and never switches it itself
 
 #### Scenario: The feedback template is missing
 
