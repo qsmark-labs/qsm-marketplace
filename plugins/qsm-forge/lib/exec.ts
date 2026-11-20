@@ -52,7 +52,11 @@ export function parseJson(raw: string, what: string): unknown {
 export function parseAs<T>(raw: string, what: string, guard: Guard<T>): T {
   const parsed = parseJson(raw, what);
   if (!guard(parsed)) {
-    throw new Error(`${what} answered with an unexpected shape: ${raw.trim().slice(0, 200)}`);
+    const found = guard.mismatch(parsed, "");
+    const place = found === null || found.path === "" ? "the top level" : found.path;
+    throw new Error(
+      `${what} answered with an unexpected shape at ${place}: expected ${found?.expected}, got ${found?.found}`,
+    );
   }
   return parsed;
 }

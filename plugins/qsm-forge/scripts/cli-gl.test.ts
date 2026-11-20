@@ -5,8 +5,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseJson } from "../lib/exec.ts";
-import { isRecord } from "../../../lib/outcome.ts";
-import { isNumber, isString, objectOf, orNull } from "../lib/shape.ts";
+import { isNumber, isObject, isString, objectOf, orNull } from "../lib/shape.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -80,7 +79,7 @@ interface Envelope {
   readonly data: Record<string, unknown> | null;
 }
 
-const isEnvelope = objectOf<Envelope>({ code: isString, exit: isNumber, data: orNull(isRecord) });
+const isEnvelope = objectOf<Envelope>({ code: isString, exit: isNumber, data: orNull(isObject) });
 
 function envelope(run: Run): Envelope {
   const parsed = parseJson(run.stdout, "qsm-forge");
@@ -127,6 +126,47 @@ describe("qsm-forge gl through the shared base", () => {
       exit: 0,
       data: { state: "opened", unresolvedThreads: 1 },
     });
+  });
+
+  test("threads parses a discussions page whose positions carry old_path null", () => {
+    writeFileSync(
+      join(sandbox, "discussions.json"),
+      JSON.stringify([
+        {
+          id: "D2",
+          individual_note: false,
+          notes: [
+            {
+              id: 311,
+              system: false,
+              body: "placeholder finding",
+              resolvable: true,
+              resolved: false,
+              position: { new_path: "a.ts", old_path: null, new_line: 18, old_line: null },
+            },
+            { id: 312, system: false, body: "placeholder reply", resolvable: true },
+          ],
+        },
+        {
+          id: "D3",
+          individual_note: true,
+          notes: [{ id: 313, system: true, body: "placeholder event", resolvable: false }],
+        },
+      ]),
+    );
+    const run = cli(["gl", "threads", "5", "--project", "group/project"]);
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain("a.ts");
+  });
+
+  test("a shape failure names the field and what was found, exit 1", () => {
+    writeFileSync(
+      join(sandbox, "discussions.json"),
+      JSON.stringify([{ id: "D4", individual_note: false, notes: [{ id: "x" }] }]),
+    );
+    const run = cli(["gl", "threads", "5", "--project", "group/project"]);
+    expect(run.code).toBe(1);
+    expect(run.stderr).toContain("at [0].notes[0].id: expected number, got string");
   });
 
   test("a forge that says no is failed, exit 1", () => {

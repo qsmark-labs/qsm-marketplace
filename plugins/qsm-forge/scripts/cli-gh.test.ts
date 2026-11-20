@@ -8,8 +8,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseJson } from "../lib/exec.ts";
-import { isRecord } from "../../../lib/outcome.ts";
-import { isNumber, isString, objectOf, orNull } from "../lib/shape.ts";
+import { isNumber, isObject, isString, objectOf, orNull } from "../lib/shape.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -112,7 +111,7 @@ interface Envelope {
   readonly data: Record<string, unknown> | null;
 }
 
-const isEnvelope = objectOf<Envelope>({ code: isString, exit: isNumber, data: orNull(isRecord) });
+const isEnvelope = objectOf<Envelope>({ code: isString, exit: isNumber, data: orNull(isObject) });
 
 function envelope(run: Run): Envelope {
   const parsed = parseJson(run.stdout, "qsm-forge");
