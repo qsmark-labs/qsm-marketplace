@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseJson } from "../lib/exec.ts";
-import { isNumber, isObject, isString, objectOf, orNull } from "../lib/shape.ts";
+import { isNumber, isString, objectOf, orNull } from "../lib/shape.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -79,7 +79,11 @@ interface Envelope {
   readonly data: Record<string, unknown> | null;
 }
 
-const isEnvelope = objectOf<Envelope>({ code: isString, exit: isNumber, data: orNull(isObject) });
+const isEnvelope = objectOf<Envelope>({
+  code: isString,
+  exit: isNumber,
+  data: orNull(objectOf<Record<string, unknown>>({})),
+});
 
 function envelope(run: Run): Envelope {
   const parsed = parseJson(run.stdout, "qsm-forge");
@@ -156,17 +160,21 @@ describe("qsm-forge gl through the shared base", () => {
     );
     const run = cli(["gl", "threads", "5", "--project", "group/project"]);
     expect(run.code).toBe(0);
-    expect(run.stdout).toContain("a.ts");
+    expect(run.stdout).toMatch(/311\s+a\.ts\s+18\s/);
+    expect(run.stdout).not.toContain("313");
   });
 
   test("a shape failure names the field and what was found, exit 1", () => {
     writeFileSync(
       join(sandbox, "discussions.json"),
-      JSON.stringify([{ id: "D4", individual_note: false, notes: [{ id: "x" }] }]),
+      JSON.stringify([
+        { id: "D4", individual_note: false, notes: [{ id: "distinctive-leak-marker" }] },
+      ]),
     );
     const run = cli(["gl", "threads", "5", "--project", "group/project"]);
     expect(run.code).toBe(1);
     expect(run.stderr).toContain("at [0].notes[0].id: expected number, got string");
+    expect(run.stderr).not.toContain("distinctive-leak-marker");
   });
 
   test("a forge that says no is failed, exit 1", () => {

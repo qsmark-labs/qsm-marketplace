@@ -194,9 +194,10 @@ function recordedForge(discussions: readonly ApiDiscussion[] = ALL): Recorded {
   return { forge: gitlabForge(run, PROJECT), calls };
 }
 
-// The shape of a real merge request's discussions page, measured 2026-11-20: every note with a
-// position carries `old_path: null`, a reply has no `resolved`, system notes may carry a position.
-const MEASURED_PAGE = [
+// Hand-shaped after a measured GitLab response (2026-11-20): old_path is present as null on every
+// positioned note, a reply has no `resolved`, system notes may carry a position. Bodies are
+// placeholders.
+const PAGE = [
   {
     id: "m1",
     individual_note: true,
@@ -238,17 +239,10 @@ function forgeAnswering(page: unknown): GitlabForge {
   return gitlabForge(run, PROJECT);
 }
 
-describe("a discussions page as GitLab really sends it", () => {
-  test("a position whose old_path is null still parses into threads", async () => {
-    const threads = await forgeAnswering(MEASURED_PAGE).threads(MR);
-    expect(threads.map((thread) => thread.id)).toEqual(["m2"]);
-    expect(threads[0]?.path).toBe("a.ts");
-    expect(threads[0]?.line).toBe(18);
-  });
-
+describe("a wrong shape in a discussions page", () => {
   test("a wrong type deep in the page is named by its path and the type found", async () => {
     const page = [
-      ...MEASURED_PAGE,
+      ...PAGE,
       {
         id: "m4",
         individual_note: false,
@@ -266,10 +260,16 @@ describe("a discussions page as GitLab really sends it", () => {
 
   test("the error never prints the body it rejected", async () => {
     const page = [{ id: "m9", individual_note: false, notes: [{ id: "secret text" }] }];
-    await expectRejection(
-      forgeAnswering(page).threads(MR),
-      /at \[0\]\.notes\[0\]\.id: expected number, got string$/,
+    const error = await forgeAnswering(page)
+      .threads(MR)
+      .then(
+        () => new Error("expected a rejection"),
+        (rejected: unknown) => (rejected instanceof Error ? rejected : new Error("not an Error")),
+      );
+    expect(error.message).toMatch(
+      /^glab api \S+ answered with an unexpected shape at \[0\]\.notes\[0\]\.id: expected number, got string$/,
     );
+    expect(error.message).not.toContain("secret text");
   });
 });
 

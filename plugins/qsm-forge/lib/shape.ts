@@ -52,9 +52,6 @@ export const isBoolean = primitiveOf<boolean>(
   (value): value is boolean => typeof value === "boolean",
 );
 
-/** Any JSON object, whatever its fields. */
-export const isObject = primitiveOf<Record<string, unknown>>("object", isRecord);
-
 /** The value is the alternative, or the inner guard accepts it. A mismatch at this very place also
  * names the alternative; one deeper inside the value stays as it is. */
 function orAlso<T, A>(
