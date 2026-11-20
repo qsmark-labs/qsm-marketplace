@@ -2,6 +2,7 @@
 // recorded answer where production hands it a forge CLI.
 
 import { execFile } from "node:child_process";
+import { messageOf } from "../../../lib/outcome.ts";
 import type { Guard } from "./shape.ts";
 
 /** Runs `command` with `args`, resolves with its stdout, rejects with an
@@ -43,16 +44,22 @@ export function parseJson(raw: string, what: string): unknown {
   try {
     return JSON.parse(raw);
   } catch (cause) {
-    const head = raw.trim().slice(0, 200);
-    throw new Error(`${what} did not answer with JSON: ${head}`, { cause });
+    throw new Error(`${what} did not answer with JSON: ${messageOf(cause)}`, { cause });
   }
 }
 
 /** Parses what a forge CLI printed and checks it has the shape the caller reads. */
 export function parseAs<T>(raw: string, what: string, guard: Guard<T>): T {
   const parsed = parseJson(raw, what);
-  if (!guard(parsed)) {
-    throw new Error(`${what} answered with an unexpected shape: ${raw.trim().slice(0, 200)}`);
+  if (guard(parsed)) {
+    return parsed;
   }
-  return parsed;
+  const found = guard.mismatch(parsed, "");
+  if (found === null) {
+    throw new Error(`${what} answered with an unexpected shape`);
+  }
+  const place = found.path === "" ? "the top level" : found.path;
+  throw new Error(
+    `${what} answered with an unexpected shape at ${place}: expected ${found.expected}, got ${found.found}`,
+  );
 }

@@ -194,6 +194,85 @@ function recordedForge(discussions: readonly ApiDiscussion[] = ALL): Recorded {
   return { forge: gitlabForge(run, PROJECT), calls };
 }
 
+// Hand-shaped after a measured GitLab response (2026-11-20): old_path is present as null on every
+// positioned note, a reply has no `resolved`, system notes may carry a position. Bodies are
+// placeholders.
+const PAGE = [
+  {
+    id: "m1",
+    individual_note: true,
+    notes: [{ id: 1, body: "assigned to someone", system: true, resolvable: false }],
+  },
+  {
+    id: "m2",
+    individual_note: false,
+    notes: [
+      {
+        id: 2,
+        body: "placeholder finding",
+        system: false,
+        resolvable: true,
+        resolved: false,
+        author: { username: "a-reviewer" },
+        position: { new_path: "a.ts", old_path: null, new_line: 18, old_line: null },
+      },
+      { id: 3, body: "placeholder reply", system: false, resolvable: true },
+    ],
+  },
+  {
+    id: "m3",
+    individual_note: false,
+    notes: [
+      {
+        id: 4,
+        body: "changed lines",
+        system: true,
+        resolvable: false,
+        position: { new_path: "b.ts", old_path: null, new_line: 3, old_line: null },
+      },
+    ],
+  },
+];
+
+function forgeAnswering(page: unknown): GitlabForge {
+  const run: Run = () => Promise.resolve(JSON.stringify(page));
+  return gitlabForge(run, PROJECT);
+}
+
+describe("a wrong shape in a discussions page", () => {
+  test("a wrong type deep in the page is named by its path and the type found", async () => {
+    const page = [
+      ...PAGE,
+      {
+        id: "m4",
+        individual_note: false,
+        notes: [
+          { id: 5, body: "ok", system: false, resolvable: true },
+          { id: 6, body: "bad", system: false, resolvable: true, position: { new_path: 7 } },
+        ],
+      },
+    ];
+    await expectRejection(
+      forgeAnswering(page).threads(MR),
+      /unexpected shape at \[3\]\.notes\[1\]\.position\.new_path: expected string or absent, got number$/,
+    );
+  });
+
+  test("the error never prints the body it rejected", async () => {
+    const page = [{ id: "m9", individual_note: false, notes: [{ id: "secret text" }] }];
+    const error = await forgeAnswering(page)
+      .threads(MR)
+      .then(
+        () => new Error("expected a rejection"),
+        (rejected: unknown) => (rejected instanceof Error ? rejected : new Error("not an Error")),
+      );
+    expect(error.message).toMatch(
+      /^glab api \S+ answered with an unexpected shape at \[0\]\.notes\[0\]\.id: expected number, got string$/,
+    );
+    expect(error.message).not.toContain("secret text");
+  });
+});
+
 describe("Platform unreachable", () => {
   test("the client's own error is what the caller sees", async () => {
     const run: Run = () => Promise.reject(new Error("glab: no token found"));
