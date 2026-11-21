@@ -135,7 +135,8 @@ what done means, ending in a `strict-reviewer` review.
   that mixes issue and pull request numbers leaves the reader unsure which number is the work, and
   work without an issue has no status anyone can see. A report names the work by its issue number
   and title as the board shows it, its pull request after it: "#16 The touch check moves to lib
-  (PR #18)".
+  (PR #18)". Each number in a report is a link to its issue or pull request, so the work opens
+  from the report in one tap.
 - A local HTML page is a bonus for exploring; a claude.ai artifact is never used.
 - A rule the owner states for this marketplace is written here at once, replacing the old text.
 - Every rule here is general, because this marketplace becomes a product for other users: the
