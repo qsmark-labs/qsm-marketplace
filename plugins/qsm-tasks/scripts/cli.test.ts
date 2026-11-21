@@ -754,7 +754,7 @@ describe("qsm-tasks doctor", () => {
     const r = run({ stdout: linked([BOARD]), health }, ["doctor"]);
     expect(r.exit).toBe(1);
     expect(r.message).toContain(
-      `failed  workflow ${LINKED}: turn it off in ${url}/workflows, it moves a feature to Agent Review`,
+      `failed  workflow ${LINKED}: turn it off in ${url}/workflows, it moves a card without the flow's guard`,
     );
   });
 

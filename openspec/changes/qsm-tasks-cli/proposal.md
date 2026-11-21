@@ -51,7 +51,7 @@ agent, the release train (`release-train`).
 The owner sets up the existing board once, in the web UI: issue #3 gets the type Feature; the Status
 options In Progress, In Review and Ready For Human Review are renamed In Dev, Agent Review and Human
 Review; Ready For Human, Ready For Test, In Test and Blocked are added; the built-in workflow "Pull
-request linked to issue" sets Agent Review; the field Epic stage and the issue type Epic are
+request linked to issue" is switched off; the field Epic stage and the issue type Epic are
 deleted; the view Epics becomes Features (`type:Feature`) and Tasks filters
 `-type:Feature -label:feedback`. `doctor` reports each leftover with its fix.
 
