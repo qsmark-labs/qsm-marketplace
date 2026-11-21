@@ -56,5 +56,5 @@ apply:
   tracks: null
   instruction: |
     A feature is never applied as one piece. It is split on the board into tasks, sub-issues of
-    the feature, each a pull request a person can review, merged into feature/<n>. Build one task
-    per session: read the feature, its models and specs, then the task.
+    the feature, each a pull request a person can review, merged into features/<n>-<title>. Build
+    one task per session: read the feature, its models and specs, then the task.

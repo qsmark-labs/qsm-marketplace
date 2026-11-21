@@ -234,7 +234,10 @@ export function startDetachedSync(places: Places, env: Env): Outcome {
     env,
   );
   return started.ok
-    ? ok({ started: true }, `started a background sync; its outcome goes to ${log}`)
+    ? ok(
+        { started: true, pid: started.pid },
+        `started a background sync; its outcome goes to ${log}`,
+      )
     : fail("missing", started.reason);
 }
 

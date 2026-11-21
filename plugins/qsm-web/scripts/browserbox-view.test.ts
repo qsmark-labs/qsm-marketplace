@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
+import { envelopeOf, isolatedEnv, pidIn, runBin } from "../../../lib/fixtures/cli.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
-import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
 
 const PLUGIN = resolve(import.meta.dir, "..");
 const CLI = join(PLUGIN, "scripts", "cli.ts");
@@ -11,7 +11,7 @@ const TOKEN = "a1b2c3d4".repeat(6);
 
 /** One run of the CLI with a fake docker with one instance and a fake xdg-open that records its
  * argument, both first on PATH. */
-function runWithFakes(argv: readonly string[]) {
+async function runWithFakes(argv: readonly string[]) {
   const home = sandboxDir("qs-view-home-");
   const bin = sandboxDir("qs-view-bin-");
   const record = join(bin, "opened");
@@ -32,20 +32,17 @@ function runWithFakes(argv: readonly string[]) {
       QSM_MARKETPLACE: resolve(PLUGIN, "..", ".."),
     }),
   });
-  // xdg-open runs detached, so give it a moment to write what it was given.
-  for (
-    let waited = 0;
-    waited < 2000 && !existsSync(record) && argv.includes("view");
-    waited += 50
-  ) {
-    Bun.sleepSync(50);
+  // xdg-open runs detached: the answer names its pid when one started, and the test waits for its end.
+  const envelope = argv.includes("--json") ? envelopeOf(r.stdout) : null;
+  if (envelope?.code === "ok") {
+    await untilGone(pidIn(envelope.data));
   }
   return { ...r, opened: existsSync(record) ? readFileSync(record, "utf8") : null };
 }
 
 describe("browserbox view", () => {
-  test("opens the address with the password and prints neither it nor anything carrying it", () => {
-    const r = runWithFakes(["browserbox", "view", "bbox-11000", "--json"]);
+  test("opens the address with the password and prints neither it nor anything carrying it", async () => {
+    const r = await runWithFakes(["browserbox", "view", "bbox-11000", "--json"]);
     expect(r.exit).toBe(0);
     expect(r.stdout).not.toContain(TOKEN);
     expect(r.stderr).not.toContain(TOKEN);
@@ -53,14 +50,14 @@ describe("browserbox view", () => {
     expect(r.opened).toBe(`http://127.0.0.1:11000/?password=${TOKEN}`);
   });
 
-  test("an instance that is not running is missing, and nothing is opened", () => {
-    const r = runWithFakes(["browserbox", "view", "bbox-11999", "--json"]);
+  test("an instance that is not running is missing, and nothing is opened", async () => {
+    const r = await runWithFakes(["browserbox", "view", "bbox-11999", "--json"]);
     expect(envelopeOf(r.stdout).code).toBe("missing");
     expect(r.opened).toBeNull();
   });
 
-  test("--dry-run shows only the placeholder", () => {
-    const r = runWithFakes(["browserbox", "view", "bbox-11000", "--dry-run"]);
+  test("--dry-run shows only the placeholder", async () => {
+    const r = await runWithFakes(["browserbox", "view", "bbox-11000", "--dry-run"]);
     expect(r.exit).toBe(0);
     expect(r.stdout).toContain("<token>");
     expect(r.stdout).not.toContain(TOKEN);

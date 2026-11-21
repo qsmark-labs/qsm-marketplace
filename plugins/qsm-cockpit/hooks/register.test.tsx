@@ -90,6 +90,7 @@ function heldBash(on: On, count: number) {
 
 const BAND = {
   hasSurvey: false,
+  isCollapsed: false,
   isWorking: true,
   maxRows: 10,
   bodyColumns: 100,

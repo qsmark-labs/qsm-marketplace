@@ -6,7 +6,19 @@ import { escapeHtml as esc } from "../../../../lib/html.ts";
 import { PALETTE } from "../../../../lib/palette.ts";
 import { QsmError } from "../../../../lib/qsm-error.ts";
 import type { Picture } from "../../../../lib/model-graph.ts";
-import { Cells, type Rect } from "./drawio.ts";
+import {
+  GAP,
+  gapBetween,
+  type Painted,
+  type Rect,
+  ROUNDING,
+  type Segment,
+  STEP,
+  sidesOf,
+  spanOf,
+  touchDefects,
+} from "../../../../lib/touch.ts";
+import { Cells } from "./drawio.ts";
 import { textWidth } from "./font.ts";
 import { isActor, isExternal } from "./lint.ts";
 import type { C4Element, C4Model, C4Relation } from "./model.ts";
@@ -183,17 +195,11 @@ class Graph4 {
   }
 }
 
-/** The spacing scale: every gap a view keeps is a multiple of one step. */
-const STEP = 8;
-/** The smallest gap two painted bodies keep. */
-const GAP = 2 * STEP;
 /** The room ELK keeps between a line and a box. */
 const EDGE_NODE = 3 * STEP;
 /** The room inside a boundary or a group around what it holds: a line ELK routes along the inside
  * keeps the gap from what it passes, and so the gap from the outline too. */
 const PADDING = 2 * GAP;
-/** A measure this far past a spacing ELK was given is rounding, not a defect. */
-const ROUNDING = 1;
 
 /** A label's text, in lines of at most `chars`, and the box it takes at `px`: as wide as its widest
  * line is drawn, a line 1.2 em high, with 0.2 em below. */
@@ -214,12 +220,10 @@ const labelOf = (text: string, px: number, chars = 24): Label => {
   };
 };
 
-type Seg = [{ x: number; y: number }, { x: number; y: number }];
-
 /** The straight stretches of a line. ELK splits a stretch where it crosses into a boundary and may
  * shift it by a fraction of a pixel there; a point within a pixel of the run through its neighbours
  * is no bend, so the stretch stays one. */
-function segsOf(ed: ElkExtendedEdge): Seg[] {
+function segsOf(ed: ElkExtendedEdge): Segment[] {
   return (ed.sections ?? []).flatMap((s) => {
     const q = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint];
     const bends = q.filter((p, i) => {
@@ -233,114 +237,14 @@ function segsOf(ed: ElkExtendedEdge): Seg[] {
         )
       );
     });
-    return bends.slice(1).map((v, i): Seg => [bends[i] ?? v, v]);
+    return bends.slice(1).map((v, i): Segment => [bends[i] ?? v, v]);
   });
-}
-
-/** The four sides of a box: the lines a boundary or a group draws. */
-function sidesOf(r: Rect): Seg[] {
-  const [a, b, c, d] = [
-    { x: r.x, y: r.y },
-    { x: r.x + r.w, y: r.y },
-    { x: r.x + r.w, y: r.y + r.h },
-    { x: r.x, y: r.y + r.h },
-  ];
-  return [
-    [a, b],
-    [b, c],
-    [c, d],
-    [d, a],
-  ];
-}
-
-/** The box a segment spans. */
-const spanOf = ([u, v]: Seg): Rect => ({
-  x: Math.min(u.x, v.x),
-  y: Math.min(u.y, v.y),
-  w: Math.abs(v.x - u.x),
-  h: Math.abs(v.y - u.y),
-});
-
-/** The gap between two boxes, 0 where they touch or overlap. */
-const gapBetween = (p: Rect, q: Rect): number =>
-  Math.hypot(
-    Math.max(0, q.x - (p.x + p.w), p.x - (q.x + q.w)),
-    Math.max(0, q.y - (p.y + p.h), p.y - (q.y + q.h)),
-  );
-
-/** Whether two stretches cross: one upright, one flat, each passing through the other's inside. A
- * crossing is a measure of the layout, not a touch. */
-function crossing(s: Seg, t: Seg): boolean {
-  const [p, q] = [spanOf(s), spanOf(t)];
-  const [h, v] = p.h < 1 && q.w < 1 ? [p, q] : [q, p];
-  return h.h < 1 && v.w < 1 && v.x > h.x && v.x < h.x + h.w && h.y > v.y && h.y < v.y + v.h;
-}
-
-type Point = { readonly x: number; readonly y: number };
-
-const samePoint = (p: Point, q: Point): boolean => Math.hypot(p.x - q.x, p.y - q.y) < 1;
-
-/** One thing a view paints, as a touch sees it: a box or a straight stretch of line, what to call
- * it, who drew it, and for a line the boxes at its ends and the two points where it leaves and
- * enters them. */
-interface Painted {
-  readonly what: string;
-  readonly owner: string;
-  readonly shape: Rect | Seg;
-  readonly ends?: readonly string[];
-  readonly ports?: readonly Point[];
-}
-
-const isSeg = (s: Rect | Seg): s is Seg => Array.isArray(s);
-
-/** Whether two stretches meet at a port both lines start or end at. */
-function sharePort(a: Painted, b: Painted): boolean {
-  const [s, t] = [a.shape, b.shape];
-  if (!isSeg(s) || !isSeg(t)) {
-    return false;
-  }
-  return (a.ports ?? []).some(
-    (p) =>
-      (b.ports ?? []).some((q) => samePoint(p, q)) &&
-      s.some((e) => samePoint(e, p)) &&
-      t.some((e) => samePoint(e, p)),
-  );
-}
-
-/** The gap between two painted things: the boxes they span, which for two straight stretches of
- * an upright and flat routing is their true distance; nothing for a crossing. */
-const gapOf = (a: Rect | Seg, b: Rect | Seg): number =>
-  isSeg(a) && isSeg(b) && crossing(a, b)
-    ? Infinity
-    : gapBetween(isSeg(a) ? spanOf(a) : a, isSeg(b) ? spanOf(b) : b);
-
-/** Whether two painted things may touch: the parts of one owner (a line's stretches and its label,
- * an outline and its title), a line and the boxes at its ends, and two lines at a port they share. */
-const mayTouch = (a: Painted, b: Painted): boolean =>
-  a.owner === b.owner ||
-  a.ends?.includes(b.owner) === true ||
-  b.ends?.includes(a.owner) === true ||
-  sharePort(a, b);
-
-/** Every pair of painted things closer than the gap, less a pixel of rounding, that may not
- * touch, each named once however many of their stretches meet. */
-function touchDefects(painted: readonly Painted[]): string[] {
-  const out = new Set<string>();
-  for (const [i, a] of painted.entries()) {
-    for (const b of painted.slice(i + 1)) {
-      const gap = gapOf(a.shape, b.shape);
-      if (gap < GAP - ROUNDING && !mayTouch(a, b)) {
-        out.add(`${a.what} and ${b.what} are ${Math.round(gap)} px apart, closer than ${GAP} px`);
-      }
-    }
-  }
-  return [...out];
 }
 
 /** A line as drawn: its title, its stretches and its label. */
 interface DrawnLine {
   readonly title: string;
-  readonly segs: Seg[];
+  readonly segs: Segment[];
   readonly label: Rect;
 }
 
@@ -530,7 +434,7 @@ interface RoutedLine {
   readonly ed: ElkExtendedEdge;
   readonly rel: Edge;
   readonly label: Label;
-  readonly segs: Seg[];
+  readonly segs: Segment[];
   readonly at: Rect;
 }
 

@@ -79,18 +79,17 @@ export function processesOf(defs: Definitions): Process[] {
   return defs.rootElements.filter(isProcess);
 }
 
+/** Whether an element is the process or a collaboration whose participant holds it. */
+export const holds = (e: ModdleElement, processId: string): boolean =>
+  e.id === processId ||
+  (isCollaboration(e) && (e.participants ?? []).some((p) => p.processRef?.id === processId));
+
 /** The diagram that draws a process: its plane is the process, or a collaboration whose
  * participant holds it. */
 export function diagramOf(defs: Definitions, processId: string): Diagram | undefined {
   return (defs.diagrams ?? []).find((d) => {
     const e = d.plane.bpmnElement;
-    if (e === undefined) {
-      return false;
-    }
-    return (
-      e.id === processId ||
-      (isCollaboration(e) && (e.participants ?? []).some((p) => p.processRef?.id === processId))
-    );
+    return e !== undefined && holds(e, processId);
   });
 }
 

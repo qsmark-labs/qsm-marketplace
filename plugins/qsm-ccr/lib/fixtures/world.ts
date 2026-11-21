@@ -1,13 +1,12 @@
 // A sandbox machine for the end-to-end scenarios: HOME, Claude home, codex home, CCR home with a
 // config.sqlite built here, a state dir, and fake claude, ccr, codex and qsm-ccr on a PATH that
 // holds nothing of the person's. makeWorld throws if any of the four resolves elsewhere.
-import { afterEach } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { connect, listen, spawn, which } from "bun";
 import { cliShim, fakeBin } from "../../../../lib/fixtures/bin.ts";
 import { dataOf, runBin } from "../../../../lib/fixtures/cli.ts";
-import { sandboxDir } from "../../../../lib/fixtures/sandbox.ts";
+import { atTestEnd, sandboxDir, untilGone } from "../../../../lib/fixtures/sandbox.ts";
 import { isRecord } from "../../../../lib/outcome.ts";
 import { type Json, parseJson } from "../parse.ts";
 import { catalogJson, ccrConfig, createCcrDb, jwt, REFRESH } from "./ccr-db.ts";
@@ -46,18 +45,24 @@ interface WorldOptions {
   readonly port?: number;
 }
 
-const pidFiles: string[] = [];
-afterEach(() => {
-  for (const file of pidFiles.splice(0)) {
-    if (existsSync(file)) {
-      try {
-        process.kill(Number(readFileSync(file, "utf8")), "SIGKILL");
-      } catch {
-        // already gone
-      }
-    }
+/** Ends the daemon the fake ccr left a pid for, SIGKILL because one mode ignores SIGTERM, and
+ * waits until it is gone. */
+async function killDaemon(pidFile: string): Promise<void> {
+  if (!existsSync(pidFile)) {
+    return;
   }
-});
+  const pid = Number(readFileSync(pidFile, "utf8"));
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch (cause) {
+    // The daemon already ended; any other failure to kill it is the test's to see.
+    if (cause instanceof Error && "code" in cause && cause.code === "ESRCH") {
+      return;
+    }
+    throw cause;
+  }
+  await untilGone(pid);
+}
 
 /** A raw loopback listener on a port the OS picks. */
 function listener() {
@@ -201,7 +206,7 @@ export function makeWorld(opts: WorldOptions = {}): World {
     QSM_CCR_STOP_WAIT_MS: "1000",
   };
   assertIsolated(d.bin, env.PATH);
-  pidFiles.push(join(d.out, "ccr.pid"));
+  atTestEnd(() => killDaemon(join(d.out, "ccr.pid")));
   return {
     root: d.root,
     bin: d.bin,
