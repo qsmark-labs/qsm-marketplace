@@ -52,7 +52,7 @@ export function openReplySocket(env: Env): ReplySocket {
     );
   const nonce = randomBytes(16).toString("hex");
   const base = join(runtime, "qsm-askpass");
-  mkdirSync(base, { recursive: true });
+  mkdirSync(base, { recursive: true, mode: 0o700 });
   sweepNamed(TOOL, base);
   const dir = runTempDir(TOOL, base);
   chmodSync(dir, 0o700);

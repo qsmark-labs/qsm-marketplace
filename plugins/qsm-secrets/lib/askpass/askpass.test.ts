@@ -95,6 +95,17 @@ describe("the reply socket", () => {
     socket.close();
   });
 
+  test("its base directory is 0700 whatever the umask", () => {
+    const before = process.umask(0o022);
+    try {
+      const socket = openReplySocket(env());
+      expect(statSync(dirname(dirname(socket.path))).mode & 0o777).toBe(0o700);
+      socket.close();
+    } finally {
+      process.umask(before);
+    }
+  });
+
   test("a new socket removes the directory a killed helper left", () => {
     const left = leftDir("askpass", join(runtime, "qsm-askpass"));
     const socket = openReplySocket(env());
