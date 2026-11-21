@@ -7,17 +7,17 @@ build drew. The behaviour is `model_gate_process`, `simplify_process` and the pr
 was measured on 2026-11-01 (node 26.11, bun 1.4.3) with a prototype of each piece, none of it in
 the tree, unless it says 2026-11-04 or later.
 
-The revision of 2026-11-06 splits the built plugin `plugins/qsm-models` into `plugins/qsm-bpmn`
-and `plugins/qsm-c4`, keeps one neutral link between them, moves every check into the verbs that
-write, and drops the code check, the decision links, the verified commit, the stray-model check,
-the links into other projects, the commit gate and the spec-propose change. The owner's words are
-in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it left open are marked
+The revision of 2026-11-06 splits the built plugin `plugins/qsm-models` into `plugins/qsm-bpmn` and
+`plugins/qsm-c4`, keeps one neutral link between them, moves every check into the verbs that write,
+and drops the code check, the decision links, the verified commit, the stray-model check, the links
+into other projects, the commit gate and the spec-propose change. The owner's decisions are in the
+proposal, decision 9. Decisions it settled are 23 to 25; the choices it left open are marked
 "decided 2026-11-06, the main agent, craft", each with the options it was chosen from.
 
 ## Decisions
 
-1. **Removed 2026-11-06: one plugin, `qsm-models`, one binary.** The owner split it: "Chci 2
-   separate tools". Decision 23 holds the split.
+1. **Removed 2026-11-06: one plugin, `qsm-models`, one binary.** The owner split it into two
+   separate tools. Decision 23 holds the split.
 2. **Each binary's verbs are the ones described in its own `qsm.json`, the one list.** The rules
    that bind them: `layout` refuses a file that has geometry, because bpmn-auto-layout discards it
    and the owner's bpmn.io layout must survive; `render --check` writes nothing. Later changes add
@@ -69,8 +69,8 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
    code and a check backs it. A change works on the graph on its branch, so the archive moves
    nothing. Local mode, a graph kept only in the qsm-docs store when no file is committed, is
    removed (decided 2026-11-06, the main agent, craft; the other option was to keep it as later
-   work): the MVP serves one project, the marketplace, whose graphs are committed ("Currently in
-   MVP build currently for one project - qsm marketplace - only"); the history of a graph is the
+   work): the MVP serves one project, the marketplace, whose graphs are
+   committed; the history of a graph is the
    snapshots of its qsm-docs page (`models-pages`). The check that
    refused a model file outside `models/` is removed (2026-11-06). Reopens when: two changes in
    flight conflict in the one XML file more than the agent can resolve, or a second project needs
@@ -174,9 +174,9 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     Filled steps in the actor's colour with white text are within the standard. Levels are separate
     diagrams linked through `calledElement`, as Method and Style prefers; one picture of every level
     with dashed connectors was dropped, because a dashed line in BPMN means a message flow.
-22. **The first build is the visualization: static pages, no store** (2026-11-05). The owner wants
-    to see the models before anything else: "absolute bare bones: generate, show proper models, with
-    validation rules and proper modeling". Options: wait for qsm-docs and its pages (a store, a
+22. **The first build is the visualization: static pages, no store**. The models are shown
+    before anything else, as bare bones: generate, show proper models, with validation rules and
+    proper modeling. Options: wait for qsm-docs and its pages (a store, a
     server and a page shell first), or `pages`, a verb that writes one self-contained HTML per graph
     kind. Choice: `pages`, one per plugin since the split. qsm-bpmn's `bpmn.html` is the bpmn-js
     Viewer pinned and inlined with the graph, the drill-down through call activities, and a details
@@ -187,9 +187,9 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     craft: a directory per plugin, so neither run touches the other's output; the other option was
     one `.qsm/models/` for both). Each plugin's qsm-docs page later replaces its verb's output
     (`models-pages` for BPMN). Reopens when: a page file passes 2 MB (measure in Verify 7).
-23. **Two plugins, `qsm-bpmn` and `qsm-c4`, each self-contained** (2026-11-06). The owner: "Chci 2
-    separate tools, ktere mi zobrazi grafy modelu podle nasich rules ... The two tools are
-    selfcontained, only with some options for connections between them". Options: one plugin with
+23. **Two plugins, `qsm-bpmn` and `qsm-c4`, each self-contained**. Two separate tools show the
+    model graphs by our rules, self-contained, with only some options for connections between
+    them. Options: one plugin with
     two binaries (refused by Iron Law 8, one plugin one binary), the one plugin as built, two
     plugins. Choice: two plugins, each with its binary, verbs, skill (`bpmn-model`, `c4-model`),
     `model-reviewer`, page and checks, each installed and run alone. The code is moved, not
@@ -201,9 +201,9 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     pictures), `lib/palette.ts`, two page helpers in `lib/html.ts`, and `removeRetiredBin` in
     `lib/install-base.ts`. Neither plugin imports the other (gate
     `validate-no-cross-plugin-import`). Reopens when: a third notation needs the same verbs.
-24. **The link is a neutral C4 id, read through qsm-c4's CLI** (2026-11-06; the attribute, the door
-    and the optional reach decided 2026-11-06, the main agent, craft). The owner: "using c4 ids or
-    something in the bpmn, that is not qsm tool specific". Attribute options: `c4:element` under
+24. **The link is a neutral C4 id, read through qsm-c4's CLI** (the attribute, the door
+    and the optional reach decided 2026-11-06, the main agent, craft). The BPMN uses a C4 id or
+    something like it, not specific to any qsm tool. Attribute options: `c4:element` under
     `https://c4model.com`, the home of the C4 notation the id belongs to; `urn:c4model:bpmn`, an
     unregistered URN namespace (RFC 8141 asks for a registered one); a URI under this repository,
     which is qsm-specific. Choice: `c4:element` under `https://c4model.com`, unless the search of
@@ -225,10 +225,10 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     would install qsm-c4 with every qsm-bpmn. The migration of `models/marketplace.bpmn` from
     `qsm:c4` rewrites nothing: measured 2026-11-06, the graph carries no `qsm:` attribute and binds
     no `urn:qsm:models`.
-25. **The checks live in the generators** (2026-11-06; the fold of `check` and the way past a worse
-    layout decided 2026-11-06, the main agent, craft). The owner: "Ten check co je v langdev ma byt
-    v tech generatorech samotnych, kdyz to chcec vygenerovat in or out, or for the web, musi to
-    projit vsema kontrolama, vcetne agents, teda web nemusi agents". Every verb that writes or
+25. **The checks live in the generators** (the fold of `check` and the way past a worse
+    layout decided 2026-11-06, the main agent, craft). The check that lives in langdev belongs in
+    the generators themselves: to generate in or out, or for the web, a model must pass every
+    check, agents included, except that the web needs no agents check. Every verb that writes or
     converts a graph (`layout`, `render`, `pages`, `elements`, and what later changes add) runs the
     plugin's full lint first and writes nothing on a finding; `layout` leaves out `no-bpmndi`, the
     one finding it exists to fix. There is no `check` verb: it is folded into each plugin's lint. Of
@@ -248,7 +248,7 @@ in the proposal, decision 9. Decisions it settled are 23 to 25; the choices it l
     picture is the owner's choice. The other options were no way past a worse measure, or a measure
     that only reports.
 26. **Nothing a view paints touches, and ELK places it** (2026-11-06, the main agent, craft, from
-    the owner's rule "Nikdy nikde nesmi byt nic co se dotyka"). The first build drew the boundary
+    the rule that nothing a view paints touches anything else). The first build drew the boundary
     title after layout and moved each label with its own search, so a line ran through a title and
     labels sat on outlines and boxes. ELK now places every label (boundary and group titles as node
     labels, relation labels non-inline), with one spacing scale (step 8 px, gap 16 px) for its

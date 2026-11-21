@@ -29,15 +29,15 @@ name the cause. The skills SHALL say "the task tool" and never name a binary.
 
 Step 9 follows `land_process` of `models/marketplace.bpmn`: once the feature is In Test with no open
 sub-issue and its latest comment from QA starts with `QA passed`, the agent opens the feature pull
-request to main and the owner reads it. spec-archive SHALL run on `feature/<n>` only after the
-owner accepts that pull request, and archive the change there. It SHALL close no issue and set no
-Status: the owner's merge of the feature pull request closes the feature.
+request to main and the owner reads it. spec-archive SHALL run on `features/<n>-<title>` only after
+the owner accepts that pull request, and archive the change there. It SHALL close no issue and set
+no Status: the owner's merge of the feature pull request closes the feature.
 
 #### Scenario: The owner accepts the feature pull request
 
 - **WHEN** feature 3's pull request to main is open and the owner accepts it
-- **THEN** the change is archived in a commit on `feature/3` and feature 3 stays open until the
-  owner merges
+- **THEN** the change is archived in a commit on `features/3-<title>` and feature 3 stays open until
+  the owner merges
 
 #### Scenario: The owner has not accepted yet
 

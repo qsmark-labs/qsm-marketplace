@@ -129,8 +129,8 @@ Nothing a UI paints ever touches anything else: two bodies side by side (badges,
 chips, cards, rows) keep a gap from the project's spacing scale, in every project, every surface
 and every tool page, an agent's own throwaway pages included. A flex row or a list of bodies gets
 its gap where it is declared, never from the whitespace between inline elements, which is zero
-for elements a script builds. The person in their words: "Nikdy nikde nesmi byt nic co se dotyka,
-v zadnem projektu nebo kodu ever."
+for elements a script builds. Two painted bodies that touch look like one body or a
+defect, and no project is an exception.
 
 ## Clean before and after
 
@@ -143,3 +143,8 @@ period, no cleanup of their transcripts, notes, sessions or files, and no settin
 tool delete them (`cleanupPeriodDays` below 36500 is such a setting), because a deleted transcript
 never comes back and nobody asked for it to go. A tool that must make room archives at maximum
 compression and names the archive.
+
+Whatever starts a process, a timer or a server owns its end: it waits for that end, or hands back
+the handle (a pid) so its caller can. A test waits on the end itself, never on a log line, a file
+or a sleep, because a side effect comes before the end, and what still runs after a test writes
+into what the next one removed.

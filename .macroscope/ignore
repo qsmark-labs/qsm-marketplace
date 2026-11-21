@@ -1,0 +1,18 @@
+# This file replaces Macroscope's default patterns, so the defaults that match files this
+# repository holds are repeated first. Test files stay out by Macroscope's own test detection.
+**/*.svg
+**/*.json
+**/*.jsonl
+**/*.lock
+**/*.d.ts
+
+# Generated from qsm.json and proven fresh by the generated gate.
+*.generated.ts
+
+# A model is read through its picture, and its own render and review loop check it.
+models/*.bpmn
+
+# Plans and specs: the owner reads them and openspec validates them. In 34 merged pull requests
+# no finding landed in one.
+openspec/**
+plugins/*/openspec/**

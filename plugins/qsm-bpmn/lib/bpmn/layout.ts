@@ -14,6 +14,7 @@ import {
   type Definitions,
   type Diagram,
   diagramOf,
+  holds,
   isModdle,
   type Lane,
   newLabel,
@@ -149,6 +150,18 @@ function colour(
 const undrawn = (defs: Definitions): Process[] =>
   processesOf(defs).filter((p) => diagramOf(defs, p.id ?? "") === undefined);
 
+/** The file with one process laid out: bpmn-auto-layout draws only the first collaboration or
+ * process of a file, so the one that holds this process goes first for that run. */
+async function laidOut(defs: Definitions, processId: string): Promise<string> {
+  const roots = defs.rootElements;
+  defs.rootElements = roots.toSorted(
+    (a, b) => Number(holds(b, processId)) - Number(holds(a, processId)),
+  );
+  const xml = await toXml(defs);
+  defs.rootElements = roots;
+  return (await layoutProcess(xml)).xml;
+}
+
 /** Lays out each undrawn process of a file, after the full lint passes but for `no-bpmndi`, the one
  * finding layout exists to fix. */
 export async function layoutFile(
@@ -159,7 +172,7 @@ export async function layoutFile(
   if (findings.length > 0) {
     return lintOutcome(file, findings);
   }
-  const { xml, defs } = graph;
+  const { defs } = graph;
   const todo = undrawn(defs);
   if (todo.length === 0) {
     return fail(
@@ -169,9 +182,8 @@ export async function layoutFile(
     );
   }
   const actors = linkedColours(file, defs, todo);
-  const laid = await parseXml((await layoutProcess(xml)).xml, file);
   for (const p of todo) {
-    const d = diagramOf(laid, p.id ?? "");
+    const d = diagramOf(await parseXml(await laidOut(defs, p.id ?? ""), file), p.id ?? "");
     if (d === undefined) {
       return fail(
         "failed",

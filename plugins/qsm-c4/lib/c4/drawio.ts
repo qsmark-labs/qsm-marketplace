@@ -1,14 +1,8 @@
 // The draw.io half of a `.drawio.svg`: each shape of a view as a draw.io cell carrying draw.io's own
 // C4 attributes, so draw.io opens the picture as an editable C4 diagram.
 import { escapeHtml as esc } from "../../../../lib/html.ts";
+import type { Rect } from "../../../../lib/touch.ts";
 import type { C4Element } from "./model.ts";
-
-export interface Rect {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
 
 const C4TYPE: Readonly<Record<C4Element["kind"], string>> = {
   person: "Person",
