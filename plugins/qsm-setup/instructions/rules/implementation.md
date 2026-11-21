@@ -45,9 +45,9 @@ only for a half-state that still works, because a silent success on a broken sta
 failure to find later.
 
 A CLI's error names the exact place it failed (the field path, the line, the argument) and what it
-found there, or passes the underlying error through verbatim, never a truncated dump of the input.
-The person in their words: "chci aby vsechny moje clis vraceli vzdy presne okoli erroru, nebo ten
-error primo".
+found there, or passes the underlying error through verbatim, never a truncated dump of the input,
+because a cut dump shows the start of the input, not the part that failed, and the person has to
+run the command again to find it.
 
 ## One path: no fallback, no compatibility, no history
 
