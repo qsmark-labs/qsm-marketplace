@@ -19,7 +19,7 @@ export interface VerbRow {
 
 export const verbs: Readonly<Record<string, VerbRow>> = {
   ready: { words: ["qsm-tasks","ready"], args: [{ name: "feature", flag: "--feature" }, { name: "qa", flag: "--qa", boolean: true }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
-  list: { words: ["qsm-tasks","list"], args: [{ name: "feature", flag: "--feature" }, { name: "spec", flag: "--spec" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
+  list: { words: ["qsm-tasks","list"], args: [{ name: "feature", flag: "--feature" }, { name: "spec", flag: "--spec" }, { name: "status", flag: "--status" }, { name: "search", flag: "--search" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   show: { words: ["qsm-tasks","show"], args: [{ name: "number", flag: null }, { name: "comments", flag: "--comments", boolean: true }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   feature: { words: ["qsm-tasks","feature"], args: [{ name: "goal", flag: null }, { name: "intent", flag: "--intent" }, { name: "spec", flag: "--spec" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },
   add: { words: ["qsm-tasks","add"], args: [{ name: "title", flag: null }, { name: "feature", flag: "--feature" }, { name: "after", flag: "--after" }, { name: "priority", flag: "--priority" }, { name: "bodyFile", flag: "--body-file" }, { name: "label", flag: "--label" }, { name: "repo", flag: "--repo" }, { name: "project", flag: "--project" }] },

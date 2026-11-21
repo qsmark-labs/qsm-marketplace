@@ -129,6 +129,15 @@ export function definitions(): Record<
   };
 }
 
+/** A --status value the table names, or a wrong call listing the names. */
+export function statusOf(value: string): string {
+  const names = STATUSES.map((s) => s.name);
+  if (!names.some((name) => name === value)) {
+    throw new UsageError(`--status ${value}: one of ${names.join(", ")}`);
+  }
+  return value;
+}
+
 /** The Priority options the board's Priority field must hold, P0 first. */
 export const PRIORITY_NAMES: readonly string[] = PRIORITIES.map((p) => p.name);
 

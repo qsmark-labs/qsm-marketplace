@@ -11,6 +11,8 @@ export type Tasks = {
   list(options: {
     feature?: number;
     spec?: string;
+    status?: string;
+    search?: string;
     repo?: string;
     project?: string;
   }): Promise<unknown>;

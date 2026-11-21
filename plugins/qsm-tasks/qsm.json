@@ -32,7 +32,7 @@
         ]
       },
       "qsm-tasks list": {
-        "description": "List the open issues; with --feature or --spec, a feature's sub-issues or a change's feature, open and closed",
+        "description": "List the open issues, narrowed by Status or title words; with --feature or --spec, a feature's sub-issues or a change's feature, open and closed",
         "args": [
           {
             "name": "feature",
@@ -43,6 +43,16 @@
             "name": "spec",
             "type": "string",
             "description": "the feature labelled change:<id>"
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "description": "only the issues at this Status"
+          },
+          {
+            "name": "search",
+            "type": "string",
+            "description": "only the issues whose title holds these words"
           },
           {
             "name": "repo",

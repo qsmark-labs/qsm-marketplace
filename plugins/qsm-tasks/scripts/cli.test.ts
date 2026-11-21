@@ -206,6 +206,53 @@ describe("qsm-tasks reads the board", () => {
     }
   });
 
+  it("list --status prints only the rows at that Status and puts no status in the query", () => {
+    const rows = [
+      task(5, "P1", [], "In Dev"),
+      task(6, "P1", [], "Todo"),
+      task(7, null, [], "In Dev"),
+    ];
+    const r = run({ stdout: linked([BOARD]), search: found(rows) }, ["list", "--status", "In Dev"]);
+    expect(r.exit).toBe(0);
+    expect(r.message.split("\n").map((line) => line.split(" ")[0])).toEqual(["#5", "#7"]);
+    expect(r.calls[1]).toEndWith("-f q=repo:qsmark-labs/qsm-marketplace is:issue is:open");
+  });
+
+  it("list --status refuses a Status the flow does not know, naming the known ones, with no call", () => {
+    const r = run({ stdout: linked([BOARD]) }, ["list", "--status", "Reviewing"]);
+    expect(r.exit).not.toBe(0);
+    expect(r.message).toContain("Todo, In Dev, Agent Review");
+    expect(r.calls).toEqual([]);
+  });
+
+  it("list --search sends the words in the query", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, [
+      "list",
+      "--search",
+      "login bug",
+    ]);
+    expect(r.calls[1]).toContain('"login" "bug" in:title');
+  });
+
+  it("list --search sends a word that looks like a qualifier as a quoted word", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([]) }, [
+      "list",
+      "--search",
+      'repo:x do"c',
+    ]);
+    expect(r.calls[1]).toEndWith('is:open "repo:x" "do\\"c" in:title');
+  });
+
+  it("list combines --status, --search and --feature", () => {
+    const argv = ["list", "--feature", "9", "--status", "Todo", "--search", "login"];
+    const rows = [task(5, null, [], "In Dev"), task(6, null, [], "Todo")];
+    const r = run({ stdout: linked([BOARD]), search: found(rows) }, argv);
+    expect(r.message).toStartWith("#6 ");
+    expect(r.calls[1]).toEndWith(
+      'is:issue parent-issue:qsmark-labs/qsm-marketplace#9 "login" in:title',
+    );
+  });
+
   it("ready refuses an issue whose boards GitHub cut, instead of reading it as off the board", () => {
     const cut = {
       ...task(8, null, [], "In Dev"),

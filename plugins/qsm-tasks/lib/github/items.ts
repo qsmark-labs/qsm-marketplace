@@ -56,9 +56,20 @@ export interface Filter {
   readonly feature?: number | undefined;
   readonly label?: string | undefined;
   readonly without?: string | undefined;
+  /** words its title holds */
+  readonly words?: string | undefined;
 }
 
 const TYPES = { task: "type:Task,Bug", feature: "type:Feature" } as const;
+
+/** Each word quoted on its own, so GitHub reads `repo:x` as a word and not as a qualifier. */
+function inTitle(words: string): string {
+  const quoted = words
+    .split(/\s+/)
+    .filter((w) => w !== "")
+    .map((w) => `"${w.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`);
+  return quoted.length === 0 ? "" : `${quoted.join(" ")} in:title`;
+}
 
 /** The filter as GitHub's search qualifiers, scoped to the repository's issues. */
 function qualifiers(repo: string, filter: Filter): string {
@@ -69,6 +80,7 @@ function qualifiers(repo: string, filter: Filter): string {
     filter.feature === undefined ? "" : `parent-issue:${repo}#${filter.feature}`,
     filter.label === undefined ? "" : `label:"${filter.label}"`,
     filter.without === undefined ? "" : `-label:"${filter.without}"`,
+    filter.words === undefined ? "" : inTitle(filter.words),
   ]
     .filter((q) => q !== "")
     .join(" ");
