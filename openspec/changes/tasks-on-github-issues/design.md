@@ -20,12 +20,12 @@ openspec, essentials and review already say "the task tool".
 | claim, give back, defer | `claim`, `unclaim`, `unclaim --until <date>` | the session that builds; the main agent |
 | pull request open | nothing, or `review <task>` when the workflow lags or after a finding | GitHub; the builder |
 | CI green, every finding fixed | `human <task>` | the builder, only then |
-| task merged into `feature/<n>` | nothing: the Action closes it | the owner merges |
-| last task closed | nothing: the Action updates `feature/<n>` from main, sets Ready For Test or files a conflict task | GitHub |
+| task merged into `features/<n>-<title>` | nothing: the Action closes it | the owner merges |
+| last task closed | nothing: the Action updates `features/<n>-<title>` from main, sets Ready For Test or files a conflict task | GitHub |
 | decision or spec-only task | `close <task> --reason` | the main agent, on the owner's word |
 | not doing it | `close <n> --not-planned --reason` | the main agent, on the owner's word |
 | QA | `ready --qa`, `qa <feature>`, `add --feature <feature> "<finding>"`, `note <feature> "QA passed ..."` | the QA agent only |
-| step 9 | spec-archive on `feature/<n>`, then the feature pull request | the agent, after `QA passed` |
+| step 9 | spec-archive on `features/<n>-<title>`, then the feature pull request | the agent, after `QA passed` |
 | accept | nothing: the owner merges the feature pull request into main | the owner |
 | progress | `note <id> "<text>"` | anyone, in the owner's name |
 | feedback | `feedback "<title>" --area <a> --kind <k> --from <f>` | any agent; a subagent's one create |
