@@ -147,6 +147,9 @@ what done means, ending in a `strict-reviewer` review.
 - Only the owner asks Macroscope for a review, by commenting `@macroscope-app review` on a green
   pull request, because every review is paid and an agent opens pull requests the owner may not
   want reviewed at all. An agent never writes that comment.
+- The paid review reads a pull request into `main`: a feature's pull request or a side change. A
+  task's pull request into its feature branch gets `/simplify` and a local review before its push
+  and no paid review, because the feature's pull request reads the same lines once, as they land.
 
 ## Temporary
 
