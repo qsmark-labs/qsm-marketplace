@@ -1,6 +1,6 @@
 ---
 name: toolbox
-description: "CLI tools on this machine, invoke for caveats. Third-party: ast-grep (AST code rewrite), acli (Jira Confluence CLI), br (beads issue tracker), comby (structural rewrite), graphify (dependency graph), git-cliff (changelog), gws (Google Workspace), hurl (HTTP test files), instaloader (Instagram download), jc (CLI output to JSON), lightrag-server (graph RAG), lizard (complexity ranking), mlr (CSV JSON reshaping), opencli (websites as CLIs), opensrc (dependency source), readable (page to article), scc (code size), semble (semantic search), semgrep (pattern code scan), usql (all databases), yq (YAML TOML jq). qsm: qsm-book-to-skill (document to skill), qsm-forge (PR, MR threads), qsm-index (code index), qsm-knowledge (knowledge checks), qsm-langdev (language gates), qsm-memory (past sessions), qsm-openspec (OpenSpec doctor), qsm-secrets (secrets without values), qsm-statusline (status line), qsm-uix (screen measurements), qsm-usage (usage report, TOON), qsm-web (fetch, search, browser)."
+description: "CLI tools on this machine, invoke for caveats. Third-party: ast-grep (AST code rewrite), acli (Jira Confluence CLI), br (beads issue tracker), comby (structural rewrite), graphify (dependency graph), git-cliff (changelog), gitingest (repository to one file), gws (Google Workspace), hurl (HTTP test files), instaloader (Instagram download), jc (CLI output to JSON), lightrag-server (graph RAG), lizard (complexity ranking), mlr (CSV JSON reshaping), opencli (websites as CLIs), opensrc (dependency source), readable (page to article), scc (code size), semble (semantic search), semgrep (pattern code scan), usql (all databases), yq (YAML TOML jq). qsm: qsm-book-to-skill (document to skill), qsm-forge (PR, MR threads), qsm-index (code index), qsm-knowledge (knowledge checks), qsm-langdev (language gates), qsm-memory (past sessions), qsm-openspec (OpenSpec doctor), qsm-secrets (secrets without values), qsm-statusline (status line), qsm-uix (screen measurements), qsm-usage (usage report, TOON), qsm-web (fetch, search, browser)."
 ---
 
 # Toolbox
@@ -22,6 +22,7 @@ A tool not in this table has none.
 | `br` | `br` is the Rust tracker; the Go tool of the same name is `bd`, never mix them |
 | `comby` | on Arch, `libpcre.so.3` is absent; install `libpcre` and symlink `.so.1` to `.so.3` |
 | `git-cliff` | preview the range (`--unreleased`) before writing a file, and never commit a `cliff.toml` into this marketplace; a repository that wants one owns it |
+| `gitingest` | name the output with `-o` outside the working tree, because the default writes `digest.txt` into the current directory; a private repository takes its token from `GITHUB_TOKEN`, never from `-t`, which puts the token into the transcript |
 | `lightrag-server` | a multi-GB footprint and no query succeeds until an LLM backend key or endpoint is configured |
 | `semble` | a grep-trained agent tends to re-search after semble answers; trust the ranked chunks first |
 | `semgrep` | `--autofix` rewrites source, never run it against an uncommitted tree; registry rules pull metrics |
