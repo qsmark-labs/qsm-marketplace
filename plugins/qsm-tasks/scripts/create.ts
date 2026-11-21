@@ -44,7 +44,7 @@ export async function feature(call: Call, { run, target }: At): Promise<Outcome>
 }
 
 /** The feature a task goes under: a feature, and open. */
-async function parentOf(run: Run, target: Target, number: number): Promise<Result<null>> {
+export async function parentOf(run: Run, target: Target, number: number): Promise<Result<null>> {
   const parent = await issue(run, target, number, false);
   if (!parent.ok) {
     return parent;

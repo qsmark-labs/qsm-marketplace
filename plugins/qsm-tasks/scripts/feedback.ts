@@ -81,7 +81,7 @@ function sameOpen(run: Run, repo: string, title: string): Promise<Result<string>
 
 /** The same feedback still open gets the body as a comment; a new one is filed with its labels, of
  * which it makes only its area's: setup makes `feedback`, `kind:*` and `from:*`. */
-async function post(run: Run, repo: string, title: string, given: Given): Promise<Result<string>> {
+async function post(run: Run, repo: string, title: string, given: Given): Promise<Result<Posted>> {
   const { body, values } = given;
   const same = await sameOpen(run, repo, title);
   if (!same.ok) {
@@ -89,15 +89,20 @@ async function post(run: Run, repo: string, title: string, given: Given): Promis
   }
   if (same.value !== "") {
     const said = await comment(run, { repo }, Number(same.value), body);
-    return said.ok
-      ? { ok: true, value: `#${same.value} commented: the same feedback is open` }
-      : said;
+    const message = `#${same.value} commented: the same feedback is open`;
+    return said.ok ? { ok: true, value: { number: Number(same.value), message } } : said;
   }
   const labels = ["feedback", `kind:${values.kind}`, `from:${values.from}`];
   const [flags, make] = [labels.flatMap((name) => ["--label", name]), [`area:${values.area}`]];
   const filed = await file(run, { repo }, { kind: "feedback", title, body, flags, make });
-  return filed.ok ? { ok: true, value: `#${filed.value} filed: ${title}` } : filed;
+  if (!filed.ok) {
+    return filed;
+  }
+  return { ok: true, value: { number: filed.value, message: `#${filed.value} filed: ${title}` } };
 }
+
+/** The issue a feedback landed on, filed or commented, and what is said of it. */
+type Posted = Readonly<{ number: number; message: string }>;
 
 type Given = Readonly<{ path: string; values: Values; body: string }>;
 
@@ -137,5 +142,7 @@ export async function feedback(call: Call): Promise<Outcome> {
   }
   const title = requiredString(call, "title");
   const posted = await post(run.value, repo.value, title, given.value);
-  return posted.ok ? ok({ title }, posted.value) : posted.outcome;
+  return posted.ok
+    ? ok({ title, number: posted.value.number }, posted.value.message)
+    : posted.outcome;
 }

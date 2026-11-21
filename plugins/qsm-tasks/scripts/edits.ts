@@ -21,16 +21,22 @@ import {
 } from "../lib/github/board.ts";
 import type { Run } from "../lib/github/gh.ts";
 import type { Target } from "../lib/github/target.ts";
-import { checkCreate } from "./create.ts";
+import { checkCreate, parentOf } from "./create.ts";
 import { onIssue, type Plan, type Write } from "./on-issue.ts";
 
+/** A relation the card already holds is not sent again, so a rerun reaches the step that failed. */
+function newOnly(value: number | undefined, held: boolean): number | undefined {
+  return held ? undefined : value;
+}
+
 /** gh's flags for what edit changes on the issue itself; GitHub refuses a cycle in its own words. */
-function editFlags(call: Call): string[] {
+function editFlags(call: Call, at: Card): string[] {
+  const [under, after] = [optionalNumber(call, "feature"), optionalNumber(call, "after")];
   const pairs: [string, string | number | undefined][] = [
     ["--title", optionalString(call, "title")],
     ["--add-assignee", optionalString(call, "assignee")],
-    ["--parent", optionalNumber(call, "feature")],
-    ["--add-blocked-by", optionalNumber(call, "after")],
+    ["--parent", newOnly(under, at.parent === under)],
+    ["--add-blocked-by", newOnly(after, after !== undefined && at.blockers.includes(after))],
     ["--remove-blocked-by", optionalNumber(call, "unblock")],
   ];
   return pairs.flatMap(([flag, value]) => (value === undefined ? [] : [flag, String(value)]));
@@ -50,7 +56,7 @@ export function checkEdit(call: Call): void {
 /** The issue's own fields in one gh issue edit: the body read from the file and sent on stdin, a
  * change id as a label made when missing. */
 async function change(run: Run, target: Target, at: Card, call: Call): Promise<Result<null>> {
-  const flags = editFlags(call);
+  const flags = editFlags(call, at);
   const spec = optionalString(call, "spec");
   const make = spec === undefined ? [] : [changeLabel(spec)];
   const bodyFile = optionalString(call, "bodyFile");
@@ -70,7 +76,10 @@ export const edit = onIssue((call, { run, target }, at): Result<Plan> => {
     return refuse("blocked", "wrong-kind", `--spec binds a feature; #${at.number} is not one`);
   }
   const priority = optionalString(call, "priority");
+  const under = optionalNumber(call, "feature");
   const steps: Write[] = [
+    // the parent check of add, a read before any write; a parent already set is not read again
+    ...(under === undefined || at.parent === under ? [] : [() => parentOf(run, target, under)]),
     () => change(run, target, at, call),
     ...(priority === undefined ? [] : [() => setField(run, target, at, "Priority", priority)]),
   ];

@@ -538,6 +538,39 @@ describe("qsm-tasks edits and closes the work", () => {
     expect(r.calls).toHaveLength(2);
   });
 
+  /** the read of the feature `edit --feature` names, as GitHub answers it */
+  const parentRead = (more: object) => {
+    const family = { body: "", parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    const node = { ...task(7, null), ...family, ...more };
+    return JSON.stringify({ data: { node: { issue: node } } });
+  };
+
+  it.each([
+    ["a task", {}, "wrong-kind"],
+    ["a closed feature", { ...feature, state: "CLOSED" }, "wrong-status"],
+  ])("edit --feature onto %s is refused as add refuses it, with no write", (_, more, reason) => {
+    const gh = { stdout: linked([BOARD]), card: cardOf("Todo", []), issue: parentRead(more) };
+    const r = run(gh, ["edit", "12", "--feature", "7", "--title", "x"]);
+    expect(r.data).toMatchObject({ reason });
+    expect(r.calls.some((c) => c.startsWith("issue edit"))).toBe(false);
+  });
+
+  it("edit sends no call for a blocker or a parent the card holds, and still sends a new one", () => {
+    const held = {
+      blockedBy: whole([{ number: 2, state: "OPEN" }]),
+      parent: { number: 7, state: "OPEN" },
+    };
+    const gh = { stdout: linked([BOARD]), card: cardOf("Todo", [], held) };
+    const edits = (argv: string[]) =>
+      run(gh, ["edit", "5", "--title", "x", ...argv]).calls.filter((c) =>
+        c.startsWith("issue edit"),
+      );
+    const [same] = edits(["--after", "2", "--feature", "7"]);
+    expect(same).toBe("issue edit 5 --repo qsmark-labs/qsm-marketplace --title x");
+    const [more] = edits(["--after", "3"]);
+    expect(more).toContain("--add-blocked-by 3");
+  });
+
   it("edit refused by GitHub, as a cycle is, exits failed with GitHub's words", () => {
     const gh = { stdout: linked([BOARD]), card: cardOf("Todo", []), refuseEditOnce: true } as const;
     const r = run(gh, ["edit", "1", "--after", "2"]);
@@ -632,6 +665,7 @@ describe("qsm-tasks feedback", () => {
     const created = "https://github.com/qsmark-labs/qsm-marketplace/issues/91";
     const r = run(fake(dir, { list: "", created }), argv, dir);
     expect(r.message).toBe("#91 filed: ready skips a task");
+    expect(r.data).toMatchObject({ number: 91 });
     const made = r.calls.filter((c) => c.startsWith("label create"));
     expect(made).toEqual(["label create area:qsm-tasks --repo qsmark-labs/qsm-marketplace"]);
     expect(r.calls.at(-1)).toBe(
