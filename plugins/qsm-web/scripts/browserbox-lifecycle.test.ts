@@ -133,6 +133,13 @@ describe("qsm-web browserbox lifecycle", () => {
       says: ["bbox-11000", "its removal exited 1", "leftover"],
       silent: ["nothing was left running"],
     },
+    {
+      title: "a fetch whose own container could not be removed names it and fails",
+      argv: ["fetch", "http://x.invalid", "--json"],
+      env: { FAKE_RM_EXIT: "1" },
+      exit: 1,
+      says: ["bbox-11000 could not be removed after the fetch", "exit 1"],
+    },
   ];
   test.each(outcomes)("$title", (c: OutcomeCase) => {
     const r = runOutcome(c);

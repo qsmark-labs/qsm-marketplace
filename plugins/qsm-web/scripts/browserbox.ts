@@ -13,7 +13,7 @@ import {
   requiredNumber,
   requiredString,
 } from "../../../lib/cli-base.ts";
-import { fail, isRecord, type Outcome, ok, onPath } from "../../../lib/outcome.ts";
+import { fail, isRecord, messageOf, type Outcome, ok, onPath } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import {
   buildDefinition,
@@ -359,6 +359,14 @@ function stop(call: Call, box: Box): Outcome {
   return ok({ stopped: name }, `stopped ${name}`);
 }
 
+/** Removes the container a fetch started for itself; a failed removal is named, never dropped. */
+function removeEphemeral(box: Box, name: string): void {
+  const { status } = box.run(stopDefinition(name));
+  if (status !== 0) {
+    throw new QsmError("failed", `${name} could not be removed after the fetch (exit ${status})`);
+  }
+}
+
 /** One address, one result. */
 function fetchOne(call: Call, box: Box): Outcome {
   const given = optionalString(call, "in");
@@ -371,7 +379,11 @@ function fetchOne(call: Call, box: Box): Outcome {
   // finally covers every other end, and the owner label covers the one nothing can catch (SIGKILL).
   const ends = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
   const onSignal = (signal: NodeJS.Signals): void => {
-    box.run(stopDefinition(name));
+    try {
+      removeEphemeral(box, name);
+    } catch (error) {
+      process.stderr.write(`qsm-web browserbox: ${messageOf(error)}\n`);
+    }
     process.exit(128 + (signal === "SIGINT" ? 2 : signal === "SIGTERM" ? 15 : 1));
   };
   if (ephemeral) {
@@ -386,7 +398,7 @@ function fetchOne(call: Call, box: Box): Outcome {
       for (const s of ends) {
         process.off(s, onSignal);
       }
-      box.run(stopDefinition(name));
+      removeEphemeral(box, name);
     }
   }
 }
