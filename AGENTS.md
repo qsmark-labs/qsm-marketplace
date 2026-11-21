@@ -35,6 +35,10 @@ touching its users (Cockburn, ports and adapters).
 
 - **The best code is the code not written.** Every new file, function or plugin claims something
   is missing; say the claim, or do not add it.
+- **The CLI itself, before a wrapper.** A skill names the CLI a job already has (`gh`, `git`, `wt`)
+  and the model calls it directly. A plugin wraps a CLI only for what the bare call cannot do, such
+  as keeping a secret out of the context, because a wrapper is code to keep and one more place that
+  can refuse the agent.
 - **One shared thing, never a copy.** Search before adding and edit the owner in place, because
   two copies drift and a fix then lands in one of them.
 - **Loud or working, never silent.** A state that cannot be used is `missing`, `failed`, `worse`
