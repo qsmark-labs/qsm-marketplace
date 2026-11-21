@@ -367,9 +367,12 @@ function sweepBuilds(dir: string, bins: readonly string[]): void {
   }
   const left = readdirSync(dir).filter((entryName) => {
     const pid = buildPid(entryName);
-    return pid === null
-      ? bins.some((bin) => entryName === `${bin}${TMP}`)
-      : !isAlive(pid) && lstatSync(join(dir, entryName)).isDirectory();
+    if (pid === null) {
+      return bins.some((bin) => entryName === `${bin}${TMP}`);
+    }
+    // another install may remove the same directory between the listing and this look
+    const at = lstatSync(join(dir, entryName), { throwIfNoEntry: false });
+    return !isAlive(pid) && at?.isDirectory() === true;
   });
   for (const entryName of left) {
     const path = join(dir, entryName);
