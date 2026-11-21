@@ -3,9 +3,9 @@
 ### Requirement: A QA agent runs the cover scenarios of a feature as a blackbox
 
 A QA agent SHALL take a feature at Ready For Test, run every spec scenario that cites a cover path
-of the feature's BPMN against `feature/<n>` deployed in a sandbox, without reading the code, and
-file one fix task under the feature per scenario that does not hold, or post a `QA passed` note
-with each scenario's evidence when all hold.
+of the feature's BPMN against `features/<n>-<title>` deployed in a sandbox, without reading the
+code, and file one fix task under the feature per scenario that does not hold, or post a `QA passed`
+note with each scenario's evidence when all hold.
 
 #### Scenario: A scenario does not hold
 
