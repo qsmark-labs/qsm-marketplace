@@ -180,6 +180,9 @@ list reads as the board does:
   carries was measured in the task pull request that brought it, or on `main`. So a feature lands
   with a normal approval, never an admin merge.
 - A feature's pull request into `main` is opened only after its QA passed.
+- Nothing breaks a release. `main` is where work comes together, so a merge into it may break
+  something. A release is cut only from a state that works fully end to end, proven before the
+  cut.
 
 ## Before a commit
 
