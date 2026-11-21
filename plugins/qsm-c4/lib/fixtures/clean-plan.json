@@ -1,0 +1,153 @@
+{
+  "painted": [
+    {
+      "what": "the box of mp.plan.planskill",
+      "owner": "mp.plan.planskill",
+      "shape": { "x": 404.42, "y": 44, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.plan.grilling",
+      "owner": "mp.plan.grilling",
+      "shape": { "x": 184.42000000000002, "y": 44, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.tasks",
+      "owner": "mp.tasks",
+      "shape": { "x": 371, "y": 446.84, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.spec",
+      "owner": "mp.spec",
+      "shape": { "x": 611, "y": 446.84, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the title of mp.plan",
+      "owner": "mp.plan",
+      "shape": { "x": 17, "y": 237.64, "w": 103.42, "h": 18.2 }
+    },
+    {
+      "what": "the outline of mp.plan",
+      "owner": "mp.plan",
+      "shape": [
+        { "x": 12, "y": 12 },
+        { "x": 636.4200000000001, "y": 12 }
+      ]
+    },
+    {
+      "what": "the outline of mp.plan",
+      "owner": "mp.plan",
+      "shape": [
+        { "x": 636.4200000000001, "y": 12 },
+        { "x": 636.4200000000001, "y": 260.84 }
+      ]
+    },
+    {
+      "what": "the outline of mp.plan",
+      "owner": "mp.plan",
+      "shape": [
+        { "x": 636.4200000000001, "y": 260.84 },
+        { "x": 12, "y": 260.84 }
+      ]
+    },
+    {
+      "what": "the outline of mp.plan",
+      "owner": "mp.plan",
+      "shape": [
+        { "x": 12, "y": 260.84 },
+        { "x": 12, "y": 12 }
+      ]
+    },
+    {
+      "what": "the label of \"has the agent file and split features with [instruction]\"",
+      "owner": "line 0",
+      "shape": { "x": 367, "y": 338.84, "w": 95.62, "h": 38 }
+    },
+    {
+      "what": "the line \"has the agent file and split features with [instruction]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 471.08666666666664, "y": 128 },
+        { "x": 471, "y": 446.84 }
+      ],
+      "ends": ["mp.plan.planskill", "mp.tasks"],
+      "ports": [
+        { "x": 471.08666666666664, "y": 128 },
+        { "x": 471, "y": 446.84 }
+      ]
+    },
+    {
+      "what": "the label of \"hands the change to [skill reference]\"",
+      "owner": "line 1",
+      "shape": { "x": 547, "y": 344.84, "w": 90.62, "h": 26 }
+    },
+    {
+      "what": "the line \"hands the change to [skill reference]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 537.7533333333333, "y": 128 },
+        { "x": 538, "y": 400.84 }
+      ],
+      "ends": ["mp.plan.planskill", "mp.spec"],
+      "ports": [
+        { "x": 537.7533333333333, "y": 128 },
+        { "x": 711, "y": 446.84 }
+      ]
+    },
+    {
+      "what": "the line \"hands the change to [skill reference]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 538, "y": 400.84 },
+        { "x": 711, "y": 400.84 }
+      ],
+      "ends": ["mp.plan.planskill", "mp.spec"],
+      "ports": [
+        { "x": 537.7533333333333, "y": 128 },
+        { "x": 711, "y": 446.84 }
+      ]
+    },
+    {
+      "what": "the line \"hands the change to [skill reference]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 711, "y": 400.84 },
+        { "x": 711, "y": 446.84 }
+      ],
+      "ends": ["mp.plan.planskill", "mp.spec"],
+      "ports": [
+        { "x": 537.7533333333333, "y": 128 },
+        { "x": 711, "y": 446.84 }
+      ]
+    }
+  ],
+  "drawn": [
+    {
+      "title": "has the agent file and split features with [instruction]",
+      "segs": [
+        [
+          { "x": 471.08666666666664, "y": 128 },
+          { "x": 471, "y": 446.84 }
+        ]
+      ],
+      "label": { "x": 367, "y": 338.84, "w": 95.62, "h": 38 }
+    },
+    {
+      "title": "hands the change to [skill reference]",
+      "segs": [
+        [
+          { "x": 537.7533333333333, "y": 128 },
+          { "x": 538, "y": 400.84 }
+        ],
+        [
+          { "x": 538, "y": 400.84 },
+          { "x": 711, "y": 400.84 }
+        ],
+        [
+          { "x": 711, "y": 400.84 },
+          { "x": 711, "y": 446.84 }
+        ]
+      ],
+      "label": { "x": 547, "y": 344.84, "w": 90.62, "h": 26 }
+    }
+  ]
+}

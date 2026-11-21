@@ -14,6 +14,7 @@ import {
 import { join, resolve } from "node:path";
 import { which } from "bun";
 import { z } from "zod";
+import { isAlive } from "../../../lib/detach.ts";
 import { cliShim, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -198,11 +199,18 @@ describe.skipIf(!hasZstd)("pack", () => {
     cli(box, ["save", "--catch-up"]);
     activated(box);
 
-    expect(cli(box, ["pack", "--detach"]).code).toBe("ok");
+    const started = cli(box, ["pack", "--detach"]);
+    expect(started.code).toBe("ok");
+    const { pid } = z.object({ pid: z.number() }).parse(started.data);
 
+    // The child's line comes before it exits; the test ends only after it has, so nothing it still
+    // writes lands in a home the test already removed.
     const log = join(box.dataDir, "save.log");
     const deadline = Date.now() + 20_000;
-    while (!(existsSync(log) && readFileSync(log, "utf8").includes("packed 1 sessions"))) {
+    while (
+      !(existsSync(log) && readFileSync(log, "utf8").includes("packed 1 sessions")) ||
+      isAlive(pid)
+    ) {
       if (Date.now() > deadline) {
         throw new Error("save.log never said the pack ended");
       }

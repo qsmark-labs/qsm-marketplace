@@ -34,7 +34,7 @@ The install script compiles `qsm-forge` and links it into `~/.local/bin`. It nev
 
 ## Use
 
-Ask: "what is unresolved on PR 12?" or "reply to that comment and resolve the thread". The skill
+Ask: "what is unresolved on PR 12?" or "reply to that comment". The skill
 fires and runs the verbs for you. You can run them yourself:
 
 ```bash
@@ -50,7 +50,7 @@ The repository is the checkout's `origin` remote. `--repo owner/name` (gh) or
 ## Caveats
 
 - It runs under your own `gh` or `glab` login. The binary never reads a token.
-- A reply resolves the thread on GitHub, not on GitLab. Use `gl resolve` there.
+- A reply never resolves the thread: resolving is the reviewer's act, through `resolve`.
 - `comments`, `resolve-all` and `dismiss-reviews` exist for GitHub only.
 - GitLab `submit-review` is several requests. A failure part-way leaves what was already posted.
   The payload is checked before the first request.

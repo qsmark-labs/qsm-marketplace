@@ -1,0 +1,1081 @@
+{
+  "painted": [
+    {
+      "what": "the box of mp.bpmn.tool",
+      "owner": "mp.bpmn.tool",
+      "shape": { "x": 1323.7888888888888, "y": 194, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.core",
+      "owner": "mp.bpmn.core",
+      "shape": { "x": 422.29999999999995, "y": 686, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.walk",
+      "owner": "mp.bpmn.walk",
+      "shape": { "x": 422.29999999999995, "y": 468, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.kinds",
+      "owner": "mp.bpmn.kinds",
+      "shape": { "x": 1112.5666666666666, "y": 686, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.pages",
+      "owner": "mp.bpmn.pages",
+      "shape": { "x": 1277.5666666666666, "y": 908, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.subgraph",
+      "owner": "mp.bpmn.subgraph",
+      "shape": { "x": 862.3, "y": 468, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.gherkin",
+      "owner": "mp.bpmn.gherkin",
+      "shape": { "x": 642.3, "y": 468, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.bpmn.skill",
+      "owner": "mp.bpmn.skill",
+      "shape": { "x": 1323.7888888888888, "y": 44, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.docs",
+      "owner": "mp.docs",
+      "shape": { "x": 701, "y": 1265.2, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.lib",
+      "owner": "mp.lib",
+      "shape": { "x": 142, "y": 1265.2, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of bpmnio",
+      "owner": "bpmnio",
+      "shape": { "x": 1043, "y": 1419.2, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.c4",
+      "owner": "mp.c4",
+      "shape": { "x": 1402, "y": 1265.2, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the title of mp.bpmn",
+      "owner": "mp.bpmn",
+      "shape": { "x": 17, "y": 1056, "w": 161.20000000000002, "h": 18.2 }
+    },
+    {
+      "what": "the outline of mp.bpmn",
+      "owner": "mp.bpmn",
+      "shape": [
+        { "x": 12, "y": 12 },
+        { "x": 1555.7888888888888, "y": 12 }
+      ]
+    },
+    {
+      "what": "the outline of mp.bpmn",
+      "owner": "mp.bpmn",
+      "shape": [
+        { "x": 1555.7888888888888, "y": 12 },
+        { "x": 1555.7888888888888, "y": 1079.2 }
+      ]
+    },
+    {
+      "what": "the outline of mp.bpmn",
+      "owner": "mp.bpmn",
+      "shape": [
+        { "x": 1555.7888888888888, "y": 1079.2 },
+        { "x": 12, "y": 1079.2 }
+      ]
+    },
+    {
+      "what": "the outline of mp.bpmn",
+      "owner": "mp.bpmn",
+      "shape": [
+        { "x": 12, "y": 1079.2 },
+        { "x": 12, "y": 12 }
+      ]
+    },
+    {
+      "what": "the label of \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": { "x": 851, "y": 1163.2, "w": 135.79999999999998, "h": 26 }
+    },
+    {
+      "what": "the line \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 1162.5666666666666, "y": 770 },
+        { "x": 1162.5666666666666, "y": 794 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.docs"]
+    },
+    {
+      "what": "the line \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 1162.5666666666666, "y": 794 },
+        { "x": 1056.9666666666667, "y": 794 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.docs"]
+    },
+    {
+      "what": "the line \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 1056.9666666666667, "y": 794 },
+        { "x": 1057, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.docs"]
+    },
+    {
+      "what": "the line \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 1057, "y": 1111.2 },
+        { "x": 834, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.docs"]
+    },
+    {
+      "what": "the line \"installs the bpmn kind with [exec, stdio]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 834, "y": 1111.2 },
+        { "x": 834, "y": 1265.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.docs"]
+    },
+    {
+      "what": "the label of \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": { "x": 653, "y": 1157.2, "w": 147.6, "h": 38 }
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 928.9666666666666, "y": 552 },
+        { "x": 928.9666666666666, "y": 576 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 928.9666666666666, "y": 576 },
+        { "x": 824.7333333333333, "y": 576 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 824.7333333333333, "y": 576 },
+        { "x": 825, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 825, "y": 1111.2 },
+        { "x": 817, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 817, "y": 1111.2 },
+        { "x": 817, "y": 1219.2 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 817, "y": 1219.2 },
+        { "x": 768, "y": 1219.2 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the line \"gets the base and branch snapshots with [exec, stdio]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 768, "y": 1219.2 },
+        { "x": 768, "y": 1265.2 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.docs"]
+    },
+    {
+      "what": "the label of \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": { "x": 284.20000000000005, "y": 491, "w": 118.1, "h": 38 }
+    },
+    {
+      "what": "the line \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 1368.2333333333333, "y": 278 },
+        { "x": 1368.2333333333333, "y": 318 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 1368.2333333333333, "y": 318 },
+        { "x": 267.20000000000005, "y": 318 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 267.20000000000005, "y": 318 },
+        { "x": 267.20000000000005, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 267.20000000000005, "y": 662 },
+        { "x": 472.29999999999995, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"lints, lays out and renders BPMN with [function call]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 472.29999999999995, "y": 662 },
+        { "x": 472.29999999999995, "y": 686 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.core"]
+    },
+    {
+      "what": "the label of \"lists paths with [function call]\"",
+      "owner": "line 3",
+      "shape": { "x": 405.9, "y": 422, "w": 100.39999999999999, "h": 26 }
+    },
+    {
+      "what": "the line \"lists paths with [function call]\"",
+      "owner": "line 3",
+      "shape": [
+        { "x": 1390.4555555555555, "y": 278 },
+        { "x": 1390.4555555555555, "y": 334 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.walk"]
+    },
+    {
+      "what": "the line \"lists paths with [function call]\"",
+      "owner": "line 3",
+      "shape": [
+        { "x": 1390.4555555555555, "y": 334 },
+        { "x": 522.3, "y": 334 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.walk"]
+    },
+    {
+      "what": "the line \"lists paths with [function call]\"",
+      "owner": "line 3",
+      "shape": [
+        { "x": 522.3, "y": 334 },
+        { "x": 522.3, "y": 468 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.walk"]
+    },
+    {
+      "what": "the label of \"builds its verbs on [import]\"",
+      "owner": "line 4",
+      "shape": { "x": 108, "y": 1163.2, "w": 118.1, "h": 26 }
+    },
+    {
+      "what": "the line \"builds its verbs on [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 1346.011111111111, "y": 278 },
+        { "x": 1346.011111111111, "y": 302 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.lib"]
+    },
+    {
+      "what": "the line \"builds its verbs on [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 1346.011111111111, "y": 302 },
+        { "x": 242.20000000000005, "y": 302 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.lib"]
+    },
+    {
+      "what": "the line \"builds its verbs on [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 242.20000000000005, "y": 302 },
+        { "x": 242, "y": 1265.2 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.lib"]
+    },
+    {
+      "what": "the label of \"reads the process from [function call]\"",
+      "owner": "line 5",
+      "shape": { "x": 370.5, "y": 606, "w": 135.79999999999998, "h": 26 }
+    },
+    {
+      "what": "the line \"reads the process from [function call]\"",
+      "owner": "line 5",
+      "shape": [
+        { "x": 522.3, "y": 552 },
+        { "x": 522.3, "y": 686 }
+      ],
+      "ends": ["mp.bpmn.walk", "mp.bpmn.core"]
+    },
+    {
+      "what": "the label of \"has the agent run [instruction]\"",
+      "owner": "line 6",
+      "shape": { "x": 1301.4888888888888, "y": 148, "w": 106.3, "h": 26 }
+    },
+    {
+      "what": "the line \"has the agent run [instruction]\"",
+      "owner": "line 6",
+      "shape": [
+        { "x": 1423.7888888888888, "y": 128 },
+        { "x": 1423.7888888888888, "y": 194 }
+      ],
+      "ends": ["mp.bpmn.skill", "mp.bpmn.tool"]
+    },
+    {
+      "what": "the label of \"converts and diffs snapshots with [function call]\"",
+      "owner": "line 7",
+      "shape": { "x": 1082.3, "y": 491, "w": 147.6, "h": 38 }
+    },
+    {
+      "what": "the line \"converts and diffs snapshots with [function call]\"",
+      "owner": "line 7",
+      "shape": [
+        { "x": 1457.1222222222223, "y": 278 },
+        { "x": 1457.1222222222223, "y": 382 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the line \"converts and diffs snapshots with [function call]\"",
+      "owner": "line 7",
+      "shape": [
+        { "x": 1457.1222222222223, "y": 382 },
+        { "x": 1245.8999999999999, "y": 382 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the line \"converts and diffs snapshots with [function call]\"",
+      "owner": "line 7",
+      "shape": [
+        { "x": 1245.8999999999999, "y": 382 },
+        { "x": 1245.8999999999999, "y": 686 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the label of \"draws the PR pictures with [function call]\"",
+      "owner": "line 8",
+      "shape": { "x": 816.4, "y": 422, "w": 129.89999999999998, "h": 26 }
+    },
+    {
+      "what": "the line \"draws the PR pictures with [function call]\"",
+      "owner": "line 8",
+      "shape": [
+        { "x": 1434.8999999999999, "y": 278 },
+        { "x": 1434.8999999999999, "y": 366 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.subgraph"]
+    },
+    {
+      "what": "the line \"draws the PR pictures with [function call]\"",
+      "owner": "line 8",
+      "shape": [
+        { "x": 1434.8999999999999, "y": 366 },
+        { "x": 962.3, "y": 366 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.subgraph"]
+    },
+    {
+      "what": "the line \"draws the PR pictures with [function call]\"",
+      "owner": "line 8",
+      "shape": [
+        { "x": 962.3, "y": 366 },
+        { "x": 962.3, "y": 468 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.subgraph"]
+    },
+    {
+      "what": "the label of \"prints the Gherkin notes with [function call]\"",
+      "owner": "line 9",
+      "shape": { "x": 578.6999999999999, "y": 422, "w": 147.6, "h": 26 }
+    },
+    {
+      "what": "the line \"prints the Gherkin notes with [function call]\"",
+      "owner": "line 9",
+      "shape": [
+        { "x": 1412.6777777777777, "y": 278 },
+        { "x": 1412.6777777777777, "y": 350 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.gherkin"]
+    },
+    {
+      "what": "the line \"prints the Gherkin notes with [function call]\"",
+      "owner": "line 9",
+      "shape": [
+        { "x": 1412.6777777777777, "y": 350 },
+        { "x": 742.3, "y": 350 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.gherkin"]
+    },
+    {
+      "what": "the line \"prints the Gherkin notes with [function call]\"",
+      "owner": "line 9",
+      "shape": [
+        { "x": 742.3, "y": 350 },
+        { "x": 742.3, "y": 468 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.gherkin"]
+    },
+    {
+      "what": "the label of \"writes the page with [function call]\"",
+      "owner": "line 10",
+      "shape": { "x": 1270.8999999999999, "y": 606, "w": 124, "h": 26 }
+    },
+    {
+      "what": "the line \"writes the page with [function call]\"",
+      "owner": "line 10",
+      "shape": [
+        { "x": 1479.3444444444444, "y": 278 },
+        { "x": 1479.3444444444444, "y": 398 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the line \"writes the page with [function call]\"",
+      "owner": "line 10",
+      "shape": [
+        { "x": 1479.3444444444444, "y": 398 },
+        { "x": 1410.8999999999999, "y": 398 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the line \"writes the page with [function call]\"",
+      "owner": "line 10",
+      "shape": [
+        { "x": 1410.8999999999999, "y": 398 },
+        { "x": 1410.8999999999999, "y": 908 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the label of \"reads the task documentation from [function call]\"",
+      "owner": "line 11",
+      "shape": { "x": 614.0999999999999, "y": 600, "w": 112.19999999999999, "h": 38 }
+    },
+    {
+      "what": "the line \"reads the task documentation from [function call]\"",
+      "owner": "line 11",
+      "shape": [
+        { "x": 742.3, "y": 552 },
+        { "x": 742.3, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.gherkin", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"reads the task documentation from [function call]\"",
+      "owner": "line 11",
+      "shape": [
+        { "x": 742.3, "y": 662 },
+        { "x": 572.3, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.gherkin", "mp.bpmn.core"]
+    },
+    {
+      "what": "the line \"reads the task documentation from [function call]\"",
+      "owner": "line 11",
+      "shape": [
+        { "x": 572.3, "y": 662 },
+        { "x": 572.3, "y": 686 }
+      ],
+      "ends": ["mp.bpmn.gherkin", "mp.bpmn.core"]
+    },
+    {
+      "what": "the label of \"diffs base and branch with [function call]\"",
+      "owner": "line 12",
+      "shape": { "x": 849.7333333333333, "y": 606, "w": 129.89999999999998, "h": 26 }
+    },
+    {
+      "what": "the line \"diffs base and branch with [function call]\"",
+      "owner": "line 12",
+      "shape": [
+        { "x": 995.6333333333332, "y": 552 },
+        { "x": 995.6333333333332, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the line \"diffs base and branch with [function call]\"",
+      "owner": "line 12",
+      "shape": [
+        { "x": 995.6333333333332, "y": 662 },
+        { "x": 1179.2333333333333, "y": 662 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the line \"diffs base and branch with [function call]\"",
+      "owner": "line 12",
+      "shape": [
+        { "x": 1179.2333333333333, "y": 662 },
+        { "x": 1179.2333333333333, "y": 686 }
+      ],
+      "ends": ["mp.bpmn.subgraph", "mp.bpmn.kinds"]
+    },
+    {
+      "what": "the label of \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": { "x": 1003, "y": 1163.2, "w": 124, "h": 26 }
+    },
+    {
+      "what": "the line \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": [
+        { "x": 1212.5666666666666, "y": 770 },
+        { "x": 1212.5666666666666, "y": 810 }
+      ],
+      "ends": ["mp.bpmn.kinds", "bpmnio"]
+    },
+    {
+      "what": "the line \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": [
+        { "x": 1212.5666666666666, "y": 810 },
+        { "x": 1073.9666666666667, "y": 810 }
+      ],
+      "ends": ["mp.bpmn.kinds", "bpmnio"]
+    },
+    {
+      "what": "the line \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": [
+        { "x": 1073.9666666666667, "y": 810 },
+        { "x": 1074, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "bpmnio"]
+    },
+    {
+      "what": "the line \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": [
+        { "x": 1074, "y": 1111.2 },
+        { "x": 1143, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "bpmnio"]
+    },
+    {
+      "what": "the line \"diffs BPMN with [npm import]\"",
+      "owner": "line 13",
+      "shape": [
+        { "x": 1143, "y": 1111.2 },
+        { "x": 1143, "y": 1419.2 }
+      ],
+      "ends": ["mp.bpmn.kinds", "bpmnio"]
+    },
+    {
+      "what": "the label of \"edits BPMN in the browser with [bundled script]\"",
+      "owner": "line 14",
+      "shape": { "x": 1210, "y": 1157.2, "w": 129.89999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"edits BPMN in the browser with [bundled script]\"",
+      "owner": "line 14",
+      "shape": [
+        { "x": 1377.5666666666666, "y": 992 },
+        { "x": 1378, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.pages", "bpmnio"]
+    },
+    {
+      "what": "the line \"edits BPMN in the browser with [bundled script]\"",
+      "owner": "line 14",
+      "shape": [
+        { "x": 1378, "y": 1111.2 },
+        { "x": 1193, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.pages", "bpmnio"]
+    },
+    {
+      "what": "the line \"edits BPMN in the browser with [bundled script]\"",
+      "owner": "line 14",
+      "shape": [
+        { "x": 1193, "y": 1111.2 },
+        { "x": 1193, "y": 1419.2 }
+      ],
+      "ends": ["mp.bpmn.pages", "bpmnio"]
+    },
+    {
+      "what": "the label of \"declares as the page of the kind [kind manifest]\"",
+      "owner": "line 15",
+      "shape": { "x": 1098.9666666666667, "y": 834, "w": 147.6, "h": 26 }
+    },
+    {
+      "what": "the line \"declares as the page of the kind [kind manifest]\"",
+      "owner": "line 15",
+      "shape": [
+        { "x": 1262.5666666666666, "y": 770 },
+        { "x": 1262.5666666666666, "y": 884 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the line \"declares as the page of the kind [kind manifest]\"",
+      "owner": "line 15",
+      "shape": [
+        { "x": 1262.5666666666666, "y": 884 },
+        { "x": 1344.2333333333333, "y": 884 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the line \"declares as the page of the kind [kind manifest]\"",
+      "owner": "line 15",
+      "shape": [
+        { "x": 1344.2333333333333, "y": 884 },
+        { "x": 1344.2333333333333, "y": 908 }
+      ],
+      "ends": ["mp.bpmn.kinds", "mp.bpmn.pages"]
+    },
+    {
+      "what": "the label of \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": { "x": 478, "y": 1157.2, "w": 141.7, "h": 38 }
+    },
+    {
+      "what": "the line \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": [
+        { "x": 522.3, "y": 770 },
+        { "x": 522, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.core", "bpmnio"]
+    },
+    {
+      "what": "the line \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": [
+        { "x": 522, "y": 1111.2 },
+        { "x": 636, "y": 1111.2 }
+      ],
+      "ends": ["mp.bpmn.core", "bpmnio"]
+    },
+    {
+      "what": "the line \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": [
+        { "x": 636, "y": 1111.2 },
+        { "x": 636, "y": 1373.2 }
+      ],
+      "ends": ["mp.bpmn.core", "bpmnio"]
+    },
+    {
+      "what": "the line \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": [
+        { "x": 636, "y": 1373.2 },
+        { "x": 1093, "y": 1373.2 }
+      ],
+      "ends": ["mp.bpmn.core", "bpmnio"]
+    },
+    {
+      "what": "the line \"parses, lints, lays out and draws with [npm import]\"",
+      "owner": "line 16",
+      "shape": [
+        { "x": 1093, "y": 1373.2 },
+        { "x": 1093, "y": 1419.2 }
+      ],
+      "ends": ["mp.bpmn.core", "bpmnio"]
+    },
+    {
+      "what": "the label of \"reads element ids and colours with [exec, stdio]\"",
+      "owner": "line 17",
+      "shape": { "x": 1356, "y": 1157.2, "w": 129.89999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"reads element ids and colours with [exec, stdio]\"",
+      "owner": "line 17",
+      "shape": [
+        { "x": 1501.5666666666666, "y": 278 },
+        { "x": 1502, "y": 1265.2 }
+      ],
+      "ends": ["mp.bpmn.tool", "mp.c4"]
+    }
+  ],
+  "drawn": [
+    {
+      "title": "installs the bpmn kind with [exec, stdio]",
+      "segs": [
+        [
+          { "x": 1162.5666666666666, "y": 770 },
+          { "x": 1162.5666666666666, "y": 794 }
+        ],
+        [
+          { "x": 1162.5666666666666, "y": 794 },
+          { "x": 1056.9666666666667, "y": 794 }
+        ],
+        [
+          { "x": 1056.9666666666667, "y": 794 },
+          { "x": 1057, "y": 1111.2 }
+        ],
+        [
+          { "x": 1057, "y": 1111.2 },
+          { "x": 834, "y": 1111.2 }
+        ],
+        [
+          { "x": 834, "y": 1111.2 },
+          { "x": 834, "y": 1265.2 }
+        ]
+      ],
+      "label": { "x": 851, "y": 1163.2, "w": 135.79999999999998, "h": 26 }
+    },
+    {
+      "title": "gets the base and branch snapshots with [exec, stdio]",
+      "segs": [
+        [
+          { "x": 928.9666666666666, "y": 552 },
+          { "x": 928.9666666666666, "y": 576 }
+        ],
+        [
+          { "x": 928.9666666666666, "y": 576 },
+          { "x": 824.7333333333333, "y": 576 }
+        ],
+        [
+          { "x": 824.7333333333333, "y": 576 },
+          { "x": 825, "y": 1111.2 }
+        ],
+        [
+          { "x": 825, "y": 1111.2 },
+          { "x": 817, "y": 1111.2 }
+        ],
+        [
+          { "x": 817, "y": 1111.2 },
+          { "x": 817, "y": 1219.2 }
+        ],
+        [
+          { "x": 817, "y": 1219.2 },
+          { "x": 768, "y": 1219.2 }
+        ],
+        [
+          { "x": 768, "y": 1219.2 },
+          { "x": 768, "y": 1265.2 }
+        ]
+      ],
+      "label": { "x": 653, "y": 1157.2, "w": 147.6, "h": 38 }
+    },
+    {
+      "title": "lints, lays out and renders BPMN with [function call]",
+      "segs": [
+        [
+          { "x": 1368.2333333333333, "y": 278 },
+          { "x": 1368.2333333333333, "y": 318 }
+        ],
+        [
+          { "x": 1368.2333333333333, "y": 318 },
+          { "x": 267.20000000000005, "y": 318 }
+        ],
+        [
+          { "x": 267.20000000000005, "y": 318 },
+          { "x": 267.20000000000005, "y": 662 }
+        ],
+        [
+          { "x": 267.20000000000005, "y": 662 },
+          { "x": 472.29999999999995, "y": 662 }
+        ],
+        [
+          { "x": 472.29999999999995, "y": 662 },
+          { "x": 472.29999999999995, "y": 686 }
+        ]
+      ],
+      "label": { "x": 284.20000000000005, "y": 491, "w": 118.1, "h": 38 }
+    },
+    {
+      "title": "lists paths with [function call]",
+      "segs": [
+        [
+          { "x": 1390.4555555555555, "y": 278 },
+          { "x": 1390.4555555555555, "y": 334 }
+        ],
+        [
+          { "x": 1390.4555555555555, "y": 334 },
+          { "x": 522.3, "y": 334 }
+        ],
+        [
+          { "x": 522.3, "y": 334 },
+          { "x": 522.3, "y": 468 }
+        ]
+      ],
+      "label": { "x": 405.9, "y": 422, "w": 100.39999999999999, "h": 26 }
+    },
+    {
+      "title": "builds its verbs on [import]",
+      "segs": [
+        [
+          { "x": 1346.011111111111, "y": 278 },
+          { "x": 1346.011111111111, "y": 302 }
+        ],
+        [
+          { "x": 1346.011111111111, "y": 302 },
+          { "x": 242.20000000000005, "y": 302 }
+        ],
+        [
+          { "x": 242.20000000000005, "y": 302 },
+          { "x": 242, "y": 1265.2 }
+        ]
+      ],
+      "label": { "x": 108, "y": 1163.2, "w": 118.1, "h": 26 }
+    },
+    {
+      "title": "reads the process from [function call]",
+      "segs": [
+        [
+          { "x": 522.3, "y": 552 },
+          { "x": 522.3, "y": 686 }
+        ]
+      ],
+      "label": { "x": 370.5, "y": 606, "w": 135.79999999999998, "h": 26 }
+    },
+    {
+      "title": "has the agent run [instruction]",
+      "segs": [
+        [
+          { "x": 1423.7888888888888, "y": 128 },
+          { "x": 1423.7888888888888, "y": 194 }
+        ]
+      ],
+      "label": { "x": 1301.4888888888888, "y": 148, "w": 106.3, "h": 26 }
+    },
+    {
+      "title": "converts and diffs snapshots with [function call]",
+      "segs": [
+        [
+          { "x": 1457.1222222222223, "y": 278 },
+          { "x": 1457.1222222222223, "y": 382 }
+        ],
+        [
+          { "x": 1457.1222222222223, "y": 382 },
+          { "x": 1245.8999999999999, "y": 382 }
+        ],
+        [
+          { "x": 1245.8999999999999, "y": 382 },
+          { "x": 1245.8999999999999, "y": 686 }
+        ]
+      ],
+      "label": { "x": 1082.3, "y": 491, "w": 147.6, "h": 38 }
+    },
+    {
+      "title": "draws the PR pictures with [function call]",
+      "segs": [
+        [
+          { "x": 1434.8999999999999, "y": 278 },
+          { "x": 1434.8999999999999, "y": 366 }
+        ],
+        [
+          { "x": 1434.8999999999999, "y": 366 },
+          { "x": 962.3, "y": 366 }
+        ],
+        [
+          { "x": 962.3, "y": 366 },
+          { "x": 962.3, "y": 468 }
+        ]
+      ],
+      "label": { "x": 816.4, "y": 422, "w": 129.89999999999998, "h": 26 }
+    },
+    {
+      "title": "prints the Gherkin notes with [function call]",
+      "segs": [
+        [
+          { "x": 1412.6777777777777, "y": 278 },
+          { "x": 1412.6777777777777, "y": 350 }
+        ],
+        [
+          { "x": 1412.6777777777777, "y": 350 },
+          { "x": 742.3, "y": 350 }
+        ],
+        [
+          { "x": 742.3, "y": 350 },
+          { "x": 742.3, "y": 468 }
+        ]
+      ],
+      "label": { "x": 578.6999999999999, "y": 422, "w": 147.6, "h": 26 }
+    },
+    {
+      "title": "writes the page with [function call]",
+      "segs": [
+        [
+          { "x": 1479.3444444444444, "y": 278 },
+          { "x": 1479.3444444444444, "y": 398 }
+        ],
+        [
+          { "x": 1479.3444444444444, "y": 398 },
+          { "x": 1410.8999999999999, "y": 398 }
+        ],
+        [
+          { "x": 1410.8999999999999, "y": 398 },
+          { "x": 1410.8999999999999, "y": 908 }
+        ]
+      ],
+      "label": { "x": 1270.8999999999999, "y": 606, "w": 124, "h": 26 }
+    },
+    {
+      "title": "reads the task documentation from [function call]",
+      "segs": [
+        [
+          { "x": 742.3, "y": 552 },
+          { "x": 742.3, "y": 662 }
+        ],
+        [
+          { "x": 742.3, "y": 662 },
+          { "x": 572.3, "y": 662 }
+        ],
+        [
+          { "x": 572.3, "y": 662 },
+          { "x": 572.3, "y": 686 }
+        ]
+      ],
+      "label": { "x": 614.0999999999999, "y": 600, "w": 112.19999999999999, "h": 38 }
+    },
+    {
+      "title": "diffs base and branch with [function call]",
+      "segs": [
+        [
+          { "x": 995.6333333333332, "y": 552 },
+          { "x": 995.6333333333332, "y": 662 }
+        ],
+        [
+          { "x": 995.6333333333332, "y": 662 },
+          { "x": 1179.2333333333333, "y": 662 }
+        ],
+        [
+          { "x": 1179.2333333333333, "y": 662 },
+          { "x": 1179.2333333333333, "y": 686 }
+        ]
+      ],
+      "label": { "x": 849.7333333333333, "y": 606, "w": 129.89999999999998, "h": 26 }
+    },
+    {
+      "title": "diffs BPMN with [npm import]",
+      "segs": [
+        [
+          { "x": 1212.5666666666666, "y": 770 },
+          { "x": 1212.5666666666666, "y": 810 }
+        ],
+        [
+          { "x": 1212.5666666666666, "y": 810 },
+          { "x": 1073.9666666666667, "y": 810 }
+        ],
+        [
+          { "x": 1073.9666666666667, "y": 810 },
+          { "x": 1074, "y": 1111.2 }
+        ],
+        [
+          { "x": 1074, "y": 1111.2 },
+          { "x": 1143, "y": 1111.2 }
+        ],
+        [
+          { "x": 1143, "y": 1111.2 },
+          { "x": 1143, "y": 1419.2 }
+        ]
+      ],
+      "label": { "x": 1003, "y": 1163.2, "w": 124, "h": 26 }
+    },
+    {
+      "title": "edits BPMN in the browser with [bundled script]",
+      "segs": [
+        [
+          { "x": 1377.5666666666666, "y": 992 },
+          { "x": 1378, "y": 1111.2 }
+        ],
+        [
+          { "x": 1378, "y": 1111.2 },
+          { "x": 1193, "y": 1111.2 }
+        ],
+        [
+          { "x": 1193, "y": 1111.2 },
+          { "x": 1193, "y": 1419.2 }
+        ]
+      ],
+      "label": { "x": 1210, "y": 1157.2, "w": 129.89999999999998, "h": 38 }
+    },
+    {
+      "title": "declares as the page of the kind [kind manifest]",
+      "segs": [
+        [
+          { "x": 1262.5666666666666, "y": 770 },
+          { "x": 1262.5666666666666, "y": 884 }
+        ],
+        [
+          { "x": 1262.5666666666666, "y": 884 },
+          { "x": 1344.2333333333333, "y": 884 }
+        ],
+        [
+          { "x": 1344.2333333333333, "y": 884 },
+          { "x": 1344.2333333333333, "y": 908 }
+        ]
+      ],
+      "label": { "x": 1098.9666666666667, "y": 834, "w": 147.6, "h": 26 }
+    },
+    {
+      "title": "parses, lints, lays out and draws with [npm import]",
+      "segs": [
+        [
+          { "x": 522.3, "y": 770 },
+          { "x": 522, "y": 1111.2 }
+        ],
+        [
+          { "x": 522, "y": 1111.2 },
+          { "x": 636, "y": 1111.2 }
+        ],
+        [
+          { "x": 636, "y": 1111.2 },
+          { "x": 636, "y": 1373.2 }
+        ],
+        [
+          { "x": 636, "y": 1373.2 },
+          { "x": 1093, "y": 1373.2 }
+        ],
+        [
+          { "x": 1093, "y": 1373.2 },
+          { "x": 1093, "y": 1419.2 }
+        ]
+      ],
+      "label": { "x": 478, "y": 1157.2, "w": 141.7, "h": 38 }
+    },
+    {
+      "title": "reads element ids and colours with [exec, stdio]",
+      "segs": [
+        [
+          { "x": 1501.5666666666666, "y": 278 },
+          { "x": 1502, "y": 1265.2 }
+        ]
+      ],
+      "label": { "x": 1356, "y": 1157.2, "w": 129.89999999999998, "h": 38 }
+    }
+  ]
+}

@@ -159,9 +159,10 @@ artifact. The repository stays the only source.
     `Dependencies` requirement (a name with no reason says so), then the open epics and tasks that
     name it: an epic that parents a listed task is listed with that task under it. `Dependencies`
     is read as `-`name`: reason` lines of that requirement.
-22. **Evals are grouped by kind and read like a form** (person's review: "what proves it instead of
-    evals, random sections, is settings an eval?, why can I edit this, why is the last result in
-    the same table and colour?"). The card is called Evals. Cases sit under their kind, each kind
+22. **Evals are grouped by kind and read like a form** (a review found: evals
+    labelled "what proves it", sections in no order, settings read as an eval, edits with no
+    reason, and the last result in the same table and colour as the cases).
+    The card is called Evals. Cases sit under their kind, each kind
     with one line on what it measures: `fire` (does the skill load when it should), `negative`
     (does it stay quiet when it should), `scenario` (does the work come out better with the
     plugin), other tags last. A case is headed by its intent line (else its prompt's first

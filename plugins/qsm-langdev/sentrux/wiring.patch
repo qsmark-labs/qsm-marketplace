@@ -6,7 +6,7 @@ diff --git a/Cargo.lock b/Cargo.lock
  [[package]]
  name = "sentrux"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  dependencies = [
   "clap",
   "eframe",
@@ -15,7 +15,7 @@ diff --git a/Cargo.lock b/Cargo.lock
  [[package]]
  name = "sentrux-core"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  dependencies = [
   "crossbeam-channel",
   "dashmap",
@@ -26,7 +26,7 @@ diff --git a/sentrux-bin/Cargo.toml b/sentrux-bin/Cargo.toml
  [package]
  name = "sentrux"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  edition = "2021"
  description = "Live codebase visualization and structural quality gate for AI-agent-written code"
  license = "MIT"
@@ -87,14 +87,14 @@ diff --git a/sentrux-core/Cargo.toml b/sentrux-core/Cargo.toml
  [package]
  name = "sentrux-core"
 -version = "0.5.7"
-+version = "0.5.7-qsm.2"
++version = "0.5.7-qsm.3"
  edition = "2021"
  description = "Core library for sentrux — structural quality analysis engine"
  license = "MIT"
 diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_utils.rs
 --- a/sentrux-core/src/core/path_utils.rs
 +++ b/sentrux-core/src/core/path_utils.rs
-@@ -4,7 +4,32 @@
+@@ -4,7 +4,41 @@
  //! depth heuristics. Handles depth-2 and depth-3 boundaries, dominant
  //! directory stripping (src/, lib/), and extension removal. Used throughout
  //! the metrics and analysis layers to assign files to logical modules.
@@ -109,11 +109,20 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +//! `scripts -> lib` calls stop counting as cross-module edges.
 +
 +use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::RwLock;
 +
 +/// Default: three directory levels, upstream's behaviour.
 +const DEFAULT_MODULE_DEPTH: usize = 3;
 +
 +static MODULE_DEPTH: AtomicUsize = AtomicUsize::new(DEFAULT_MODULE_DEPTH);
++
++/// Top-level directories that are one module each, subdirectories included.
++static WHOLE_DIRS: RwLock<Vec<String>> = RwLock::new(Vec::new());
++
++/// Sets the top-level directories that count as a single module, for this process.
++pub fn set_whole_dirs(dirs: Vec<String>) {
++    *WHOLE_DIRS.write().unwrap() = dirs;
++}
 +
 +/// The directory depth at which a path becomes a module, for this process.
 +pub fn module_depth() -> usize {
@@ -128,7 +137,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
  
  /// Adaptive module boundary detection.
  ///
-@@ -49,14 +74,21 @@
+@@ -49,14 +83,21 @@
      strip_extension(path)
  }
  
@@ -157,7 +166,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
  }
  
  /// Source dirs aggregated from all plugins. Cached at first access.
-@@ -89,8 +121,13 @@
+@@ -89,16 +130,30 @@
      }
  }
  
@@ -169,11 +178,20 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +
 +/// Extract the module name from a file path, grouping directories at `depth`.
 +pub fn module_of_at(path: &str, depth: usize) -> &str {
++    module_of_in(path, depth, &WHOLE_DIRS.read().unwrap())
++}
++
++/// `module_of_at` with the whole-module directories given, not read from the process.
++fn module_of_in<'a>(path: &'a str, depth: usize, whole: &[String]) -> &'a str {
      let first_slash = match path.find('/') {
          Some(i) => i,
          None => return module_of_root_file(path),
-@@ -98,7 +135,7 @@
+     };
  
++    if whole.iter().any(|d| d == &path[..first_slash]) {
++        return &path[..first_slash];
++    }
++
      let rest = &path[first_slash + 1..];
      match rest.find('/') {
 -        Some(i) => module_of_deep(path, first_slash, first_slash + 1 + i),
@@ -181,7 +199,7 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
          None => module_of_single_dir(path, first_slash),
      }
  }
-@@ -144,6 +181,23 @@
+@@ -144,6 +199,37 @@
          );
      }
  
@@ -200,6 +218,20 @@ diff --git a/sentrux-core/src/core/path_utils.rs b/sentrux-core/src/core/path_ut
 +        assert_eq!(module_of_at("a/b/c/d/e.rs", 4), "a/b/c/d");
 +        assert_eq!(module_of_at("analysis/scanner.rs", 2), "analysis");
 +        assert_eq!(module_of_at("db.rs", 2), "db");
++    }
++
++    #[test]
++    fn whole_dir_is_one_module_with_its_subdirectories() {
++        // Root lib/ of the marketplace: every file and subdirectory is one
++        // module, where a dominant dir would make each file its own module.
++        let lib = vec!["lib".to_string()];
++        assert_eq!(module_of_in("lib/qsm-error.ts", 2, &lib), "lib");
++        assert_eq!(module_of_in("lib/fixtures/sandbox.ts", 2, &lib), "lib");
++        assert_eq!(module_of_in("lib/templates/hooks-host.ts", 3, &lib), "lib");
++        // A plugin stays one module of its own.
++        assert_eq!(module_of_in("plugins/qsm-docs/lib/store.ts", 2, &lib), "plugins/qsm-docs");
++        // Without the list, lib is a dominant dir: one module per file.
++        assert_eq!(module_of_in("lib/qsm-error.ts", 2, &[]), "lib/qsm-error");
 +    }
 +
      #[test]
@@ -262,7 +294,7 @@ diff --git a/sentrux-core/src/metrics/mod.rs b/sentrux-core/src/metrics/mod.rs
 diff --git a/sentrux-core/src/metrics/rules/mod.rs b/sentrux-core/src/metrics/rules/mod.rs
 --- a/sentrux-core/src/metrics/rules/mod.rs
 +++ b/sentrux-core/src/metrics/rules/mod.rs
-@@ -52,6 +52,26 @@
+@@ -52,6 +52,31 @@
      /// Explicit deny rules between file patterns.
      #[serde(default)]
      pub boundaries: Vec<BoundaryRule>,
@@ -277,6 +309,7 @@ diff --git a/sentrux-core/src/metrics/rules/mod.rs b/sentrux-core/src/metrics/ru
 +/// ```toml
 +/// [modules]
 +/// depth = 2   # tools/<name> is one module; its lib/ and scripts/ are inside it
++/// whole = ["lib"]   # lib/ and every subdirectory is one module
 +/// ```
 +///
 +/// Default 3, upstream's behaviour. Applied process-wide when the rules load,
@@ -286,10 +319,14 @@ diff --git a/sentrux-core/src/metrics/rules/mod.rs b/sentrux-core/src/metrics/ru
 +pub struct ModulesConfig {
 +    /// Directory levels per module; at least 2.
 +    pub depth: Option<usize>,
++    /// Top-level directories that are one module each, subdirectories included
++    /// (`["lib"]`: the shared kit is one module, not one per file).
++    #[serde(default)]
++    pub whole: Vec<String>,
  }
  
  /// Per-language section in rules.toml.
-@@ -106,8 +126,18 @@
+@@ -106,8 +131,19 @@
      pub fn load(path: &Path) -> Result<Self, String> {
          let content = std::fs::read_to_string(path)
              .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
@@ -306,6 +343,7 @@ diff --git a/sentrux-core/src/metrics/rules/mod.rs b/sentrux-core/src/metrics/ru
 +            }
 +            crate::core::path_utils::set_module_depth(depth);
 +        }
++        crate::core::path_utils::set_whole_dirs(config.modules.whole.clone());
 +        Ok(config)
      }
  
@@ -313,7 +351,7 @@ diff --git a/sentrux-core/src/metrics/rules/mod.rs b/sentrux-core/src/metrics/ru
 diff --git a/sentrux-core/src/metrics/rules/tests.rs b/sentrux-core/src/metrics/rules/tests.rs
 --- a/sentrux-core/src/metrics/rules/tests.rs
 +++ b/sentrux-core/src/metrics/rules/tests.rs
-@@ -53,6 +53,21 @@
+@@ -53,6 +53,23 @@
          assert!(config.boundaries.is_empty());
      }
  
@@ -325,9 +363,11 @@ diff --git a/sentrux-core/src/metrics/rules/tests.rs b/sentrux-core/src/metrics/
 +
 +[modules]
 +depth = 2
++whole = ["lib"]
 +"#;
 +        let config: RulesConfig = toml::from_str(toml).unwrap();
 +        assert_eq!(config.modules.depth, Some(2));
++        assert_eq!(config.modules.whole, vec!["lib".to_string()]);
 +        let none: RulesConfig = toml::from_str("[constraints]\nmax_cycles = 0\n").unwrap();
 +        assert_eq!(none.modules.depth, None);
 +    }

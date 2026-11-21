@@ -1,0 +1,9 @@
+{
+  "name": "qsm-bpmn",
+  "description": "Strict business models: one BPMN graph per project, linted by bpmnlint with the Analytic sub-class and Method and Style rules, laid out, rendered to committed pictures, walked into test paths, and shown as one self-contained page.",
+  "keywords": ["bpmn", "bpmnlint", "models", "diagrams", "lint", "paths"],
+  "author": {
+    "name": "qsm"
+  },
+  "types": "./types/index.d.ts"
+}

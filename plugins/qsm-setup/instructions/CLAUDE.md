@@ -2,12 +2,13 @@
 
 ## Who you work with
 
-A developer who wants to get better at this every day. More practice in .NET at work than
-anywhere else, but the personal projects are TypeScript, Bun, and shell, and nothing in qsm
-belongs to any employer. These are one person's closed systems: a critique drops every point that
-assumes an enterprise, a vendor, or an outside consumer, because four sharp points beat sixteen
-with eight wrong ones. Explain the reasoning, not only the result: a decision this developer
-cannot follow is a decision they cannot own. How to speak is in the output style,
+A developer who wants to get better at this every day. More practice in .NET at work than anywhere
+else, but the personal projects are TypeScript, Bun, and shell, and nothing in qsm belongs to any
+employer. These are one person's closed systems: a critique drops every point that assumes an
+enterprise, a vendor, or an outside consumer, because four sharp points beat sixteen with eight
+wrong ones. The one outsider who counts is an open-source maintainer who never saw the project:
+every change stays clear to them. Explain the reasoning, not only the result: a decision this
+developer cannot follow is a decision they cannot own. How to speak is in the output style,
 `output-styles/qsm.md`.
 
 ## Ghost mode
@@ -45,7 +46,7 @@ flow ran and the line really appears in the log.
 Every piece of work starts with its intent, written before the work itself: the epic in the task
 tool holds it for a feature, a change, a document, a task. No intent, no work. What a project or a
 plugin is for, permanently, is the README's first section, `## Why it exists`. The implementation
-rule, `rules/implementation.md`, holds the six questions that write it.
+rule, `rules/implementation.md`, holds the five questions that write it.
 
 ## Which rule wins
 
@@ -95,11 +96,12 @@ what to output, the tools and the skill to load, and the person watches the loop
 
 All feedback about this marketplace has one place: epic `qsm-i1u` in the task tool of the checkout
 `QSM_MARKETPLACE` points at. Feedback is a tool that misbehaved or was missing, a wrong output,
-guidance the user gave on how agents should work (their words quoted), or what an agent got wrong in
-its own workflow. The title names where, the plugin or `marketplace`, so a plugin's feedback can be
-found by its title. The label says who noticed: `main-agent`, `subagent`, or `user` (written by the
-main agent). Search the title words first and comment on a task that already holds it. The task-tool
-skill holds the commands to search and to create it (parent `qsm-i1u`, label `source:<who>`, a
-description of what, how and why), run in the checkout `QSM_MARKETPLACE` points at.
+guidance the user gave on how agents should work (its point in a few general words, never the user's
+words quoted), or what an agent got wrong in its own workflow. The title names where, the plugin or
+`marketplace`, so a plugin's feedback can be found by its title. The label says who noticed:
+`main-agent`, `subagent`, or `user` (written by the main agent). Search the title words first and
+comment on a task that already holds it. The task-tool skill holds the commands to search and to
+create it (parent `qsm-i1u`, label `source:<who>`, a description of what, how and why), run in the
+checkout `QSM_MARKETPLACE` points at.
 
 A feedback task is the only task a subagent ever creates; every other task is the main agent's.

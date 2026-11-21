@@ -4,3 +4,11 @@
 plugins/*/hooks/noun.generated.ts export-ignore linguist-generated=true
 plugins/*/hooks/host.generated.ts export-ignore linguist-generated=true
 plugins/*/types/index.d.ts linguist-generated=true
+# Rendered, locked or exported by a tool, so a reviewer never reads them and the pr-size check
+# does not count them.
+models/*.svg linguist-generated=true
+bun.lock linguist-generated=true
+plugins/*/bun.lock linguist-generated=true
+.beads/issues.jsonl linguist-generated=true
+# Most of a BPMN diff is the layout qsm-bpmn writes; a reviewer reads the model through its picture.
+models/*.bpmn linguist-generated=true

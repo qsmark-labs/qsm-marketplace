@@ -63,8 +63,8 @@ cache. Add `--json` when a program reads the result.
 
 Tasks are read and written only through `br`, and read as a graph through `bv --agents`: never a
 script, never `bd`, and never a hand edit of `issues.jsonl`, because a hand edit diverges from the
-database and `br` stops importing it for every session that pulls the file. The person in their
-words: "pro tasks mam br/bv --agents nikdy ne python, nebo bd."
+database and `br` stops importing it for every session that pulls the file.
+One tool for tasks keeps every session on the same database.
 
 | Step | Command |
 | --- | --- |

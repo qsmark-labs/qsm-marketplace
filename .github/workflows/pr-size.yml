@@ -1,0 +1,20 @@
+---
+name: PR size
+
+on:
+  pull_request:
+
+jobs:
+  pr-size:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.head_ref }}
+        run: .gates/pr-size.sh "$BASE" "$HEAD" "$BRANCH"

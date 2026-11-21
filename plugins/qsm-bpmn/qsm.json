@@ -1,0 +1,89 @@
+{
+  "name": "qsm-bpmn",
+  "qsm": {
+    "bin": {
+      "qsm-bpmn": "scripts/cli.ts"
+    },
+    "noun": "bpmn",
+    "commands": {
+      "qsm-bpmn doctor": {
+        "description": "Report that the binary needs no program on PATH: every library it runs is compiled into it"
+      },
+      "qsm-bpmn lint": {
+        "description": "Lint the BPMN graph: bpmnlint's recommended rules, warnings raised to errors, then this plugin's rules",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .bpmn file, or the directory that holds the project's one graph (default models)"
+          }
+        ]
+      },
+      "qsm-bpmn layout": {
+        "description": "Write the diagram geometry of each BPMN process that has none; refuse a file that has a layout",
+        "args": [
+          {
+            "name": "file",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the .bpmn file to lay out in place"
+          }
+        ]
+      },
+      "qsm-bpmn render": {
+        "description": "Write one SVG per BPMN process beside the graph",
+        "args": [
+          {
+            "name": "path",
+            "type": "string",
+            "positional": true,
+            "description": "a .bpmn file, or the directory that holds the project's one graph (default models)"
+          },
+          {
+            "name": "check",
+            "type": "boolean",
+            "description": "write nothing; name each picture that differs from what render would write"
+          }
+        ]
+      },
+      "qsm-bpmn paths": {
+        "description": "Print the cover of each process: start-to-end paths with stable ids",
+        "args": [
+          {
+            "name": "file",
+            "type": "string",
+            "positional": true,
+            "description": "the .bpmn graph (default the one under models)"
+          },
+          {
+            "name": "process",
+            "type": "string",
+            "description": "only this process, by id, with or without its _process suffix"
+          },
+          {
+            "name": "all",
+            "type": "boolean",
+            "description": "every path, not only the cover"
+          },
+          {
+            "name": "specs",
+            "type": "string",
+            "description": "a directory of specs: name each cover path no scenario cites and each cited id that does not exist"
+          }
+        ]
+      },
+      "qsm-bpmn pages": {
+        "description": "Lint the BPMN graph and write bpmn.html, one self-contained file",
+        "args": [
+          {
+            "name": "out",
+            "type": "string",
+            "description": "the directory to write into (default .qsm/bpmn at the repository root)"
+          }
+        ]
+      }
+    }
+  }
+}

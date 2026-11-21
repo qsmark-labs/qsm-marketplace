@@ -19,7 +19,6 @@ export type Forge = {
     pr: number;
     commentId: number;
     message: string;
-    noResolve?: boolean;
     repo?: string;
   }): Promise<unknown>;
   ghResolve(options: {

@@ -1,0 +1,396 @@
+{
+  "painted": [
+    {
+      "what": "the box of mp.spec.tool",
+      "owner": "mp.spec.tool",
+      "shape": { "x": 336.48, "y": 452, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.spec.hooks",
+      "owner": "mp.spec.hooks",
+      "shape": { "x": 336.48, "y": 302, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.spec.propose",
+      "owner": "mp.spec.propose",
+      "shape": { "x": 680.48, "y": 302, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.spec.apply",
+      "owner": "mp.spec.apply",
+      "shape": { "x": 556.48, "y": 452, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.spec.archive",
+      "owner": "mp.spec.archive",
+      "shape": { "x": 805.48, "y": 452, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.essentials",
+      "owner": "mp.essentials",
+      "shape": { "x": 350, "y": 881.76, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.tasks",
+      "owner": "mp.tasks",
+      "shape": { "x": 830, "y": 881.76, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.plan",
+      "owner": "mp.plan",
+      "shape": { "x": 680, "y": 12, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.forge",
+      "owner": "mp.forge",
+      "shape": { "x": 590, "y": 881.76, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of mp.lib",
+      "owner": "mp.lib",
+      "shape": { "x": 110, "y": 881.76, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the box of openspec",
+      "owner": "openspec",
+      "shape": { "x": 954, "y": 1035.76, "w": 200, "h": 84 }
+    },
+    {
+      "what": "the title of mp.spec",
+      "owner": "mp.spec",
+      "shape": { "x": 17, "y": 672.56, "w": 191.88, "h": 18.2 }
+    },
+    {
+      "what": "the outline of mp.spec",
+      "owner": "mp.spec",
+      "shape": [
+        { "x": 12, "y": 270 },
+        { "x": 1037.48, "y": 270 }
+      ]
+    },
+    {
+      "what": "the outline of mp.spec",
+      "owner": "mp.spec",
+      "shape": [
+        { "x": 1037.48, "y": 270 },
+        { "x": 1037.48, "y": 695.76 }
+      ]
+    },
+    {
+      "what": "the outline of mp.spec",
+      "owner": "mp.spec",
+      "shape": [
+        { "x": 1037.48, "y": 695.76 },
+        { "x": 12, "y": 695.76 }
+      ]
+    },
+    {
+      "what": "the outline of mp.spec",
+      "owner": "mp.spec",
+      "shape": [
+        { "x": 12, "y": 695.76 },
+        { "x": 12, "y": 270 }
+      ]
+    },
+    {
+      "what": "the label of \"hands disjoint work to the agents of [skill reference]\"",
+      "owner": "line 0",
+      "shape": { "x": 298, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"hands disjoint work to the agents of [skill reference]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 623.1466666666666, "y": 536 },
+        { "x": 623, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.apply", "mp.essentials"]
+    },
+    {
+      "what": "the line \"hands disjoint work to the agents of [skill reference]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 623, "y": 727.76 },
+        { "x": 450, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.apply", "mp.essentials"]
+    },
+    {
+      "what": "the line \"hands disjoint work to the agents of [skill reference]\"",
+      "owner": "line 0",
+      "shape": [
+        { "x": 450, "y": 727.76 },
+        { "x": 450, "y": 881.76 }
+      ],
+      "ends": ["mp.spec.apply", "mp.essentials"]
+    },
+    {
+      "what": "the label of \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": { "x": 739, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 780.48, "y": 386 },
+        { "x": 780, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.propose", "mp.tasks"]
+    },
+    {
+      "what": "the line \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 780, "y": 727.76 },
+        { "x": 891, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.propose", "mp.tasks"]
+    },
+    {
+      "what": "the line \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 891, "y": 727.76 },
+        { "x": 891, "y": 835.76 }
+      ],
+      "ends": ["mp.spec.propose", "mp.tasks"]
+    },
+    {
+      "what": "the line \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 891, "y": 835.76 },
+        { "x": 930, "y": 835.76 }
+      ],
+      "ends": ["mp.spec.propose", "mp.tasks"]
+    },
+    {
+      "what": "the line \"has the agent bind the change to its feature with [instruction]\"",
+      "owner": "line 1",
+      "shape": [
+        { "x": 930, "y": 835.76 },
+        { "x": 930, "y": 881.76 }
+      ],
+      "ends": ["mp.spec.propose", "mp.tasks"]
+    },
+    {
+      "what": "the label of \"hands the change to [skill reference]\"",
+      "owner": "line 2",
+      "shape": { "x": 646, "y": 166, "w": 118.1, "h": 26 }
+    },
+    {
+      "what": "the line \"hands the change to [skill reference]\"",
+      "owner": "line 2",
+      "shape": [
+        { "x": 780, "y": 96 },
+        { "x": 780.48, "y": 302 }
+      ],
+      "ends": ["mp.plan", "mp.spec.propose"]
+    },
+    {
+      "what": "the label of \"has the agent open the task pull request with [instruction]\"",
+      "owner": "line 3",
+      "shape": { "x": 538, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"has the agent open the task pull request with [instruction]\"",
+      "owner": "line 3",
+      "shape": [
+        { "x": 689.8133333333333, "y": 536 },
+        { "x": 690, "y": 881.76 }
+      ],
+      "ends": ["mp.spec.apply", "mp.forge"]
+    },
+    {
+      "what": "the label of \"builds on cli-base, install-base, outcome, qsm-manifest [import]\"",
+      "owner": "line 4",
+      "shape": { "x": 58, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"builds on cli-base, install-base, outcome, qsm-manifest [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 436.48, "y": 536 },
+        { "x": 436, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.tool", "mp.lib"]
+    },
+    {
+      "what": "the line \"builds on cli-base, install-base, outcome, qsm-manifest [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 436, "y": 727.76 },
+        { "x": 210, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.tool", "mp.lib"]
+    },
+    {
+      "what": "the line \"builds on cli-base, install-base, outcome, qsm-manifest [import]\"",
+      "owner": "line 4",
+      "shape": [
+        { "x": 210, "y": 727.76 },
+        { "x": 210, "y": 881.76 }
+      ],
+      "ends": ["mp.spec.tool", "mp.lib"]
+    },
+    {
+      "what": "the label of \"calls the verbs through the noun [function call]\"",
+      "owner": "line 5",
+      "shape": { "x": 272.88, "y": 406, "w": 147.6, "h": 26 }
+    },
+    {
+      "what": "the line \"calls the verbs through the noun [function call]\"",
+      "owner": "line 5",
+      "shape": [
+        { "x": 436.48, "y": 386 },
+        { "x": 436.48, "y": 452 }
+      ],
+      "ends": ["mp.spec.hooks", "mp.spec.tool"]
+    },
+    {
+      "what": "the label of \"has the agent archive the change with [instruction]\"",
+      "owner": "line 6",
+      "shape": { "x": 908, "y": 773.76, "w": 129.89999999999998, "h": 38 }
+    },
+    {
+      "what": "the line \"has the agent archive the change with [instruction]\"",
+      "owner": "line 6",
+      "shape": [
+        { "x": 905.48, "y": 536 },
+        { "x": 905, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.archive", "openspec"]
+    },
+    {
+      "what": "the line \"has the agent archive the change with [instruction]\"",
+      "owner": "line 6",
+      "shape": [
+        { "x": 905, "y": 727.76 },
+        { "x": 1054, "y": 727.76 }
+      ],
+      "ends": ["mp.spec.archive", "openspec"]
+    },
+    {
+      "what": "the line \"has the agent archive the change with [instruction]\"",
+      "owner": "line 6",
+      "shape": [
+        { "x": 1054, "y": 727.76 },
+        { "x": 1054, "y": 1035.76 }
+      ],
+      "ends": ["mp.spec.archive", "openspec"]
+    }
+  ],
+  "drawn": [
+    {
+      "title": "hands disjoint work to the agents of [skill reference]",
+      "segs": [
+        [
+          { "x": 623.1466666666666, "y": 536 },
+          { "x": 623, "y": 727.76 }
+        ],
+        [
+          { "x": 623, "y": 727.76 },
+          { "x": 450, "y": 727.76 }
+        ],
+        [
+          { "x": 450, "y": 727.76 },
+          { "x": 450, "y": 881.76 }
+        ]
+      ],
+      "label": { "x": 298, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "title": "has the agent bind the change to its feature with [instruction]",
+      "segs": [
+        [
+          { "x": 780.48, "y": 386 },
+          { "x": 780, "y": 727.76 }
+        ],
+        [
+          { "x": 780, "y": 727.76 },
+          { "x": 891, "y": 727.76 }
+        ],
+        [
+          { "x": 891, "y": 727.76 },
+          { "x": 891, "y": 835.76 }
+        ],
+        [
+          { "x": 891, "y": 835.76 },
+          { "x": 930, "y": 835.76 }
+        ],
+        [
+          { "x": 930, "y": 835.76 },
+          { "x": 930, "y": 881.76 }
+        ]
+      ],
+      "label": { "x": 739, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "title": "hands the change to [skill reference]",
+      "segs": [
+        [
+          { "x": 780, "y": 96 },
+          { "x": 780.48, "y": 302 }
+        ]
+      ],
+      "label": { "x": 646, "y": 166, "w": 118.1, "h": 26 }
+    },
+    {
+      "title": "has the agent open the task pull request with [instruction]",
+      "segs": [
+        [
+          { "x": 689.8133333333333, "y": 536 },
+          { "x": 690, "y": 881.76 }
+        ]
+      ],
+      "label": { "x": 538, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "title": "builds on cli-base, install-base, outcome, qsm-manifest [import]",
+      "segs": [
+        [
+          { "x": 436.48, "y": 536 },
+          { "x": 436, "y": 727.76 }
+        ],
+        [
+          { "x": 436, "y": 727.76 },
+          { "x": 210, "y": 727.76 }
+        ],
+        [
+          { "x": 210, "y": 727.76 },
+          { "x": 210, "y": 881.76 }
+        ]
+      ],
+      "label": { "x": 58, "y": 773.76, "w": 135.79999999999998, "h": 38 }
+    },
+    {
+      "title": "calls the verbs through the noun [function call]",
+      "segs": [
+        [
+          { "x": 436.48, "y": 386 },
+          { "x": 436.48, "y": 452 }
+        ]
+      ],
+      "label": { "x": 272.88, "y": 406, "w": 147.6, "h": 26 }
+    },
+    {
+      "title": "has the agent archive the change with [instruction]",
+      "segs": [
+        [
+          { "x": 905.48, "y": 536 },
+          { "x": 905, "y": 727.76 }
+        ],
+        [
+          { "x": 905, "y": 727.76 },
+          { "x": 1054, "y": 727.76 }
+        ],
+        [
+          { "x": 1054, "y": 727.76 },
+          { "x": 1054, "y": 1035.76 }
+        ]
+      ],
+      "label": { "x": 908, "y": 773.76, "w": 129.89999999999998, "h": 38 }
+    }
+  ]
+}

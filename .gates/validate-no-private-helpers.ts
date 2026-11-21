@@ -17,6 +17,8 @@ const HELPERS = [
   "writeAtomic",
   "tryFlock",
   "escapeHtml",
+  "gapBetween",
+  "touchDefects",
 ];
 const DEFINES = new RegExp(`\\b(?:function|const|let)\\s+(${HELPERS.join("|")})\\b`, "g");
 // root lib's messageOf body, written inline

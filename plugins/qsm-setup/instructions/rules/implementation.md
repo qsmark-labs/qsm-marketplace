@@ -6,15 +6,13 @@ skill holds gets its source named, or is called a guess.
 
 ## First: why
 
-Answer these six in writing before you design. A missing answer is a question for the user.
+Answer these five in writing before you design. A missing answer is a question for the user.
 
 1. Who is this for, specifically, and what do they do with it?
 2. What problem does it solve, and why now? What happens if we do not build it?
 3. What are we not doing?
 4. What exists already that does this, and why is this better than using it?
 5. What must be true for it to work, and what proves it works: a test, an output, a number?
-6. Budget: how much time and code is this worth? Cut the solution to fit the budget, never the
-   other way round.
 
 ## Then: what kind of thing is it
 
@@ -64,6 +62,16 @@ compatibility branch is a second path that nobody runs and nobody tests (You Are
 It). Never history in the code: no deprecated marker, no renamed-from note, no `v2` copy, no
 date, because git already holds what the code used to be.
 
+## Whitelist: every input is wrong until a path says it is right
+
+Code accepts only what an implemented path names: every input and every output is wrong, and
+fails with the project's error, until a path says it is right. Validate data where it enters,
+against an explicit shape, and refuse an unknown field, value or shape instead of passing it on. A
+switch over a closed set names every case, and its default throws. A default that hides a missing
+value (`?? ""`, `|| []` on required data) and a catch that carries on are fallbacks too. The same
+input gives the same output: no hidden dependence on time, randomness, the environment or
+iteration order unless an input names it.
+
 ## Contracts: written before code
 
 Anything that crosses a boundary, another system, another agent, the shell, the browser, gets a
@@ -83,7 +91,7 @@ working code.
    never written.
 2. Each module, class and function has one job, so it has one reason to change, and its name says
    that job in one clear phrase. Keep the decisions (what to do) apart from the details (how it is
-   done).
+   done): a decision is a pure function, and side effects live at the edges.
 3. Open for extension, closed for modification: an extension adds code beside what it extends and
    touches nothing it does not extend. When adding one forces edits elsewhere, the seam is wrong;
    rewrite that seam first, then add the extension.
@@ -126,8 +134,8 @@ Nothing a UI paints ever touches anything else: two bodies side by side (badges,
 chips, cards, rows) keep a gap from the project's spacing scale, in every project, every surface
 and every tool page, an agent's own throwaway pages included. A flex row or a list of bodies gets
 its gap where it is declared, never from the whitespace between inline elements, which is zero
-for elements a script builds. The person in their words: "Nikdy nikde nesmi byt nic co se dotyka,
-v zadnem projektu nebo kodu ever."
+for elements a script builds. Two painted bodies that touch look like one body or a
+defect, and no project is an exception.
 
 ## Clean before and after
 
@@ -140,3 +148,8 @@ period, no cleanup of their transcripts, notes, sessions or files, and no settin
 tool delete them (`cleanupPeriodDays` below 36500 is such a setting), because a deleted transcript
 never comes back and nobody asked for it to go. A tool that must make room archives at maximum
 compression and names the archive.
+
+Whatever starts a process, a timer or a server owns its end: it waits for that end, or hands back
+the handle (a pid) so its caller can. A test waits on the end itself, never on a log line, a file
+or a sleep, because a side effect comes before the end, and what still runs after a test writes
+into what the next one removed.

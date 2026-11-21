@@ -18,6 +18,7 @@ import {
   type DoctorRow,
   doctorRows,
   headline,
+  PATCHED_SENTRUX_VERSION,
   printRunLines,
   type StructuralCheckerStatus,
   structuralCheckerStatus,
@@ -174,10 +175,12 @@ function describeStructuralCheck(structural: StructuralCheckerStatus): string {
     return "ok       structural checker (sentrux, qsm-patched)";
   }
   if (structural.present) {
-    return (
-      "MISSING  structural checker (sentrux on PATH is unpatched upstream, not ready) — install: " +
-      "qsm-setup install qsm-langdev"
-    );
+    const found = structural.found ?? "of an unknown version";
+    const why =
+      structural.found?.includes("-qsm") === true
+        ? `sentrux ${found} is older than the patch (${PATCHED_SENTRUX_VERSION})`
+        : `sentrux ${found} on PATH is unpatched upstream`;
+    return `MISSING  structural checker (${why}, not ready) — install: qsm-setup install qsm-langdev`;
   }
   return (
     "MISSING  structural checker (sentrux not on PATH) — install: " +

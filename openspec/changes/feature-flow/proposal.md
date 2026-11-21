@@ -2,6 +2,10 @@
 
 ![Step 2, planning, BPMN level 2](../../../models/marketplace.plan_process.svg)
 
+![Step 2.8, the approved plan is recorded, BPMN level 3](../../../models/marketplace.record_plan_process.svg)
+
+![Step 2.11, a feature too big for one is decoupled, BPMN level 3](../../../models/marketplace.decouple_process.svg)
+
 ![Step 3, the split, BPMN level 2](../../../models/marketplace.split_process.svg)
 
 ![Steps 4 to 6, every open task built, BPMN level 2](../../../models/marketplace.build_task_process.svg)
@@ -32,11 +36,15 @@ one feature pull request whose merge into main is the owner's accept.
 - **A feature change has its own OpenSpec schema**, `feature`: proposal (one screen), models
   (BPMN and C4, each with its picture), specs (scenarios cite the BPMN's cover paths), design
   (decisions only). It has no tasks artifact.
-- **Step 1, the request**: two issue forms, feature request and issue, whose fields are the six
+- **Step 1, the request**: two issue forms, feature request and issue, whose fields are the five
   questions of the implementation rule.
-- **Step 2, planning** writes the change models first; after the owner's yes in the session it
-  commits the change onto the local branch `feature/<n>` and updates the feature issue with a
-  one-screen summary. It opens no pull request and creates no task.
+- **Step 2, planning** writes the change models first, and its plan opens with a Feasibility
+  section: what can be done, what cannot and why, and how many task pull requests it
+  takes, which the owner reads before his yes. After the yes in the session it commits the change
+  onto the local branch `feature/<n>` and updates the feature issue with a one-screen summary. A
+  request too big for one feature ends in a proposed split: after the yes the agent files one new
+  feature issue per part, each planned on its own, and closes the original with a comment linking
+  them. It opens no pull request and creates no task.
 - **Step 3, the split**: the owner and the agent cut the feature into tasks, each a reviewable
   pull request, with fakes that let each part run; `feature/<n>` is pushed first.
 - **Step 4, a task is built in one session**: context first, a whiteboard in the chat, the code,
@@ -62,23 +70,29 @@ The owner picks from this table. Order is a suggestion: the same number can run 
 | 2 | `tasks-on-github-issues` | The skills and plugins stop using `br`; a change is bound to its feature | `qsm-tasks-cli` | spec, revised to this flow |
 | 3 | `feature-flow` | The feature schema and steps 1 to 6 and 9 | `qsm-tasks-cli`, `tasks-on-github-issues`, `strict-visual-models` | spec, this change |
 | 4 | `qa-agent` | Step 8: a QA agent deploys `feature/<n>` to a sandbox and runs the scenarios of the feature's cover paths as a blackbox | `feature-flow`, `strict-visual-models` | stub |
-| 5 | `agent-identity` | Agents open and review pull requests under their own identity, so the owner's approval is a gate GitHub enforces | `qsm-tasks-cli` | stub |
+| 1 | `agent-identity` | Agents open and review pull requests as `qsmark-bot`, so the owner's approval is a gate GitHub enforces | built with `qsm-tasks-cli` | stub, decided |
 | 6 | `release-train` | Versions, a two-week release, release notes from released items, then archive | `qsm-tasks-cli` | parked |
 | later | automatic planning | Step 2 runs on a new feature request without the owner, who reviews the result | `feature-flow`, `qa-agent` | not a change yet |
 
 ## Decisions of the owner
 
-1. **Features, no epics** (2026-11-01): "we removed epics fully". A feature is GitHub's default
-   issue type Feature; a task is a sub-issue; feedback is a plain issue from a
-   template.
-2. **Strict visual models everywhere** (2026-11-01): "vsude strict defined theorem visual models,
-   tak aby bylo jasne na vsechny strany really co chceme". BPMN is behaviour, C4 is structure.
-3. **Near the loop** (2026-11-01): "I want to take the problem apart and know about it." Specs
-   today are "one huge useless file with insane amount of text. No visibility or visuals for
-   anything."
-4. **The feature branch and the accept** (2026-11-01): `feature/<n>` at the split, task pull
-   requests target it, a conflict with main is resolved and reviewed before QA, and the feature
-   pull request to main is the accept; QA catches contract and business bugs, never code bugs:
-   "QA ma chytat contract a business bugs, ne codebugs".
-5. **GitHub first** (2026-10-30): "i dont want to duplicate anything that github already has a
-   way to do normally".
+1. **Features, no epics**: a feature is GitHub's issue type Feature, a task its sub-issue, and
+   feedback a plain issue from a template, because GitHub already has these and a second
+   hierarchy would only drift from it.
+2. **Strict visual models everywhere**: BPMN is behaviour, C4 is structure, so what is wanted is
+   clear from every side before anything is built.
+3. **Near the loop**: the owner takes each problem apart himself, so a spec is pictures and short
+   requirements, never one long file of text.
+4. **The feature branch and the accept**: `feature/<n>` is cut at the split, task pull requests
+   target it, a conflict with main is resolved and reviewed before QA, and the feature pull
+   request to main is the accept. QA catches contract and business bugs, because code bugs are
+   the review's.
+5. **GitHub first**: nothing GitHub already does is built again.
+6. **Task pull requests stay reviewable**: the required check `pr-size` fails one past 400
+   changed lines; `.gitattributes` marks generated files, a BPMN's layout included, as not
+   counted, because a model is read through its picture.
+7. **No budget**: the implementation rule and the forms ask five questions, and Feasibility counts
+   the task pull requests instead of measuring a budget.
+8. **Pictures first, least text**: anyone who opens a feature, the owner first, sees at once what
+   goes where and why. Every step and every tool exists to lower what the reader must hold in
+   mind.

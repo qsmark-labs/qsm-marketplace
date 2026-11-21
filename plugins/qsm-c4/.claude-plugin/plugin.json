@@ -1,0 +1,9 @@
+{
+  "name": "qsm-c4",
+  "description": "Strict architecture models: one C4 graph per project in LikeC4, checked by likec4 validate and the level and colour rules, rendered per level to committed draw.io pictures, listed for other tools, and shown as one self-contained page.",
+  "keywords": ["c4", "likec4", "models", "diagrams", "lint", "drawio"],
+  "author": {
+    "name": "qsm"
+  },
+  "types": "./types/index.d.ts"
+}

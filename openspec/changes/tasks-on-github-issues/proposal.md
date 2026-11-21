@@ -16,7 +16,7 @@ picture above shows.
   definitions instead of copying them.
 - **The model in GitHub's terms**: a feature (issue type Feature) holds the intent, the models and
   the spec, bound by the label `change:<id>`; its tasks are sub-issues created when the owner and
-  the agent split it, each closed by the merge of its pull request into `feature/<n>`; QA's
+  the agent split it, each closed by the merge of its pull request into `features/<n>-<title>`; QA's
   verdict is a note that starts `QA passed`, after which the change is archived on the branch;
   the owner's merge of the feature pull request into main closes the feature. No test-it task, no
   tasks.md, no `accept`.

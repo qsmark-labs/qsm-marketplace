@@ -1,0 +1,11 @@
+{
+  "name": "qsm-bpmn",
+  "private": true,
+  "dependencies": {
+    "bpmn-auto-layout": "2.0.0-alpha.2",
+    "bpmn-js": "18.31.1",
+    "bpmn-moddle": "10.3.1",
+    "bpmnlint": "12.0.0",
+    "jsdom": "30.1.3"
+  }
+}
