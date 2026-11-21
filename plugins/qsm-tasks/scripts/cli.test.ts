@@ -35,6 +35,8 @@ interface FakeGh {
   readonly exit?: number;
   /** what it answers a search */
   readonly search?: string;
+  /** what it answers the search page that follows a cursor, by cursor */
+  readonly pages?: Readonly<Record<string, string>>;
   /** what it answers the read of one issue */
   readonly issue?: string;
   /** what it answers doctor's one read of the repository and the board */
@@ -75,7 +77,10 @@ function arms(gh: FakeGh, refused: string): string {
     const answer = gh[key];
     return answer === undefined ? [] : [`${pattern}) printf '%s' '${answer}' ;; `];
   });
-  return [...(gh.refuseEditOnce === undefined ? [] : [edit]), ...named].join("");
+  const pages = Object.entries(gh.pages ?? {}).map(
+    ([cursor, answer]) => `*"after=${cursor}"*) printf '%s' '${answer}' ;; `,
+  );
+  return [...(gh.refuseEditOnce === undefined ? [] : [edit]), ...pages, ...named].join("");
 }
 
 function run(gh: FakeGh, argv: readonly string[] = ["ready"], dir = sandboxDir("qsm-tasks-")) {
@@ -155,8 +160,19 @@ function task(number: number, priority: string | null, blockedBy: number[] = [],
   };
 }
 
-function found(nodes: readonly unknown[]): string {
-  return JSON.stringify({ data: { search: { pageInfo: { hasNextPage: false }, nodes } } });
+function found(
+  nodes: readonly unknown[],
+  next: string | null = null,
+  issueCount = nodes.length,
+): string {
+  const pageInfo = { hasNextPage: next !== null, endCursor: next };
+  return JSON.stringify({ data: { search: { issueCount, pageInfo, nodes } } });
+}
+
+/** A task on the board whose card has no Status. */
+function noStatus(number: number) {
+  const card = { id: `PVTI_${number}`, project: { id: BOARD.id }, status: null, priority: null };
+  return { ...task(number, null), projectItems: whole([card]) };
 }
 
 describe("qsm-tasks reads the board", () => {
@@ -208,6 +224,51 @@ describe("qsm-tasks reads the board", () => {
       expect(r.exit).not.toBe(0);
       expect(r.message).toContain("#8: GitHub left out its labels");
     }
+  });
+
+  it("list prints a card on the board with no Status as no Status, as claim names it", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([noStatus(8)]) }, ["list"]);
+    expect(r.message).toStartWith("#8 [no Status] ");
+  });
+
+  it("ready and list read a search of three pages whole, each row once and in order", () => {
+    const gh = {
+      stdout: linked([BOARD]),
+      search: found([task(3, null), task(1, null)], "c1"),
+      pages: { c1: found([task(2, null)], "c2"), c2: found([task(5, null), task(4, null)]) },
+    };
+    const r = run(gh, ["list"]);
+    expect(r.calls.filter((c) => c.includes("search(")).length).toBe(3);
+    expect(r.message.split("\n").map((line) => line.split(" ")[0])).toEqual([
+      "#1",
+      "#2",
+      "#3",
+      "#4",
+      "#5",
+    ]);
+    const asked = run(gh);
+    expect(asked.message.split("\n").map((line) => line.split(" ")[0])).toEqual([
+      "#1",
+      "#2",
+      "#3",
+      "#4",
+      "#5",
+    ]);
+  });
+
+  it("ready refuses a last page when GitHub counts more matches than the rows read", () => {
+    const r = run({ stdout: linked([BOARD]), search: found([task(1, null)], null, 1200) });
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("matches 1200 issues");
+    expect(r.message).toContain("stopped at 1");
+  });
+
+  it("ready refuses a search past ten pages, naming the cap and the rows it reached", () => {
+    const endless = found([task(1, null)], "c1");
+    const r = run({ stdout: linked([BOARD]), search: endless, pages: { c1: endless } });
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain("past 10 pages of 100 issues");
+    expect(r.message).toContain("stopped at 10");
   });
 
   it("ready lists an open task the board has not added yet, as claim takes it", () => {
@@ -496,6 +557,15 @@ describe("qsm-tasks files the work", () => {
 });
 
 describe("qsm-tasks show", () => {
+  it("prints a card on the board with no Status as no Status, as claim names it", () => {
+    const family = { parent: null, subIssuesSummary: { total: 0, completed: 0 } };
+    const issue = JSON.stringify({
+      data: { node: { issue: { ...noStatus(5), body: "", ...family } } },
+    });
+    const r = run({ stdout: linked([BOARD]), issue }, ["show", "5"]);
+    expect(r.message).toStartWith("#5 [no Status] ");
+  });
+
   it("refuses an issue whose blockers GitHub cut, as ready and list do", () => {
     const cutBlockers = { pageInfo: { hasNextPage: true }, nodes: [] };
     const family = { parent: null, subIssuesSummary: { total: 0, completed: 0 } };
