@@ -473,7 +473,7 @@ issue" off, the views Tasks and Features, and `.github/ISSUE_TEMPLATE/feedback.y
 
 - **WHEN** the board's "Pull request linked to issue" workflow is on
 - **THEN** `doctor` prints it as `failed`, tells the person to turn it off in the board's UI because
-  it moves a feature to Agent Review, and never switches it itself
+  it moves a card without the flow's guard, and never switches it itself
 
 #### Scenario: The feedback template is missing
 

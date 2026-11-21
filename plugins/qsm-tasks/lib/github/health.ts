@@ -64,8 +64,9 @@ const WORKFLOWS: readonly (readonly [string, string | null])[] = [
   ["Item closed", STATUS.done],
 ];
 
-/** The built-in workflow doctor needs off: it moves a feature to Agent Review, a Status the flow has
- * no row for, so plan and qa then refuse the feature. The binary never switches it. */
+/** The built-in workflow doctor needs off: when a pull request into the default branch names its
+ * issue, it moves that card with no guard of the flow, to a Status the board sets and no field
+ * reads. The binary never switches it. */
 const LINKED = "Pull request linked to issue";
 
 /** A field the old board had and this flow does not: the owner deletes it in the web UI. */
@@ -168,7 +169,7 @@ function workflowCheck(at: Health, [name, sets]: readonly [string, string | null
 
 function linkedCheck(at: Health): Check {
   const on = at.workflows.some((w) => w.name === LINKED && w.enabled);
-  const fix = `turn it off in ${at.url}/workflows, it moves a feature to Agent Review`;
+  const fix = `turn it off in ${at.url}/workflows, it moves a card without the flow's guard`;
   return has(`workflow ${LINKED}`, !on, fix);
 }
 
