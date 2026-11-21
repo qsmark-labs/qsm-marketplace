@@ -121,7 +121,10 @@ export function spawnAsync(
     child.on("error", (err: NodeJS.ErrnoException) => {
       error = err;
     });
-    child.on("close", (status, signal) => {
+    // The kill waits for `exit`, not `close`: `close` waits for every holder of the output pipes,
+    // so a background child that kept them would delay it until the limit and make a checker that
+    // ended cleanly look timed out.
+    child.on("exit", () => {
       clearTimeout(timer);
       if (child.pid !== undefined) {
         live.delete(child.pid);
@@ -129,9 +132,11 @@ export function spawnAsync(
         const failure = killGroup(child.pid, command);
         if (failure !== null) {
           rejectPromise(failure);
-          return;
         }
       }
+    });
+    child.on("close", (status, signal) => {
+      clearTimeout(timer);
       resolvePromise({ status, signal, stdout, stderr, ...(error === undefined ? {} : { error }) });
     });
   });
