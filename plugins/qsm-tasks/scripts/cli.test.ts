@@ -659,18 +659,19 @@ describe("qsm-tasks doctor", () => {
     "from:main-agent",
     "from:subagent",
   ];
+  const LINKED = "Pull request linked to issue";
   const workflows = [
     "Auto-add to project",
     "Auto-add sub-issues to project",
     "Item added to project",
     "Item closed",
-    "Pull request linked to issue",
+    LINKED,
   ];
 
   /** doctor's read as GitHub answers it, in the shape a recorded answer has. */
   function healthOf(
     fields: { name: string; options: string[] }[],
-    more: { template?: boolean } = {},
+    more: { template?: boolean; linkedOn?: boolean } = {},
   ): string {
     const nodes = (list: readonly string[]) => ({ nodes: list.map((name) => ({ name })) });
     const repo = {
@@ -687,7 +688,12 @@ describe("qsm-tasks doctor", () => {
           options: f.options.map((name) => ({ id: name, name, color: "GRAY", description: "" })),
         })),
       },
-      workflows: { nodes: workflows.map((name) => ({ name, enabled: true })) },
+      workflows: {
+        nodes: workflows.map((name) => ({
+          name,
+          enabled: name === LINKED ? more.linkedOn === true : true,
+        })),
+      },
       views: nodes(["Tasks", "Features"]),
     };
     return JSON.stringify({ data: { repo, board } });
@@ -702,6 +708,32 @@ describe("qsm-tasks doctor", () => {
     expect(r.exit).toBe(0);
     expect(r.message).toContain("manual  workflow Item closed: check it sets Done");
     expect(r.message).not.toContain("failed");
+  });
+
+  const board = [
+    { name: "Status", options: allStatuses },
+    { name: "Priority", options: ["P0", "P1", "P2"] },
+  ];
+
+  it("fails the pull request workflow when it is on and names the switch", () => {
+    const health = healthOf(board, { linkedOn: true });
+    const r = run({ stdout: linked([BOARD]), health }, ["doctor"]);
+    expect(r.exit).toBe(1);
+    expect(r.message).toContain(
+      `failed  workflow ${LINKED}: turn it off in ${url}/workflows, it moves a card without the flow's guard`,
+    );
+  });
+
+  it("passes the pull request workflow when it is off", () => {
+    const r = run({ stdout: linked([BOARD]), health: healthOf(board) }, ["doctor"]);
+    expect(r.message).toContain(`ok      workflow ${LINKED}`);
+  });
+
+  it("gives a failed doctor its reason in --json", () => {
+    const health = healthOf(board, { template: false });
+    const r = run({ stdout: linked([BOARD]), health }, ["doctor"]);
+    expect(r.exit).toBe(1);
+    expect(r.data).toMatchObject({ reason: "not-found" });
   });
 
   it("fails a leftover by the web page, never setup, and a missing template", () => {

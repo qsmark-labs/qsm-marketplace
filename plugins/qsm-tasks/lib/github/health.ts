@@ -62,8 +62,12 @@ const WORKFLOWS: readonly (readonly [string, string | null])[] = [
   ["Auto-add sub-issues to project", null],
   ["Item added to project", STATUS.todo],
   ["Item closed", STATUS.done],
-  ["Pull request linked to issue", STATUS.agentReview],
 ];
+
+/** The built-in workflow doctor needs off: when a pull request into the default branch names its
+ * issue, it moves that card with no guard of the flow, to a Status the board sets and no field
+ * reads. The binary never switches it. */
+const LINKED = "Pull request linked to issue";
 
 /** A field the old board had and this flow does not: the owner deletes it in the web UI. */
 const LEFTOVER_FIELDS = ["Epic stage"];
@@ -163,6 +167,12 @@ function workflowCheck(at: Health, [name, sets]: readonly [string, string | null
   return { name: `workflow ${name}`, status: "manual", fix };
 }
 
+function linkedCheck(at: Health): Check {
+  const on = at.workflows.some((w) => w.name === LINKED && w.enabled);
+  const fix = `turn it off in ${at.url}/workflows, it moves a card without the flow's guard`;
+  return has(`workflow ${LINKED}`, !on, fix);
+}
+
 /** Every check doctor prints, in its order. */
 export function checks(at: Health): Check[] {
   const scope = at.scopes === null ? "manual" : at.scopes.includes("project") ? "ok" : "failed";
@@ -178,6 +188,7 @@ export function checks(at: Health): Check[] {
     ...leftovers.map((f) => has(`field ${f}`, false, `delete it in ${at.url}/settings`)),
     ...LABELS.map((l) => has(`label ${l}`, at.labels.includes(l), SETUP_MAKES)),
     ...WORKFLOWS.map((w) => workflowCheck(at, w)),
+    linkedCheck(at),
     ...["Tasks", "Features"].map((v): Check =>
       at.views.includes(v)
         ? { name: `view ${v}`, status: "manual", fix: `check its filter in ${at.url}` }
@@ -199,7 +210,7 @@ export function verdict(head: string, list: readonly Check[]): Outcome {
   const message = [head, ...list.map(row)].join("\n");
   const data = { checks: list };
   if (list.some((c) => c.status === "failed")) {
-    return fail("failed", message, data);
+    return fail("failed", message, { ...data, reason: "not-found" });
   }
   return list.some((c) => c.status === "manual")
     ? { code: "partial", message, data }
