@@ -153,9 +153,9 @@ what done means, ending in a `strict-reviewer` review.
 
 ## Temporary
 
-- Evals are written, not run: a change to a skill or agent writes or updates its eval case, and
-  nobody runs `bun run eval` until the owner has reviewed every case in one pass, because a run
-  against an unreviewed case judges the skill by a grader nobody checked.
+- Agentic evals are written, not run: a change to a skill or agent writes or updates its eval
+  case, and the case stays in the tree unrun until the lens of qsm-builder is finished. Every
+  other eval and test runs.
 
 ## Where work lands
 
