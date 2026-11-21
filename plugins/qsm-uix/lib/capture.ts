@@ -32,9 +32,10 @@ const DEFAULT_PALETTE_TOP = 6;
 const MIN_BURST_FRAMES = 2;
 const FRAME_DIGITS = 3;
 const PERCENT = 100;
-/** The image tool's `compare` says 0 for identical, 1 for different, and
- * more than that for a real error. Both of the first two are answers. */
-const COMPARE_DIFFERENT = 1;
+/** The image tool's `compare` exits 0 or 1 for an answer and more than that for a real error.
+ * Which of the two it gives for two identical images depends on its version, so the answer is
+ * read from the distortion it prints, never from the exit code. */
+const COMPARE_LAST_ANSWER = 1;
 const SSIM_NORMALIZED = /\(([\d.eE+-]+)\)/;
 
 /** Where a verb puts a file the caller did not name. `QSM_UIX_DIR` moves it;
@@ -218,7 +219,7 @@ export function diff(call: DiffCall): object {
   const file = call.out ?? defaultPath("diff");
   ensureDir(dirname(file));
   const result = run([IMAGE_TOOL, "compare", "-metric", "SSIM", a, b, file]);
-  if (result.exitCode > COMPARE_DIFFERENT) {
+  if (result.exitCode > COMPARE_LAST_ANSWER) {
     throw new QsmError("failed", `${IMAGE_TOOL} compare failed: ${result.stderr.trim()}`);
   }
   // The tool prints a distortion for SSIM, not a similarity: "raw (normalized)", where 0 means
@@ -229,7 +230,7 @@ export function diff(call: DiffCall): object {
   if (!Number.isFinite(distortion)) {
     throw new QsmError("failed", `unreadable SSIM output from ${IMAGE_TOOL}: ${raw}`);
   }
-  return { action: "diff", a, b, distortion, identical: result.exitCode === 0, diffImage: file };
+  return { action: "diff", a, b, distortion, identical: distortion === 0, diffImage: file };
 }
 
 export interface BurstCall {
