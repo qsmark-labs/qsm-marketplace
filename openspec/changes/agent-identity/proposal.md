@@ -12,7 +12,7 @@ and enforceable.
 
 - **A GitHub App of the organization** opens the agents' pull requests and posts the review
   agent's reviews, so each shows who wrote it.
-- **Branch protection** on main and on `feature/*` requires the owner's approval, which the App
+- **Branch protection** on main and on `features/*` requires the owner's approval, which the App
   cannot give.
 - **`qsm-tasks` and `qsm-forge`** take the App's token for agent writes; the owner's own actions
   stay his.

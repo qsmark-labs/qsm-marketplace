@@ -169,6 +169,26 @@ never the installed tree, and no session works in the main checkout: each has it
 so a gate judges only its own agent's commits. The pre-push gates unpack each pushed commit into
 a scratch directory, so a file not yet committed can neither pass nor block a push.
 
+A branch is named after the issue it serves, with the issue's title in kebab case, so a branch
+list reads as the board does:
+
+| Work | Branch | Lands in |
+| --- | --- | --- |
+| a feature | `features/<n>-<title>` | `main` |
+| a task of a feature | `tasks/<feature n>-<feature title>/<n>-<title>` | its feature branch |
+| a side change | `issues/<n>-<title>` | `main` |
+| `main` taken into a feature | `sync/<n>-<title>` | its feature branch |
+
+- A task sits beside its feature, never under it, because git cannot hold `features/13-x` and
+  `features/13-x/<task>` at once.
+- A pull request whose head is `features/*` or `sync/*` is not measured by `pr-size`: every line it
+  carries was measured in the task pull request that brought it, or on `main`. So a feature lands
+  with a normal approval, never an admin merge.
+- A feature's pull request into `main` is opened only after its QA passed.
+- Nothing breaks a release. `main` is where work comes together, so a merge into it may break
+  something. A release is cut only from a state that works fully end to end, proven before the
+  cut.
+
 ## Before a commit
 
 Run `mise exec -- bun install` once after a clone: its `prepare` script points git at `hooks/` and
