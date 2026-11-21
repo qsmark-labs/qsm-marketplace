@@ -327,44 +327,55 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
   // run at once (two sessions pulling main) and one must not remove or rename the other's partial
   // build. The file inside keeps the final name: the compiled bytes depend on it, and the compare
   // below only skips a rebuild when two runs produce equal bytes.
-  const prefix = `${basename(outFile)}.`;
-  const dir = dirname(outFile);
-  for (const entryName of readdirSync(dir)) {
-    const pid = entryName.slice(prefix.length, -TMP.length);
-    if (
-      entryName.startsWith(prefix) &&
-      entryName.endsWith(TMP) &&
-      /^\d+$/.test(pid) &&
-      !isAlive(Number(pid))
-    ) {
-      const left = join(dir, entryName);
-      console.error(`install: removed ${left}, left by a build that ended before its cleanup`);
-      rmSync(left, { recursive: true, force: true });
-    }
-  }
   const tmpDir = `${outFile}.${process.pid}${TMP}`;
   mkdirSync(tmpDir, { recursive: true });
-  const tmp = join(tmpDir, basename(outFile));
-  const built = spawnSync(
-    "bun",
-    ["build", "--compile", "--target", "bun", "--outfile", tmp, source],
-    { stdio: ["ignore", "ignore", "pipe"], cwd: pluginRoot, encoding: "utf8" },
-  );
-  if (built.status !== 0) {
+  try {
+    const tmp = join(tmpDir, basename(outFile));
+    const built = spawnSync(
+      "bun",
+      ["build", "--compile", "--target", "bun", "--outfile", tmp, source],
+      { stdio: ["ignore", "ignore", "pipe"], cwd: pluginRoot, encoding: "utf8" },
+    );
+    if (built.status !== 0) {
+      return {
+        name,
+        status: "error",
+        detail: `bun build failed for ${entry}: ${lastLine(built.stderr)}`,
+      };
+    }
+    if (existsSync(outFile) && sha256(outFile) === sha256(tmp)) {
+      return { name, status: "already", detail: `${outFile} unchanged` };
+    }
+    renameSync(tmp, outFile);
+    return { name, status: "installed", detail: `compiled ${entry} to ${outFile}` };
+  } finally {
     rmSync(tmpDir, { recursive: true, force: true });
-    return {
-      name,
-      status: "error",
-      detail: `bun build failed for ${entry}: ${lastLine(built.stderr)}`,
-    };
   }
-  if (existsSync(outFile) && sha256(outFile) === sha256(tmp)) {
-    rmSync(tmpDir, { recursive: true, force: true });
-    return { name, status: "already", detail: `${outFile} unchanged` };
+}
+
+/** The pid in a build directory's name `<name>.<pid>.tmp`, or null for any other name. */
+function buildPid(entryName: string): number | null {
+  const match = /\.(\d+)\.tmp$/.exec(entryName);
+  return match?.[1] === undefined ? null : Number(match[1]);
+}
+
+/** Removes from the bin directory what builds left: the directory of a build whose install is
+ * dead, whichever bin it was for, and the `<bin>.tmp` file the shape before the pid name left. */
+function sweepBuilds(dir: string, bins: readonly string[]): void {
+  if (!existsSync(dir)) {
+    return;
   }
-  renameSync(tmp, outFile);
-  rmSync(tmpDir, { recursive: true, force: true });
-  return { name, status: "installed", detail: `compiled ${entry} to ${outFile}` };
+  const left = readdirSync(dir).filter((entryName) => {
+    const pid = buildPid(entryName);
+    return pid === null
+      ? bins.some((bin) => entryName === `${bin}${TMP}`)
+      : !isAlive(pid) && lstatSync(join(dir, entryName)).isDirectory();
+  });
+  for (const entryName of left) {
+    const path = join(dir, entryName);
+    console.error(`install: removed ${path}, left by a build that ended before its cleanup`);
+    rmSync(path, { recursive: true, force: true });
+  }
 }
 
 /** Every `command` string anywhere inside a parsed hooks.json. */
@@ -411,8 +422,11 @@ function staleDist(pluginRoot: string): string[] {
     return [];
   }
   const kept = new Set(declaredHooks(pluginRoot).map((h) => h.name));
-  // A running install's build directory is not stale; compile() ends the dead ones'.
-  return readdirSync(dist).filter((name) => !kept.has(name) && !name.endsWith(TMP));
+  // A running install's build directory is not stale; a dead one's is.
+  return readdirSync(dist).filter((name) => {
+    const pid = buildPid(name);
+    return !kept.has(name) && (pid === null || !isAlive(pid));
+  });
 }
 
 function pruneSteps(pluginRoot: string): Step[] {
@@ -530,6 +544,7 @@ function planStep(detail: string): Step {
 /** What the plugin compiles: its binaries into the bin directory, its
  * classic hooks into dist/. */
 function compileSteps(config: InstallBaseConfig, manifest: QsmManifest, env: Env): Step[] {
+  sweepBuilds(binDir(env), Object.keys(manifest.qsm.bin ?? {}));
   const binSteps = Object.entries(manifest.qsm.bin ?? {}).map(([bin, entry]) => {
     const outFile = join(binDir(env), bin);
     const step = compile(config.pluginRoot, entry, outFile);

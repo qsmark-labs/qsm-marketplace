@@ -105,6 +105,39 @@ describe("install-base and a build another run left in the bin directory", () =>
   }, 120_000);
 });
 
+describe("install-base and the builds of older installs in the bin directory", () => {
+  test("the old <bin>.tmp and the directory of a dead build of an undeclared bin go, a live one stays", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const ended = spawnSync("true");
+    const bins = join(f.home, "bin");
+    mkdirSync(bins, { recursive: true });
+    const old = join(bins, "qsm-fix-a.tmp");
+    const gone = join(bins, `qsm-gone.${ended.pid}.tmp`);
+    const live = join(bins, `qsm-gone.${process.ppid}.tmp`);
+    writeFileSync(old, "partial build of the shape before the pid name");
+    mkdirSync(gone);
+    mkdirSync(live);
+
+    await install(f.ctx);
+
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(gone)).toBe(false);
+    expect(existsSync(live)).toBe(true);
+    rmSync(live, { recursive: true });
+  }, 120_000);
+
+  test("a build that throws leaves no build directory", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const bins = join(f.home, "bin");
+    // a directory where the binary goes: hashing it throws after the build directory exists
+    mkdirSync(join(bins, "qsm-fix-a"), { recursive: true });
+
+    await Promise.allSettled([install(f.ctx)]);
+
+    expect(readdirSync(bins).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+  }, 120_000);
+});
+
 describe("install-base dry run", () => {
   test("dry run: prints the plan, writes nothing, reports skipped", async () => {
     const d = fakeInstall({ dryRun: true });
