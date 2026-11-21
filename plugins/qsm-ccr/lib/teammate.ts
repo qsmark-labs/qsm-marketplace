@@ -3,7 +3,7 @@
 import { binPath, exitOf, fail, type Outcome, ok, renderText } from "../../../lib/outcome.ts";
 import { fromThrown } from "../../../lib/qsm-error.ts";
 import type { Env } from "../../../lib/paths.ts";
-import { isolatedHome, isIsolated, removeHome } from "./claude-home.ts";
+import { endHome, isIsolated, isolatedHome } from "./claude-home.ts";
 import { appendLaunchLog, loadModels, prepareRouted, runClaude } from "./launch.ts";
 import { placesOf } from "./places.ts";
 import { retag } from "./retag.ts";
@@ -126,7 +126,7 @@ export async function runTeammate(argv: readonly string[], env: Env): Promise<nu
     return await runClaude(claude, launch.data.args, launch.data.env);
   } finally {
     if (launch.data.isolated) {
-      removeHome(launch.data.env, placesOf(env));
+      endHome(launch.data.env, placesOf(env));
     }
   }
 }

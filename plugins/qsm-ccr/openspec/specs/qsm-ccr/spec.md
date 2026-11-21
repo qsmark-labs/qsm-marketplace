@@ -188,6 +188,23 @@ sessions. `qsm-ccr doctor` SHALL answer `failed` when user settings `model` name
 `<provider>,<slug>` pair, a gateway id (`anthropic/claude-ccr-...`), or a catalog slug. Doctor SHALL
 name the value and SHALL NOT rewrite it.
 
+#### Scenario: A teammate outlives its lead
+
+- **WHEN** a lead's claude ends and removes its home while a teammate's claude still runs
+- **THEN** the teammate's `teams` and `tasks` SHALL still resolve, because they link the real
+  directories and not the lead's home entries
+
+#### Scenario: A home that cannot be cleaned
+
+- **WHEN** removing a launch's home fails after its claude ended
+- **THEN** qsm-ccr SHALL name the failure on stderr and keep claude's exit code
+
+#### Scenario: Homes of the shape before the pid name
+
+- **WHEN** the installer runs and the homes directory holds `session-<random>` homes
+- **THEN** it SHALL name and remove only what qsm-ccr made in each, keep what Claude wrote under a
+  `kept-<random>` name, and leave a home a live claude still uses
+
 #### Scenario: Verification that startup leaves the model alone
 
 - **WHEN** user settings holds `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1` and a lead starts,

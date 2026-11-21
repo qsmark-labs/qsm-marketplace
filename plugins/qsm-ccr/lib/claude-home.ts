@@ -8,6 +8,7 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmdirSync,
   type Stats,
@@ -22,6 +23,7 @@ import {
   liveClaudeDirs,
   withClaudeDirAt,
 } from "../../../lib/paths.ts";
+import { fromThrown } from "../../../lib/qsm-error.ts";
 import { deadRunDirs, runTempDir } from "../../../lib/reap.ts";
 import type { Places } from "./places.ts";
 
@@ -90,6 +92,17 @@ export function removeHome(env: Record<string, string>, places: Places): void {
   removeMade(dir, "its claude ended");
 }
 
+/** `removeHome` for a `finally`: a failure is named on stderr and never replaces the exit code of
+ * the claude that ran. */
+export function endHome(env: Record<string, string>, places: Places): void {
+  try {
+    removeHome(env, places);
+  } catch (error) {
+    const failed = fromThrown(error);
+    console.error(`${HOME_TOOL}: could not clean the home: ${failed.message}`);
+  }
+}
+
 /** Cleans the homes of launches that died, except one a live claude still has as its
  * Claude home: a killed wrapper leaves its claude running. */
 function sweepHomes(root: string): void {
@@ -101,6 +114,29 @@ function sweepHomes(root: string): void {
       removeMade(claimed, "left by a launch that ended before its cleanup");
     }
   }
+}
+
+/** Cleans the homes of the shape before the pid name, `session-<random>`, the way `sweepHomes`
+ * cleans a dead launch's: what qsm-ccr made goes, what Claude wrote stays, and a home a live
+ * claude still has as its Claude home is left alone. With `dryRun` it only answers which homes it
+ * would clean. Answers those homes. */
+export function cleanOldHomes(places: Places, dryRun: boolean): string[] {
+  const root = join(places.stateDir, "homes");
+  if (!existsSync(root)) {
+    return [];
+  }
+  const old = readdirSync(root)
+    .filter((name) => name.startsWith(`${HOME_TOOL}-`))
+    .map((name) => join(root, name));
+  const live = old.length === 0 ? new Set<string>() : liveClaudeDirs();
+  const found = old.filter((dir) => !live.has(dir));
+  for (const dir of dryRun ? [] : found) {
+    const claimed = claim(dir);
+    if (claimed !== null) {
+      removeMade(claimed, "left by a launch of the shape before the pid name");
+    }
+  }
+  return found;
 }
 
 /** Takes a dead launch's home for this sweep by renaming it to its `kept` name, and answers that
@@ -165,7 +201,9 @@ function fillHome(env: Env, places: Places, dir: string): Record<string, string>
   for (const name of ["teams", "tasks"]) {
     const from = join(teamHome, name);
     if (existsSync(from)) {
-      symlinkSync(from, join(dir, name));
+      // the real directory, not the entry in the lead's home: that entry is a link the lead's end
+      // removes, and a teammate that outlives its lead keeps these two
+      symlinkSync(realpathSync(from), join(dir, name));
     }
   }
   const out = withClaudeDirAt(env, dir);
