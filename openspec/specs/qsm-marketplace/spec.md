@@ -152,6 +152,13 @@ result with every step as data inside the outcome envelope: `error` maps to
 - **WHEN** the installer runs again and every compiled file hashes the same
 - **THEN** the status SHALL be `already`
 
+#### Scenario: Builds an earlier install left behind
+
+- **WHEN** the bin directory holds `<bin>.tmp` of a declared bin, or `<name>.<pid>.tmp` of a dead
+  install for any bin, or `dist/` holds either
+- **THEN** the installer SHALL remove and name them, keep the directory of a live install, and a
+  build that throws SHALL leave no build directory
+
 #### Scenario: An upstream tool is missing and slow to install
 
 - **WHEN** the tool is not on PATH and the plugin declares no install command
