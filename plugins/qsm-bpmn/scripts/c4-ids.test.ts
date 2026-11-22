@@ -1,7 +1,7 @@
 // The C4 link through the real entry: a graph that carries no C4 id runs every verb without
 // qsm-c4, and one that carries an id reads it through qsm-c4's CLI, a shim of its real entry on
 // PATH, or fails missing without it.
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, setDefaultTimeout } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { binPath } from "../../../lib/outcome.ts";
@@ -10,6 +10,11 @@ import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { repoWith } from "../../../lib/fixtures/git.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { CLI, PLAN } from "./fixtures/plan.ts";
+
+// Every call starts a bun process, and one with a C4 id starts qsm-c4 behind it; a test here makes
+// up to five. The slowest takes 2.1 s at rest and passes bun's 5 s on a loaded machine, where bun
+// ends the child. 30 s leaves fourteen times the measured worst case.
+setDefaultTimeout(30_000);
 
 const C4 = readFileSync(resolve(import.meta.dir, "../../../models/marketplace.c4"), "utf8");
 const QSM_C4 = resolve(import.meta.dir, "../../qsm-c4/scripts/cli.ts");
