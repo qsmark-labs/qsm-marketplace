@@ -100,6 +100,17 @@ export const TOOLS: readonly Tool[] = [
       "preview the range (`--unreleased`) before writing a file, and never commit a `cliff.toml` into this marketplace; a repository that wants one owns it",
   },
   {
+    bin: "gitingest",
+    blurb: "repository to one file",
+    install: "pipx install gitingest",
+    prereq: "pipx",
+    prereqHint: PIPX_HINT,
+    run: ["pipx", "install", "gitingest"],
+    versionArgs: VERSION,
+    caveat:
+      "name the output with `-o` outside the working tree, because the default writes `digest.txt` into the current directory; a private repository takes its token from `GITHUB_TOKEN`, never from `-t`, which puts the token into the transcript",
+  },
+  {
     bin: "gws",
     blurb: "Google Workspace",
     install: "bun add -g @googleworkspace/cli",

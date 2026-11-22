@@ -32,7 +32,7 @@ group("the index is always in context", () => {
     for (const entry of [...TOOLS, ...QSM_BINS]) {
       expect(describe()).toContain(`${entry.bin} (${entry.blurb})`);
     }
-    expect(TOOLS.length + QSM_BINS.length).toBe(33);
+    expect(TOOLS.length + QSM_BINS.length).toBe(34);
   });
 
   test("An entry over the word cap", () => {
