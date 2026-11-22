@@ -2,8 +2,9 @@
 // keeps its links when its lead's home goes, a failed cleanup never replaces claude's exit, and the
 // installer cleans the homes of the shape before the pid name.
 import { describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
-import { existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { deadPid } from "../../../lib/fixtures/dead-run.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { fakeInstall } from "../../../lib/fixtures/install.ts";
 import { install } from "../scripts/install.ts";
@@ -33,6 +34,30 @@ describe("a teammate's links", () => {
 
     for (const name of ["teams", "tasks"]) {
       expect(existsSync(join(teammate["CLAUDE_CONFIG_DIR"] ?? "", name))).toBe(true);
+    }
+  });
+});
+
+describe("a sweep of a dead launch's home", () => {
+  test("that fails leaves the home under this process's session name, not a kept one", () => {
+    const m = machine();
+    const homes = join(m.places.stateDir, "homes");
+    const dead = join(homes, `session.${deadPid()}.Ab12Cd`);
+    mkdirSync(dead, { recursive: true });
+    symlinkSync(join(m.base, "nowhere"), join(dead, "skills"));
+    // a home whose link cannot be removed
+    chmodSync(dead, 0o500);
+
+    try {
+      expect(() => isolatedHome(m.env, m.places)).toThrow();
+      expect(
+        readdirSync(homes).filter((n) => n.startsWith("session.") && n.endsWith(".Ab12Cd")),
+      ).toEqual([`session.${process.pid}.Ab12Cd`]);
+      expect(readdirSync(homes).some((n) => n.startsWith("kept"))).toBe(false);
+    } finally {
+      for (const name of readdirSync(homes)) {
+        chmodSync(join(homes, name), 0o700);
+      }
     }
   });
 });
@@ -71,8 +96,10 @@ describe("the installer and the homes of the shape before the pid name", () => {
     const r = await install(fake.ctx);
 
     expect(r.steps.find((s) => s.name === "old homes")?.status).toBe("installed");
-    expect(readdirSync(homes)).toEqual(["kept-Ab12Cd"]);
-    expect(readdirSync(join(homes, "kept-Ab12Cd"))).toEqual(["history.jsonl"]);
+    const [kept = "", ...rest] = readdirSync(homes);
+    expect(rest).toEqual([]);
+    expect(kept).toMatch(/^kept\.\d+\.Ab12Cd$/);
+    expect(readdirSync(join(homes, kept))).toEqual(["history.jsonl"]);
     const again = await install(fake.ctx);
     expect(again.steps.find((s) => s.name === "old homes")?.status).toBe("already");
   }, 120_000);
