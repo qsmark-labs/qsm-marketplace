@@ -199,6 +199,39 @@ not end in an issue URL, or an id that is not a number, SHALL fail with the text
 - **WHEN** `qsm-tasks add "a title"` runs without `--body-file`
 - **THEN** it ends `usage` (exit 2) naming `body-file`
 
+### Requirement: The binary moves an issue to a Status
+
+The verb `move <n> <status>` SHALL read the board of issue `<n>` with one GraphQL query through `gh
+api graphql`, then set its Status with `updateProjectV2ItemFieldValue`; a zero exit of that call is
+the success. `<status>` SHALL equal one option's name exactly, else the verb fails and names the
+options the board has. An issue on no board SHALL fail saying so, and one on several boards SHALL
+fail naming them. No rule says which Status may follow which.
+
+#### Scenario: A Status of the board
+
+- **WHEN** `qsm-tasks move 187 "In Dev"` runs and the board has that option
+- **THEN** the mutation is sent with the board, item, field and option ids the query returned
+
+#### Scenario: A Status the board does not have
+
+- **WHEN** `<status>` is not exactly one option's name
+- **THEN** the verb ends `failed`, sends no mutation and names the board's options
+
+#### Scenario: An issue on no board or on several
+
+- **WHEN** the query returns no board item, or more than one
+- **THEN** the verb ends `failed` saying the issue is on no board, or naming the boards
+
+#### Scenario: gh refuses the mutation
+
+- **WHEN** the mutation call exits non-zero
+- **THEN** the verb ends `failed` with gh's stderr
+
+#### Scenario: gh answers the query in a shape move does not know
+
+- **WHEN** a field the verb needs is missing or not of its type
+- **THEN** the verb ends `failed` naming the field
+
 ### Requirement: Dependencies
 
 The plugin SHALL declare no plug-in in `dependencies`: the skill reads no other skill, agent or

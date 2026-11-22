@@ -1,6 +1,6 @@
 {
   "commandRunner": {
-    "command": "cd ../.. && bun test plugins/qsm-tasks/lib plugins/qsm-tasks/scripts/cli.test.ts"
+    "command": "cd ../.. && bun test --bailplugins/qsm-tasks/lib plugins/qsm-tasks/scripts/cli.test.ts"
   },
   "inPlace": true,
   "mutate": ["lib/*.ts", "scripts/cli.ts", "!lib/*.test.ts"],

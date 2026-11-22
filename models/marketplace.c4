@@ -138,10 +138,10 @@ model {
         metadata { path 'plugins/qsm-openspec/skills/spec-archive' }
       }
     }
-    tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
+    tasks = container 'qsm-tasks' 'Reads the board, files a task and moves it, and says how a task is written' {
       technology 'Bun binary, skills'
       metadata { group 'Features' path 'plugins/qsm-tasks' }
-      tool = component 'qsm-tasks binary' 'The binary: ready, add, claim, close and the other board verbs' {
+      tool = component 'qsm-tasks binary' 'The binary: doctor, list, add and move' {
         technology 'Bun binary'
         metadata { path 'plugins/qsm-tasks/scripts' }
       }

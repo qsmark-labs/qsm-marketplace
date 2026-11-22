@@ -4,6 +4,10 @@
 export type Tasks = {
   doctor(): Promise<unknown>;
   list(): Promise<unknown>;
+  move(options: {
+    number: number;
+    status: string;
+  }): Promise<unknown>;
   add(options: {
     title: string;
     bodyFile: string;
