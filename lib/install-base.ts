@@ -17,7 +17,6 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fishCompletion, MARKER, writeCompletion } from "./completions.ts";
-import { isAlive } from "./detach.ts";
 import {
   cliMain,
   type InstallContext,
@@ -27,7 +26,7 @@ import {
   type Step,
 } from "./install-contract.ts";
 import { purgeFarm } from "./legacy-farm.ts";
-import { runTempDir, sweepNamed } from "./reap.ts";
+import { deadRunDirs, runTempDir, sweepNamed } from "./reap.ts";
 import { binDir, buildRecordPath, type Env, fishCompletionDir } from "./paths.ts";
 import { loadManifest, type QsmManifest } from "./qsm-manifest.ts";
 
@@ -312,7 +311,7 @@ function dependencyStep(pluginRoot: string): Step | null {
   return { name, status: "installed", detail: "ran bun install --frozen-lockfile" };
 }
 
-const TMP = ".tmp";
+const BUILD_TMP = "qsm-build";
 
 /** Compiles `entry` to `outFile`, replacing it only when the bytes differ. */
 function compile(pluginRoot: string, entry: string, outFile: string): Step {
@@ -323,12 +322,11 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
   }
   mkdirSync(resolve(outFile, ".."), { recursive: true });
   // The build goes through a temporary file because the binary being replaced may be the one
-  // running us. It sits in a directory named with the pid, because two installs of one plugin can
-  // run at once (two sessions pulling main) and one must not remove or rename the other's partial
-  // build. The file inside keeps the final name: the compiled bytes depend on it, and the compare
-  // below only skips a rebuild when two runs produce equal bytes.
-  const tmpDir = `${outFile}.${process.pid}${TMP}`;
-  mkdirSync(tmpDir, { recursive: true });
+  // running us. It sits in a directory of its own, because two installs of one plugin can run at
+  // once (two sessions pulling main) and one must not remove or rename the other's partial build.
+  // The file inside keeps the final name: the compiled bytes depend on it, and the compare below
+  // only skips a rebuild when two runs produce equal bytes.
+  const tmpDir = runTempDir(BUILD_TMP, dirname(outFile));
   try {
     const tmp = join(tmpDir, basename(outFile));
     const built = spawnSync(
@@ -353,31 +351,20 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
   }
 }
 
-/** The pid in a build directory's name `<name>.<pid>.tmp`, or null for any other name. */
-function buildPid(entryName: string): number | null {
-  const match = /\.(\d+)\.tmp$/.exec(entryName);
-  return match?.[1] === undefined ? null : Number(match[1]);
-}
-
 /** Removes from the bin directory what builds left: the directory of a build whose install is
- * dead, whichever bin it was for, and the `<bin>.tmp` file the shape before the pid name left. */
+ * dead, and the `<bin>.tmp` file an older install left. */
 function sweepBuilds(dir: string, bins: readonly string[]): void {
   if (!existsSync(dir)) {
     return;
   }
-  const left = readdirSync(dir).filter((entryName) => {
-    const pid = buildPid(entryName);
-    if (pid === null) {
-      return bins.some((bin) => entryName === `${bin}${TMP}`);
+  sweepNamed(BUILD_TMP, dir, "left by a build that ended before its cleanup");
+  for (const bin of bins) {
+    const old = join(dir, `${bin}.tmp`);
+    if (existsSync(old)) {
+      console.error(`install: removed ${old}, left by an older install`);
+      // another install may remove it between the look and this call
+      rmSync(old, { recursive: true, force: true });
     }
-    // another install may remove the same directory between the listing and this look
-    const at = lstatSync(join(dir, entryName), { throwIfNoEntry: false });
-    return !isAlive(pid) && at?.isDirectory() === true;
-  });
-  for (const entryName of left) {
-    const path = join(dir, entryName);
-    console.error(`install: removed ${path}, left by a build that ended before its cleanup`);
-    rmSync(path, { recursive: true, force: true });
   }
 }
 
@@ -426,10 +413,10 @@ function staleDist(pluginRoot: string): string[] {
   }
   const kept = new Set(declaredHooks(pluginRoot).map((h) => h.name));
   // A running install's build directory is not stale; a dead one's is.
-  return readdirSync(dist).filter((name) => {
-    const pid = buildPid(name);
-    return !kept.has(name) && (pid === null || !isAlive(pid));
-  });
+  const dead = new Set(deadRunDirs(BUILD_TMP, dist).map((path) => basename(path)));
+  return readdirSync(dist).filter(
+    (name) => !kept.has(name) && (!name.startsWith(`${BUILD_TMP}.`) || dead.has(name)),
+  );
 }
 
 function pruneSteps(pluginRoot: string): Step[] {

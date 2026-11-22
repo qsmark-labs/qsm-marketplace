@@ -39,7 +39,7 @@ import { dirname, join } from "node:path";
 import { writeAtomic } from "../../../lib/fs.ts";
 import { isRecord, messageOf } from "../../../lib/outcome.ts";
 import { runtimeDir } from "../../../lib/paths.ts";
-import { orphaned, owned, ownerEnv, reapNamed } from "../../../lib/reap.ts";
+import { ownerEnv, reapOrphaned, reapOwned } from "../../../lib/reap.ts";
 import { type Dbus, check, serveDbus, shape } from "./fake-dbus.ts";
 
 type Proc = { uptime: number; stat: { busy: number }; meminfo: Record<string, number> };
@@ -352,7 +352,7 @@ async function startPipewire(pw: Pipewire): Promise<void> {
   if (runtime === undefined)
     throw new Error("the fake machine's PipeWire needs the slot's runtime dir");
   // A daemon a serve killed before its cleanup left is ended first, or it keeps the socket.
-  reapNamed(TOOL, () => orphaned(TOOL), "left by a fake machine that ended before its cleanup");
+  reapOrphaned(TOOL, "left by a fake machine that ended before its cleanup");
   // Bun.spawn takes the env it is given, so the mark goes in explicitly. The daemon ends with this
   // process, whichever way it ends, except SIGKILL, which the next serve sweeps.
   Bun.spawn(["pipewire"], {
@@ -361,7 +361,7 @@ async function startPipewire(pw: Pipewire): Promise<void> {
     env: { ...process.env, ...ownerEnv(TOOL) },
   });
   const endPipewire = (): void => {
-    reapNamed(TOOL, () => owned(TOOL), "left running by the fake machine");
+    reapOwned(TOOL, "left running by the fake machine");
   };
   process.on("exit", endPipewire);
   for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const)

@@ -11,7 +11,6 @@ import {
   realpathSync,
   renameSync,
   rmdirSync,
-  type Stats,
   symlinkSync,
   unlinkSync,
 } from "node:fs";
@@ -48,15 +47,6 @@ export function isIsolated(env: Env): boolean {
   return env[SOURCE_DIR] !== undefined;
 }
 
-/** The entry's own type, a symlink not followed, or null when nothing is there. */
-function lstatOrNull(path: string): Stats | null {
-  try {
-    return lstatSync(path);
-  } catch {
-    return null;
-  }
-}
-
 /** Removes what `fillHome` put in `dir`: the copied settings and the symlinks it made, never what a
  * link points at and never a real directory of the same name, which Claude wrote. Then the
  * directory goes if nothing is left in it; one that holds what Claude wrote is renamed to
@@ -64,8 +54,8 @@ function lstatOrNull(path: string): Stats | null {
 function removeMade(dir: string, why: string): void {
   for (const name of [...COPIED, ...LINKED]) {
     const path = join(dir, name);
-    const stat = lstatOrNull(path);
-    if (stat !== null && (stat.isSymbolicLink() || (stat.isFile() && COPIED.includes(name)))) {
+    const stat = lstatSync(path, { throwIfNoEntry: false });
+    if (stat !== undefined && (stat.isSymbolicLink() || (stat.isFile() && COPIED.includes(name)))) {
       unlinkSync(path);
       console.error(`${HOME_TOOL}: removed ${path}, ${why}`);
     }
@@ -103,23 +93,22 @@ export function endHome(env: Record<string, string>, places: Places): void {
   }
 }
 
-/** Cleans the homes of launches that died, except one a live claude still has as its
- * Claude home: a killed wrapper leaves its claude running. */
-function sweepHomes(root: string): void {
-  const dead = deadRunDirs(HOME_TOOL, root);
-  const live = dead.length === 0 ? new Set<string>() : liveClaudeDirs();
-  for (const dir of dead.filter((d) => !live.has(d))) {
+/** Cleans `dirs`, the homes of launches that died: what qsm-ccr made goes, what Claude wrote stays,
+ * and a home a live claude still has as its Claude home is left alone (a killed wrapper leaves its
+ * claude running). With `dryRun` it only answers which homes it would clean. Answers those homes. */
+function sweep(dirs: readonly string[], why: string, dryRun = false): string[] {
+  const live = dirs.length === 0 ? new Set<string>() : liveClaudeDirs();
+  const found = dirs.filter((dir) => !live.has(dir));
+  for (const dir of dryRun ? [] : found) {
     const claimed = claim(dir);
     if (claimed !== null) {
-      removeMade(claimed, "left by a launch that ended before its cleanup");
+      removeMade(claimed, why);
     }
   }
+  return found;
 }
 
-/** Cleans the homes of the shape before the pid name, `session-<random>`, the way `sweepHomes`
- * cleans a dead launch's: what qsm-ccr made goes, what Claude wrote stays, and a home a live
- * claude still has as its Claude home is left alone. With `dryRun` it only answers which homes it
- * would clean. Answers those homes. */
+/** Cleans the homes of the shape before the pid name, `session-<random>`. */
 export function cleanOldHomes(places: Places, dryRun: boolean): string[] {
   const root = join(places.stateDir, "homes");
   if (!existsSync(root)) {
@@ -128,15 +117,7 @@ export function cleanOldHomes(places: Places, dryRun: boolean): string[] {
   const old = readdirSync(root)
     .filter((name) => name.startsWith(`${HOME_TOOL}-`))
     .map((name) => join(root, name));
-  const live = old.length === 0 ? new Set<string>() : liveClaudeDirs();
-  const found = old.filter((dir) => !live.has(dir));
-  for (const dir of dryRun ? [] : found) {
-    const claimed = claim(dir);
-    if (claimed !== null) {
-      removeMade(claimed, "left by a launch of the shape before the pid name");
-    }
-  }
-  return found;
+  return sweep(old, "left by a launch of the shape before the pid name", dryRun);
 }
 
 /** Takes a dead launch's home for this sweep by renaming it to its `kept` name, and answers that
@@ -165,7 +146,7 @@ function keptName(dir: string): string {
 export function isolatedHome(env: Env, places: Places): Record<string, string> {
   const root = join(places.stateDir, "homes");
   mkdirSync(root, { recursive: true, mode: 0o700 });
-  sweepHomes(root);
+  sweep(deadRunDirs(HOME_TOOL, root), "left by a launch that ended before its cleanup");
   const dir = runTempDir(HOME_TOOL, root);
   try {
     return fillHome(env, places, dir);

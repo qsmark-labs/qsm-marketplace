@@ -88,34 +88,29 @@ describe("install-base over the fixture plugin", () => {
 describe("install-base and a build another run left in the bin directory", () => {
   test("a live run's temporary file stays, a dead run's is removed", async () => {
     const f = fakeInstall({ present: ["bun", "fakeup"] });
-    const ended = spawnSync("true");
-    expect(ended.pid).toBeGreaterThan(0);
     const dist = join(FIXTURE, "dist");
     mkdirSync(dist, { recursive: true });
-    const live = join(dist, `ping.${process.ppid}.tmp`);
-    const dead = join(dist, `ping.${ended.pid}.tmp`);
-    writeFileSync(live, "partial build of a running install");
-    writeFileSync(dead, "partial build of a crashed install");
+    const live = join(dist, `qsm-build.${process.ppid}.live`);
+    const dead = leftDir("qsm-build", dist);
+    mkdirSync(live);
 
     await install(f.ctx);
 
     expect(existsSync(live)).toBe(true);
     expect(existsSync(dead)).toBe(false);
-    rmSync(live);
+    rmSync(live, { recursive: true });
   }, 120_000);
 });
 
 describe("install-base and the builds of older installs in the bin directory", () => {
-  test("the old <bin>.tmp and the directory of a dead build of an undeclared bin go, a live one stays", async () => {
+  test("the old <bin>.tmp and the directory of a dead build go, a live one stays", async () => {
     const f = fakeInstall({ present: ["bun", "fakeup"] });
-    const ended = spawnSync("true");
     const bins = join(f.home, "bin");
     mkdirSync(bins, { recursive: true });
     const old = join(bins, "qsm-fix-a.tmp");
-    const gone = join(bins, `qsm-gone.${ended.pid}.tmp`);
-    const live = join(bins, `qsm-gone.${process.ppid}.tmp`);
-    writeFileSync(old, "partial build of the shape before the pid name");
-    mkdirSync(gone);
+    const gone = leftDir("qsm-build", bins);
+    const live = join(bins, `qsm-build.${process.ppid}.live`);
+    writeFileSync(old, "partial build of an older install");
     mkdirSync(live);
 
     await install(f.ctx);
@@ -134,7 +129,7 @@ describe("install-base and the builds of older installs in the bin directory", (
 
     await Promise.allSettled([install(f.ctx)]);
 
-    expect(readdirSync(bins).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+    expect(readdirSync(bins).filter((name) => name.startsWith("qsm-build."))).toEqual([]);
   }, 120_000);
 });
 

@@ -3,7 +3,7 @@
 // of its deadline), so none runs without one and none carries a limit of its own.
 
 import { type SpawnSyncReturns, spawn as spawnChild } from "node:child_process";
-import { orphaned, owned, ownerEnv, reapNamed } from "../../../lib/reap.ts";
+import { ownerEnv, reapOrphaned, reapOwned } from "../../../lib/reap.ts";
 import { isErrno } from "./errors.ts";
 
 const TOOL = "qsm-langdev";
@@ -19,7 +19,7 @@ const NO_BUILD_SERVERS = {
 
 /** Kills what a dead run left of its checkers, naming each. */
 export function reapOrphans(): void {
-  reapNamed(TOOL, () => orphaned(TOOL), "left by a run that ended before its cleanup");
+  reapOrphaned(TOOL, "left by a run that ended before its cleanup");
 }
 
 export type Spawned = Pick<
@@ -59,7 +59,7 @@ function armCleanup(): void {
   armed = true;
   reapOrphans();
   process.on("exit", () => {
-    reapNamed(TOOL, () => owned(TOOL), "left running when the run ended");
+    reapOwned(TOOL, "left running when the run ended");
   });
   for (const [signal, code] of [
     ["SIGTERM", 143],

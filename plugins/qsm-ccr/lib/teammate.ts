@@ -34,8 +34,6 @@ interface Prepared {
   readonly launch: Outcome<{
     readonly args: string[];
     readonly env: Record<string, string>;
-    /** the env names a private home this launch made and must remove */
-    readonly isolated: boolean;
   }>;
 }
 
@@ -43,14 +41,14 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
   const places = placesOf(env);
   const route = resolveTeammate(name, () => loadModels(places));
   if (route.kind === "claude") {
-    const isolated = isIsolated(env);
     return {
       provider: "claude",
       model: flagValue(argv, "--model") ?? "-",
       launch: ok({
         args: launchArgs(argv, CLAUDE),
-        isolated,
-        env: isolated ? isolatedHome(launchEnv(env, CLAUDE), places) : launchEnv(env, CLAUDE),
+        env: isIsolated(env)
+          ? isolatedHome(launchEnv(env, CLAUDE), places)
+          : launchEnv(env, CLAUDE),
       }),
     };
   }
@@ -69,11 +67,7 @@ async function prepare(name: string, argv: readonly string[], env: Env): Promise
     launch:
       launch === undefined
         ? retag(prepared)
-        : ok({
-            args: launchArgs(argv, launch),
-            env: isolatedHome(launchEnv(env, launch), places),
-            isolated: true,
-          }),
+        : ok({ args: launchArgs(argv, launch), env: isolatedHome(launchEnv(env, launch), places) }),
   };
 }
 
@@ -125,7 +119,7 @@ export async function runTeammate(argv: readonly string[], env: Env): Promise<nu
     appendLaunchLog(stateDir, { ...line, outcome: "started" });
     return await runClaude(claude, launch.data.args, launch.data.env);
   } finally {
-    if (launch.data.isolated) {
+    if (isIsolated(launch.data.env)) {
       endHome(launch.data.env, placesOf(env));
     }
   }
