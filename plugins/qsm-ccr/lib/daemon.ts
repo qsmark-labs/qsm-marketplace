@@ -4,7 +4,6 @@
 // CCR's only while the service.json in CCR's home names a live pid whose service answers as CCR: any
 // `ccr` invocation can start the daemon, so none is used to ask.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { connect, sleep } from "bun";
@@ -23,6 +22,7 @@ import { CODEX_TIMEOUT_MS } from "./codex.ts";
 import { type Json, parseJson } from "./parse.ts";
 import type { Places } from "./places.ts";
 import { retag } from "./retag.ts";
+import { spawnMarked } from "../../../lib/reap.ts";
 import { type Gateway, withoutRouterEnv } from "./route.ts";
 import {
   readUserSettings,
@@ -314,7 +314,7 @@ export async function takeDown(daemon: Daemon): Promise<boolean> {
   const named = await servicePid(daemon.ccrHome);
   const ccr = binPath("ccr", daemon.env);
   if (ccr !== null) {
-    spawnSync(ccr, ["stop"], {
+    spawnMarked("qsm-ccr", ccr, ["stop"], {
       env: withoutRouterEnv(daemon.env),
       stdio: "ignore",
       timeout: STOP_RUN_MS,
