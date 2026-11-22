@@ -19,7 +19,7 @@ import { isAlive } from "../../../lib/detach.ts";
 import { isRecord, messageOf, type Outcome, ok, onPath } from "../../../lib/outcome.ts";
 import { claudeDir } from "../../../lib/paths.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
-import { orphaned, owned, ownerEnv, reapNamed } from "../../../lib/reap.ts";
+import { ownerEnv, reapOrphaned, reapOwned } from "../../../lib/reap.ts";
 import { listTranscripts, mtimeOf, projectsDir, unsavedTranscripts } from "./save.ts";
 import { type Env, getState, resolveDbPath, setState } from "./store.ts";
 import { sessionIdOf } from "./transcript.ts";
@@ -258,7 +258,7 @@ async function archiveSessions(
     }
     renameSync(part, target);
   } finally {
-    reapNamed(TOOL, () => owned(TOOL), "left running by the pack");
+    reapOwned(TOOL, "left running by the pack");
     rmSync(part, { force: true });
   }
 }
@@ -352,7 +352,7 @@ export async function pack(
   const liveIds = () => liveSessionIds(home, (path) => readSessionFile(path, read));
   const archiveDir = join(dirname(resolveDbPath(env)), "transcripts");
   try {
-    reapNamed(TOOL, () => orphaned(TOOL), "left by a pack that ended before its cleanup");
+    reapOrphaned(TOOL, "left by a pack that ended before its cleanup");
     removeStaleParts(archiveDir);
     requireTools(env);
     const taken = idleTranscripts(db, env, now, liveIds).map((jsonl) => takeSession(home, jsonl));

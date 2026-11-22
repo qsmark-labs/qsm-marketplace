@@ -2,22 +2,16 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
+import { deadPid, ended } from "../../../lib/fixtures/dead-run.ts";
 import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
-import { processes } from "../../../lib/reap.ts";
 import { refreshCatalog } from "./codex.ts";
 import { takeDown } from "./daemon.ts";
 import { makeWorld, setMode } from "./fixtures/world.ts";
 import { runLead } from "./lead.ts";
 
 setDefaultTimeout(30_000);
-
-/** A killed process is a zombie until init reaps it; /proc's state tells it has ended. */
-function running(pidFile: string): boolean {
-  const pid = Number(readFileSync(pidFile, "utf8"));
-  return processes().some((p) => p.pid === pid);
-}
 
 /** A command body that leaves a sleeping grandchild behind and writes its pid to `pidFile`. */
 const leavesSleeper = (pidFile: string) => `sleep 300 >/dev/null 2>&1 &\necho $! > "${pidFile}"`;
@@ -27,7 +21,7 @@ describe("a call ends what it started", () => {
     const w = makeWorld();
     const homes = join(w.stateDir, "homes");
     // a launch that died: its pid is of a process that has ended
-    const dead = spawnSync("true").pid;
+    const dead = deadPid();
     const left = join(homes, `session.${dead}.abc123`);
     mkdirSync(left, { recursive: true });
     setMode(w, "claude-writes-history");
@@ -43,7 +37,7 @@ describe("a call ends what it started", () => {
   test("a dead launch's home that a live claude still uses is not swept", async () => {
     const w = makeWorld();
     const homes = join(w.stateDir, "homes");
-    const dead = spawnSync("true").pid;
+    const dead = deadPid();
     const used = join(homes, `session.${dead}.abc123`);
     mkdirSync(used, { recursive: true });
     writeFileSync(join(used, "settings.json"), "{}");
@@ -55,12 +49,12 @@ describe("a call ends what it started", () => {
     expect(existsSync(join(used, "settings.json"))).toBe(true);
   });
 
-  test("codex's grandchild does not outlive the catalog refresh", () => {
+  test("codex's grandchild does not outlive the catalog refresh", async () => {
     const dir = sandboxDir("qsm-ccr-codex-");
     const pidFile = join(dir, "pid");
     fakeBin(dir, "codex", leavesSleeper(pidFile));
     expect(refreshCatalog({ PATH: `${dir}:/usr/bin:/bin` })).toBeNull();
-    expect(running(pidFile)).toBe(false);
+    expect(await ended(Number(readFileSync(pidFile, "utf8")))).toBe(true);
   });
 
   test("a grandchild of ccr stop does not outlive the take-down", async () => {
@@ -69,6 +63,6 @@ describe("a call ends what it started", () => {
     fakeBin(dir, "ccr", leavesSleeper(pidFile));
     await takeDown({ env: { PATH: `${dir}:/usr/bin:/bin` }, ccrHome: dir });
     expect(existsSync(pidFile)).toBe(true);
-    expect(running(pidFile)).toBe(false);
+    expect(await ended(Number(readFileSync(pidFile, "utf8")))).toBe(true);
   });
 });

@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { envelopeOf, isolatedEnv } from "../../../lib/fixtures/cli.ts";
+import { deadPid } from "../../../lib/fixtures/dead-run.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 const PLUGIN = resolve(import.meta.dir, "..");
@@ -216,8 +217,7 @@ describe("qsm-web browserbox sweep of a dead run's container", () => {
   }
 
   test("a container whose owner run is dead is removed and named", () => {
-    // The pid of a process that has ended.
-    const dead = spawnSync("true").pid;
+    const dead = deadPid();
     const r = removedBy(
       `bbox-11000 qsm.browserbox=1,qsm-owner=browserbox:${dead}\n` +
         `bbox-11001 qsm.browserbox=1,qsm-owner=browserbox:${process.pid}\n`,

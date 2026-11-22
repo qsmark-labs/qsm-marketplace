@@ -104,7 +104,6 @@ function viaStdout(
 /** calibre writes to a file rather than to stdout, so the conversion needs
  * a scratch path of its own; it is removed whichever way the call ends. */
 function viaFile(deps: ExtractDeps, source: Source): { text: string } | { reason: string } {
-  sweepNamed(TOOL);
   const scratch = runTempDir(TOOL);
   try {
     const out = join(scratch, `${basename(source.path)}.txt`);
@@ -177,6 +176,7 @@ export function extractSources(
   sources: readonly Source[],
   deps: ExtractDeps = systemDeps(process.env),
 ): ExtractResult {
+  sweepNamed(TOOL);
   const parts: string[] = [];
   const metadata: SourceMetadata[] = [];
   const failed: ExtractFailure[] = [];

@@ -154,8 +154,8 @@ result with every step as data inside the outcome envelope: `error` maps to
 
 #### Scenario: Builds an earlier install left behind
 
-- **WHEN** the bin directory holds `<bin>.tmp` of a declared bin, or `<name>.<pid>.tmp` of a dead
-  install for any bin, or `dist/` holds either
+- **WHEN** the bin directory holds `<bin>.tmp` of a declared bin, or `qsm-build.<pid>.<random>` of a
+  dead install, or `dist/` holds either
 - **THEN** the installer SHALL remove and name them, keep the directory of a live install, and a
   build that throws SHALL leave no build directory
 

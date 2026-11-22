@@ -124,7 +124,7 @@ export function envValues(name: string): Set<string> {
 }
 
 /** The live processes this run of `tool` started. */
-export function owned(tool: string): Proc[] {
+function owned(tool: string): Proc[] {
   return withCmd(
     marked(tool)
       .filter((m) => m.runPid === process.pid)
@@ -133,7 +133,7 @@ export function owned(tool: string): Proc[] {
 }
 
 /** The live processes runs of `tool` started that have since ended: what a crash left. */
-export function orphaned(tool: string): Proc[] {
+function orphaned(tool: string): Proc[] {
   return withCmd(
     marked(tool)
       .filter((m) => !isAlive(m.runPid))
@@ -145,7 +145,7 @@ export function orphaned(tool: string): Proc[] {
  * <why>`, and scans again until it lists nothing: a killed process ends a moment after the signal,
  * and a child forked before it shows only in the next scan. A zombie counts as ended, one that
  * ended first is skipped; a process that refuses the signal, or one listed past the limit, throws. */
-export function reapNamed(tool: string, find: () => readonly Proc[], why: string): void {
+function reapNamed(tool: string, find: () => readonly Proc[], why: string): void {
   const deadline = Date.now() + REAP_LIMIT_MS;
   const killed = new Set<number>();
   for (let left = find(); left.length > 0; left = find()) {
@@ -167,6 +167,16 @@ export function reapNamed(tool: string, find: () => readonly Proc[], why: string
   }
 }
 
+/** Kills the processes this run of `tool` started and left running. */
+export function reapOwned(tool: string, why: string): void {
+  reapNamed(tool, () => owned(tool), why);
+}
+
+/** Kills the processes runs of `tool` started that have since ended: what a crash left. */
+export function reapOrphaned(tool: string, why: string): void {
+  reapNamed(tool, () => orphaned(tool), why);
+}
+
 /** Runs `command` and waits for it, with every process it starts marked as `tool`'s: before the
  * call what a crashed run of `tool` left is killed, and after it whatever the command left
  * running, because a timeout kills the direct child only. Each kill is named on stderr. Without an
@@ -177,13 +187,13 @@ export function spawnMarked(
   args: readonly string[],
   options: Omit<SpawnSyncOptionsWithStringEncoding, "encoding">,
 ): SpawnSyncReturns<string> {
-  reapNamed(tool, () => orphaned(tool), LEFT_BY_CRASH);
+  reapOrphaned(tool, LEFT_BY_CRASH);
   const result = spawnSync(command, [...args], {
     ...options,
     encoding: "utf8",
     env: { ...(options.env ?? process.env), ...ownerEnv(tool) },
   });
-  reapNamed(tool, () => owned(tool), `left running by ${command}`);
+  reapOwned(tool, `left running by ${command}`);
   return result;
 }
 
