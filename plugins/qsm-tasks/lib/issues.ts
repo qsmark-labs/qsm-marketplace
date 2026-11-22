@@ -5,7 +5,7 @@ import { QsmError } from "../../../lib/qsm-error.ts";
 export interface Issue {
   readonly number: number;
   readonly title: string;
-  /** the Status on the first board the issue is on, null when on none */
+  /** the Status on the first board the issue is on, null when on none or when it is not set */
   readonly status: string | null;
 }
 
@@ -26,7 +26,8 @@ function issueOf(row: unknown, at: string): Issue {
   if (!isRecord(status) || typeof status.name !== "string") {
     throw new QsmError("failed", `gh issue list: ${at}.projectItems[0].status.name is not text`);
   }
-  return { number: row.number, title: row.title, status: status.name };
+  // gh gives an item whose Status is not set an empty name
+  return { number: row.number, title: row.title, status: status.name === "" ? null : status.name };
 }
 
 /** The issues in the stdout of `gh issue list --json number,title,projectItems`. */

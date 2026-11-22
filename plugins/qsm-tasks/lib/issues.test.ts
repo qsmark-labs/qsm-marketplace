@@ -6,7 +6,8 @@ import { lineOf, parseIssues } from "./issues.ts";
 const issue = record({
   number: nat(),
   title: string({ unit: "binary" }),
-  status: option(string({ unit: "binary" }), { nil: null }),
+  // an empty name is gh's "no Status set", which the features cover
+  status: option(string({ unit: "binary", minLength: 1 }), { nil: null }),
 });
 
 function ghJson(issues: readonly { number: number; title: string; status: string | null }[]) {

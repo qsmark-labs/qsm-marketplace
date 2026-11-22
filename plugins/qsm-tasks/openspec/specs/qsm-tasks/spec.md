@@ -129,7 +129,8 @@ line to fix it when it is not. It SHALL check nothing else.
 The verb `list` SHALL print every open issue of the repository of the current directory with its
 Status on the board, one per line: `#<number>`, the Status, the title. It SHALL make one call,
 `gh issue list --state open --limit 1000 --json number,title,projectItems`, and take the Status
-from `projectItems[0].status.name`. An issue on no board SHALL print `no status`. With `--json` it
+from `projectItems[0].status.name`. An issue on no board, and one on the board with no Status set,
+for which gh gives an empty name, SHALL print `no status`. With `--json` it
 SHALL give the same as an array of `{ number, title, status }`, `status` null for none, inside the
 envelope of the CLI stack. Only `lib/gh.ts` SHALL run `gh`: a non-zero exit is a `failed` error
 carrying gh's stderr verbatim, and `gh` missing on PATH is a `missing` error that names `gh`.
@@ -139,9 +140,9 @@ carrying gh's stderr verbatim, and `gh` missing on PATH is a `missing` error tha
 - **WHEN** `qsm-tasks list` runs and gh answers with issues that have a Status
 - **THEN** each prints as `#<number>`, its Status and its title on one line
 
-#### Scenario: An issue on no board
+#### Scenario: An issue with no Status
 
-- **WHEN** gh answers an issue whose `projectItems` is empty
+- **WHEN** gh answers an issue whose `projectItems` is empty, or whose Status name is empty
 - **THEN** its line reads `no status`, and under `--json` its `status` is null
 
 #### Scenario: A title that spans lines

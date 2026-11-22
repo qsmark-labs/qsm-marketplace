@@ -1,14 +1,14 @@
 Feature: list the open issues with their Status
 
   Scenario Outline: a line per open issue
-    Given gh lists the recorded issues, "<bare>" on no board
+    Given gh lists the recorded issues
     When I run "list"
     Then issue "<number>" prints status "<status>" and title "<title>"
 
     Examples:
-      | bare | number | status    | title                                                                |
-      | none | 187    | Todo      | qsm-tasks: the binary lists the open work with its Status            |
-      | 186  | 186    | no status | qsm-tasks: three verbs read the board, file a task and move it       |
+      | number | status    | title                                                     |
+      | 187    | Todo      | qsm-tasks: the binary lists the open work with its Status |
+      | 190    | no status | qsm-tasks pilot: throwaway issue of the live run          |
 
   Scenario Outline: a title that spans lines stays one line
     Given gh answers '<raw>'
@@ -21,14 +21,14 @@ Feature: list the open issues with their Status
       | [{"number":1,"title":"a\\r\\nb","projectItems":[]}] | a b   |
 
   Scenario Outline: the data of the same list
-    Given gh lists the recorded issues, "<bare>" on no board
+    Given gh lists the recorded issues
     When I run "list --json"
     Then the data of issue "<number>" has status "<status>"
 
     Examples:
-      | bare | number | status |
-      | none | 187    | Todo   |
-      | 186  | 186    | null   |
+      | number | status |
+      | 187    | Todo   |
+      | 190    | null   |
 
   Scenario Outline: gh cannot answer
     Given gh is "<how>" printing "<stderr>" on stderr
