@@ -7,7 +7,7 @@ import type { Env } from "../../../../lib/paths.ts";
 import { callerOf } from "./caller.ts";
 import { providerOf } from "./index.ts";
 import { dismissPane, showPane } from "./pane.ts";
-import { openReplySocket } from "./socket.ts";
+import { openReplySocket, type ReplySocket } from "./socket.ts";
 import type { Input } from "./types.ts";
 
 const SIGNALS = { SIGHUP: 1, SIGINT: 2, SIGTERM: 15 } as const;
@@ -42,13 +42,17 @@ export async function ask(
     },
   };
   const request = provider.request(input);
-  const socket = openReplySocket(options.env);
   // ssh kills its askpass after a notice, and Ctrl-C reaches it at a prompt: the request leaves the
-  // screen and the socket directory goes, as on any other exit.
+  // screen and the socket directory goes, as on any other exit. The signals are taken before the
+  // socket directory is made, because a signal that arrives in between ends the process by the
+  // default action and the directory stays.
+  let socket: ReplySocket | undefined;
   const timeout = options.timeoutMs ?? TIMEOUT_MS;
   const cleanup = (): void => {
-    dismissPane(options.env, socket.nonce);
-    socket.close();
+    if (socket !== undefined) {
+      dismissPane(options.env, socket.nonce);
+      socket.close();
+    }
   };
   const stops = Object.entries(SIGNALS).map(([name, number]) => {
     const onSignal = (): void => {
@@ -59,6 +63,7 @@ export async function ask(
     return () => process.off(name, onSignal);
   });
   try {
+    socket = openReplySocket(options.env);
     const caller = callerOf(options.callerPid ?? process.ppid);
     await showPane(options.env, {
       ...request,
