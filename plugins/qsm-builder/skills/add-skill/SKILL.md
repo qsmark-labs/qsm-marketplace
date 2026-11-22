@@ -39,7 +39,7 @@ skill-standards; a whole new plugin is add-plugin.
 6. A skill or agent ships, before the body, a `fire` case, a behaviour case (`scenario`) and one
    `negative` case per plugin in `plugins/<plugin>/evals/`, because an unproven skill may never
    load or may change nothing. The case format, regex samples included, is skill-standards' Evals
-   section. Gate: `bun run eval <plugin>`, which refuses a regex grader its samples break.
+   section. Gate: review.
 7. A skill names a CLI verb on PATH, never a path into this repository or another plugin's files,
    because a binary runs with no checkout in the room (add-tool owns the rule). Gate: review.
 
@@ -51,11 +51,8 @@ Every command exits 0, as `mise exec -- ...`:
 - `bun run lint`
 - `bun run typecheck`
 - `bun test ./ ./.gates`
-- `bun run eval <plugin>`: every `fire` case loads the skill, the behaviour case passes with the
-  plugin (3 of 3) and at most once without, the `negative` case stays quiet
 
-A skill's behaviour is defined through its evals. Note: the maintainer is reviewing the existing
-cases; until a case is reviewed, its result is a signal to read, not a verdict.
+A skill's behaviour is defined through its evals.
 
 Then hand the diff to the `strict-reviewer` agent of qsm-review with the hard rules as the
 checklist, and add-plugin's four reasons for every new file. Done means no finding is left.
@@ -64,8 +61,6 @@ checklist, and add-plugin's four reasons for every new file. Done means no findi
 
 - When the description is written after the body, rewrite it from the eval's prompt, because the
   harness matches what users type.
-- When the only proof is a green `bun run validate`, run the eval, because the gate reads files and
-  only a session shows what loads.
 - When an agent is one nobody delegates to, make it a skill, because an agent costs a context and a
   model name.
 

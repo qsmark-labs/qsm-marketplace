@@ -23,9 +23,8 @@ that reaches an unresolved branch comes here.
    the evidence behind it, and decide what the evidence decides.
 3. **Ask** only what neither settled: that is the frontier of the rounds.
 
-A question asked before the gathering makes the person repeat the project to you. The person in
-their words: "první musí být gathering, potom deep thinking a reasoning, a potom až otázky na věci
-co si nezjistil".
+A question asked before the gathering makes the person repeat the project to you, so
+gather first, reason second, and ask last, only about what you could not find out.
 
 ## First: see the ask as a top professional would
 
@@ -62,8 +61,8 @@ its decision is settled.
   settles its parent; asking a child early buys an answer the next round invalidates. A question
   depends on another whenever that answer could change it, its options or its recommendation, not
   only when it cannot be stated without it. When one decision shapes the rest (where a thing lives,
-  what it is), ask it alone. The person in their words: "jedna odpověď může měnit zbytek věci,
-  takže mi upe nedává smysl se ptát na tolik broad věci".
+  what it is), ask it alone, because one answer can change the rest and a broad batch
+  asked before it is wasted.
 - **Every question carries a recommendation.** It hands over your analysis, so the user confirms
   in one word or corrects with context you lacked. A question without one hands your work back.
   When a trade-off is the question, say what each side costs.

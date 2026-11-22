@@ -5,7 +5,7 @@
 // session sees.
 
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chmodSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -13,6 +13,7 @@ import { which } from "bun";
 import { runBin, isolatedEnv } from "../../../lib/fixtures/cli.ts";
 import { git } from "../../../lib/fixtures/git.ts";
 import { parseManifest } from "../../../lib/qsm-manifest.ts";
+import { OWNER_VAR, processes } from "../../../lib/reap.ts";
 import manifest from "../qsm.json" with { type: "json" };
 import { GRAPH_DIR, GRAPH_FILE } from "./build.ts";
 import { buildServer } from "./mcp.ts";
@@ -144,6 +145,38 @@ describe("The MCP server registers six tools that never block", () => {
     const later = await client.callTool({ name: "status", arguments: { path: repo } });
     expect(later.isError).toBeUndefined();
     expect(textOf(later)).toContain(`index of ${repo}: absent`);
+  });
+
+  test("a command stopped at the call limit leaves none of its children running", async () => {
+    const { root, repo, cache } = repoWithCache("qsm-index-workers-");
+    const workerPid = join(root, "worker.pid");
+    const env = {
+      PATH: fakePath(root, {
+        semble: `${which("sleep")} 300 &\necho $! > ${workerPid}\nexec ${which("sleep")} 5`,
+      }),
+      QSM_INDEX_CACHE_DIR: cache,
+    };
+    const client = await connected(timedRunner(300, env), env);
+
+    await client.callTool({ name: "search", arguments: { path: repo, query: "q" } });
+
+    const worker = Number(readFileSync(workerPid, "utf8"));
+    expect(processes().some((p) => p.pid === worker)).toBe(false);
+  });
+
+  test("a call first ends what a crashed earlier run left running", async () => {
+    const { root, repo, cache } = repoWithCache("qsm-index-crashed-");
+    const crashed = Bun.spawnSync(["true"]).pid;
+    const left = Bun.spawn([which("sleep") ?? "sleep", "300"], {
+      env: { [OWNER_VAR]: `qsm-index:${crashed}` },
+    });
+    const env = { PATH: fakePath(root, { semble: "true" }), QSM_INDEX_CACHE_DIR: cache };
+    const client = await connected(timedRunner(10_000, env), env);
+
+    await client.callTool({ name: "search", arguments: { path: repo, query: "q" } });
+
+    await left.exited;
+    expect(left.signalCode).toBe("SIGKILL");
   });
 
   test("a missing backing command answers an error result and the server stays up", async () => {

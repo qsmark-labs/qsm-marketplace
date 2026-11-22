@@ -50,9 +50,9 @@ const GUIDE: Record<
     next: "VERIFY",
   },
   VERIFY: {
-    does: "search the task tool for an open hold, run the real path end to end, lint, typecheck and the eval of a changed skill",
+    does: "search the task tool for an open hold, run the real path end to end, lint and typecheck",
     output: "the lines that decide, a failure back to EXECUTE",
-    tools: "bun run validate, lint, typecheck and eval, the runner agent",
+    tools: "bun run validate, lint, typecheck, the runner agent",
     skills: ["qsm-essentials:run-and-verify", "qsm-review:review"],
     next: "LEARN",
   },

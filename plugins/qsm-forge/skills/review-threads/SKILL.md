@@ -32,16 +32,23 @@ origin remote picks one. Both resolve the repository from the working tree; pass
 
 ## Write
 
-- `reply <number> <comment-id> --message "<text>"`. On GitHub it also resolves the thread, because
-  an answered thread left open sends the reviewer back for nothing; `--no-resolve` when the reply
-  is a question. On GitLab the thread stays open, since resolving is the reviewer's act there.
-- Name where the fix landed: "Fixed in abc1234". The reviewer checks the claim with it and
-  `resolve-all` sweeps on it; "done" proves nothing.
-- `resolve <number> <comment-id>` without a reply only when nothing needs saying, because a silent
-  resolve on a question reads as avoidance.
-- `qsm-forge gh resolve-all <pr>` closes only threads whose latest reply starts with "Fixed in":
-  the safe sweep after a round of fixes. With `--message "<text>"` it posts that text on every
-  open thread and closes them all; use it only when the user asked for exactly that.
+Two roles, because a finding is closed by a reader or by a test, never by the claim alone:
+
+- As the implementer, push the fix first, to the thread's own branch or to a stacked pull request
+  above it, because a reply that names a commit the forge does not have points the reviewer at
+  nothing. Then `reply <number> <comment-id> --message "<text>"` to every comment, on both forges.
+  Say where the fix landed (`Fixed in abc1234, in pull request #<number>`) or why not; "done"
+  proves nothing.
+- Resolve your own thread only when a test that fails without the fix proves it, and name the
+  test in the message (`resolve <number> <comment-id> --message "Fixed in abc1234. Test: ..."`).
+  Without such a test, reply and leave the thread open for the reviewer.
+- As the reviewer, check each fix. When it is right, `resolve <number> <comment-id> --message
+  "Good"`. When it is not, reply with what is still wrong and leave the thread open.
+- `qsm-forge gh resolve-all <pr>` is the reviewer's sweep after checking every fix: it closes only
+  threads whose latest reply starts with "Fixed in". With `--message "<text>"` it posts that text on
+  every open thread and closes them all; use it only when the user asked for exactly that.
+- `resolve` without a message only when nothing needs saying, because a silent resolve on a
+  question reads as avoidance.
 - `qsm-forge gh dismiss-reviews <pr>` clears reviews still asking for changes, `--author <login>`
   for one. It is for a stale bot review after the changes landed; ask before dismissing a person.
 
@@ -78,11 +85,15 @@ the message is theirs: an authentication failure does not fix itself on retry.
 - When you reach for `resolve-all --message` to save answering each thread, answer them, because
   the reviewer reads the same text everywhere.
 - When a reply says "fixed" with no commit, add the hash, because nobody can verify the claim.
+- When the fix is committed but not pushed, push before the first reply, because the hash in it
+  does not exist on the forge yet.
+- When you are about to resolve your own thread with no test that fails without the fix, reply
+  instead and leave it open, because only a test or the reviewer closes a finding.
 - When the user asked for comments and the payload says `approve`, change it, because approval is
   the user's call.
 
 ## Say it in the reply
 
 Name the forge and the identifier, what you posted, and what is still open: "Replied on
-owner/name#12 src/a.ts:42 and resolved it; two threads still open." When something was not
-posted, say so first and why.
+owner/name#12 src/a.ts:42 with the fix hash; the thread stays open for the reviewer." When something
+was not posted, say so first and why.

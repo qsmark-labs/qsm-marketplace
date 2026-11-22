@@ -129,7 +129,7 @@ new work.
       `plugins/qsm-c4/skills/c4-model/`, `plugins/qsm-c4/agents/`, `plugins/qsm-c4/evals/`. Proof:
       each skill and agent under 12 KB, and each `model-reviewer` run on this change's own graph
       change (lines 22, 23). The evals moved but prove nothing until the owner has reviewed the
-      cases (2026-11-06: "evals jsou ted useless, ja si je potom musim projit sam"). Blocked by 20.
+      cases. Blocked by 20.
 - [x] 22. **New.** `models/marketplace.c4` draws qsm-models as two containers, qsm-bpmn and qsm-c4,
       each with its components and its relations (qsm-bpmn's tool to qsm-c4's tool, `exec, stdio`,
       reading element ids and colours), and loses the relations of what was removed (the commit

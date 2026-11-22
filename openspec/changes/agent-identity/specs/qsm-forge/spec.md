@@ -4,7 +4,7 @@
 
 A pull request an agent opens SHALL be opened as the organization's GitHub App, with the owner as
 its assignee and requested reviewer, so the owner's approval can be the one GitHub requires before
-a merge into main or into `feature/*`. Every other write an agent makes SHALL stay the owner's own.
+a merge into main or into `features/*`. Every other write an agent makes SHALL stay the owner's own.
 
 #### Scenario: An agent opens a pull request
 

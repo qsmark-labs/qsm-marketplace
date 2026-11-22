@@ -226,7 +226,10 @@ const scrub: Handler = async (call) => {
     process.env,
   );
   return started.ok
-    ? ok({ started: true, log }, `started the scrub in the background; its outcome goes to ${log}`)
+    ? ok(
+        { started: true, log, pid: started.pid },
+        `started the scrub in the background; its outcome goes to ${log}`,
+      )
     : fail("missing", started.reason);
 };
 

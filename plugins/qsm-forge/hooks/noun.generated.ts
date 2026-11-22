@@ -21,7 +21,7 @@ export const verbs: Readonly<Record<string, VerbRow>> = {
   ghStatus: { words: ["qsm-forge","gh","status"], args: [{ name: "pr", flag: null }, { name: "repo", flag: "--repo" }] },
   ghThreads: { words: ["qsm-forge","gh","threads"], args: [{ name: "pr", flag: null }, { name: "repo", flag: "--repo" }] },
   ghComments: { words: ["qsm-forge","gh","comments"], args: [{ name: "pr", flag: null }, { name: "unresolved", flag: "--unresolved", boolean: true }, { name: "repo", flag: "--repo" }] },
-  ghReply: { words: ["qsm-forge","gh","reply"], args: [{ name: "pr", flag: null }, { name: "commentId", flag: null }, { name: "message", flag: "--message" }, { name: "noResolve", flag: "--no-resolve", boolean: true }, { name: "repo", flag: "--repo" }] },
+  ghReply: { words: ["qsm-forge","gh","reply"], args: [{ name: "pr", flag: null }, { name: "commentId", flag: null }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },
   ghResolve: { words: ["qsm-forge","gh","resolve"], args: [{ name: "pr", flag: null }, { name: "commentId", flag: null }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },
   ghResolveAll: { words: ["qsm-forge","gh","resolve-all"], args: [{ name: "pr", flag: null }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },
   ghDismissReviews: { words: ["qsm-forge","gh","dismiss-reviews"], args: [{ name: "pr", flag: null }, { name: "author", flag: "--author" }, { name: "message", flag: "--message" }, { name: "repo", flag: "--repo" }] },

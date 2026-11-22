@@ -80,10 +80,9 @@ mise exec -- bun run typecheck
 mise exec -- bun test ./ ./.gates
 ```
 
-Then the kind's own proof: `bun run eval <plugin>` when it ships a skill or agent, `bun run
-test:hooks` when it has hooks, one real run of each new verb. Last, hand the diff to the
-`qsm-review` `strict-reviewer` agent with the hard rules as the checklist; the build is not done
-until every command passes and the review returns no blocker.
+Then the kind's own proof: `bun run test:hooks` when it has hooks, one real run of each new verb.
+Last, hand the diff to the `qsm-review` `strict-reviewer` agent with the hard rules as the
+checklist; the build is not done until every command passes and the review returns no blocker.
 
 ## Say it in the reply
 

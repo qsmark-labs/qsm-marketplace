@@ -11,7 +11,7 @@ the owner's approval possible, and the ruleset makes it required.
   on each call and gives it to the one `gh pr create` child.
 - **Everything else stays the owner's**: issues, tasks, comments, replies to review findings,
   pushes and merges are made from the owner's own login.
-- **The rulesets of main and `feature/*`** require one approval, dismiss it on a new push, and let
+- **The rulesets of main and `features/*`** require one approval, dismiss it on a new push, and let
   the owner's admin role bypass only through a pull request, as in ai-guardrails. A merge the
   approval does not cover is the owner's admin merge on the web.
 
