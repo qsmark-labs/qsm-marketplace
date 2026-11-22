@@ -184,10 +184,15 @@ function fillHome(env: Env, places: Places, dir: string): Record<string, string>
   }
   for (const name of ["teams", "tasks"]) {
     const from = join(teamHome, name);
+    // the real directory, not the entry in the lead's home: that entry is a link the lead's end
+    // removes, and a teammate that outlives its lead keeps these two; without one the state
+    // directory holds it, as it holds projects
     if (existsSync(from)) {
-      // the real directory, not the entry in the lead's home: that entry is a link the lead's end
-      // removes, and a teammate that outlives its lead keeps these two
       symlinkSync(realpathSync(from), join(dir, name));
+    } else {
+      const stable = join(places.stateDir, name);
+      mkdirSync(stable, { recursive: true, mode: 0o700 });
+      symlinkSync(stable, join(dir, name));
     }
   }
   const out = withClaudeDirAt(env, dir);

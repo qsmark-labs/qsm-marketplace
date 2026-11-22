@@ -5,6 +5,7 @@ import { describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deadPid } from "../../../lib/fixtures/dead-run.ts";
+import { claudeDir } from "../../../lib/paths.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { fakeInstall } from "../../../lib/fixtures/install.ts";
 import { install } from "../scripts/install.ts";
@@ -15,27 +16,34 @@ import { placesOf } from "./places.ts";
 
 setDefaultTimeout(30_000);
 
-function machine() {
+function machine(withTeams = true) {
   const base = sandboxDir("qsm-ccr-home-");
   const claude = join(base, "claude");
-  mkdirSync(join(claude, "teams"), { recursive: true });
-  mkdirSync(join(claude, "tasks"), { recursive: true });
+  if (withTeams) {
+    mkdirSync(join(claude, "teams"), { recursive: true });
+    mkdirSync(join(claude, "tasks"), { recursive: true });
+  }
   const env = { HOME: base, CLAUDE_CONFIG_DIR: claude, XDG_STATE_HOME: join(base, "state") };
   return { env, places: placesOf(env), base };
 }
 
 describe("a teammate's links", () => {
-  test("still resolve after its lead's home is removed", () => {
-    const m = machine();
-    const lead = isolatedHome(m.env, m.places);
-    const teammate = isolatedHome(lead, m.places);
+  for (const [had, withTeams] of [
+    ["had teams and tasks", true],
+    ["had none", false],
+  ] as const) {
+    test(`still resolve after its lead's home is removed, when the Claude home ${had}`, () => {
+      const m = machine(withTeams);
+      const lead = isolatedHome(m.env, m.places);
+      const teammate = isolatedHome(lead, m.places);
 
-    removeHome(lead, m.places);
+      removeHome(lead, m.places);
 
-    for (const name of ["teams", "tasks"]) {
-      expect(existsSync(join(teammate["CLAUDE_CONFIG_DIR"] ?? "", name))).toBe(true);
-    }
-  });
+      for (const name of ["teams", "tasks"]) {
+        expect(existsSync(join(claudeDir(teammate), name))).toBe(true);
+      }
+    });
+  }
 });
 
 describe("a sweep of a dead launch's home", () => {
