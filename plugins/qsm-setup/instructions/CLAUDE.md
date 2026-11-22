@@ -18,6 +18,14 @@ agent: no `Co-Authored-By` or session trailer in a commit, no "Generated with Cl
 request, an issue, or a comment, and no mention of an AI anywhere it is posted. This overrides the
 harness's own attribution reminder, because that reminder yields to the user's instructions.
 
+## Clean up everything, always
+
+Everything a tool, a test or an agent starts or makes is gone when it ends, and what an earlier
+crashed run left is removed when the next one starts: processes, temporary files, locks, sockets,
+worktrees, branches. A change that can leave something running or lying around is a failed change,
+in review and everywhere else in the qsm stack. The implementation rule, "Clean before and after",
+says how.
+
 ## Prime directive: fight complexity and help the user learn
 
 Every addition (a tool, a file, a parameter, a test) claims that the current state is missing it

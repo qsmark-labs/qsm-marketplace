@@ -17,6 +17,7 @@ import {
 import { join, resolve } from "node:path";
 import { MARKER } from "./completions.ts";
 import { isolatedEnv, runBin } from "./fixtures/cli.ts";
+import { leftDir } from "./fixtures/dead-run.ts";
 import { type FakeInstall, fakeInstall } from "./fixtures/install.ts";
 import { sandboxDir } from "./fixtures/sandbox.ts";
 import { installBase, installScript, linkBin, removeOwnedLinks } from "./install-base.ts";
@@ -81,6 +82,54 @@ describe("install-base over the fixture plugin", () => {
     const again = await install(f.ctx);
     expect(again.status).toBe("already");
     expect(again.steps.map((s) => s.status)).not.toContain("installed");
+  }, 120_000);
+});
+
+describe("install-base and a build another run left in the bin directory", () => {
+  test("a live run's temporary file stays, a dead run's is removed", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const dist = join(FIXTURE, "dist");
+    mkdirSync(dist, { recursive: true });
+    const live = join(dist, `qsm-build.${process.ppid}.live`);
+    const dead = leftDir("qsm-build", dist);
+    mkdirSync(live);
+
+    await install(f.ctx);
+
+    expect(existsSync(live)).toBe(true);
+    expect(existsSync(dead)).toBe(false);
+    rmSync(live, { recursive: true });
+  }, 120_000);
+});
+
+describe("install-base and the builds of older installs in the bin directory", () => {
+  test("the old <bin>.tmp and the directory of a dead build go, a live one stays", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const bins = join(f.home, "bin");
+    mkdirSync(bins, { recursive: true });
+    const old = join(bins, "qsm-fix-a.tmp");
+    const gone = leftDir("qsm-build", bins);
+    const live = join(bins, `qsm-build.${process.ppid}.live`);
+    writeFileSync(old, "partial build of an older install");
+    mkdirSync(live);
+
+    await install(f.ctx);
+
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(gone)).toBe(false);
+    expect(existsSync(live)).toBe(true);
+    rmSync(live, { recursive: true });
+  }, 120_000);
+
+  test("a build that throws leaves no build directory", async () => {
+    const f = fakeInstall({ present: ["bun", "fakeup"] });
+    const bins = join(f.home, "bin");
+    // a directory where the binary goes: hashing it throws after the build directory exists
+    mkdirSync(join(bins, "qsm-fix-a"), { recursive: true });
+
+    await Promise.allSettled([install(f.ctx)]);
+
+    expect(readdirSync(bins).filter((name) => name.startsWith("qsm-build."))).toEqual([]);
   }, 120_000);
 });
 
@@ -196,6 +245,13 @@ describe("install-base plugin dependencies", () => {
     expect(existsSync(join(root, "node_modules/dep/package.json"))).toBe(true);
     expect(first.status).not.toBe("error");
     expect(step(first, "dependencies").status).toBe("installed");
+  });
+
+  test("an install removes the scratch directory a killed earlier install left", async () => {
+    const left = leftDir("qsm-bun-install");
+    const d = fakeInstall();
+    await installBase({ pluginRoot: depPlugin(false) })(d.ctx);
+    expect(existsSync(left)).toBe(false);
   });
 
   test("dry run names the install and runs nothing", async () => {

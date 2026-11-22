@@ -49,7 +49,7 @@ touching its users (Cockburn, ports and adapters).
 - **Evals over unit tests.** A change is proved by the least work that runs the real path end to
   end; a unit test only for logic the real run cannot reach. No test count goal.
 - **Clean before and after.** A tool leaves the machine as it found it, plus what it was asked
-  to add: an installer removes what older versions left, and a test leaves no temp dir.
+  to add: an installer removes what older versions left, and a run leaves no process or temp entry.
 - **No history in the tree.** When a decision changes, the old form is deleted everywhere. Git is
   the only history.
 - **Public, so nothing machine-specific.** No employer names, tenant identifiers or machine paths.
@@ -58,6 +58,11 @@ touching its users (Cockburn, ports and adapters).
 
 Each law is the short form; the skill named after it holds the detail.
 
+0. **Everything is cleaned up, forward and backward**: a run that ends, fails or times out leaves
+   no process, temp entry, lock or socket, and a start removes what a crashed earlier run left.
+   Every process a tool starts carries `QSM_OWNER`, and `lib/reap.ts` finds and ends it; the test
+   run fails on any leftover. A change that can leave something behind is not approvable
+   (implementation rule, "Clean before and after").
 1. **A plugin owns its content**: skills, agents, code and docs live under the plugin (add-plugin).
 2. **A plugin imports root `lib/` and itself only**; code two plugins need goes to `lib/` (add-lib).
 3. **Docs: `README.md` always, opening with `## Why it exists` in at most five sentences;
@@ -82,7 +87,7 @@ Each law is the short form; the skill named after it holds the detail.
 
 ```text
 .claude-plugin/marketplace.json   # one entry per plugin, source ./plugins/<name>
-lib/                              # layer 0: install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, palette.ts, model-graph.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, loopback.ts, html.ts, touch.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture, server: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
+lib/                              # layer 0: reap.ts, install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, palette.ts, model-graph.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, loopback.ts, html.ts, touch.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture, dead-run, server: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
 plugins/<name>/                   # layer 1: one plugin
   .claude-plugin/plugin.json      # name = directory name, author {"name": "qsm"}
   qsm.json                        # bin + command descriptions, only when the plugin ships a CLI

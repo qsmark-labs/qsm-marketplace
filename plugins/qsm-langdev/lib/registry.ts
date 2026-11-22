@@ -907,7 +907,15 @@ const SPECS: readonly CheckSpec[] = [
     install: "install the dotnet SDK for your distro",
     fileSet: "given",
     configFiles: DOTNET_PROJECT,
-    args: () => ["build", "-tl:off", "--nologo", "-v", "minimal", "-p:TreatWarningsAsErrors=false"],
+    args: () => [
+      "build",
+      "--disable-build-servers",
+      "-tl:off",
+      "--nologo",
+      "-v",
+      "minimal",
+      "-p:TreatWarningsAsErrors=false",
+    ],
     // A failed build that named diagnostics is a list of findings, not a broken run: an
     // .editorconfig that raises a category to error makes the build exit non-zero on the very
     // findings this checker exists to count.
