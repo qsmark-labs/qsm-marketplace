@@ -359,6 +359,16 @@ function stop(call: Call, box: Box): Outcome {
   return ok({ stopped: name }, `stopped ${name}`);
 }
 
+/** Removes the container a fetch started for itself. A failed removal is named on stderr and the
+ * fetch's own result or error stands, because the next call sweeps what a dead run left. */
+function removeEphemeral(box: Box, name: string): void {
+  const { status } = box.run(stopDefinition(name));
+  if (status !== 0) {
+    const left = `${name} could not be removed after the fetch (exit ${status})`;
+    process.stderr.write(`qsm-web browserbox: ${left}\n`);
+  }
+}
+
 /** One address, one result. */
 function fetchOne(call: Call, box: Box): Outcome {
   const given = optionalString(call, "in");
@@ -371,7 +381,7 @@ function fetchOne(call: Call, box: Box): Outcome {
   // finally covers every other end, and the owner label covers the one nothing can catch (SIGKILL).
   const ends = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
   const onSignal = (signal: NodeJS.Signals): void => {
-    box.run(stopDefinition(name));
+    removeEphemeral(box, name);
     process.exit(128 + (signal === "SIGINT" ? 2 : signal === "SIGTERM" ? 15 : 1));
   };
   if (ephemeral) {
@@ -386,7 +396,7 @@ function fetchOne(call: Call, box: Box): Outcome {
       for (const s of ends) {
         process.off(s, onSignal);
       }
-      box.run(stopDefinition(name));
+      removeEphemeral(box, name);
     }
   }
 }

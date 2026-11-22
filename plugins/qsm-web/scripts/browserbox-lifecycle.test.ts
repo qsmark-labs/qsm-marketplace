@@ -15,8 +15,8 @@ const CLI = join(PLUGIN, "scripts", "cli.ts");
 
 /** A docker that answers from the FAKE_* environment: ps prints
  * FAKE_PS_OUTPUT or exits FAKE_PS_EXIT, exec (the readiness ping) exits
- * FAKE_PING_EXIT or answers ok, rm exits FAKE_RM_EXIT, image reports no
- * image, build and run succeed. */
+ * FAKE_PING_EXIT or answers ok, a fetch job gets FAKE_FETCH_REPLY in place of
+ * ok, rm exits FAKE_RM_EXIT, image reports no image, build and run succeed. */
 function fakeRuntime(): string {
   const dir = sandboxDir("qsm-web-fake-docker-");
   writeFileSync(
@@ -26,7 +26,9 @@ function fakeRuntime(): string {
       'case "$1" in',
       '  ps) [ "${FAKE_PS_EXIT:-0}" -eq 0 ] || exit "$FAKE_PS_EXIT"; printf "%s" "${FAKE_PS_OUTPUT:-}"; exit 0 ;;',
       '  rm) echo "$@" >> "${FAKE_LOG:-/dev/null}"; exit "${FAKE_RM_EXIT:-0}" ;;',
-      '  exec) [ -z "${FAKE_EXEC_HANG:-}" ] || exec sleep "$FAKE_EXEC_HANG"; [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT"; printf \'{"ok":true}\\n\'; exit 0 ;;',
+      '  exec) [ -z "${FAKE_EXEC_HANG:-}" ] || exec sleep "$FAKE_EXEC_HANG"; [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT";',
+      '    reply=\'{"ok":true}\'; case "$(cat)" in *\'"cmd":"fetch"\'*) reply=${FAKE_FETCH_REPLY:-$reply} ;; esac',
+      '    printf "%s\\n" "$reply"; exit 0 ;;',
       "  image) exit 1 ;;",
       "  build|run) exit 0 ;;",
       "esac",
@@ -146,6 +148,34 @@ describe("qsm-web browserbox lifecycle", () => {
       c.says.filter((phrase) => !envelope.message.includes(phrase)),
       (c.silent ?? []).filter((phrase) => envelope.message.includes(phrase)),
     ]).toEqual([[], []]);
+  });
+});
+
+describe("qsm-web browserbox fetch whose own container cannot be removed", () => {
+  const LEFT = "bbox-11000 could not be removed after the fetch (exit 1)";
+  const fetchOf = (env: Record<string, string>, exit: number) =>
+    runOutcome({
+      title: "left container",
+      argv: ["fetch", "http://x.invalid", "--json"],
+      env: { FAKE_RM_EXIT: "1", ...env },
+      exit,
+      says: [],
+    });
+
+  test("a fetch that succeeded keeps its result and names the container on stderr", () => {
+    const r = fetchOf({}, 0);
+
+    expect(r.exit).toBe(0);
+    expect(envelopeOf(r.stdout).code).toBe("ok");
+    expect(r.stderr).toContain(LEFT);
+  });
+
+  test("a fetch that failed keeps its own failure", () => {
+    const r = fetchOf({ FAKE_FETCH_REPLY: '{"ok":false}' }, 1);
+
+    expect(r.exit).toBe(1);
+    expect(envelopeOf(r.stdout).message).toContain("http://x.invalid could not be fetched");
+    expect(r.stderr).toContain(LEFT);
   });
 });
 

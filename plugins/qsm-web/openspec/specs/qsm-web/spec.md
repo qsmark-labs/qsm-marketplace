@@ -287,6 +287,13 @@ the browser.
 - **AND** an instance from `start` or `fetch --keep` SHALL carry no owner and SHALL stay until
   `browserbox stop`
 
+#### Scenario: A fetch's own container cannot be removed
+
+- **WHEN** the removal of the instance a fetch started for itself exits non-zero
+- **THEN** stderr SHALL name the instance and the exit code
+- **AND** the fetch's own result or error SHALL stand, because the next call removes what a dead
+  run left
+
 #### Scenario: Listing instances fails
 
 - **WHEN** the container runtime fails to list instances

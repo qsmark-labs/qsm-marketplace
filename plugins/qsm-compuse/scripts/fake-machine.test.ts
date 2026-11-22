@@ -1,8 +1,9 @@
 // The fake machine's PipeWire daemon ends with the fake machine, through the real script and
 // shimmed pipewire tools.
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { isAlive } from "../../../lib/detach.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
 import { ended } from "../../../lib/fixtures/dead-run.ts";
@@ -10,13 +11,13 @@ import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 const FAKE_MACHINE = resolve(import.meta.dir, "fake-machine.ts");
 
-test("a served fake machine that is stopped takes its PipeWire daemon with it", async () => {
-  const home = sandboxDir("qsm-fake-machine-");
+async function serveFake(home: string): Promise<{ serve: Bun.Subprocess; pid: number }> {
   const runtime = join(home, "run");
   const dir = join(home, "fake");
   const pidFile = join(home, "pipewire.pid");
-  mkdirSync(runtime);
-  mkdirSync(dir);
+  mkdirSync(runtime, { recursive: true });
+  mkdirSync(dir, { recursive: true });
+  rmSync(join(dir, "ready"), { force: true });
   fakeBin(
     home,
     "pipewire",
@@ -49,9 +50,26 @@ test("a served fake machine that is stopped takes its PipeWire daemon with it", 
   });
   for (let i = 0; i < 200 && !existsSync(join(dir, "ready")); i++) await Bun.sleep(50);
   expect(existsSync(join(dir, "ready"))).toBe(true);
+  return { serve, pid: Number(readFileSync(pidFile, "utf8")) };
+}
+
+test("a served fake machine that is stopped takes its PipeWire daemon with it", async () => {
+  const { serve, pid } = await serveFake(sandboxDir("qsm-fake-machine-"));
 
   serve.kill("SIGTERM");
   await serve.exited;
 
-  expect(await ended(Number(readFileSync(pidFile, "utf8")))).toBe(true);
+  expect(await ended(pid)).toBe(true);
+});
+
+test("a served fake machine ends the PipeWire daemon a killed one left", async () => {
+  const home = sandboxDir("qsm-fake-machine-");
+  const first = await serveFake(home);
+  first.serve.kill("SIGKILL");
+  await first.serve.exited;
+  expect(isAlive(first.pid)).toBe(true);
+
+  await serveFake(home);
+
+  expect(await ended(first.pid)).toBe(true);
 });
