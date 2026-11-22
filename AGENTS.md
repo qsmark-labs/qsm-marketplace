@@ -35,6 +35,10 @@ touching its users (Cockburn, ports and adapters).
 
 - **The best code is the code not written.** Every new file, function or plugin claims something
   is missing; say the claim, or do not add it.
+- **The CLI itself, before a wrapper.** A skill names the CLI a job already has (`gh`, `git`, `wt`)
+  and the model calls it directly. A plugin wraps a CLI only for what the bare call cannot do, such
+  as keeping a secret out of the context, because a wrapper is code to keep and one more place that
+  can refuse the agent.
 - **One shared thing, never a copy.** Search before adding and edit the owner in place, because
   two copies drift and a fix then lands in one of them.
 - **Loud or working, never silent.** A state that cannot be used is `missing`, `failed`, `worse`
@@ -147,12 +151,15 @@ what done means, ending in a `strict-reviewer` review.
 - Only the owner asks Macroscope for a review, by commenting `@macroscope-app review` on a green
   pull request, because every review is paid and an agent opens pull requests the owner may not
   want reviewed at all. An agent never writes that comment.
+- The paid review reads a pull request into `main`: a feature's pull request or a side change. A
+  task's pull request into its feature branch gets `/simplify` and a local review before its push
+  and no paid review, because the feature's pull request reads the same lines once, as they land.
 
 ## Temporary
 
-- Evals are written, not run: a change to a skill or agent writes or updates its eval case, and
-  nobody runs `bun run eval` until the owner has reviewed every case in one pass, because a run
-  against an unreviewed case judges the skill by a grader nobody checked.
+- Agentic evals are written, not run: a change to a skill or agent writes or updates its eval
+  case, and the case stays in the tree unrun until the lens of qsm-builder is finished. Every
+  other eval and test runs.
 
 ## Where work lands
 
