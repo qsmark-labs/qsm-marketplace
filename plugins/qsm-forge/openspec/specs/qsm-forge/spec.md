@@ -286,3 +286,38 @@ than a raw platform-CLI or API call.
   request
 - **THEN** the skill SHALL trigger and produce the wrapper-verb
   invocations for the matching forge, not a raw call
+
+### Requirement: Open a pull request as the GitHub App
+
+`qsm-forge gh pr-open` SHALL open a pull request as the GitHub App named by `QSM_FORGE_APP_ID`,
+using a private key stored in the vault under the key named by `QSM_FORGE_APP_KEY`. It SHALL mint
+an installation token for the repository on each call, give it to the one `gh pr create` child
+only, and assign the pull request to, and request review from, the person's own gh login. The key
+and the token SHALL NOT appear in any argument, output, log or error.
+
+#### Scenario: Opened as the App
+
+- **WHEN** both variables are set, the key is stored and the App is installed on the repository
+- **THEN** the pull request SHALL be authored by the App, and its URL SHALL be printed
+
+#### Scenario: A variable is unset
+
+- **WHEN** `QSM_FORGE_APP_ID` or `QSM_FORGE_APP_KEY` is unset
+- **THEN** the CLI SHALL fail `missing` naming the variable, before any network call
+
+#### Scenario: The key is not stored
+
+- **WHEN** the vault holds no value under the named key
+- **THEN** the CLI SHALL fail `missing`, and no pull request SHALL be opened
+
+#### Scenario: GitHub refuses a token request
+
+- **WHEN** GitHub answers the installation or token request with a non-2xx status
+- **THEN** the CLI SHALL fail `failed` with the status and GitHub's message
+
+### Requirement: Dependencies
+
+qsm-forge SHALL declare `qsm-secrets` in the `dependencies` array of its plugin.json, for one
+reason:
+
+- `qsm-secrets`: `gh pr-open` reads the App private key from the vault through `qsm-secrets get`.

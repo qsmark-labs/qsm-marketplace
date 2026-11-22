@@ -19,7 +19,7 @@ safe primitive, this plugin can go.
 | --- | --- | --- |
 | Skill | `review-threads` | Reads, answers, resolves, dismisses and submits review threads through the CLI |
 | Hook | `tool.call` on Bash | Refuses raw `gh api`, `glab api` and `curl` calls that touch review state |
-| CLI | `qsm-forge` | 14 verbs (`gh`, `gl`, `doctor`), see [USAGE.md](USAGE.md) |
+| CLI | `qsm-forge` | 15 verbs (`gh`, `gl`, `doctor`), see [USAGE.md](USAGE.md) |
 
 ## Install
 
