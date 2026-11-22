@@ -5,7 +5,7 @@
 // runs, no network, no source cache.
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { envelopeOf, isolatedEnv } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -25,8 +25,8 @@ function fakeRuntime(): string {
       "#!/bin/sh",
       'case "$1" in',
       '  ps) [ "${FAKE_PS_EXIT:-0}" -eq 0 ] || exit "$FAKE_PS_EXIT"; printf "%s" "${FAKE_PS_OUTPUT:-}"; exit 0 ;;',
-      '  rm) exit "${FAKE_RM_EXIT:-0}" ;;',
-      '  exec) [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT"; printf \'{"ok":true}\\n\'; exit 0 ;;',
+      '  rm) echo "$@" >> "${FAKE_LOG:-/dev/null}"; exit "${FAKE_RM_EXIT:-0}" ;;',
+      '  exec) [ -z "${FAKE_EXEC_HANG:-}" ] || exec sleep "$FAKE_EXEC_HANG"; [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT"; printf \'{"ok":true}\\n\'; exit 0 ;;',
       "  image) exit 1 ;;",
       "  build|run) exit 0 ;;",
       "esac",
@@ -146,5 +146,58 @@ describe("qsm-web browserbox lifecycle", () => {
       c.says.filter((phrase) => !envelope.message.includes(phrase)),
       (c.silent ?? []).filter((phrase) => envelope.message.includes(phrase)),
     ]).toEqual([[], []]);
+  });
+});
+
+describe("qsm-web browserbox driver that never answers", () => {
+  test("the call fails at the reply limit, not when the driver answers", () => {
+    const started = Date.now();
+    const r = runOutcome({
+      title: "hung driver",
+      argv: ["fetch", "--in", "bbox-11000", "http://x.invalid", "--timeout", "200", "--json"],
+      env: { FAKE_EXEC_HANG: "60", QSM_BROWSERBOX_REPLY_MS: "1500" },
+      exit: 1,
+      says: [],
+    });
+
+    expect(r.exit).toBe(1);
+    expect(JSON.stringify(envelopeOf(r.stdout).data)).toContain("did not answer within 1500 ms");
+    expect(Date.now() - started).toBeLessThan(20_000);
+  });
+});
+
+describe("qsm-web browserbox sweep of a dead run's container", () => {
+  /** `ls` against a fake runtime holding these containers; answers the names it removed. */
+  function removedBy(ps: string): { removed: string[]; stderr: string } {
+    const log = join(sandboxDir("qsm-web-rm-log-"), "rm.log");
+    writeFileSync(log, "");
+    const r = runOutcome({
+      title: "sweep",
+      argv: ["ls", "--json"],
+      env: { FAKE_PS_OUTPUT: ps, FAKE_LOG: log },
+      exit: 0,
+      says: [],
+    });
+    const removed = readFileSync(log, "utf8")
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((l) => l.replace("rm --force ", ""));
+    return { removed, stderr: r.stderr };
+  }
+
+  test("a container whose owner run is dead is removed and named", () => {
+    // The pid of a process that has ended.
+    const dead = spawnSync("true").pid;
+    const r = removedBy(
+      `bbox-11000 qsm.browserbox=1,qsm-owner=browserbox:${dead}\n` +
+        `bbox-11001 qsm.browserbox=1,qsm-owner=browserbox:${process.pid}\n`,
+    );
+    expect(r.removed).toEqual(["bbox-11000"]);
+    expect(r.stderr).toContain("removed bbox-11000");
+  });
+
+  test("a persistent container, with no owner, survives", () => {
+    const r = removedBy("bbox-11000 qsm.browserbox=1\n");
+    expect(r.removed).toEqual([]);
   });
 });

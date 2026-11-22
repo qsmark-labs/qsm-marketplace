@@ -1,14 +1,15 @@
 // Stage two, extracting text: every source becomes plain text, and the run keeps going when one of
 // them cannot.
 
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { missingConverter } from "./converters.ts";
 import type { Reader, Source } from "./sources.ts";
 import { analyzeText, countWords, estimateTokens } from "./structure.ts";
 import { messageOf } from "../../../lib/outcome.ts";
+import { runTempDir, spawnMarked, sweepNamed } from "../../../lib/reap.ts";
+
+const TOOL = "qsm-book-to-skill";
 
 export interface RunResult {
   readonly status: number;
@@ -48,7 +49,7 @@ export interface ExtractDeps {
 }
 
 function systemRun(command: string, args: readonly string[]): RunResult {
-  const done = spawnSync(command, [...args], { encoding: "utf8", maxBuffer: 1024 * 1024 * 256 });
+  const done = spawnMarked(TOOL, command, args, { maxBuffer: 1024 * 1024 * 256 });
   return {
     status: done.status ?? 1,
     stdout: done.stdout ?? "",
@@ -78,7 +79,7 @@ const ENTITIES: readonly (readonly [RegExp, string])[] = [
 /** Enough HTML to read a book with. Not a parser: a document that needs one
  * is better handed to pandoc, which this program already knows how to call. */
 export function htmlToText(html: string): string {
-  const stripped = html.replace(SCRIPT_OR_STYLE, " ").replace(TAG, " ");
+  const stripped = html.replaceAll(SCRIPT_OR_STYLE, " ").replaceAll(TAG, " ");
   const decoded = ENTITIES.reduce((text, [pattern, char]) => text.replace(pattern, char), stripped);
   return decoded
     .split("\n")
@@ -103,7 +104,8 @@ function viaStdout(
 /** calibre writes to a file rather than to stdout, so the conversion needs
  * a scratch path of its own; it is removed whichever way the call ends. */
 function viaFile(deps: ExtractDeps, source: Source): { text: string } | { reason: string } {
-  const scratch = mkdtempSync(join(tmpdir(), "qsm-book-to-skill-convert-"));
+  sweepNamed(TOOL);
+  const scratch = runTempDir(TOOL);
   try {
     const out = join(scratch, `${basename(source.path)}.txt`);
     const done = deps.run("ebook-convert", [source.path, out]);
