@@ -59,6 +59,10 @@ model {
       #shared
       technology 'TypeScript modules'
       metadata { group 'Core' path 'lib' }
+      reap = component 'Run cleanup' 'Marks the processes and temp directories of a tool run, and ends or removes what a call or a killed run left' {
+        technology 'TypeScript module'
+        metadata { path 'lib/reap.ts' }
+      }
     }
     essentials = container 'qsm-essentials' 'The shared method: how to debug, design, test, write and delegate' {
       technology 'skills, agents'
@@ -426,6 +430,9 @@ model {
   mp.spec.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-manifest' { technology 'import' }
   mp.forge.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
   mp.tasks.tool -> mp.lib 'builds on install-base' { technology 'import' }
+  // who cleans up through the run cleanup of the shared kit (measured: production imports of lib/reap)
+  mp.docs.kinds -> mp.lib.reap 'runs each converter under its run mark and sweeps its temp directories with' { technology 'import' }
+  mp.index -> mp.lib.reap 'runs its indexer under its run mark with' { technology 'import' }
   mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
