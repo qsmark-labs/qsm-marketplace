@@ -6,6 +6,9 @@ import { isRecord } from "../../../lib/outcome.ts";
 
 export const IMAGE = "qsm-browserbox";
 export const LABEL = "qsm.browserbox";
+/** The container label that names the run an instance dies with, `browserbox:<pid>`, the shape of
+ * QSM_OWNER. Only an instance that is not meant to outlive its run carries it. */
+const OWNER_LABEL = "qsm-owner";
 /** The image label that records which docker context it was built from. */
 const SOURCE_LABEL = "qsm.browserbox.source";
 /** One live-view port per instance. */
@@ -116,6 +119,8 @@ export interface StartSpec {
   readonly liveView: string;
   /** The invoking user's `uid:gid`, so a file the instance writes to the mount is the user's own. */
   readonly user: string;
+  /** The pid of the run this instance dies with, or null for one that lives until `browserbox stop`. */
+  readonly ownerPid: number | null;
 }
 
 /** The exact argument vector that starts one isolated instance. */
@@ -128,6 +133,7 @@ export function runDefinition(spec: StartSpec): string[] {
     spec.name,
     "--label",
     `${LABEL}=1`,
+    ...(spec.ownerPid === null ? [] : ["--label", `${OWNER_LABEL}=browserbox:${spec.ownerPid}`]),
     // The host's network, so the browser reaches servers on the host's loopback. The live view
     // listens on the instance's own port, on loopback only.
     "--network",
@@ -147,7 +153,24 @@ export function runDefinition(spec: StartSpec): string[] {
 }
 
 export function listDefinition(): string[] {
-  return ["ps", "--filter", `label=${LABEL}=1`, "--format", "{{.Names}} {{.Labels}}"];
+  return ["ps", "--filter", `label=${LABEL}=1`, "--format", "{{.Names}} {{.ID}} {{.Labels}}"];
+}
+
+/** The instances in the runtime's `ps` output (`<name> <id> <labels>`) whose owning run is dead. */
+export function orphanedInstances(
+  psOutput: string,
+  alive: (pid: number) => boolean,
+): { id: string; name: string }[] {
+  const owner = new RegExp(`(?:^|,)${OWNER_LABEL}=browserbox:(\\d+)(?:,|$)`);
+  const orphans: { id: string; name: string }[] = [];
+  for (const line of psOutput.split("\n")) {
+    const [name, id, labels = ""] = line.trim().split(/\s+/, 3);
+    const pid = Number(owner.exec(labels)?.[1]);
+    if (name !== undefined && id !== undefined && Number.isInteger(pid) && !alive(pid)) {
+      orphans.push({ id, name });
+    }
+  }
+  return orphans;
 }
 
 export function stopDefinition(name: string): string[] {

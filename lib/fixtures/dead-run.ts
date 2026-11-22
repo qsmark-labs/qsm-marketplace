@@ -9,7 +9,7 @@ import { isolatedEnv } from "./cli.ts";
 import { atTestEnd, TEST_TMP } from "./sandbox.ts";
 
 /** The pid of a process that has ended. */
-function deadPid(): number {
+export function deadPid(): number {
   const pid = spawnSync("true").pid;
   if (pid === undefined) {
     throw new Error("dead-run: `true` did not start");

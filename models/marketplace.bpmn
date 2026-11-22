@@ -1364,6 +1364,60 @@
     <bpmn:sequenceFlow id="f_open_read" sourceRef="open" targetRef="read" />
     <bpmn:sequenceFlow id="f_read_end" sourceRef="read" targetRef="end" />
   </bpmn:process>
+  <bpmn:collaboration id="tool_run_collab">
+    <bpmn:participant id="tool_run_pool" name="A tool run cleans up what it started" processRef="tool_run_process" />
+  </bpmn:collaboration>
+  <bpmn:process id="tool_run_process" name="A tool run cleans up what it started" isExecutable="false">
+    <bpmn:laneSet id="tool_run_process_laneset">
+      <bpmn:lane id="tool_run_process_lane_0" name="Agent" c4:element="agent">
+        <bpmn:flowNodeRef>tool_run_process_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cleanKilled</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>takeMark</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>work</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>reached</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cleanOwn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>asFound</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>leftovers</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="tool_run_process_start" name="Tool run started">
+      <bpmn:outgoing>f_start_cleanKilled</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="cleanKilled" name="1 Clean up what killed runs left">
+      <bpmn:incoming>f_start_cleanKilled</bpmn:incoming>
+      <bpmn:outgoing>f_cleanKilled_takeMark</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="takeMark" name="2 Take the run&#39;s owner mark">
+      <bpmn:incoming>f_cleanKilled_takeMark</bpmn:incoming>
+      <bpmn:outgoing>f_takeMark_work</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="work" name="3 Do the work under the mark">
+      <bpmn:incoming>f_takeMark_work</bpmn:incoming>
+      <bpmn:outgoing>f_work_reached</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="reached" name="Run reached its end?">
+      <bpmn:incoming>f_work_reached</bpmn:incoming>
+      <bpmn:outgoing>f_reached_cleanOwn</bpmn:outgoing>
+      <bpmn:outgoing>f_reached_leftovers</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="cleanOwn" name="4 Clean up what this run left">
+      <bpmn:incoming>f_reached_cleanOwn</bpmn:incoming>
+      <bpmn:outgoing>f_cleanOwn_asFound</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="asFound" name="Machine as the run found it">
+      <bpmn:incoming>f_cleanOwn_asFound</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="leftovers" name="Leftovers wait for the next run">
+      <bpmn:incoming>f_reached_leftovers</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_start_cleanKilled" sourceRef="tool_run_process_start" targetRef="cleanKilled" />
+    <bpmn:sequenceFlow id="f_cleanKilled_takeMark" sourceRef="cleanKilled" targetRef="takeMark" />
+    <bpmn:sequenceFlow id="f_takeMark_work" sourceRef="takeMark" targetRef="work" />
+    <bpmn:sequenceFlow id="f_work_reached" sourceRef="work" targetRef="reached" />
+    <bpmn:sequenceFlow id="f_reached_cleanOwn" name="yes" sourceRef="reached" targetRef="cleanOwn" />
+    <bpmn:sequenceFlow id="f_reached_leftovers" name="no, killed" sourceRef="reached" targetRef="leftovers" />
+    <bpmn:sequenceFlow id="f_cleanOwn_asFound" sourceRef="cleanOwn" targetRef="asFound" />
+  </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_split_collab">
     <bpmndi:BPMNPlane id="BPMNPlane_split_collab" bpmnElement="split_collab">
       <bpmndi:BPMNShape id="BPMNShape_split_pool" bpmnElement="split_pool" isHorizontal="true">
@@ -3635,6 +3689,91 @@
       <bpmndi:BPMNEdge id="BPMNEdge_decouple_process_f_close_end" bpmnElement="decouple_process_f_close_end" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
         <di:waypoint x="586" y="200" />
         <di:waypoint x="686" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_tool_run_collab">
+    <bpmndi:BPMNPlane id="BPMNPlane_tool_run_collab" bpmnElement="tool_run_collab">
+      <bpmndi:BPMNShape id="BPMNShape_tool_run_pool" bpmnElement="tool_run_pool" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="1232" height="356" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_tool_run_process_lane_0" bpmnElement="tool_run_process_lane_0" isHorizontal="true" bioc:stroke="#6b4fbb" bioc:fill="#dbd5ef" color:background-color="#dbd5ef" color:border-color="#6b4fbb">
+        <dc:Bounds x="110" y="80" width="1202" height="356" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_tool_run_process_start" bpmnElement="tool_run_process_start" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="150" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="139" y="223" width="59" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_cleanKilled" bpmnElement="cleanKilled" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="286" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_takeMark" bpmnElement="takeMark" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="486" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_work" bpmnElement="work" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="686" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_reached" bpmnElement="reached" isMarkerVisible="true" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="886" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="871" y="142" width="80" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_cleanOwn" bpmnElement="cleanOwn" bioc:stroke="#402f70" bioc:fill="#6b4fbb" color:background-color="#6b4fbb" color:border-color="#402f70">
+        <dc:Bounds x="1036" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel color:color="#ffffff" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_asFound" bpmnElement="asFound" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="1236" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1210" y="223" width="89" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_leftovers" bpmnElement="leftovers" bioc:stroke="#6b4fbb" bioc:fill="#ffffff" color:background-color="#ffffff" color:border-color="#6b4fbb">
+        <dc:Bounds x="1068" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1044" y="361" width="85" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_start_cleanKilled" bpmnElement="f_start_cleanKilled" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="186" y="200" />
+        <di:waypoint x="286" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_cleanKilled_takeMark" bpmnElement="f_cleanKilled_takeMark" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="386" y="200" />
+        <di:waypoint x="486" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_takeMark_work" bpmnElement="f_takeMark_work" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="586" y="200" />
+        <di:waypoint x="686" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_work_reached" bpmnElement="f_work_reached" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="786" y="200" />
+        <di:waypoint x="886" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_reached_cleanOwn" bpmnElement="f_reached_cleanOwn" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="936" y="200" />
+        <di:waypoint x="1036" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="974" y="178" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_cleanOwn_asFound" bpmnElement="f_cleanOwn_asFound" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="1136" y="200" />
+        <di:waypoint x="1236" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_f_reached_leftovers" bpmnElement="f_reached_leftovers" bioc:stroke="#6b4fbb" color:border-color="#6b4fbb">
+        <di:waypoint x="911" y="225" />
+        <di:waypoint x="911" y="338" />
+        <di:waypoint x="1068" y="338" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="916" y="275" width="71" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

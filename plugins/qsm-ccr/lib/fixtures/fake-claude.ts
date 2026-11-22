@@ -1,7 +1,7 @@
 // The fake `claude`: records its argv and the variables qsm-ccr decides, optionally writes a model
 // into user settings (mode claude-writes-model) or leaves them unparseable (mode
 // claude-breaks-settings), and exits with mode claude-exit (default 0).
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { need, readJsonObject } from "./read.ts";
 
@@ -17,6 +17,14 @@ if (existsSync(join(root, "mode", "claude-writes-model"))) {
   const path = join(need(process.env.CLAUDE_CONFIG_DIR, "CLAUDE_CONFIG_DIR"), "settings.json");
   const settings = existsSync(path) ? readJsonObject(path) : {};
   writeFileSync(path, JSON.stringify({ ...settings, model: "anthropic/claude-ccr-abc123" }));
+  // the private home is removed when this claude ends, so what it holds is kept here to read
+  copyFileSync(path, join(root, "out", "private-settings.json"));
+}
+if (existsSync(join(root, "mode", "claude-writes-history"))) {
+  writeFileSync(
+    join(need(process.env.CLAUDE_CONFIG_DIR, "CLAUDE_CONFIG_DIR"), "history.jsonl"),
+    '{"display":"hi"}\n',
+  );
 }
 if (existsSync(join(root, "mode", "claude-breaks-settings"))) {
   writeFileSync(
