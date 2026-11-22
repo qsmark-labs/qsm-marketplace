@@ -198,6 +198,7 @@ function registerAgents(on: On): void {
       tookMs: null,
       outcome: "running",
       doing: "starting",
+      isWorkflow: e.workflow !== undefined,
     };
     await update($, agents, (list) => [...list, run].slice(-100));
     return started;
@@ -235,13 +236,16 @@ const WORKING: ReadonlySet<AgentStatus> = new Set<AgentStatus>(["pending", "runn
 /**
  * The recorded runs as the engine holds them now. A record leaves `running` at its turn's end, and
  * a loop stopped between two turns, or gone with a resumed session, has no such end: once the
- * engine no longer works on it, it shows as stopped.
+ * engine no longer works on it, it shows as stopped. A workflow's agent is never in the engine's
+ * list, so its record stands.
  */
 async function runsNow($: EngineInterface): Promise<AgentRun[]> {
   const [recorded, live] = await Promise.all([read($, agents), $.agent.list()]);
   const working = new Set(live.filter((one) => WORKING.has(one.status)).map((one) => one.id));
   return recorded.map((run) =>
-    run.outcome === "running" && !working.has(run.id) ? { ...run, outcome: "aborted" } : run,
+    run.outcome === "running" && !run.isWorkflow && !working.has(run.id)
+      ? { ...run, outcome: "aborted" }
+      : run,
   );
 }
 
@@ -400,7 +404,7 @@ async function agentsCard($: EngineInterface, els: Elements) {
       {isOpen &&
         finished.map((run) => (
           <Text key={run.id} dimColor wrap="truncate-end">
-            {`${run.tier.padEnd(6)} ${(OUTCOME_WORD[run.outcome] ?? run.outcome).padEnd(7)} ${seconds(run.tookMs ?? 0).padStart(6)}  ${run.description}`}
+            {`${run.tier.padEnd(6)} ${(OUTCOME_WORD[run.outcome] ?? run.outcome).padEnd(7)} ${(run.tookMs === null ? "" : seconds(run.tookMs)).padStart(6)}  ${run.description}`}
           </Text>
         ))}
     </Box>,

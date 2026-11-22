@@ -225,21 +225,27 @@ test("the band shows what each agent runs and never the main chat's commands, th
   expect(JSON.stringify(await pane.drawn())).toContain("└ thinking");
 });
 
-test("an agent the engine stopped or dropped leaves the band with no end of a turn", async ($, on) => {
+test("an agent the engine stopped or dropped leaves the band with no end of a turn, a workflow's stays", async ($, on) => {
   beneath(on);
-  // The engine holds a1 at work and a2 as killed, and has dropped a3.
+  // The engine holds a1 at work and a2 as killed, has dropped a3, and never lists a4, a workflow's.
   numberedAgents(on, "haiku", () => [listed("a1", "running"), listed("a2", "killed")]);
 
   await $.agent.spawn(SPAWN);
   await $.agent.spawn({ ...SPAWN, description: "[haiku] runner: bun test" });
   await $.agent.spawn({ ...SPAWN, description: "[haiku] runner: bun run lint" });
+  await $.agent.spawn({
+    ...SPAWN,
+    description: "[haiku] workflow: build",
+    workflow: { runId: "wf_1", agentIndex: 1 },
+  });
   const band = await drawnBand($);
   const { shut } = await shutPane($);
 
   expect(band).toContain("runner: sleep 20");
+  expect(band).toContain("workflow: build");
   expect(band).not.toContain("runner: bun test");
   expect(band).not.toContain("runner: bun run lint");
-  expect(shut).toContain("1 running");
+  expect(shut).toContain("2 running");
   expect(shut).toContain("▸ 2 finished");
 });
 

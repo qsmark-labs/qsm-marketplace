@@ -34,6 +34,8 @@ export type AgentRun = {
   stage?: Stage;
   /** What it does now: its last tool call, said short (`Bash sleep 30`). */
   doing: string;
+  /** Whether a workflow started it: the engine's list of agents never holds a workflow's. */
+  isWorkflow: boolean;
 };
 
 /** One answered question, under the typed ask it was asked for. */
