@@ -213,25 +213,16 @@ fail naming them. No rule says which Status may follow which.
 - **WHEN** `qsm-tasks move 187 "In Dev"` runs and the board has that option
 - **THEN** the mutation is sent with the board, item, field and option ids the query returned
 
-#### Scenario: A Status the board does not have
+#### Scenario: A move that is refused
 
-- **WHEN** `<status>` is not exactly one option's name
-- **THEN** the verb ends `failed`, sends no mutation and names the board's options
+- **WHEN** `<status>` is not exactly one option's name, or the issue is on no board or on several
+- **THEN** the verb ends `failed`, sends no mutation and names the board's options, or says the
+  issue is on no board, or names the boards
 
-#### Scenario: An issue on no board or on several
+#### Scenario: gh cannot answer
 
-- **WHEN** the query returns no board item, or more than one
-- **THEN** the verb ends `failed` saying the issue is on no board, or naming the boards
-
-#### Scenario: gh refuses the mutation
-
-- **WHEN** the mutation call exits non-zero
-- **THEN** the verb ends `failed` with gh's stderr
-
-#### Scenario: gh answers the query in a shape move does not know
-
-- **WHEN** a field the verb needs is missing or not of its type
-- **THEN** the verb ends `failed` naming the field
+- **WHEN** a gh call exits non-zero, or the query's answer lacks a field the verb needs
+- **THEN** the verb ends `failed` with gh's stderr, or naming the field
 
 ### Requirement: Dependencies
 

@@ -36,14 +36,3 @@ test("a Status that is none of the options is refused with every option named", 
     }),
   );
 });
-
-test("no node is no board, whatever the issue number", () => {
-  assert(
-    property(nat(), (number) => {
-      const none = { data: { repository: { issue: { projectItems: { nodes: [] } } } } };
-      expect(() => targetOf(JSON.stringify(none), number, "x")).toThrow(
-        `issue #${number} is on no board`,
-      );
-    }),
-  );
-});

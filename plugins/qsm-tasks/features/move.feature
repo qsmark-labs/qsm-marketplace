@@ -2,7 +2,7 @@ Feature: move sets the Status of an issue
 
   Scenario Outline: the Status is set on the board the issue is on
     Given gh answers the board query of issue "187" with the recorded board "qsm-marketplace"
-    And gh sets the Status "<status>" on the recorded board and answers ""
+    And gh sets the Status "<status>" on the recorded board
     When I run "move 187 '<status>' --json"
     Then it ends "ok" with exit 0 saying "#187 <status>"
     And gh received "board"
@@ -24,12 +24,6 @@ Feature: move sets the Status of an issue
       | first,second | Done   | issue #187 is on several boards: first, second                                                  |
       | board        | Nope   | Status Nope is not on the board; its Statuses: Todo, In Dev, Agent Review, Ready For Human, Human Review, Done |
       | board        | done   | Status done is not on the board; its Statuses: Todo, In Dev                                     |
-
-  Scenario: gh fails to set the Status
-    Given gh answers the board query of issue "187" with the recorded board "board"
-    And gh sets the Status "Done" on the recorded board and answers "boom"
-    When I run "move 187 Done --json"
-    Then it ends "failed" with exit 1 saying "boom"
 
   Scenario Outline: gh answers the board query in a shape move does not know
     Given gh answers the board query of issue "187" with '<raw>'

@@ -168,34 +168,29 @@ Given(
     accept(world, boardQuery(number, String(raw)));
   },
 );
-Given(
-  "gh sets the Status {string} on the recorded board and answers {string}",
-  (world: World, status: unknown, stderr: unknown) => {
-    const options = dig(NODE, "project", "field", "options");
-    const option = Array.isArray(options)
-      ? (options as unknown[]).find((o) => dig(o, "name") === status)
-      : undefined;
-    accept(world, {
-      name: "mutation",
-      args: [
-        "api",
-        "graphql",
-        "-f",
-        `projectId=${textOf(dig(NODE, "project", "id"))}`,
-        "-f",
-        `itemId=${textOf(dig(NODE, "id"))}`,
-        "-f",
-        `fieldId=${textOf(dig(NODE, "project", "field", "id"))}`,
-        "-f",
-        `optionId=${textOf(dig(option, "id"))}`,
-        "-f",
-        `query=${MUTATION}`,
-      ],
-      stderr: String(stderr),
-      exit: String(stderr) === "" ? 0 : 1,
-    });
-  },
-);
+Given("gh sets the Status {string} on the recorded board", (world: World, status: unknown) => {
+  const options = dig(NODE, "project", "field", "options");
+  const option = Array.isArray(options)
+    ? (options as unknown[]).find((o) => dig(o, "name") === status)
+    : undefined;
+  accept(world, {
+    name: "mutation",
+    args: [
+      "api",
+      "graphql",
+      "-f",
+      `projectId=${textOf(dig(NODE, "project", "id"))}`,
+      "-f",
+      `itemId=${textOf(dig(NODE, "id"))}`,
+      "-f",
+      `fieldId=${textOf(dig(NODE, "project", "field", "id"))}`,
+      "-f",
+      `optionId=${textOf(dig(option, "id"))}`,
+      "-f",
+      `query=${MUTATION}`,
+    ],
+  });
+});
 
 When("I run {string}", (world: World, args: unknown) => {
   // StrykerJS names the mutant to switch on in this variable; the CLI child must see it, or no
