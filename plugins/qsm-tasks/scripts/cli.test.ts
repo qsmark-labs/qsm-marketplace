@@ -1,10 +1,9 @@
 // qsm-tasks through its real entry: argv in, one envelope or text out, against a fake gh.
 // The behaviour is the Gherkin in features/; every row runs through the steps below.
 import { expect } from "bun:test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadFeatures, runFeatures, Then, When, Given } from "@questi0nm4rk/feats";
-import { isRecord } from "../../../lib/outcome.ts";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -33,27 +32,15 @@ function fakeGh(world: World, body: string): void {
   world.path = `${world.bin}:${process.env.PATH ?? ""}`;
 }
 
-/** The answer gh recorded, with the issue `bare` on no board. */
-function recorded(bare: string): string {
-  const rows: unknown = JSON.parse(readFileSync(join(FEATURES, "gh-issue-list.json"), "utf8"));
-  if (!Array.isArray(rows)) {
-    throw new TypeError("the recorded gh answer is not an array");
-  }
-  return JSON.stringify(
-    rows.map((r: unknown) =>
-      isRecord(r) && String(r.number) === bare ? { ...r, projectItems: [] } : r,
-    ),
-  );
-}
-
 function answer(world: World, raw: string): void {
   const file = join(sandboxDir("qsm-tasks-answer-"), "answer.json");
   writeFileSync(file, raw);
   fakeGh(world, `cat "${file}"`);
 }
 
-Given("gh lists the recorded issues, {string} on no board", (world: World, bare: unknown) => {
-  answer(world, recorded(String(bare)));
+// the answer as gh gave it: one issue with a Status, one on the board with none set
+Given("gh lists the recorded issues", (world: World) => {
+  fakeGh(world, `cat "${join(FEATURES, "gh-issue-list.json")}"`);
 });
 Given("gh is {string}", (world: World, how: unknown) => {
   if (how === "absent") {
