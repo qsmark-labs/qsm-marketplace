@@ -75,7 +75,7 @@ export function processes(): Proc[] {
 /** The environment entries that mark a child of this process as `tool`'s. The mark is a chain:
  * this run's entry is added after the marks this process carries, so a test run still finds what
  * the code under it started, and each tool still finds its own. */
-function ownerEnv(tool: string): Record<string, string> {
+export function ownerEnv(tool: string): Record<string, string> {
   const outer = process.env[OWNER_VAR];
   const entry = `${tool}:${process.pid}`;
   return { [OWNER_VAR]: outer === undefined || outer === "" ? entry : `${outer} ${entry}` };
@@ -124,7 +124,7 @@ export function envValues(name: string): Set<string> {
 }
 
 /** The live processes this run of `tool` started. */
-function owned(tool: string): Proc[] {
+export function owned(tool: string): Proc[] {
   return withCmd(
     marked(tool)
       .filter((m) => m.runPid === process.pid)
@@ -133,7 +133,7 @@ function owned(tool: string): Proc[] {
 }
 
 /** The live processes runs of `tool` started that have since ended: what a crash left. */
-function orphaned(tool: string): Proc[] {
+export function orphaned(tool: string): Proc[] {
   return withCmd(
     marked(tool)
       .filter((m) => !isAlive(m.runPid))
@@ -145,7 +145,7 @@ function orphaned(tool: string): Proc[] {
  * <why>`, and scans again until it lists nothing: a killed process ends a moment after the signal,
  * and a child forked before it shows only in the next scan. A zombie counts as ended, one that
  * ended first is skipped; a process that refuses the signal, or one listed past the limit, throws. */
-function reapNamed(tool: string, find: () => readonly Proc[], why: string): void {
+export function reapNamed(tool: string, find: () => readonly Proc[], why: string): void {
   const deadline = Date.now() + REAP_LIMIT_MS;
   const killed = new Set<number>();
   for (let left = find(); left.length > 0; left = find()) {

@@ -1,11 +1,10 @@
 // The one installer every plugin runs.
-import { spawnSync } from "node:child_process";
+import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   readlinkSync,
@@ -16,9 +15,9 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fishCompletion, MARKER, writeCompletion } from "./completions.ts";
+import { isAlive } from "./detach.ts";
 import {
   cliMain,
   type InstallContext,
@@ -28,6 +27,7 @@ import {
   type Step,
 } from "./install-contract.ts";
 import { purgeFarm } from "./legacy-farm.ts";
+import { runTempDir, sweepNamed } from "./reap.ts";
 import { binDir, buildRecordPath, type Env, fishCompletionDir } from "./paths.ts";
 import { loadManifest, type QsmManifest } from "./qsm-manifest.ts";
 
@@ -279,6 +279,8 @@ function hasDeps(pluginRoot: string): boolean {
   return existsSync(join(pluginRoot, "package.json"));
 }
 
+const BUN_INSTALL_TMP = "qsm-bun-install";
+
 /** The plugin's own npm dependencies, installed from its lockfile before anything compiles. */
 function dependencyStep(pluginRoot: string): Step | null {
   if (!hasDeps(pluginRoot)) {
@@ -286,14 +288,19 @@ function dependencyStep(pluginRoot: string): Step | null {
   }
   const name = "dependencies";
   // bun install leaves an empty hidden file in its temp directory, so it gets one of its own.
-  const scratch = mkdtempSync(join(tmpdir(), "qsm-bun-install-"));
-  const done = spawnSync("bun", ["install", "--frozen-lockfile"], {
-    cwd: pluginRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, TMPDIR: scratch },
-  });
-  rmSync(scratch, { recursive: true, force: true });
+  sweepNamed(BUN_INSTALL_TMP);
+  const scratch = runTempDir(BUN_INSTALL_TMP);
+  let done: SpawnSyncReturns<string>;
+  try {
+    done = spawnSync("bun", ["install", "--frozen-lockfile"], {
+      cwd: pluginRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, TMPDIR: scratch },
+    });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
   if (done.status !== 0) {
     const detail = `bun install failed in ${pluginRoot}: ${lastLine(done.stderr)}; run \`bun install\` in the plugin and commit its bun.lock`;
     return { name, status: "error", detail };
@@ -305,6 +312,8 @@ function dependencyStep(pluginRoot: string): Step | null {
   return { name, status: "installed", detail: "ran bun install --frozen-lockfile" };
 }
 
+const TMP = ".tmp";
+
 /** Compiles `entry` to `outFile`, replacing it only when the bytes differ. */
 function compile(pluginRoot: string, entry: string, outFile: string): Step {
   const name = basename(outFile);
@@ -314,17 +323,35 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
   }
   mkdirSync(resolve(outFile, ".."), { recursive: true });
   // The build goes through a temporary file because the binary being replaced may be the one
-  // running us.
-  const tmp = `${outFile}.tmp`;
+  // running us. It sits in a directory named with the pid, because two installs of one plugin can
+  // run at once (two sessions pulling main) and one must not remove or rename the other's partial
+  // build. The file inside keeps the final name: the compiled bytes depend on it, and the compare
+  // below only skips a rebuild when two runs produce equal bytes.
+  const prefix = `${basename(outFile)}.`;
+  const dir = dirname(outFile);
+  for (const entryName of readdirSync(dir)) {
+    const pid = entryName.slice(prefix.length, -TMP.length);
+    if (
+      entryName.startsWith(prefix) &&
+      entryName.endsWith(TMP) &&
+      /^\d+$/.test(pid) &&
+      !isAlive(Number(pid))
+    ) {
+      const left = join(dir, entryName);
+      console.error(`install: removed ${left}, left by a build that ended before its cleanup`);
+      rmSync(left, { recursive: true, force: true });
+    }
+  }
+  const tmpDir = `${outFile}.${process.pid}${TMP}`;
+  mkdirSync(tmpDir, { recursive: true });
+  const tmp = join(tmpDir, basename(outFile));
   const built = spawnSync(
     "bun",
     ["build", "--compile", "--target", "bun", "--outfile", tmp, source],
     { stdio: ["ignore", "ignore", "pipe"], cwd: pluginRoot, encoding: "utf8" },
   );
   if (built.status !== 0) {
-    if (existsSync(tmp)) {
-      unlinkSync(tmp);
-    }
+    rmSync(tmpDir, { recursive: true, force: true });
     return {
       name,
       status: "error",
@@ -332,10 +359,11 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
     };
   }
   if (existsSync(outFile) && sha256(outFile) === sha256(tmp)) {
-    unlinkSync(tmp);
+    rmSync(tmpDir, { recursive: true, force: true });
     return { name, status: "already", detail: `${outFile} unchanged` };
   }
   renameSync(tmp, outFile);
+  rmSync(tmpDir, { recursive: true, force: true });
   return { name, status: "installed", detail: `compiled ${entry} to ${outFile}` };
 }
 
@@ -383,7 +411,8 @@ function staleDist(pluginRoot: string): string[] {
     return [];
   }
   const kept = new Set(declaredHooks(pluginRoot).map((h) => h.name));
-  return readdirSync(dist).filter((name) => !kept.has(name));
+  // A running install's build directory is not stale; compile() ends the dead ones'.
+  return readdirSync(dist).filter((name) => !kept.has(name) && !name.endsWith(TMP));
 }
 
 function pruneSteps(pluginRoot: string): Step[] {

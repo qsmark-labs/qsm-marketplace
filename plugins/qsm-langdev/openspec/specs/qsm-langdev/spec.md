@@ -875,6 +875,20 @@ or at the edit point what is left of its deadline; no process SHALL carry a
 limit of its own and none SHALL run without one. A process that hits the
 limit SHALL be reported not measured. It SHALL NOT identify
 processes for termination by executable name or terminate unrelated user processes.
+The runner SHALL also terminate what is left in the group when the process exits, and SHALL mark
+each process with `QSM_OWNER=qsm-langdev:<run pid>`; a gate run SHALL first kill the marked
+processes of runs that ended, naming each on stderr. A scratch directory SHALL be named
+`<tool>.<run pid>.<random>` and removed at the next run once its run's pid is dead, never by age.
+
+#### Scenario: A checker exits with a background child
+
+- **WHEN** a checker exits normally while a child it started in the background still runs
+- **THEN** the runner SHALL terminate that child before it answers
+
+#### Scenario: A gate run follows a killed run
+
+- **WHEN** a gate run starts and a checker of a run that was killed is still running
+- **THEN** the run SHALL kill it and name it on stderr before it starts its own checkers
 
 #### Scenario: A timed-out launcher has a running engine child
 

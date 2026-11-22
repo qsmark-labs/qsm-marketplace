@@ -134,15 +134,34 @@ defect, and no project is an exception.
 
 ## Clean before and after
 
-A tool leaves the machine as it found it, plus only what it was asked to add. Before it writes, an
-installer removes every artifact an older version left (links, PATH blocks, data directories,
-backups) completely, and names each removal; a second run removes nothing. Anything that creates a
-temporary directory writes its full cleanup, so the count of entries in the temporary directory is
-the same after a run as before. What the person made is never deleted by a tool: no retention
-period, no cleanup of their transcripts, notes, sessions or files, and no setting that makes another
-tool delete them (`cleanupPeriodDays` below 36500 is such a setting), because a deleted transcript
-never comes back and nobody asked for it to go. A tool that must make room archives at maximum
-compression and names the archive.
+A tool leaves the machine as it found it, plus only what it was asked to add, forward and backward
+in time, and a change that can leave anything behind is not approvable, in review or anywhere else.
+
+- Forward: when a run ends, whether it succeeded, failed or timed out, every process it started and
+  every temporary file, lock, pid file and socket it made is gone. A timeout that kills only the
+  direct child is a leak, because the child's own children live on.
+- Backward: a run can crash before its cleanup, so on start a tool looks for what an earlier run of
+  itself left (a process with its owner mark, a temporary directory or lock whose owner is dead)
+  and removes it, naming each removal.
+- A tool marks every process it starts with an owner mark its descendants inherit, so both scans
+  find a daemon in its own session and an orphan under PID 1 alike. In the qsm marketplace the mark
+  is `QSM_OWNER` and the scan is `lib/reap.ts`.
+- A daemon meant to outlive the call is the one exception: it has a stop verb, and its start checks
+  for one already running.
+- A test obeys the same rule: it fails by name when it leaves a process running, and a test run
+  first removes what a crashed run left.
+
+The person in their words: "full all the way cleanup, in time back and forth, up and down,
+everything always, everywhere."
+
+Before it writes, an installer removes every artifact an older version left (links, PATH blocks,
+data directories, backups) completely, and names each removal; a second run removes nothing.
+Anything that creates a temporary directory writes its full cleanup, so the count of entries in the
+temporary directory is the same after a run as before. What the person made is never deleted by a
+tool: no retention period, no cleanup of their transcripts, notes, sessions or files, and no setting
+that makes another tool delete them (`cleanupPeriodDays` below 36500 is such a setting), because a
+deleted transcript never comes back and nobody asked for it to go. A tool that must make room
+archives at maximum compression and names the archive.
 
 Whatever starts a process, a timer or a server owns its end: it waits for that end, or hands back
 the handle (a pid) so its caller can. A test waits on the end itself, never on a log line, a file
