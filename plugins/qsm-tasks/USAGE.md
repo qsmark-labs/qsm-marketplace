@@ -17,7 +17,9 @@ that fails is `failed` (1) and its stderr is the message.
 `add` runs `gh issue create --title <title> --body-file <file>`, reads the issue number from the URL
 gh prints and prints the number. `--body-file` is required. With `--parent <n>` it then makes the
 new issue a sub-issue of `<n>` through `gh api`. A gh that fails is `failed` (1) with its stderr; an
-output without an issue URL, or an issue id that is not a number, is `failed` too.
+output without an issue URL, or an issue id that is not a number, is `failed` too. When the issue
+was filed and the sub-issue step fails, the message starts `issue #<new> was created`: link that
+issue, do not run `add` again.
 
 With `--json`, stdout is one envelope `{ code, exit, reason, message, warnings, data }`; for `list`,
 `data` is an array of `{ number, title, status }`, `status` null for an issue on no board; for

@@ -177,7 +177,8 @@ The verb `add "<title>" --body-file <file>` SHALL run
 on stdout and print the number; `--body-file` SHALL be required. With `--parent <n>` it SHALL then
 make the new issue a sub-issue of `<n>`: `gh api repos/{owner}/{repo}/issues/<new> --jq .id`, then
 `gh api -X POST repos/{owner}/{repo}/issues/<n>/sub_issues -F sub_issue_id=<id>`. Output that does
-not end in an issue URL, or an id that is not a number, SHALL fail with the text found.
+not end in an issue URL, or an id that is not a number, SHALL fail with the text found. A failure
+after the issue was filed SHALL name the issue's number, so a retry does not file it twice.
 
 #### Scenario: A new issue
 
@@ -189,6 +190,11 @@ not end in an issue URL, or an id that is not a number, SHALL fail with the text
 - **WHEN** `qsm-tasks add "a title" --body-file body.md --parent 186` runs
 - **THEN** the new issue's id is read and posted to `issues/186/sub_issues`, and the new number is
   printed
+
+#### Scenario: The issue is filed and the sub-issue step fails
+
+- **WHEN** `gh issue create` succeeded and reading the id or posting the sub-issue fails
+- **THEN** the verb ends `failed` saying `issue #<new> was created` and why the step failed
 
 #### Scenario: gh answers in a shape add does not know
 
