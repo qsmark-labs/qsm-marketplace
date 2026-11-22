@@ -433,6 +433,12 @@ model {
   // who cleans up through the run cleanup of the shared kit (measured: production imports of lib/reap)
   mp.docs.kinds -> mp.lib.reap 'runs each converter under its run mark and sweeps its temp directories with' { technology 'import' }
   mp.index -> mp.lib.reap 'runs its indexer under its run mark with' { technology 'import' }
+  mp.books -> mp.lib.reap 'runs its converters under its run mark and sweeps its temp directories with' { technology 'import' }
+  mp.ccr -> mp.lib.reap 'names its launch homes and marks its calls with' { technology 'import' }
+  mp.compuse -> mp.lib.reap 'ends what a fake machine left with' { technology 'import' }
+  mp.langdev -> mp.lib.reap 'ends what a checker left and sweeps its temp trees with' { technology 'import' }
+  mp.memory -> mp.lib.reap 'ends what a pack left with' { technology 'import' }
+  mp.secrets -> mp.lib.reap 'names and sweeps its askpass directory with' { technology 'import' }
   mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
