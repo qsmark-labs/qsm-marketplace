@@ -266,13 +266,22 @@ function sweepOrphans(box: Box): void {
   if (status !== 0) {
     throw new QsmError("failed", `listing the running instances failed (exit ${status})`);
   }
-  for (const name of orphanedInstances(stdout, isAlive)) {
-    const removed = box.run(stopDefinition(name));
+  for (const { id, name } of orphanedInstances(stdout, isAlive)) {
+    // By id, never by name: names come from the port, so a new run may already hold this one.
+    const removed = box.run(stopDefinition(id));
     if (removed.status !== 0) {
-      throw new QsmError(
-        "failed",
-        `${name} is left by a dead run and could not be removed (exit ${removed.status})`,
-      );
+      const again = box.run(listDefinition());
+      if (again.status !== 0) {
+        throw new QsmError("failed", `listing the running instances failed (exit ${again.status})`);
+      }
+      if (again.stdout.split("\n").some((line) => line.trim().split(/\s+/)[1] === id)) {
+        throw new QsmError(
+          "failed",
+          `${name} is left by a dead run and could not be removed (exit ${removed.status})`,
+        );
+      }
+      process.stderr.write(`qsm-web browserbox: ${name} was already removed by another sweep\n`);
+      continue;
     }
     process.stderr.write(`qsm-web browserbox: removed ${name}, left by a run that ended\n`);
   }
