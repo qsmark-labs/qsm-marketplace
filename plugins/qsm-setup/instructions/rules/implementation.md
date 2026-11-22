@@ -44,6 +44,11 @@ A tool, hook, installer, or gate that cannot be used fails loud and names the ca
 only for a half-state that still works, because a silent success on a broken state is the worst
 failure to find later.
 
+A CLI's error names the exact place it failed (the field path, the line, the argument) and what it
+found there, or passes the underlying error through verbatim, never a truncated dump of the input,
+because a cut dump shows the start of the input, not the part that failed, and the person has to
+run the command again to find it.
+
 ## One path: no fallback, no compatibility, no history
 
 Until the person says otherwise, code takes one path and fails when that path fails. A missing

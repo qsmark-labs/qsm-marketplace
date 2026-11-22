@@ -57,7 +57,7 @@ interface ApiNote {
   readonly author?: { readonly username?: string };
   readonly position?: {
     readonly new_path?: string;
-    readonly old_path?: string;
+    readonly old_path?: string | null;
     readonly new_line?: number | null;
     readonly old_line?: number | null;
   };
@@ -256,7 +256,7 @@ const isApiNote = objectOf<ApiNote>({
   position: orAbsent(
     objectOf<NonNullable<ApiNote["position"]>>({
       new_path: orAbsent(isString),
-      old_path: orAbsent(isString),
+      old_path: orAbsent(orNull(isString)),
       new_line: orAbsent(orNull(isNumber)),
       old_line: orAbsent(orNull(isNumber)),
     }),
