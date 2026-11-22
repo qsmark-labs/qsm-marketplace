@@ -59,6 +59,19 @@ test("a checker that exits leaves none of its background children running", asyn
   expect(marked(marker)).toBe(false);
 });
 
+test("a checker that exits while a background child holds its pipes is reported at its exit", async () => {
+  const dir = sandboxDir("qsm-langdev-process-");
+  const marker = `${process.pid}${Date.now()}`;
+  const started = Date.now();
+
+  const result = await spawnAsync(dir, "sh", ["-c", `sleep ${marker}.5 &`], 4_000);
+
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(0);
+  expect(Date.now() - started).toBeLessThan(2_000);
+  expect(marked(marker)).toBe(false);
+});
+
 test("a checker runs with the build servers off", async () => {
   const dir = sandboxDir("qsm-langdev-process-");
 

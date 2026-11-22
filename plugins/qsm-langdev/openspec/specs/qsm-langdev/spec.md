@@ -885,6 +885,12 @@ processes of runs that ended, naming each on stderr. A scratch directory SHALL b
 - **WHEN** a checker exits normally while a child it started in the background still runs
 - **THEN** the runner SHALL terminate that child before it answers
 
+#### Scenario: A checker exits while a background child holds its output pipes
+
+- **WHEN** a checker exits normally and a child it started still holds its stdout
+- **THEN** the runner SHALL terminate the child at the checker's exit and report the checker's own
+  status, not `timed out`
+
 #### Scenario: A gate run follows a killed run
 
 - **WHEN** a gate run starts and a checker of a run that was killed is still running

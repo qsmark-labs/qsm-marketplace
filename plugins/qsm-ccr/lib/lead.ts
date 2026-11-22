@@ -4,7 +4,7 @@
 import { binPath, fail, type Outcome, ok } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
 import { fromThrown } from "../../../lib/qsm-error.ts";
-import { isolatedHome, removeHome } from "./claude-home.ts";
+import { endHome, isolatedHome } from "./claude-home.ts";
 import { loadModels, prepareRouted, runClaude } from "./launch.ts";
 import { placesOf } from "./places.ts";
 import { launchArgs, launchEnv, type RoutedLaunch, resolveLead } from "./route.ts";
@@ -56,7 +56,7 @@ export async function runLead(
   try {
     exit = await runClaude(claude, launchArgs(rest, launch), childEnv);
   } finally {
-    removeHome(childEnv, places);
+    endHome(childEnv, places);
   }
   const model = `${route.provider},${route.slug}`;
   // the lib passes a signal's exit through and gives every other failure its own code's
