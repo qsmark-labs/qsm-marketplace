@@ -1,7 +1,7 @@
 // qsm-cockpit's function-hooks module: the stage tool, the hooks that record the session into its
 // state, a band above the prompt, and the /cockpit pane. The rules are lib/cockpit.ts; the hooks
 // only record and draw.
-import type { EngineInterface, On, Register, RenderChildren } from "claude-code";
+import type { AgentStatus, EngineInterface, On, Register, RenderChildren } from "claude-code";
 import { atom, read, update } from "claude-code";
 import {
   askTitle,
@@ -229,6 +229,22 @@ function registerAgents(on: On): void {
   });
 }
 
+/** The statuses of a loop the engine still works on; any other status, or no entry, is an end. */
+const WORKING: ReadonlySet<AgentStatus> = new Set<AgentStatus>(["pending", "running", "waiting"]);
+
+/**
+ * The recorded runs as the engine holds them now. A record leaves `running` at its turn's end, and
+ * a loop stopped between two turns, or gone with a resumed session, has no such end: once the
+ * engine no longer works on it, it shows as stopped.
+ */
+async function runsNow($: EngineInterface): Promise<AgentRun[]> {
+  const [recorded, live] = await Promise.all([read($, agents), $.agent.list()]);
+  const working = new Set(live.filter((one) => WORKING.has(one.status)).map((one) => one.id));
+  return recorded.map((run) =>
+    run.outcome === "running" && !working.has(run.id) ? { ...run, outcome: "aborted" } : run,
+  );
+}
+
 /** The six stages in one line: the current one on a blue chip, the reached ones plain, the rest dim. */
 function stageLine(Text: Elements["Text"], current: Stage | undefined, reached: Set<Stage>) {
   return STAGES.flatMap((stage, i) => [
@@ -272,11 +288,7 @@ function workingDot(Text: Elements["Text"], isWorking: boolean) {
 
 function registerBand(on: On): void {
   on("ui.render", { component: "AbovePrompt" }, async ($, e, next) => {
-    const [history, all, claimed] = await Promise.all([
-      read($, steps),
-      read($, agents),
-      read($, tasks),
-    ]);
+    const [history, all, claimed] = await Promise.all([read($, steps), runsNow($), read($, tasks)]);
     if (e.props.hasSurvey || (history.length === 0 && all.length === 0)) {
       return next(e);
     }
@@ -354,11 +366,7 @@ async function chatCard($: EngineInterface, els: Elements) {
 
 async function agentsCard($: EngineInterface, els: Elements) {
   const { Box, Button, Text } = els;
-  const [all, isOpen, now] = await Promise.all([
-    read($, agents),
-    read($, isShowingDone),
-    $.clock.now(),
-  ]);
+  const [all, isOpen, now] = await Promise.all([runsNow($), read($, isShowingDone), $.clock.now()]);
   const running = all.filter((run) => run.outcome === "running");
   const finished = all
     .filter((run) => run.outcome !== "running")
