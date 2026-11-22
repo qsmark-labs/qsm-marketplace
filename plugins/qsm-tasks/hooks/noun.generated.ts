@@ -19,6 +19,7 @@ export interface VerbRow {
 
 export const verbs: Readonly<Record<string, VerbRow>> = {
   doctor: { words: ["qsm-tasks","doctor"], args: [] },
+  list: { words: ["qsm-tasks","list"], args: [] },
 };
 
 /** One verb's argv: its words, each option in declaration order, the

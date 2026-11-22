@@ -3,6 +3,7 @@
 
 export type Tasks = {
   doctor(): Promise<unknown>;
+  list(): Promise<unknown>;
 };
 
 declare module 'claude-code' {

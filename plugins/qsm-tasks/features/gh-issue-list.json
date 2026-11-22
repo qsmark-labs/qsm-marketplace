@@ -1,0 +1,16 @@
+[
+  {
+    "number": 187,
+    "projectItems": [
+      { "status": { "optionId": "f75ad846", "name": "Todo" }, "title": "qsm-marketplace" }
+    ],
+    "title": "qsm-tasks: the binary lists the open work with its Status"
+  },
+  {
+    "number": 186,
+    "projectItems": [
+      { "status": { "optionId": "f75ad846", "name": "Todo" }, "title": "qsm-marketplace" }
+    ],
+    "title": "qsm-tasks: three verbs read the board, file a task and move it"
+  }
+]

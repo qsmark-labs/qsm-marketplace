@@ -124,6 +124,51 @@ line to fix it when it is not. It SHALL check nothing else.
 - **WHEN** `qsm-tasks doctor` runs without `gh` on PATH
 - **THEN** it ends `missing` (exit 4), names `gh` and says to install the GitHub CLI
 
+### Requirement: The binary lists the open work with its Status
+
+The verb `list` SHALL print every open issue of the repository of the current directory with its
+Status on the board, one per line: `#<number>`, the Status, the title. It SHALL make one call,
+`gh issue list --state open --limit 1000 --json number,title,projectItems`, and take the Status
+from `projectItems[0].status.name`. An issue on no board SHALL print `no status`. With `--json` it
+SHALL give the same as an array of `{ number, title, status }`, `status` null for none, inside the
+envelope of the CLI stack. Only `lib/gh.ts` SHALL run `gh`: a non-zero exit is a `failed` error
+carrying gh's stderr verbatim, and `gh` missing on PATH is a `missing` error that names `gh`.
+
+#### Scenario: Open issues on the board
+
+- **WHEN** `qsm-tasks list` runs and gh answers with issues that have a Status
+- **THEN** each prints as `#<number>`, its Status and its title on one line
+
+#### Scenario: An issue on no board
+
+- **WHEN** gh answers an issue whose `projectItems` is empty
+- **THEN** its line reads `no status`, and under `--json` its `status` is null
+
+#### Scenario: A title that spans lines
+
+- **WHEN** a title holds a line break
+- **THEN** it prints as one line, the break replaced by a space
+
+#### Scenario: Data for a script
+
+- **WHEN** `qsm-tasks list --json` runs
+- **THEN** stdout is one envelope whose `data` is the array of `{ number, title, status }`
+
+#### Scenario: gh fails
+
+- **WHEN** gh exits non-zero
+- **THEN** the verb ends `failed` (exit 1) and the message is gh's stderr as it came
+
+#### Scenario: The list runs without gh
+
+- **WHEN** `gh` is not on PATH
+- **THEN** the verb ends `missing` (exit 4) and the message names `gh`
+
+#### Scenario: gh answers in a shape the list does not know
+
+- **WHEN** gh's output is not an array of `{ number, title, projectItems }` with a text Status name
+- **THEN** the verb ends `failed` and names the element and field that did not fit
+
 ### Requirement: Dependencies
 
 The plugin SHALL declare no plug-in in `dependencies`: the skill reads no other skill, agent or

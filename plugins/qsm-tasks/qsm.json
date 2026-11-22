@@ -8,6 +8,9 @@
     "commands": {
       "qsm-tasks doctor": {
         "description": "Report whether gh, the one program qsm-tasks needs on PATH, is there"
+      },
+      "qsm-tasks list": {
+        "description": "List every open issue of the current repository with its Status on the board, one per line"
       }
     }
   }
