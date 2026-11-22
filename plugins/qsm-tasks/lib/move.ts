@@ -62,10 +62,8 @@ export function targetOf(stdout: string, number: number, status: string): Target
   if (nodes.length === 0) {
     throw new QsmError("failed", `issue #${number} is on no board`);
   }
-  const titles = nodes.map((node, i) =>
-    textAt(child(child(node, "project"), "title"), `nodes[${i}].project.title`),
-  );
-  if (titles.length > 1) {
+  if (nodes.length > 1) {
+    const titles = nodes.map((node) => String(child(child(node, "project"), "title")));
     throw new QsmError("failed", `issue #${number} is on several boards: ${titles.join(", ")}`);
   }
   const node: unknown = nodes[0];

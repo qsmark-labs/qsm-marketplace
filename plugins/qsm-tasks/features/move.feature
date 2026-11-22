@@ -33,7 +33,6 @@ Feature: move sets the Status of an issue
     Examples:
       | raw                                                                                                                      | said                               |
       | {}                                                                                                                       | projectItems.nodes is not a list   |
-      | {"data":{"repository":{"issue":{"projectItems":{"nodes":[{}]}}}}}                                                        | nodes[0].project.title is not text |
       | {"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"title":"t"}}]}}}}}                                 | field.options is not a list        |
       | {"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"title":"t","field":{"options":[{}]}}}]}}}}}        | options[0].id is not text          |
       | {"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"title":"t","field":{"options":[{"id":"a"}]}}}]}}}}} | options[0].name is not text        |
