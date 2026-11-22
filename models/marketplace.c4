@@ -438,7 +438,6 @@ model {
   mp.compuse -> mp.lib.reap 'ends what a fake machine left with' { technology 'import' }
   mp.langdev -> mp.lib.reap 'ends what a checker left and sweeps its temp trees with' { technology 'import' }
   mp.memory -> mp.lib.reap 'ends what a pack left with' { technology 'import' }
-  mp.secrets -> mp.lib.reap 'names and sweeps its askpass directory with' { technology 'import' }
   mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
