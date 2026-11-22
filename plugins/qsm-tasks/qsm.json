@@ -12,6 +12,25 @@
       "qsm-tasks list": {
         "description": "List every open issue of the current repository with its Status on the board, one per line"
       },
+      "qsm-tasks move": {
+        "description": "Set the Status of an issue on its board to the option of exactly that name",
+        "args": [
+          {
+            "name": "number",
+            "type": "number",
+            "positional": true,
+            "required": true,
+            "description": "the issue number"
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "positional": true,
+            "required": true,
+            "description": "the name of the Status option, exactly as the board has it"
+          }
+        ]
+      },
       "qsm-tasks add": {
         "description": "File an issue from a body file and print its number; with --parent, make it a sub-issue of that issue",
         "args": [

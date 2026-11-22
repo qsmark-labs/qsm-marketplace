@@ -1,0 +1,30 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "projectItems": {
+          "nodes": [
+            {
+              "id": "PVTI_item",
+              "project": {
+                "id": "PVT_board",
+                "title": "qsm-marketplace",
+                "field": {
+                  "id": "PVTSSF_status",
+                  "options": [
+                    { "id": "f75ad846", "name": "Todo" },
+                    { "id": "47fc9ee4", "name": "In Dev" },
+                    { "id": "aa3ff38c", "name": "Agent Review" },
+                    { "id": "64e587ef", "name": "Ready For Human" },
+                    { "id": "3a6b0508", "name": "Human Review" },
+                    { "id": "98236657", "name": "Done" }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

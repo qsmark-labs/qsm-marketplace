@@ -4,6 +4,7 @@ import { expect } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Given, loadFeatures, runFeatures, Then, When } from "@questi0nm4rk/feats";
+import { isRecord } from "../../../lib/outcome.ts";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -112,6 +113,87 @@ Given(
       `sub_issue_id=${String(id)}`,
     ];
     accept(world, { name: "sub-issue", args });
+  },
+);
+
+/** The value at `path` in parsed JSON; undefined when any step is missing. */
+function dig(value: unknown, ...path: (string | number)[]): unknown {
+  let at = value;
+  for (const key of path) {
+    at = Array.isArray(at) ? (at as unknown[])[Number(key)] : isRecord(at) ? at[key] : undefined;
+  }
+  return at;
+}
+
+function textOf(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new TypeError("the recorded answer lacks a text field");
+  }
+  return value;
+}
+
+// The recorded board query answer; only its three node ids (item, project, Status field) are stand-ins.
+const BOARD = JSON.parse(readFileSync(join(FEATURES, "gh-move-query.json"), "utf8")) as unknown;
+const NODE = dig(BOARD, "data", "repository", "issue", "projectItems", "nodes", 0);
+const BOARD_QUERY = readFileSync(join(FEATURES, "move-query.graphql"), "utf8").trimEnd();
+const MUTATION =
+  "mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) { updateProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { singleSelectOptionId: $optionId } }) { projectV2Item { id } } }";
+
+function boardQuery(number: unknown, stdout: string): Call {
+  const args = ["api", "graphql", "-F", "owner={owner}", "-F", "repo={repo}"];
+  return {
+    name: "board",
+    args: [...args, "-F", `number=${String(number)}`, "-f", `query=${BOARD_QUERY}`],
+    stdout,
+  };
+}
+
+Given(
+  "gh answers the board query of issue {string} with the recorded board {string}",
+  (world: World, number: unknown, titles: unknown) => {
+    const boards = String(titles) === "" ? [] : String(titles).split(",");
+    const node = isRecord(NODE) ? NODE : {};
+    const project = dig(NODE, "project");
+    const nodes = boards.map((title) => ({
+      ...node,
+      project: { ...(isRecord(project) ? project : {}), title },
+    }));
+    const answer = { data: { repository: { issue: { projectItems: { nodes } } } } };
+    accept(world, boardQuery(number, JSON.stringify(answer)));
+  },
+);
+Given(
+  "gh answers the board query of issue {string} with {string}",
+  (world: World, number: unknown, raw: unknown) => {
+    accept(world, boardQuery(number, String(raw)));
+  },
+);
+Given(
+  "gh sets the Status {string} on the recorded board and answers {string}",
+  (world: World, status: unknown, stderr: unknown) => {
+    const options = dig(NODE, "project", "field", "options");
+    const option = Array.isArray(options)
+      ? (options as unknown[]).find((o) => dig(o, "name") === status)
+      : undefined;
+    accept(world, {
+      name: "mutation",
+      args: [
+        "api",
+        "graphql",
+        "-f",
+        `projectId=${textOf(dig(NODE, "project", "id"))}`,
+        "-f",
+        `itemId=${textOf(dig(NODE, "id"))}`,
+        "-f",
+        `fieldId=${textOf(dig(NODE, "project", "field", "id"))}`,
+        "-f",
+        `optionId=${textOf(dig(option, "id"))}`,
+        "-f",
+        `query=${MUTATION}`,
+      ],
+      stderr: String(stderr),
+      exit: String(stderr) === "" ? 0 : 1,
+    });
   },
 );
 
