@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { isAlive } from "../../../lib/detach.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
-import { ended } from "../../../lib/fixtures/dead-run.ts";
+import { ended, leftProcess } from "../../../lib/fixtures/dead-run.ts";
 import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 const FAKE_MACHINE = resolve(import.meta.dir, "fake-machine.ts");
@@ -72,4 +72,24 @@ test("a served fake machine ends the PipeWire daemon a killed one left", async (
   await serveFake(home);
 
   expect(await ended(first.pid)).toBe(true);
+});
+
+test("a served fake machine without PipeWire ends a process a killed one left", async () => {
+  const home = sandboxDir("qsm-fake-machine-");
+  const dir = join(home, "fake");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(home, "state.json"), "{}");
+  const left = leftProcess("qsm-compuse");
+  const serve = Bun.spawn(["bun", FAKE_MACHINE, "serve", dir], {
+    env: isolatedEnv(home, { DRIVE_STATE: join(home, "state.json") }),
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  atTestEnd(() => {
+    serve.kill("SIGKILL");
+  });
+  for (let i = 0; i < 200 && !existsSync(join(dir, "ready")); i++) await Bun.sleep(50);
+  expect(existsSync(join(dir, "ready"))).toBe(true);
+
+  expect(await ended(left)).toBe(true);
 });

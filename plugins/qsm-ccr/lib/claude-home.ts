@@ -120,14 +120,17 @@ export function cleanOldHomes(places: Places, dryRun: boolean): string[] {
   return sweep(old, "left by a launch of the shape before the pid name", dryRun);
 }
 
-/** Takes a dead launch's home for this sweep by renaming it to its `kept` name, and answers that
- * path. Teammates a lead starts together sweep at once, and a rename has one winner: the others
- * find the home gone, ENOENT, and answer null, because another launch is cleaning it. */
+/** Takes a dead launch's home for this sweep by renaming it to `session.<this pid>.<random>`, and
+ * answers that path: a sweep that dies before `removeMade` finishes leaves a name `deadRunDirs`
+ * lists again once this process is dead. Teammates a lead starts together sweep at once, and a
+ * rename has one winner: the others find the home gone, ENOENT, and answer null, because another
+ * launch is cleaning it. */
 function claim(dir: string): string | null {
-  const kept = keptName(dir);
+  const random = basename(dir).split(/[.-]/).at(-1);
+  const claimed = join(dirname(dir), `${HOME_TOOL}.${process.pid}.${random}`);
   try {
-    renameSync(dir, kept);
-    return kept;
+    renameSync(dir, claimed);
+    return claimed;
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return null;
@@ -181,10 +184,15 @@ function fillHome(env: Env, places: Places, dir: string): Record<string, string>
   }
   for (const name of ["teams", "tasks"]) {
     const from = join(teamHome, name);
+    // the real directory, not the entry in the lead's home: that entry is a link the lead's end
+    // removes, and a teammate that outlives its lead keeps these two; without one the state
+    // directory holds it, as it holds projects
     if (existsSync(from)) {
-      // the real directory, not the entry in the lead's home: that entry is a link the lead's end
-      // removes, and a teammate that outlives its lead keeps these two
       symlinkSync(realpathSync(from), join(dir, name));
+    } else {
+      const stable = join(places.stateDir, name);
+      mkdirSync(stable, { recursive: true, mode: 0o700 });
+      symlinkSync(stable, join(dir, name));
     }
   }
   const out = withClaudeDirAt(env, dir);

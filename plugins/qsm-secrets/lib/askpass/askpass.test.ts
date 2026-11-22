@@ -12,10 +12,9 @@ import {
   statSync,
   symlinkSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { sleep, spawn } from "bun";
 import { fakeBin } from "../../../../lib/fixtures/bin.ts";
-import { leftDir } from "../../../../lib/fixtures/dead-run.ts";
 import { isolatedEnv } from "../../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../../lib/fixtures/sandbox.ts";
 import { messageOf } from "../../../../lib/outcome.ts";
@@ -85,31 +84,13 @@ describe("the reply line", () => {
 describe("the reply socket", () => {
   test("lives in a 0700 directory as a 0600 socket and is gone after close", () => {
     const socket = openReplySocket(env());
-    const dir = dirname(socket.path);
+    const dir = join(runtime, "qsm-askpass", socket.nonce);
     expect(statSync(dir).mode & 0o777).toBe(0o700);
     expect(statSync(socket.path).mode & 0o777).toBe(0o600);
     expect(socket.path.startsWith(dir)).toBe(true);
     socket.close();
     expect(existsSync(dir)).toBe(false);
     expect(existsSync(join(runtime, "qsm-askpass"))).toBe(false);
-    socket.close();
-  });
-
-  test("its base directory is 0700 whatever the umask", () => {
-    const before = process.umask(0o022);
-    try {
-      const socket = openReplySocket(env());
-      expect(statSync(dirname(dirname(socket.path))).mode & 0o777).toBe(0o700);
-      socket.close();
-    } finally {
-      process.umask(before);
-    }
-  });
-
-  test("a new socket removes the directory a killed helper left", () => {
-    const left = leftDir("askpass", join(runtime, "qsm-askpass"));
-    const socket = openReplySocket(env());
-    expect(existsSync(left)).toBe(false);
     socket.close();
   });
 

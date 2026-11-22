@@ -7,7 +7,7 @@ import { missingConverter } from "./converters.ts";
 import type { Reader, Source } from "./sources.ts";
 import { analyzeText, countWords, estimateTokens } from "./structure.ts";
 import { messageOf } from "../../../lib/outcome.ts";
-import { runTempDir, spawnMarked, sweepNamed } from "../../../lib/reap.ts";
+import { reapOrphaned, runTempDir, spawnMarked, sweepNamed } from "../../../lib/reap.ts";
 
 const TOOL = "qsm-book-to-skill";
 
@@ -176,6 +176,7 @@ export function extractSources(
   sources: readonly Source[],
   deps: ExtractDeps = systemDeps(process.env),
 ): ExtractResult {
+  reapOrphaned(TOOL, "left by a run that ended before its cleanup");
   sweepNamed(TOOL);
   const parts: string[] = [];
   const metadata: SourceMetadata[] = [];

@@ -351,8 +351,6 @@ async function startPipewire(pw: Pipewire): Promise<void> {
   const runtime = runtimeDir(process.env);
   if (runtime === undefined)
     throw new Error("the fake machine's PipeWire needs the slot's runtime dir");
-  // A daemon a serve killed before its cleanup left is ended first, or it keeps the socket.
-  reapOrphaned(TOOL, "left by a fake machine that ended before its cleanup");
   // Bun.spawn takes the env it is given, so the mark goes in explicitly. The daemon ends with this
   // process, whichever way it ends, except SIGKILL, which the next serve sweeps.
   Bun.spawn(["pipewire"], {
@@ -434,6 +432,8 @@ async function serve(start: State): Promise<void> {
   const save = (): void => {
     writeAtomic(statePath, `${JSON.stringify(live, null, 2)}\n`);
   };
+  // A daemon a serve killed before its cleanup left is ended first, or it keeps the socket.
+  reapOrphaned(TOOL, "left by a fake machine that ended before its cleanup");
   const [, emit] = await Promise.all([
     start.pipewire === undefined ? undefined : startPipewire(start.pipewire),
     start.dbus === undefined ? undefined : serveDbus(start.dbus, save),

@@ -194,6 +194,11 @@ name the value and SHALL NOT rewrite it.
 - **THEN** the teammate's `teams` and `tasks` SHALL still resolve, because they link the real
   directories and not the lead's home entries
 
+#### Scenario: A teammate outlives its lead and the Claude home had no teams directory
+
+- **WHEN** the Claude home a launch starts from had no `teams` or `tasks` directory
+- **THEN** they SHALL live in the state directory and the teammate's links SHALL still resolve
+
 #### Scenario: A home that cannot be cleaned
 
 - **WHEN** removing a launch's home fails after its claude ended

@@ -153,21 +153,24 @@ export function runDefinition(spec: StartSpec): string[] {
 }
 
 export function listDefinition(): string[] {
-  return ["ps", "--filter", `label=${LABEL}=1`, "--format", "{{.Names}} {{.Labels}}"];
+  return ["ps", "--filter", `label=${LABEL}=1`, "--format", "{{.Names}} {{.ID}} {{.Labels}}"];
 }
 
-/** The instances in the runtime's `ps` output (`<name> <labels>`) whose owning run is dead. */
-export function orphanedInstances(psOutput: string, alive: (pid: number) => boolean): string[] {
+/** The instances in the runtime's `ps` output (`<name> <id> <labels>`) whose owning run is dead. */
+export function orphanedInstances(
+  psOutput: string,
+  alive: (pid: number) => boolean,
+): { id: string; name: string }[] {
   const owner = new RegExp(`(?:^|,)${OWNER_LABEL}=browserbox:(\\d+)(?:,|$)`);
-  const names: string[] = [];
+  const orphans: { id: string; name: string }[] = [];
   for (const line of psOutput.split("\n")) {
-    const [name, labels = ""] = line.trim().split(/\s+/, 2);
+    const [name, id, labels = ""] = line.trim().split(/\s+/, 3);
     const pid = Number(owner.exec(labels)?.[1]);
-    if (name !== undefined && Number.isInteger(pid) && !alive(pid)) {
-      names.push(name);
+    if (name !== undefined && id !== undefined && Number.isInteger(pid) && !alive(pid)) {
+      orphans.push({ id, name });
     }
   }
-  return names;
+  return orphans;
 }
 
 export function stopDefinition(name: string): string[] {

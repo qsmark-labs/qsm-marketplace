@@ -9,7 +9,7 @@ import {
   systemDeps,
 } from "./extract.ts";
 import { type Source, scanInputs } from "./sources.ts";
-import { ended, plantLeftovers } from "../../../lib/fixtures/dead-run.ts";
+import { ended, leftProcess, plantLeftovers } from "../../../lib/fixtures/dead-run.ts";
 import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 /** A PATH holding fake converters, so extraction can be driven without any
@@ -55,6 +55,14 @@ describe("extractSources", () => {
     expect(result.sources[0]?.words).toBe(4);
     expect(result.sources[0]?.pages).toBeNull();
     expect(result.sources[0]?.tokens).toBeGreaterThan(0);
+  });
+
+  test("a run of text sources only ends a converter a killed run left", async () => {
+    const dir = sandboxDir("qsm-book-to-skill-extract-");
+    writeFileSync(join(dir, "book.md"), "# One\nalpha");
+    const pid = leftProcess("qsm-book-to-skill");
+    extractSources(sourcesIn(dir), deps());
+    expect(await ended(pid)).toBe(true);
   });
 
   test("a PDF reports pages from the converter's page breaks", () => {
