@@ -52,10 +52,11 @@ its teammates by name without changing user settings. A teammate is chosen by it
 `--json`. The full reference is [USAGE.md](USAGE.md).
 
 Routed sessions use a private copy of the current Claude settings. They share login, installed
-plugins, skills and team communication with the originating Claude home. Session homes and shared
-project history stay under `$XDG_STATE_HOME/qsm-ccr` (default `~/.local/state/qsm-ccr`), so routed
-sessions can be resumed. qsm-ccr does not delete them. A model picked there stays in its settings
-copy.
+plugins, skills and team communication with the originating Claude home. Shared project history
+stays under `$XDG_STATE_HOME/qsm-ccr` (default `~/.local/state/qsm-ccr`), so routed sessions can be
+resumed; qsm-ccr does not delete it. When a launch's claude ends, qsm-ccr removes the settings
+copy and links it made in the launch's home, so a model picked there does not outlive the session;
+what Claude wrote there (history, plans) stays.
 
 ## Caveats
 
