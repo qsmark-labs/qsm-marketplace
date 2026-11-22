@@ -1,7 +1,7 @@
 // `claude plugin test` drives the cockpit against the engine: a started agent shows on a chip in its
 // tier's colour, the main agent's edit moves the stage, and an answered question lands in the pane.
 
-import type { On } from "claude-code";
+import type { AgentInfo, On } from "claude-code";
 import { type Engine, expect, mock, test } from "claude-code/testing";
 
 // The engine beneath the plugin: a clock, and a band or pane it would draw itself.
@@ -49,13 +49,36 @@ const PANE = {
   },
 } as const;
 
-/** The engine's spawn, naming each started agent a1, a2, … in order. */
-function numberedAgents(on: On, model: string): void {
-  let n = 0;
+/** One agent as the engine's `$.agent.list()` gives it. */
+function listed(id: string, status: AgentInfo["status"]): AgentInfo {
+  return {
+    id,
+    status,
+    description: id,
+    type: "qsm-essentials:runner",
+    kind: "local_agent",
+    taskStatus: status === "killed" ? "killed" : "running",
+    label: id,
+    startTime: 0,
+    cwd: "/repo",
+    tokenCount: 0,
+    tokenSamples: [],
+    hasRow: true,
+  };
+}
+
+/**
+ * The engine's spawn, naming each started agent a1, a2, … in order, and its list of them: each one
+ * at work, unless the test says how the engine holds them.
+ */
+function numberedAgents(on: On, model: string, list?: () => AgentInfo[]): void {
+  const ids: string[] = [];
   on("agent.spawn", () => {
-    n += 1;
-    return { agentId: `a${n}`, model };
+    const agentId = `a${ids.length + 1}`;
+    ids.push(agentId);
+    return { agentId, model };
   });
+  on("agent.list", () => ({ value: list?.() ?? ids.map((id) => listed(id, "running")) }));
 }
 
 /** The engine's Bash: `reached` settles once `count` calls arrived; each call returns after `release`. */
@@ -117,7 +140,7 @@ async function shutPane($: Engine) {
 
 test("a running haiku agent sits on a green chip, and the stage tool puts the band on EXECUTE", async ($, on) => {
   beneath(on);
-  on("agent.spawn", () => ({ agentId: "a1", model: "haiku" }));
+  numberedAgents(on, "haiku");
   on("tool.call", () => ({ result: {} }));
 
   await $.agent.spawn(SPAWN);
@@ -138,6 +161,7 @@ test("a running haiku agent sits on a green chip, and the stage tool puts the ba
 
 test("answered questions sit in the pane under the typed ask, behind its dropdown", async ($, on) => {
   beneath(on);
+  numberedAgents(on, "haiku");
   on("prompt.submit", (_engine, e) => ({ text: e.text }));
   on("tool.call", () => ({
     result: { answers: { "Where?": "Band and pane", "Home?": "Dev mod" } },
@@ -201,6 +225,30 @@ test("the band shows what each agent runs and never the main chat's commands, th
   expect(JSON.stringify(await pane.drawn())).toContain("└ thinking");
 });
 
+test("an agent the engine stopped or dropped leaves the band with no end of a turn, a workflow's stays", async ($, on) => {
+  beneath(on);
+  // The engine holds a1 at work and a2 as killed, has dropped a3, and never lists a4, a workflow's.
+  numberedAgents(on, "haiku", () => [listed("a1", "running"), listed("a2", "killed")]);
+
+  await $.agent.spawn(SPAWN);
+  await $.agent.spawn({ ...SPAWN, description: "[haiku] runner: bun test" });
+  await $.agent.spawn({ ...SPAWN, description: "[haiku] runner: bun run lint" });
+  await $.agent.spawn({
+    ...SPAWN,
+    description: "[haiku] workflow: build",
+    workflow: { runId: "wf_1", agentIndex: 1 },
+  });
+  const band = await drawnBand($);
+  const { shut } = await shutPane($);
+
+  expect(band).toContain("runner: sleep 20");
+  expect(band).toContain("workflow: build");
+  expect(band).not.toContain("runner: bun test");
+  expect(band).not.toContain("runner: bun run lint");
+  expect(shut).toContain("2 running");
+  expect(shut).toContain("▸ 2 finished");
+});
+
 test("a shell command shows without what only frames it", async ($, on) => {
   beneath(on);
   numberedAgents(on, "haiku");
@@ -231,7 +279,7 @@ test("the stage tool answers what the stage asks, and every prompt carries where
     seen.push([...(e.context ?? [])]);
     return { text: e.text };
   });
-  on("agent.spawn", () => ({ agentId: "a1", model: "sonnet" }));
+  numberedAgents(on, "sonnet");
 
   await $.prompt.submit({ text: "hi", wait: false, origin: { kind: "composer" } });
   const answer = await $.tool.call({
