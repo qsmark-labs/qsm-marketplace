@@ -9,8 +9,9 @@
 # Generated from qsm.json and proven fresh by the generated gate.
 *.generated.ts
 
-# A model is read through its picture, and its own render and review loop check it.
+# A model is read through its picture, which its own tool draws from it.
 models/*.bpmn
+models/*.c4
 
 # Plans and specs: the owner reads them and openspec validates them. In 34 merged pull requests
 # no finding landed in one.
