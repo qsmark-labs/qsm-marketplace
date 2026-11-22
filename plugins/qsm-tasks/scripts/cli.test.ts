@@ -3,7 +3,7 @@
 import { expect } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { loadFeatures, runFeatures, Then, When, Given } from "@questi0nm4rk/feats";
+import { Given, loadFeatures, runFeatures, Then, When } from "@questi0nm4rk/feats";
 import { isRecord } from "../../../lib/outcome.ts";
 import { bareRuntimePath, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
@@ -13,24 +13,60 @@ const CLI = resolve(import.meta.dir, "cli.ts");
 const FEATURES = resolve(import.meta.dir, "../features");
 
 const MUTANT_VAR = "__STRYKER_ACTIVE_MUTANT__";
-const GH_CALL = "issue list --state open --limit 1000 --json number,title,projectItems";
+const LIST_ARGS = [
+  "issue",
+  "list",
+  "--state",
+  "open",
+  "--limit",
+  "1000",
+  "--json",
+  "number,title,projectItems",
+];
+
+/** One call the fake gh accepts, exactly, and what it answers. */
+interface Call {
+  readonly name: string;
+  readonly args: readonly string[];
+  readonly stdout?: string;
+  readonly stderr?: string;
+  readonly exit?: number;
+}
 
 interface World {
-  bin?: string;
-  path?: string;
+  calls?: Call[];
+  absent?: boolean;
+  dir?: string;
   stdout?: string;
   exit?: number;
 }
 
-function fakeGh(world: World, body: string): void {
-  world.bin = sandboxDir("qsm-tasks-bin-");
-  // gh answers only the one call the verb is specified to make
-  fakeBin(
-    world.bin,
-    "gh",
-    `[ "$*" = "${GH_CALL}" ] || { echo "unexpected gh call: $*" >&2; exit 2; }\n${body}`,
-  );
-  world.path = `${world.bin}:${process.env.PATH ?? ""}`;
+/** A step's text with its `\n` written as the line break gh prints. */
+function unescaped(text: unknown): string {
+  return String(text).replaceAll(String.raw`\n`, "\n");
+}
+
+function accept(world: World, call: Call): void {
+  world.calls = [...(world.calls ?? []), call];
+}
+
+/** A gh on PATH that answers the accepted calls, byte for byte on its arguments, logs the name of
+ * each call it got, and refuses every other call with exit 2. Returns the PATH. */
+function installGh(world: World): string {
+  const dir = sandboxDir("qsm-tasks-gh-");
+  world.dir = dir;
+  const lines = [`printf '%s\\n' "$@" > "${dir}/got"`];
+  (world.calls ?? []).forEach((call, i) => {
+    writeFileSync(join(dir, `${i}.args`), call.args.map((a) => `${a}\n`).join(""));
+    writeFileSync(join(dir, `${i}.out`), call.stdout ?? "");
+    writeFileSync(join(dir, `${i}.err`), call.stderr ?? "");
+    lines.push(
+      `if cmp -s "${dir}/got" "${dir}/${i}.args"; then echo "${call.name}" >> "${dir}/log"; cat "${dir}/${i}.out"; cat "${dir}/${i}.err" >&2; exit ${call.exit ?? 0}; fi`,
+    );
+  });
+  lines.push('echo "unexpected gh call: $*" >&2', "exit 2");
+  fakeBin(dir, "gh", lines.join("\n"));
+  return `${dir}:${process.env.PATH ?? ""}`;
 }
 
 /** The answer gh recorded, with the issue `bare` on no board. */
@@ -46,33 +82,48 @@ function recorded(bare: string): string {
   );
 }
 
-function answer(world: World, raw: string): void {
-  const file = join(sandboxDir("qsm-tasks-answer-"), "answer.json");
-  writeFileSync(file, raw);
-  fakeGh(world, `cat "${file}"`);
-}
-
-Given("gh lists the recorded issues, {string} on no board", (world: World, bare: unknown) => {
-  answer(world, recorded(String(bare)));
-});
 Given("gh is {string}", (world: World, how: unknown) => {
-  if (how === "absent") {
-    world.path = bareRuntimePath();
-  } else {
-    fakeGh(world, "exit 0");
-  }
+  world.absent = how === "absent";
+});
+Given("gh lists the recorded issues, {string} on no board", (world: World, bare: unknown) => {
+  accept(world, { name: "list", args: LIST_ARGS, stdout: recorded(String(bare)) });
 });
 Given("gh answers {string}", (world: World, raw: unknown) => {
-  answer(world, String(raw));
+  accept(world, { name: "list", args: LIST_ARGS, stdout: String(raw) });
 });
 Given(
   "gh is {string} printing {string} on stderr",
   (world: World, how: unknown, stderr: unknown) => {
-    if (how === "absent") {
-      world.path = bareRuntimePath();
-    } else {
-      fakeGh(world, `echo "${String(stderr)}" >&2\nexit 1`);
-    }
+    world.absent = how === "absent";
+    accept(world, { name: "list", args: LIST_ARGS, stderr: String(stderr), exit: 1 });
+  },
+);
+Given(
+  "gh creates the issue titled {string} from {string} and prints {string}",
+  (world: World, title: unknown, file: unknown, out: unknown) => {
+    const args = ["issue", "create", "--title", String(title), "--body-file", String(file)];
+    accept(world, { name: "create", args, stdout: unescaped(out) });
+  },
+);
+Given(
+  "gh gives the id {string} of issue {string}",
+  (world: World, id: unknown, number: unknown) => {
+    const args = ["api", `repos/{owner}/{repo}/issues/${String(number)}`, "--jq", ".id"];
+    accept(world, { name: "id", args, stdout: unescaped(id) });
+  },
+);
+Given(
+  "gh accepts the sub-issue id {string} under issue {string}",
+  (world: World, id: unknown, parent: unknown) => {
+    const args = [
+      "api",
+      "-X",
+      "POST",
+      `repos/{owner}/{repo}/issues/${String(parent)}/sub_issues`,
+      "-F",
+      `sub_issue_id=${String(id)}`,
+    ];
+    accept(world, { name: "sub-issue", args });
   },
 );
 
@@ -81,10 +132,14 @@ When("I run {string}", (world: World, args: unknown) => {
   // mutant in the code it runs is ever active.
   const mutant = process.env[MUTANT_VAR];
   const env = isolatedEnv(sandboxDir("qsm-tasks-home-"), {
-    PATH: world.path ?? "",
+    PATH: world.absent === true ? bareRuntimePath() : installGh(world),
     ...(mutant === undefined ? {} : { [MUTANT_VAR]: mutant }),
   });
-  const run = runBin(CLI, String(args).split(" "), { env, cwd: sandboxDir("qsm-tasks-cwd-") });
+  // words split on spaces; a 'quoted phrase' is one word
+  const argv = (String(args).match(/'[^']*'|\S+/g) ?? []).map((w) =>
+    w.startsWith("'") ? w.slice(1, -1) : w,
+  );
+  const run = runBin(CLI, argv, { env, cwd: sandboxDir("qsm-tasks-cwd-") });
   world.stdout = run.stdout;
   world.exit = run.exit;
 });
@@ -107,6 +162,12 @@ Then(
     );
   },
 );
+Then("the data is the number {int}", (world: World, number: unknown) => {
+  expect(envelopeOf(world.stdout ?? "").data).toBe(Number(number));
+});
+Then("gh received {string}", (world: World, name: unknown) => {
+  expect(readFileSync(join(world.dir ?? "", "log"), "utf8").split("\n")).toContain(String(name));
+});
 Then(
   "it ends {string} with exit {int} saying {string}",
   (world: World, code: unknown, exit: unknown, said: unknown) => {

@@ -169,6 +169,36 @@ carrying gh's stderr verbatim, and `gh` missing on PATH is a `missing` error tha
 - **WHEN** gh's output is not an array of `{ number, title, projectItems }` with a text Status name
 - **THEN** the verb ends `failed` and names the element and field that did not fit
 
+### Requirement: The binary files an issue
+
+The verb `add "<title>" --body-file <file>` SHALL run
+`gh issue create --title <title> --body-file <file>`, read the issue number from the URL gh prints
+on stdout and print the number; `--body-file` SHALL be required. With `--parent <n>` it SHALL then
+make the new issue a sub-issue of `<n>`: `gh api repos/{owner}/{repo}/issues/<new> --jq .id`, then
+`gh api -X POST repos/{owner}/{repo}/issues/<n>/sub_issues -F sub_issue_id=<id>`. Output that does
+not end in an issue URL, or an id that is not a number, SHALL fail with the text found.
+
+#### Scenario: A new issue
+
+- **WHEN** `qsm-tasks add "a title" --body-file body.md` runs and gh prints the new issue's URL
+- **THEN** it prints the number at the end of the URL
+
+#### Scenario: A new sub-issue
+
+- **WHEN** `qsm-tasks add "a title" --body-file body.md --parent 186` runs
+- **THEN** the new issue's id is read and posted to `issues/186/sub_issues`, and the new number is
+  printed
+
+#### Scenario: gh answers in a shape add does not know
+
+- **WHEN** gh's output has no issue URL at its end, or the id is not a number
+- **THEN** the verb ends `failed` and says what it found
+
+#### Scenario: No body file
+
+- **WHEN** `qsm-tasks add "a title"` runs without `--body-file`
+- **THEN** it ends `usage` (exit 2) naming `body-file`
+
 ### Requirement: Dependencies
 
 The plugin SHALL declare no plug-in in `dependencies`: the skill reads no other skill, agent or

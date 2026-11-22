@@ -4,6 +4,11 @@
 export type Tasks = {
   doctor(): Promise<unknown>;
   list(): Promise<unknown>;
+  add(options: {
+    title: string;
+    bodyFile: string;
+    parent?: number;
+  }): Promise<unknown>;
 };
 
 declare module 'claude-code' {

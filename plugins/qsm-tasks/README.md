@@ -19,6 +19,7 @@ its own task list across sessions.
 | Skill | `task-writing` | How to write the text of an epic or task: skeleton, before and after, done-when, plain summary for a first-time reader |
 | CLI | `qsm-tasks doctor` | Reports whether `gh`, the one program the binary needs, is on PATH |
 | CLI | `qsm-tasks list` | Lists the open issues of the repository with their Status on the board |
+| CLI | `qsm-tasks add` | Files an issue from a body file, optionally as a sub-issue of another |
 
 The skill is the only file in the marketplace that names `br` and its commands. A fix is a commit
 only, with no epic and no task. Every epic ends with a test-it task that runs the real path.
