@@ -21,6 +21,12 @@ Feature: add files an issue
     And gh received "id"
     And gh received "sub-issue"
 
+  Scenario: the issue is filed and the sub-issue step fails
+    Given gh creates the issue titled "a title" from "body.md" and prints "https://github.com/owner/repo/issues/190"
+    And gh gives the id "9001" of issue "190"
+    When I run "add 'a title' --body-file body.md --parent 186 --json"
+    Then it ends "failed" with exit 1 saying "issue #190 was created; making it a sub-issue of #186 failed: unexpected gh call"
+
   Scenario Outline: gh answers in a shape add does not know
     Given gh creates the issue titled "a title" from "body.md" and prints "<out>"
     And gh gives the id "<id>" of issue "190"
