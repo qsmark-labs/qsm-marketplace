@@ -829,9 +829,7 @@ describe("lead", () => {
     const envelope = envelopeOf(runCcr(w, ["lead", "--json"]).stdout);
     expect(envelope.code).toBe("ok");
     expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({ model: "opus" });
-    const dir = claudeLaunches(w)[0]?.env.CLAUDE_CONFIG_DIR;
-    expect(dir).toBeDefined();
-    expect(JSON.parse(readFileSync(join(dir ?? "", "settings.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(readFileSync(join(w.out, "private-settings.json"), "utf8"))).toMatchObject({
       model: "anthropic/claude-ccr-abc123",
     });
   });
