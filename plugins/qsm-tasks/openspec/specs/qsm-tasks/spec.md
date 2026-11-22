@@ -108,17 +108,21 @@ present, and a second run SHALL report `already`.
 - **WHEN** `br` is on PATH
 - **THEN** the install reports `already` and changes nothing
 
-### Requirement: No binary, the install is the doctor
+### Requirement: The binary reports whether gh is there
 
-The plugin SHALL ship no binary and no `qsm.json`. A `doctor` verb would report whether `br` is on
-PATH, which the install probe already reports with the line to fix it, and everything else the
-skill does is a `br` call. The `br` CLI is the contract the skill's callers use.
+The plugin SHALL ship the binary `qsm-tasks`, whose verb `doctor` reports whether `gh`, the one
+program the binary needs, is on PATH: healthy when it is, `missing` (exit 4) naming `gh` and the
+line to fix it when it is not. It SHALL check nothing else.
 
-#### Scenario: A session asks whether the task tool is ready
+#### Scenario: gh is on PATH
 
-- **WHEN** the person or an agent needs to know whether the task port is served
-- **THEN** running `bun plugins/qsm-tasks/scripts/install.ts` answers it, and `br` itself answers
-  everything else
+- **WHEN** `qsm-tasks doctor` runs with `gh` on PATH
+- **THEN** it ends `ok` (exit 0) and says the plugin is healthy
+
+#### Scenario: gh is missing
+
+- **WHEN** `qsm-tasks doctor` runs without `gh` on PATH
+- **THEN** it ends `missing` (exit 4), names `gh` and says to install the GitHub CLI
 
 ### Requirement: Dependencies
 

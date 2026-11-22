@@ -1,0 +1,12 @@
+{
+  "name": "qsm-tasks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mutate": "stryker run"
+  },
+  "devDependencies": {
+    "@questi0nm4rk/feats": "1.0.1",
+    "@stryker-mutator/core": "10.1.1"
+  }
+}

@@ -17,6 +17,7 @@ its own task list across sessions.
 | --- | --- | --- |
 | Skill | `task-tool` | The task model: what an epic and a task are, when each is created and closed, and the `br` commands |
 | Skill | `task-writing` | How to write the text of an epic or task: skeleton, before and after, done-when, plain summary for a first-time reader |
+| CLI | `qsm-tasks doctor` | Reports whether `gh`, the one program the binary needs, is on PATH |
 
 The skill is the only file in the marketplace that names `br` and its commands. A fix is a commit
 only, with no epic and no task. Every epic ends with a test-it task that runs the real path.
@@ -28,8 +29,8 @@ claude plugin install qsm-tasks@qsm-marketplace
 qsm-setup install qsm-tasks
 ```
 
-The plug-in has no binary and no dependency. `qsm-setup install` runs the check for `br`, which
-no command can install unattended.
+`qsm-setup install` compiles the `qsm-tasks` binary and runs the check for `br`, which no command
+can install unattended. The binary needs the GitHub CLI, `gh`.
 
 ## Use
 

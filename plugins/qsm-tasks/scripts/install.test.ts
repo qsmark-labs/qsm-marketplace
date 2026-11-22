@@ -8,7 +8,7 @@ import { install } from "./install.ts";
 describe("install", () => {
   test("br present: nothing to do", async () => {
     const r = await install(fakeInstall({ present: ["bun", "br"] }).ctx);
-    expect(r.status).toBe("already");
+    expect(r.steps?.find((s) => s.name === "upstream br")).toMatchObject({ status: "already" });
   });
 
   test("br missing is a missing prerequisite named with its command, and nothing runs", async () => {
