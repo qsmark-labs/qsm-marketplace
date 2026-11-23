@@ -77,9 +77,12 @@ export async function ask(
       ? stop("failed", "timed out waiting for the person")
       : provider.finish(input, reply);
   } finally {
-    for (const release of stops) {
-      release();
+    try {
+      cleanup();
+    } finally {
+      for (const release of stops) {
+        release();
+      }
     }
-    cleanup();
   }
 }
