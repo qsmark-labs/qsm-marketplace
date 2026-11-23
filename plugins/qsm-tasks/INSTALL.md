@@ -4,6 +4,9 @@
 bun plugins/qsm-tasks/scripts/install.ts
 ```
 
-Needs `bun`, `br` for the skill and `gh` for the binary. The installer compiles `qsm-tasks`, links
-the binary into `QSM_BIN_DIR` (default `~/.local/bin`) and writes its completion. `--dry-run` prints
-the plan. The plug-in itself installs with `claude plugin install qsm-tasks@qsm-marketplace`.
+The installer uses `bun` to compile `qsm-tasks` into `QSM_BIN_DIR` (default `~/.local/bin`) and
+writes its completion. It checks for `br`, which the skills use. `--dry-run` prints the plan and
+shows the upstream install command if `br` is missing. The binary itself requires `gh`.
+
+Install the plug-in with `claude plugin install qsm-tasks@qsm-marketplace`. After installation,
+run `qsm-setup doctor qsm-tasks` to check both tools.

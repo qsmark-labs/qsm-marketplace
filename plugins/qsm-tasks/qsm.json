@@ -5,6 +5,7 @@
       "qsm-tasks": "scripts/cli.ts"
     },
     "noun": "tasks",
+    "doctor": "status=0; command -v br >/dev/null || { echo 'br is not on PATH. Run qsm-setup install qsm-tasks --dry-run for the install command.' >&2; status=1; }; command -v qsm-tasks >/dev/null || { echo 'qsm-tasks is not on PATH' >&2; exit 1; }; qsm-tasks doctor >/dev/null || status=$?; exit \"$status\"",
     "commands": {
       "qsm-tasks doctor": {
         "description": "Report whether gh, the one program qsm-tasks needs on PATH, is there"

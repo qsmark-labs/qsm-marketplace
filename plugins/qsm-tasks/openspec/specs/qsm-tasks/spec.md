@@ -4,9 +4,9 @@
 
 qsm-tasks is the plug-in that serves the task port: the role every plan, spec and review flow names
 when it says "the task", answered here by `br` (beads_rust). It holds the task model (what an epic
-and a task are, when each is created and when each closes), the install that puts `br` on the
-machine, and the one skill that names `br` and its commands. A different tracker would replace this
-plug-in and leave its users untouched.
+and a task are, when each is created and when each closes), the installer that builds
+`qsm-tasks` and checks for `br`, and the one skill that teaches the `br` commands. A different
+tracker would replace this plug-in and leave its users untouched.
 
 ## Requirements
 
@@ -56,9 +56,9 @@ closed, SHALL be a failure.
 
 ### Requirement: One skill names br
 
-The `task-tool` skill SHALL be the one place in the marketplace that names `br` and its commands,
-and every other file SHALL say "the task tool" and point at that skill. A task SHALL be created only
-by the main agent, except feedback, which a subagent files into the marketplace tracker.
+The `task-tool` skill SHALL be the one place that teaches the `br` commands. Other skills, agents
+and instructions SHALL say "the task tool" and point at that skill. A task SHALL be created only by
+the main agent, except feedback, which a subagent files into the marketplace tracker.
 
 #### Scenario: Another file names the tracker binary
 
@@ -90,12 +90,11 @@ SHALL be the one owner of that form, and the `writing` skill SHALL point at it.
 - **THEN** the plain summary and the before and after tell them what changes without the precise
   section, which is marked so they can skip it
 
-### Requirement: Install puts br on the machine or says how
+### Requirement: Install builds the binary and checks for br
 
-`scripts/install.ts` SHALL probe for `br` and, when it is missing, report it as a missing
-prerequisite with the upstream install line, because no command can install it unattended without
-piping a downloaded script into a shell. It SHALL write no file and change nothing when `br` is
-present, and a second run SHALL report `already`.
+`scripts/install.ts` SHALL use the shared install base to build `qsm-tasks` into the configured
+bin directory and write its completion. It SHALL probe for `br` and, when it is missing, report
+it as a missing prerequisite with the upstream install line.
 
 #### Scenario: br is missing
 
@@ -103,10 +102,10 @@ present, and a second run SHALL report `already`.
 - **THEN** the install reports `missing-prereq` naming `br` and the upstream install command, and
   exits non-zero
 
-#### Scenario: br is present
+#### Scenario: Repeat a successful install
 
-- **WHEN** `br` is on PATH
-- **THEN** the install reports `already` and changes nothing
+- **WHEN** the installer has completed successfully and its inputs remain unchanged
+- **THEN** the next install reports `already`
 
 ### Requirement: The binary reports whether gh is there
 
@@ -124,11 +123,26 @@ line to fix it when it is not. It SHALL check nothing else.
 - **WHEN** `qsm-tasks doctor` runs without `gh` on PATH
 - **THEN** it ends `missing` (exit 4), names `gh` and says to install the GitHub CLI
 
+#### Scenario: A hooks module calls doctor
+
+- **WHEN** Claude Code loads the plugin's hooks module and calls `$.tasks.doctor()`
+- **THEN** the noun runs `qsm-tasks doctor --json` and returns the success envelope's data
+
+### Requirement: Setup doctor checks the binary and skills
+
+The plugin SHALL declare a health probe that calls `qsm-tasks doctor` and checks for `br` on
+PATH for the retained skills.
+
+#### Scenario: Required tools are missing
+
+- **WHEN** `qsm-setup doctor qsm-tasks` runs with the binary installed and `gh`, `br` or both
+  missing
+- **THEN** it reports FAIL with guidance for each missing tool
+
 ### Requirement: Dependencies
 
-The plugin SHALL declare no plug-in in `dependencies`: the skill reads no other skill, agent or
-file, and the core works alone. Its one prerequisite is the `br` binary, checked by the install
-probe.
+The plugin SHALL declare no other plug-in in `dependencies`. The installer requires Bun to
+build the binary, the `task-tool` skill requires `br`, and the binary requires `gh`.
 
 #### Scenario: Installed alone
 

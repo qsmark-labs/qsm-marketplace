@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { cliShim, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { dataOf, envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { commit, git } from "../../../lib/fixtures/git.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -97,6 +98,30 @@ describe("qsm-setup cli", () => {
     const toolbox = checks.find((c) => c.name === "qsm-toolbox");
     expect(toolbox?.status).toBe("FAIL");
     expect(toolbox?.output).toContain("qsm-toolbox is not on PATH");
+  });
+
+  test.each([
+    { tools: ["gh", "br"], status: "PASS", missing: [] },
+    { tools: ["gh"], status: "FAIL", missing: ["br is not on PATH"] },
+    { tools: ["br"], status: "FAIL", missing: ["install the GitHub CLI"] },
+    { tools: [], status: "FAIL", missing: ["br is not on PATH", "install the GitHub CLI"] },
+  ])("qsm-tasks plugin health with $tools is $status", ({ tools, status, missing }) => {
+    const home = sandboxDir("qsm-setup-tasks-");
+    symlinkSync("/bin/sh", join(home, "sh"));
+    cliShim(home, "qsm-tasks", join(ROOT, "plugins/qsm-tasks/scripts/cli.ts"));
+    for (const tool of tools) {
+      fakeBin(home, tool, "exit 0");
+    }
+    const result = run(["doctor", "qsm-tasks", "--root", ROOT, "--json"], {
+      PATH: [home, dirname(process.execPath)].join(":"),
+      QSM_BIN_DIR: home,
+    });
+    expect(result.exit).toBe(status === "PASS" ? 0 : 1);
+    const [check] = checksOf(result.stdout);
+    expect(check).toMatchObject({ name: "qsm-tasks", status });
+    for (const reason of missing) {
+      expect(check?.output).toContain(reason);
+    }
   });
 
   test("install qsm-setup --dry-run prints the plan and exits 0", () => {

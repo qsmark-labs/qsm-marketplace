@@ -19,7 +19,7 @@ its own task list across sessions.
 | Skill | `task-writing` | How to write the text of an epic or task: skeleton, before and after, done-when, plain summary for a first-time reader |
 | CLI | `qsm-tasks doctor` | Reports whether `gh`, the one program the binary needs, is on PATH |
 
-The skill is the only file in the marketplace that names `br` and its commands. A fix is a commit
+The skill is the only place that teaches the `br` commands. A fix is a commit
 only, with no epic and no task. Every epic ends with a test-it task that runs the real path.
 
 ## Install
@@ -29,8 +29,8 @@ claude plugin install qsm-tasks@qsm-marketplace
 qsm-setup install qsm-tasks
 ```
 
-`qsm-setup install` compiles the `qsm-tasks` binary and runs the check for `br`, which no command
-can install unattended. The binary needs the GitHub CLI, `gh`.
+`qsm-setup install` compiles the `qsm-tasks` binary and checks for `br`. The binary needs the
+GitHub CLI, `gh`. Run `qsm-setup doctor qsm-tasks` to check both tools.
 
 ## Use
 
@@ -43,6 +43,6 @@ a finding is not the ask.
 
 ## Caveats
 
-- `br` is the Rust tool `beads_rust`, not `bd`. The check exits non-zero when it is missing and
-  prints the upstream install line. That is the report, not a failed install.
+- The installer exits non-zero when the Rust tool `br` (`beads_rust`) is missing and prints the
+  upstream install line.
 - One tracker per repository: `.beads/` at the root is committed, the cache beside it is not.
