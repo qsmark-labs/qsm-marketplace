@@ -56,6 +56,11 @@ test("a checker that exits leaves none of its background children running", asyn
   const result = await spawnAsync(dir, "sh", ["-c", `sleep ${marker}.5 >/dev/null 2>&1 &`], 60_000);
 
   expect(result.status).toBe(0);
+  // The child may still appear in /proc after spawnAsync sends SIGKILL.
+  const deadline = performance.now() + 2_000;
+  while (marked(marker) && performance.now() < deadline) {
+    await Bun.sleep(20);
+  }
   expect(marked(marker)).toBe(false);
 });
 
