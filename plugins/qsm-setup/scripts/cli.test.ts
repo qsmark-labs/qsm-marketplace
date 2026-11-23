@@ -101,16 +101,14 @@ describe("qsm-setup cli", () => {
   });
 
   test.each([
-    { tools: ["gh", "br"], status: "PASS", missing: [] },
-    { tools: ["gh"], status: "FAIL", missing: ["br is not on PATH"] },
-    { tools: ["br"], status: "FAIL", missing: ["install the GitHub CLI"] },
-    { tools: [], status: "FAIL", missing: ["br is not on PATH", "install the GitHub CLI"] },
-  ])("qsm-tasks plugin health with $tools is $status", ({ tools, status, missing }) => {
+    { gh: true, status: "PASS" },
+    { gh: false, status: "FAIL" },
+  ])("qsm-tasks plugin health without br and gh present=$gh is $status", ({ gh, status }) => {
     const home = sandboxDir("qsm-setup-tasks-");
     symlinkSync("/bin/sh", join(home, "sh"));
     cliShim(home, "qsm-tasks", join(ROOT, "plugins/qsm-tasks/scripts/cli.ts"));
-    for (const tool of tools) {
-      fakeBin(home, tool, "exit 0");
+    if (gh) {
+      fakeBin(home, "gh", "exit 0");
     }
     const result = run(["doctor", "qsm-tasks", "--root", ROOT, "--json"], {
       PATH: [home, dirname(process.execPath)].join(":"),
@@ -119,9 +117,10 @@ describe("qsm-setup cli", () => {
     expect(result.exit).toBe(status === "PASS" ? 0 : 1);
     const [check] = checksOf(result.stdout);
     expect(check).toMatchObject({ name: "qsm-tasks", status });
-    for (const reason of missing) {
-      expect(check?.output).toContain(reason);
+    if (!gh) {
+      expect(check?.output).toContain("install the GitHub CLI");
     }
+    expect(check?.output).not.toContain("br is not on PATH");
   });
 
   test("install qsm-setup --dry-run prints the plan and exits 0", () => {

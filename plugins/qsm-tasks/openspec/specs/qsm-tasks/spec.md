@@ -3,10 +3,10 @@
 ## Purpose
 
 qsm-tasks is the plug-in that serves the task port: the role every plan, spec and review flow names
-when it says "the task", answered here by `br` (beads_rust). It holds the task model (what an epic
-and a task are, when each is created and when each closes), the installer that builds
-`qsm-tasks` and checks for `br`, and the one skill that teaches the `br` commands. A different
-tracker would replace this plug-in and leave its users untouched.
+when it says "the task". It holds the task model, the guidance for task writing, and the
+`qsm-tasks` CLI. The retained `task-tool` skill still teaches the existing `br` workflow.
+Migration of tracker calls across the marketplace is tracked in
+[#6](https://github.com/qsmark-labs/qsm-marketplace/issues/6).
 
 ## Requirements
 
@@ -90,17 +90,16 @@ SHALL be the one owner of that form, and the `writing` skill SHALL point at it.
 - **THEN** the plain summary and the before and after tell them what changes without the precise
   section, which is marked so they can skip it
 
-### Requirement: Install builds the binary and checks for br
+### Requirement: Install builds the binary
 
 `scripts/install.ts` SHALL use the shared install base to build `qsm-tasks` into the configured
-bin directory and write its completion. It SHALL probe for `br` and, when it is missing, report
-it as a missing prerequisite with the upstream install line.
+bin directory and write its completion. Installation SHALL work regardless of whether `br`
+is present.
 
 #### Scenario: br is missing
 
-- **WHEN** `br` is not on PATH
-- **THEN** the install reports `missing-prereq` naming `br` and the upstream install command, and
-  exits non-zero
+- **WHEN** the installer runs with Bun and `gh` on PATH and `br` absent
+- **THEN** it builds the binary and exits successfully
 
 #### Scenario: Repeat a successful install
 
@@ -113,6 +112,16 @@ The plugin SHALL ship the binary `qsm-tasks`, whose verb `doctor` reports whethe
 program the binary needs, is on PATH: healthy when it is, `missing` (exit 4) naming `gh` and the
 line to fix it when it is not. It SHALL check nothing else.
 
+#### Scenario: A hooks module calls doctor
+
+- **WHEN** Claude Code loads the plugin's hooks module and calls `$.tasks.doctor()`
+- **THEN** the noun runs `qsm-tasks doctor --json` and returns the success envelope's data
+
+#### Scenario: Setup checks plugin health without br
+
+- **WHEN** `qsm-setup doctor qsm-tasks` runs with the binary and `gh` on PATH and `br` absent
+- **THEN** it reports PASS
+
 #### Scenario: gh is on PATH
 
 - **WHEN** `qsm-tasks doctor` runs with `gh` on PATH
@@ -123,22 +132,6 @@ line to fix it when it is not. It SHALL check nothing else.
 - **WHEN** `qsm-tasks doctor` runs without `gh` on PATH
 - **THEN** it ends `missing` (exit 4), names `gh` and says to install the GitHub CLI
 
-#### Scenario: A hooks module calls doctor
-
-- **WHEN** Claude Code loads the plugin's hooks module and calls `$.tasks.doctor()`
-- **THEN** the noun runs `qsm-tasks doctor --json` and returns the success envelope's data
-
-### Requirement: Setup doctor checks the binary and skills
-
-The plugin SHALL declare a health probe that calls `qsm-tasks doctor` and checks for `br` on
-PATH for the retained skills.
-
-#### Scenario: Required tools are missing
-
-- **WHEN** `qsm-setup doctor qsm-tasks` runs with the binary installed and `gh`, `br` or both
-  missing
-- **THEN** it reports FAIL with guidance for each missing tool
-
 ### Requirement: Dependencies
 
 The plugin SHALL declare no other plug-in in `dependencies`. The installer requires Bun to
@@ -147,5 +140,5 @@ build the binary, the `task-tool` skill requires `br`, and the binary requires `
 #### Scenario: Installed alone
 
 - **WHEN** only qsm-tasks is installed in a session
-- **THEN** the `task-tool` skill loads and every command it names runs with `br` on PATH, and the
-  session needs no other plugin
+- **THEN** the binary and both skills are available without another plugin, and the retained
+  tracker commands in `task-tool` require `br`

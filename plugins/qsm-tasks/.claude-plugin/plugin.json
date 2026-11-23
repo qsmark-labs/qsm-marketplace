@@ -1,7 +1,7 @@
 {
   "name": "qsm-tasks",
-  "description": "The task port served by br (beads_rust): one skill that holds the task model (an epic holds the intent and acceptance criteria of a piece of work, one task per spec change, a final test-it task, close rules) and names the commands, and an install that checks br is on the machine.",
-  "keywords": ["tasks", "epic", "tracker", "beads", "br"],
+  "description": "The task port for the marketplace, with a task model, task writing guidance, and the qsm-tasks CLI.",
+  "keywords": ["tasks", "epic", "tracker"],
   "types": "./types/index.d.ts",
   "author": {
     "name": "qsm"
