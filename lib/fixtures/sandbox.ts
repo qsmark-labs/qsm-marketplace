@@ -43,9 +43,11 @@ export function atTestEnd(fn: () => void | Promise<void>): void {
   atEnd.push(fn);
 }
 
-/** A fresh temp directory, removed after the test that made it. */
+/** A fresh temp directory, removed by the next afterEach. */
 export function sandboxDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
+  // Bun's rerun can enter file-level beforeAll after the previous afterAll removed the run.
+  mkdirSync(run, { recursive: true });
+  const dir = mkdtempSync(join(run, prefix));
   sandboxes.push(dir);
   return dir;
 }
@@ -175,7 +177,7 @@ function stopLeft(candidates: Iterable<number>, runDir: string): string[] {
 
 let before = new Set<number>();
 beforeEach(() => {
-  // `bun test --rerun-each` ends a pass with afterAll, which removes the run; the next pass needs it.
+  // Tests may use TMPDIR without calling sandboxDir.
   mkdirSync(run, { recursive: true });
   before = pids();
 });
@@ -215,7 +217,8 @@ afterEach(async () => {
 
 afterAll(() => {
   const running = stopLeft(pids(), run);
-  const left = readdirSync(run);
+  // A filtered rerun can reach cleanup without creating the run directory again.
+  const left = existsSync(run) ? readdirSync(run) : [];
   const lines = left.map((name) => `  ${join(run, name)}`);
   rmSync(run, { recursive: true, force: true });
   if (running.length > 0 || lines.length > 0) {
