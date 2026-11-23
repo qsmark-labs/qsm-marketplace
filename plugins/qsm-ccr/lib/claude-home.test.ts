@@ -1,7 +1,7 @@
 // The private Claude home of a launch, through the real functions on real directories: a teammate
 // keeps its links when its lead's home goes, a failed cleanup never replaces claude's exit, and the
 // installer cleans the homes of the shape before the pid name.
-import { describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deadPid } from "../../../lib/fixtures/dead-run.ts";
@@ -13,8 +13,6 @@ import { isolatedHome, removeHome } from "./claude-home.ts";
 import { makeWorld } from "./fixtures/world.ts";
 import { runLead } from "./lead.ts";
 import { placesOf } from "./places.ts";
-
-setDefaultTimeout(30_000);
 
 function machine(withTeams = true) {
   const base = sandboxDir("qsm-ccr-home-");

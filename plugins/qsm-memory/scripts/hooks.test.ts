@@ -4,7 +4,7 @@
 // that line before it reads the archive. Which event reaches which verb is hooks/register.test.ts.
 
 import { z } from "zod";
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { spawn as spawnAsync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -13,8 +13,6 @@ import { cliShim } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { TranscriptBuilder } from "../lib/fixtures/transcript.ts";
-
-setDefaultTimeout(30_000);
 
 const CLI = resolve(import.meta.dir, "cli.ts");
 
