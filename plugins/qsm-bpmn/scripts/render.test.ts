@@ -1,15 +1,10 @@
 // layout and render through the real binary entry: a graph on disk in, files and one envelope out.
-import { describe, expect, it, setDefaultTimeout } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { CLI, PLAN } from "./fixtures/plan.ts";
-
-// Every call starts a bun process (about 1 s at rest); the --check tests make three, so 3.2 s at
-// rest and past bun's 5 s on a loaded machine, where bun ends the child. 30 s leaves nine times
-// the measured worst case.
-setDefaultTimeout(30_000);
 
 describe("layout", () => {
   it("refuses a file the owner drew and leaves it unchanged", () => {

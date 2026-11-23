@@ -7,7 +7,7 @@ import { isAlive } from "../../../lib/detach.ts";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
 import { ended, leftProcess } from "../../../lib/fixtures/dead-run.ts";
-import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
+import { atTestEnd, sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
 
 const FAKE_MACHINE = resolve(import.meta.dir, "fake-machine.ts");
 
@@ -40,13 +40,17 @@ async function serveFake(home: string): Promise<{ serve: Bun.Subprocess; pid: nu
     stdout: "inherit",
     stderr: "inherit",
   });
-  atTestEnd(() => {
+  // The end waits for both exits: a process that is still dying is one the guard finds.
+  atTestEnd(async () => {
     serve.kill("SIGKILL");
+    await serve.exited;
+    const pipewire = Number(readFileSync(pidFile, "utf8"));
     try {
-      process.kill(Number(readFileSync(pidFile, "utf8")), "SIGKILL");
+      process.kill(pipewire, "SIGKILL");
     } catch {
       // ended: the fake machine did its job
     }
+    await untilGone(pipewire);
   });
   for (let i = 0; i < 200 && !existsSync(join(dir, "ready")); i++) await Bun.sleep(50);
   expect(existsSync(join(dir, "ready"))).toBe(true);
@@ -85,8 +89,9 @@ test("a served fake machine without PipeWire ends a process a killed one left", 
     stdout: "inherit",
     stderr: "inherit",
   });
-  atTestEnd(() => {
+  atTestEnd(async () => {
     serve.kill("SIGKILL");
+    await serve.exited;
   });
   for (let i = 0; i < 200 && !existsSync(join(dir, "ready")); i++) await Bun.sleep(50);
   expect(existsSync(join(dir, "ready"))).toBe(true);

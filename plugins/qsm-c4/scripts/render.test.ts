@@ -1,14 +1,10 @@
 // render through the real entry: a source lint refuses writes no view.
-import { describe, expect, it, setDefaultTimeout } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { envelopeOf, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { C4, CLI } from "./fixtures/c4.ts";
-
-// Every call starts a bun process; a test here takes 2.3 s at rest and passes bun's 5 s on a
-// loaded machine, where bun ends the child. 30 s leaves thirteen times the measured worst case.
-setDefaultTimeout(30_000);
 
 describe("render", () => {
   it("writes nothing for a source that puts a container inside a container", () => {

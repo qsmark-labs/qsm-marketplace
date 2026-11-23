@@ -2,7 +2,7 @@
 // tests import. A preload's hooks are global: afterEach runs after every test of every file and
 // afterAll once per run. A helper's own top-level afterEach would bind only to the first test file
 // that imports it, which is how every other file's sandboxes leaked.
-import { afterAll, afterEach, beforeEach } from "bun:test";
+import { afterAll, afterEach, beforeEach, setDefaultTimeout } from "bun:test";
 import {
   existsSync,
   mkdirSync,
@@ -18,6 +18,21 @@ import { dirname, join } from "node:path";
 import { isAlive } from "../detach.ts";
 
 const RUN_PREFIX = "qsm-test-run.";
+
+// The suite runs its files side by side, one worker per core, so a test that starts processes runs
+// on a loaded machine by design. The slowest took 13 s in a parallel run against 3 s at rest; bun's
+// 5 s ended it and named a time limit, not a fault. A hang still fails, at 30 s.
+setDefaultTimeout(30_000);
+
+/** git with no background maintenance: a commit otherwise detaches `git maintenance run --auto`,
+ * which outlives the test that committed and writes into a home the cleanup removes. Every child
+ * of a test gets it, through process.env here and through `isolatedEnv`. */
+export const NO_GIT_MAINTENANCE = {
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "maintenance.auto",
+  GIT_CONFIG_VALUE_0: "false",
+} as const;
+Object.assign(process.env, NO_GIT_MAINTENANCE);
 const sandboxes: string[] = [];
 const atEnd: (() => void | Promise<void>)[] = [];
 
@@ -96,6 +111,9 @@ mkdirSync(runs, { recursive: true });
 cleanBefore(runs);
 const run = mkdtempSync(join(runs, `${RUN_PREFIX}${process.pid}.`));
 process.env.TMPDIR = run;
+// A child that runs bare `bun` gets the runtime of this run: PATH may hold another bun first, a
+// different binary with its own start-up time, and the tests then measure the machine's PATH.
+process.env.PATH = `${dirname(process.execPath)}:${process.env.PATH ?? ""}`;
 /** The directory every temp path of this run is made in. */
 export const TEST_TMP = run;
 
@@ -157,6 +175,8 @@ function stopLeft(candidates: Iterable<number>, runDir: string): string[] {
 
 let before = new Set<number>();
 beforeEach(() => {
+  // `bun test --rerun-each` ends a pass with afterAll, which removes the run; the next pass needs it.
+  mkdirSync(run, { recursive: true });
   before = pids();
 });
 

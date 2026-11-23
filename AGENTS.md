@@ -209,10 +209,19 @@ type-aware finding is measured without the dependencies and the engine types.
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 mise exec -- bun run test:hooks
 ```
 
+- Every test runs in parallel, here and in CI: one worker per core, so the machine is loaded by
+  design. A test owns everything it uses (its sandbox, home, processes and ports), waits for the
+  end of what it starts, and leaves nothing behind, so it runs again at once, alone or beside any
+  other. It stays simple: the flow it proves and nothing else. A tool's tests carry fuzz cases for
+  its inputs and a mutation run of its logic.
+- No test is flaky. A test that fails once and passes on a rerun hides a cause, and the cause is
+  found and fixed; a rerun to green is never the answer.
+- The preload `lib/fixtures/sandbox.ts` gives every test 30 s, a fresh run directory, git without
+  background maintenance, and the run's own `bun` first on PATH.
 - `bun test` skips a dot directory unless it is named, and skips `plugins/*/hooks/*.test.ts`;
   `test:hooks` runs those and skips visibly without `claude` on PATH.
 - `bun run plugin-types` regenerates the engine types the hooks typecheck against.
