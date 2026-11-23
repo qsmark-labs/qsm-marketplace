@@ -29,7 +29,8 @@ interface BinRun {
 }
 
 /** Runs a bun script the way a shell would. The environment is exactly `env`, or a fresh
- * `isolatedEnv` when none is given. */
+ * `isolatedEnv` when none is given. A child that gave no exit code fails the test: a signal ended
+ * it, as bun does to the child of a test past its time limit, and that is no answer of the tool. */
 export function runBin(
   script: string,
   argv: readonly string[] = [],
@@ -41,7 +42,11 @@ export function runBin(
     cwd: opts.cwd,
     input: opts.input,
   });
-  return { exit: r.status ?? 1, stdout: r.stdout, stderr: r.stderr };
+  if (r.status === null) {
+    const why = r.error?.message ?? `ended by ${String(r.signal)}`;
+    throw new Error(`${[script, ...argv].join(" ")} gave no exit code: ${why}`);
+  }
+  return { exit: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
 function isOutcomeCode(value: unknown): value is OutcomeCode {
