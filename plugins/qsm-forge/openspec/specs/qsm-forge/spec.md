@@ -315,9 +315,22 @@ and the token SHALL NOT appear in any argument, output, log or error.
 - **WHEN** GitHub answers the installation or token request with a non-2xx status
 - **THEN** the CLI SHALL fail `failed` with the status and GitHub's message
 
+### Requirement: Hand the App token to another program
+
+`qsm-forge gh app-token [--repo owner/name]` SHALL mint an installation token exactly as
+`gh pr-open` does and write it, without a newline, to file descriptor 3 only. Stdout and stderr
+SHALL NOT carry the token; stdout carries the repository name.
+
+#### Scenario: File descriptor 3 is not open
+
+- **WHEN** the verb runs with file descriptor 3 closed
+- **THEN** the CLI SHALL fail `blocked` (exit 5) naming file descriptor 3, before any network call,
+  and the token SHALL appear nowhere
+
 ### Requirement: Dependencies
 
 qsm-forge SHALL declare `qsm-secrets` in the `dependencies` array of its plugin.json, for one
 reason:
 
-- `qsm-secrets`: `gh pr-open` reads the App private key from the vault through `qsm-secrets get`.
+- `qsm-secrets`: `gh pr-open` and `gh app-token` read the App private key from the vault through
+  `qsm-secrets get`.

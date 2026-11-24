@@ -226,6 +226,16 @@
           }
         ]
       },
+      "qsm-forge gh app-token": {
+        "description": "Write a fresh qsmark-bot GitHub App installation token to file descriptor 3 (never stdout), narrowed to the repository",
+        "args": [
+          {
+            "name": "repo",
+            "type": "string",
+            "description": "owner/name (default: the origin remote)"
+          }
+        ]
+      },
       "qsm-forge gl status": {
         "description": "Print a merge request's state, merge readiness, pipeline result, and unresolved-thread count",
         "args": [

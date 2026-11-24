@@ -3,6 +3,7 @@
 // The GitHub half of qsm-forge: a pull request's review threads as one call each ("qsm-forge gh
 // <verb>").
 
+import { writeSync } from "node:fs";
 import {
   type Call,
   flagArg,
@@ -13,6 +14,7 @@ import {
   requiredString,
 } from "../../../lib/cli-base.ts";
 import { fail, type Outcome, ok } from "../../../lib/outcome.ts";
+import { QsmError } from "../../../lib/qsm-error.ts";
 import { mintInstallationToken } from "../lib/app-token.ts";
 import { runCommand } from "../lib/exec.ts";
 import {
@@ -270,6 +272,35 @@ async function prOpen(call: Call): Promise<Outcome> {
   return ok({ url, repo: target }, url);
 }
 
+const TOKEN_FD = 3;
+
+/** A zero-byte write, not a stat: a closed descriptor still answers `fstat` under this runtime,
+ * while `write` returns EBADF (the same probe `qsm-secrets get` uses). */
+function tokenChannelOpen(): boolean {
+  try {
+    writeSync(TOKEN_FD, new Uint8Array(0));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Hands a fresh App token to the caller on file descriptor 3 only, so a program that runs this
+ * in a shell reads it from there and an agent reading stdout never sees it. */
+async function appToken(call: Call): Promise<Outcome> {
+  if (!tokenChannelOpen()) {
+    throw new QsmError(
+      "blocked",
+      "file descriptor 3 is not open: the token is never written to stdout or stderr",
+      { next: "open the channel yourself, qsm-forge gh app-token 3>FILE" },
+    );
+  }
+  const repo = await resolveGithubRepo(runCommand, optionalString(call, "repo") ?? null);
+  writeSync(TOKEN_FD, await mintInstallationToken(repo, process.env));
+  const target = `${repo.owner}/${repo.repo}`;
+  return ok({ repo: target }, target);
+}
+
 /** Keyed by the full merged-binary verb ("qsm-forge gh <verb>" minus the
  * bin word), so scripts/cli.ts only ever spreads this into runCli's table. */
 export const handlers: Readonly<Record<string, Handler>> = {
@@ -282,4 +313,5 @@ export const handlers: Readonly<Record<string, Handler>> = {
   "gh dismiss-reviews": handler(dismissReviews),
   "gh submit-review": handler(submitReview),
   "gh pr-open": prOpen,
+  "gh app-token": appToken,
 };

@@ -221,4 +221,14 @@ describe("qsm-forge gh output and forge failures", () => {
     expect(run.code).toBe(4);
     expect(run.stderr).toContain("QSM_FORGE_APP_ID");
   });
+
+  test("app-token without file descriptor 3 is blocked, exit 5, naming it, no token", () => {
+    const run = cli(["gh", "app-token", "--repo", "owner/name"], {
+      QSM_FORGE_APP_ID: "1",
+      QSM_FORGE_APP_KEY: "key",
+    });
+    expect(run.code).toBe(5);
+    expect(run.stderr).toContain("file descriptor 3");
+    expect(run.stdout).toBe("");
+  });
 });

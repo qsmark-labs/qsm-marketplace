@@ -20,6 +20,11 @@ columns do not change.
 `QSM_FORGE_APP_KEY` (the vault key holding the base64 PEM). A token is minted per call and never
 printed; the person's own gh login becomes assignee and reviewer. `--json` carries `url` and `repo`.
 
+`gh app-token [--repo owner/name]` mints the same narrowed token as `gh pr-open` for another
+program: it writes the token, without a newline, to file descriptor 3 only, e.g.
+`TOKEN=$(qsm-forge gh app-token 3>&1 1>/dev/null)`. Stdout carries the repository name. Without fd 3
+open it fails `blocked` (exit 5) and writes the token nowhere.
+
 Review payload (`--file`, or stdin):
 
 ```json
@@ -34,4 +39,4 @@ Review payload (`--file`, or stdin):
 bad payload posts nothing.
 
 Exit codes: 0 ok, 1 the forge or its CLI refused, 2 bad call (nothing posted), 4 no repository or
-project named, or unreadable `--file`.
+project named, or unreadable `--file`; 5 `gh app-token` without file descriptor 3 open.

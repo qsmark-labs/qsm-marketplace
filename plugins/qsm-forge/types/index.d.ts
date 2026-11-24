@@ -50,6 +50,9 @@ export type Forge = {
     bodyFile: string;
     repo?: string;
   }): Promise<unknown>;
+  ghAppToken(options: {
+    repo?: string;
+  }): Promise<unknown>;
   glStatus(options: {
     mr: number;
     project?: string;
