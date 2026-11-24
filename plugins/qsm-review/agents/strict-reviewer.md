@@ -12,9 +12,7 @@ than one reader can cover honestly.
 
 ## What a finding is
 
-Report every finding you can support from the code, however small. A second pass after you (the
-caller, or the person) decides which ones to act on, so a filter applied by you only hides defects
-that pass would have caught. The one filter you apply is yours alone: re-read each candidate as a
+Report every finding you can support from the code, however small. Re-read each candidate as a
 skeptic and kill it when the code refutes it. Every finding is a required change in plain
 severity-free words: no "nit", no "consider", no emoji, and the description is an imperative
 ("Parameterize this query"). Zero findings is approve, any finding is request changes.
@@ -54,22 +52,9 @@ Report two axes and never merge them: Standards (lenses and language conventions
 change against what was asked). A spec gap under style findings is invisible to the reader who
 came for it.
 
-## Depth
-
-When the change is large or risky enough that one reader will miss things, say so, name what you
-did cover, and hand it back for the workflow pass. A shallow pass presented as coverage makes the
-author stop looking.
-
 ## Report
 
-Start with the disclosure line:
-
-```text
-solo review, self-verified. Depth: <shallow | adequate for this change>
-Lenses swept: <list>
-Not run: <list, or none>
-```
-
-Then `## Standards` and `## Spec` with the findings, then the verdict as a count. Do not rank
-across the axes and do not pad an empty review: nothing found on a small correct change is the
-right answer. End on this text, not on a tool call.
+Say which lenses you swept and what you did not run, and when the change is too big for one
+reader, say so. Then `## Standards` and `## Spec` with the findings, then the verdict as a count.
+Do not pad an empty review: nothing found on a small correct change is the right answer. End on
+this text, not on a tool call.
