@@ -5,24 +5,17 @@ description: "Use when an animation is janky, choppy, stutters or drops frames, 
 
 # Animation Performance
 
-Imagine a toast at 30 fps: same easing, same durations, same code, and nobody would care.
-Performance is not a polish pass after the motion is good; it is what lets good motion register at
-all. This skill serves the person whose animation drops frames: the question is never "does it look
-right" but "does each frame finish in time". The developer's own machine is the least
-representative device the animation will run on, so the bar is a mid-range device, and a 120 Hz
+The question is "does each frame finish in time". The bar is a mid-range device, and a 120 Hz
 screen halves the budget. It does not pick curves or judge whether the motion should exist.
 
 ## Hard rules
 
 1. Animate's property whitelist by default; anything else needs a reason. If a cheaper property
-   gives the same picture, use it even when the expensive one "seems fine".
-2. Name the cause before changing code. "Promoted a layer, seems smoother" is not a diagnosis.
+   gives the same picture, use it.
+2. Name the cause before changing code.
 3. Never conclude "it is fine" from a fast machine. Say which findings come from code and which need
    a recording on a real device.
-4. Never a catch-all transition, because it animates whatever changes next, layout properties
-   included.
-5. Which property you animate is yours to control; hardware acceleration is something the platform
-   may grant. Spend the effort on the first.
+4. Never a catch-all transition: it animates layout properties too.
 
 ## Symptom to fix
 
@@ -99,11 +92,6 @@ momentum).
 3. **Report** each finding as element and `file:line`, cause, before, after, and verified (from code
    or needs a device recording), ordered by cost, layout before paint, busy thread before idle. Then
    stop; fixes are applied when asked.
-
-## Say it in the reply
-
-The animation table, then one block per finding as in step 3, closing with what was verified from
-code and what still needs a recording on a real device.
 
 How each fix is written and measured on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).
