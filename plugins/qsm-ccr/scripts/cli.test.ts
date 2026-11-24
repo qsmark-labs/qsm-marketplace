@@ -1,7 +1,7 @@
 // qsm-ccr through its real surface: the entry script's argv, stdout, stderr, exit, in a sandbox.
 
 import { Database } from "bun:sqlite";
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -46,7 +46,6 @@ import { ROUTER_ENV } from "../lib/route.ts";
 import { startDetachedSync } from "../lib/sync.ts";
 
 const CLI = resolve(import.meta.dir, "cli.ts");
-setDefaultTimeout(30_000);
 
 function bare(argv: readonly string[]) {
   const home = sandboxDir("qsm-ccr-bare-");
