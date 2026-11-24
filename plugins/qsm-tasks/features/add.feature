@@ -44,3 +44,19 @@ Feature: add files an issue
   Scenario: the body file is required
     When I run "add 'a title' --json"
     Then it ends "usage" with exit 2 saying "body-file"
+
+  Scenario Outline: an invalid parent is rejected before creating an issue
+    When I run "add 'a title' --body-file body.md --parent <parent> --json"
+    Then it ends "usage" with exit 2 saying "parent must be a positive integer"
+
+    Examples:
+      | parent |
+      | 1.5    |
+      | 0      |
+
+  Scenario: the body comes from stdin
+    Given I pipe "issue body\n"
+    And gh creates the issue titled "a title" from "-" and prints "https://github.com/owner/repo/issues/190"
+    When I run "add 'a title' --body-file - --json"
+    Then the data is the number 190
+    And gh received "issue body\n" on stdin

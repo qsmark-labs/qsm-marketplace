@@ -41,8 +41,8 @@ export function parseIssues(stdout: string): Issue[] {
 
 /** One line: `#<number>`, the Status or `no status`, the title, tab-separated. */
 export function lineOf(issue: Issue): string {
-  return `#${issue.number}\t${issue.status ?? "no status"}\t${issue.title}`.replaceAll(
-    /[\r\n]+/g,
-    " ",
+  const fields = [issue.status ?? "no status", issue.title];
+  return [`#${issue.number}`, ...fields.map((field) => field.replaceAll(/[\t\r\n]+/g, " "))].join(
+    "\t",
   );
 }

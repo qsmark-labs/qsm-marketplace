@@ -10,7 +10,7 @@ Feature: list the open issues with their Status
       | 187    | Todo      | qsm-tasks: the binary lists the open work with its Status |
       | 190    | no status | qsm-tasks pilot: throwaway issue of the live run          |
 
-  Scenario Outline: a title that spans lines stays one line
+  Scenario Outline: a title stays in one cell
     Given gh answers '<raw>'
     When I run "list"
     Then issue "1" prints status "no status" and title "<title>"
@@ -19,6 +19,7 @@ Feature: list the open issues with their Status
       | raw                                              | title |
       | [{"number":1,"title":"a\\nb","projectItems":[]}]   | a b   |
       | [{"number":1,"title":"a\\r\\nb","projectItems":[]}] | a b   |
+      | [{"number":1,"title":"a\\tb","projectItems":[]}]   | a b   |
 
   Scenario Outline: the data of the same list
     Given gh lists the recorded issues

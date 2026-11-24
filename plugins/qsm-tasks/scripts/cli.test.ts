@@ -33,6 +33,7 @@ interface Call {
 interface World {
   calls?: Call[];
   absent?: boolean;
+  input?: string;
   dir?: string;
   stdout?: string;
   exit?: number;
@@ -53,6 +54,9 @@ function installGh(world: World): string {
   const dir = sandboxDir("qsm-tasks-gh-");
   world.dir = dir;
   const lines = [`printf '%s\\n' "$@" > "${dir}/got"`];
+  if (world.input !== undefined) {
+    lines.push(`cat > "${dir}/stdin"`);
+  }
   (world.calls ?? []).forEach((call, i) => {
     writeFileSync(join(dir, `${i}.args`), call.args.map((a) => `${a}\n`).join(""));
     writeFileSync(join(dir, `${i}.out`), call.stdout ?? "");
@@ -68,6 +72,9 @@ function installGh(world: World): string {
 
 Given("gh is {string}", (world: World, how: unknown) => {
   world.absent = how === "absent";
+});
+Given("I pipe {string}", (world: World, input: unknown) => {
+  world.input = unescaped(input);
 });
 // the answer as gh gave it: one issue with a Status, one on the board with none set
 Given("gh lists the recorded issues", (world: World) => {
@@ -123,7 +130,11 @@ When("I run {string}", (world: World, args: unknown) => {
   const argv = (String(args).match(/'[^']*'|\S+/g) ?? []).map((w) =>
     w.startsWith("'") ? w.slice(1, -1) : w,
   );
-  const run = runBin(CLI, argv, { env, cwd: sandboxDir("qsm-tasks-cwd-") });
+  const run = runBin(CLI, argv, {
+    env,
+    cwd: sandboxDir("qsm-tasks-cwd-"),
+    input: world.input ?? "",
+  });
   world.stdout = run.stdout;
   world.exit = run.exit;
 });
@@ -151,6 +162,9 @@ Then("the data is the number {int}", (world: World, number: unknown) => {
 });
 Then("gh received {string}", (world: World, name: unknown) => {
   expect(readFileSync(join(world.dir ?? "", "log"), "utf8").split("\n")).toContain(String(name));
+});
+Then("gh received {string} on stdin", (world: World, input: unknown) => {
+  expect(readFileSync(join(world.dir ?? "", "stdin"), "utf8")).toBe(unescaped(input));
 });
 Then(
   "it ends {string} with exit {int} saying {string}",
