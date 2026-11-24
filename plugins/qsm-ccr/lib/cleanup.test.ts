@@ -1,8 +1,9 @@
 // What a call leaves behind: a home after its claude ends, a grandchild after codex or ccr stop.
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { fakeBin } from "../../../lib/fixtures/bin.ts";
 import { deadPid, ended } from "../../../lib/fixtures/dead-run.ts";
 import { atTestEnd, sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -10,8 +11,6 @@ import { refreshCatalog } from "./codex.ts";
 import { takeDown } from "./daemon.ts";
 import { makeWorld, setMode } from "./fixtures/world.ts";
 import { runLead } from "./lead.ts";
-
-setDefaultTimeout(30_000);
 
 /** A command body that leaves a sleeping grandchild behind and writes its pid to `pidFile`. */
 const leavesSleeper = (pidFile: string) => `sleep 300 >/dev/null 2>&1 &\necho $! > "${pidFile}"`;
@@ -42,8 +41,12 @@ describe("a call ends what it started", () => {
     mkdirSync(used, { recursive: true });
     writeFileSync(join(used, "settings.json"), "{}");
     const claude = spawn("sleep", ["300"], { env: { CLAUDE_CONFIG_DIR: used } });
-    atTestEnd(() => {
+    // The end waits for the exit: a process that is still dying is one the guard finds.
+    atTestEnd(async () => {
       claude.kill("SIGKILL");
+      if (claude.exitCode === null && claude.signalCode === null) {
+        await once(claude, "exit");
+      }
     });
     expect((await runLead(undefined, [], w.env, "/opt/qsm-ccr")).code).toBe("ok");
     expect(existsSync(join(used, "settings.json"))).toBe(true);

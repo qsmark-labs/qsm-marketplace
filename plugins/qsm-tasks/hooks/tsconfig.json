@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.hooks.json",
+  "include": [
+    "../../../.claude/types/claude-code.d.ts",
+    "register.tsx",
+    "register.test.ts",
+    "noun.generated.ts",
+    "../types"
+  ]
+}
