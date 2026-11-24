@@ -67,7 +67,7 @@ From the repository root, each exits 0:
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 ```
 
 Run the new verb for real with `--json` and read what it printed. Then hand the diff to the

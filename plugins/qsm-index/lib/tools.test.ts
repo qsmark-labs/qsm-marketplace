@@ -4,7 +4,7 @@
 // A build still running when a test ends is killed with its process group, then every sandbox
 // is removed, whether the test passed or failed.
 
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,10 +16,6 @@ import { commit, git } from "../../../lib/fixtures/git.ts";
 import { sandboxDir, untilGone } from "../../../lib/fixtures/sandbox.ts";
 import { fakeRunner, killBuilds, repoWithCache, until, world } from "./test-repo.ts";
 import { context, impact, reindex, search, status, structure } from "./tools.ts";
-
-// A detached build starts a bun process and a fake graphify that sleeps; the default 5 s test
-// limit is too tight for the slowest of them.
-setDefaultTimeout(20_000);
 
 // A build is killed through its lock file in the sandbox; this file's afterEach runs before the
 // preload's, which removes the sandbox.
