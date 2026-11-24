@@ -8,7 +8,7 @@ export function runGh(args: readonly string[]): string {
   if (!onPath("gh")) {
     throw new QsmError("missing", "gh is not on PATH");
   }
-  const run = Bun.spawnSync(["gh", ...args]);
+  const run = Bun.spawnSync(["gh", ...args], { stdin: "inherit" });
   if (run.exitCode !== 0) {
     throw new QsmError("failed", run.stderr.toString());
   }

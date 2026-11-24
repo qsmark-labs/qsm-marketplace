@@ -1,5 +1,5 @@
 // Filing an issue, and making it a sub-issue of another.
-import { messageOf } from "../../../lib/outcome.ts";
+import { messageOf, UsageError } from "../../../lib/outcome.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
 import { runGh } from "./gh.ts";
 
@@ -32,6 +32,9 @@ function makeSubIssue(number: number, parent: number): void {
  * that second step fails the error names the issue that was filed, so a retry does not file it
  * twice. */
 export function addIssue(title: string, bodyFile: string, parent: number | undefined): number {
+  if (parent !== undefined && (!Number.isSafeInteger(parent) || parent <= 0)) {
+    throw new UsageError("--parent must be a positive integer");
+  }
   const number = issueNumberOf(
     runGh(["issue", "create", "--title", title, "--body-file", bodyFile]),
   );
