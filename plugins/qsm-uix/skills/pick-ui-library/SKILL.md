@@ -6,10 +6,8 @@ disable-model-invocation: true
 
 # Picking The Right Library
 
-A lookup for React and web work. Given a task ("I need toasts"), match it to the list and recommend
-one library. The picks are deliberate and taste-driven: do not substitute others unless the user
-asks or the task is not covered. Hand-rolling what a maintained library does is the failure this
-skill prevents.
+Given a React or web task ("I need toasts"), match it to the list and recommend one library. Do not
+substitute others unless the user asks or the task is not covered.
 
 ## How to use it
 
@@ -17,10 +15,8 @@ skill prevents.
    they asked about something else.
 2. Check `package.json` first. A listed library already installed is used. A competitor
    (react-window instead of Virtuoso) is flagged but not swapped unless asked.
-3. Recommend one library, say what it is for in one sentence, and install and wire it when that is
-   part of the request. A clear answer is not a menu.
-4. A task the list does not cover is said so explicitly; recommend from your own knowledge and make
-   clear you left the list.
+3. Recommend one library, and install and wire it only when the request says so.
+4. A task the list does not cover is said so; recommend from your own knowledge.
 
 ## The list
 
@@ -59,10 +55,5 @@ variants (size, intent, state); they compose.
 - A 1,000-row list rendered directly: Virtuoso before pagination hacks.
 - Shared state passed as a web of props: zustand.
 - Template-literal className ternaries three deep: clsx, or cva when variant-shaped.
-
-## Say it in the reply
-
-The one library, the one-sentence reason, what `package.json` already held, and whether the task
-was outside the list.
 
 Source: emilkowalski/skills pick-ui-library (MIT).

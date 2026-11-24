@@ -5,11 +5,8 @@ description: "Use when asked where an interface should animate, what could be an
 
 # Find Animation Opportunities
 
-An opportunity finder that suggests motion everywhere produces the sluggish, over-animated
-interfaces this plugin exists to prevent. This skill serves the person who asked "what could
-animate here": it is a filter as much as a finder, built on Emil Kowalski's "You Don't Need
-Animations" (sometimes the best animation is none). Expect to reject most candidates; a short list
-of high-conviction ones beats a wishlist. It reports and never implements.
+A filter as much as a finder, built on Emil Kowalski's "You Don't Need Animations": expect to
+reject most candidates. It reports and never implements.
 
 ## Hard rules
 
@@ -56,22 +53,15 @@ family's.
 ## Workflow
 
 1. Recon: stack, motion libraries, existing curve and duration tokens (suggestions extend them),
-   the product's character (a crisp dashboard earns fewer, subtler suggestions), a rough frequency
-   map of the surfaces judged.
-2. Sweep the hunt list until every seam class has yielded candidates with `file:line` or been
-   cleared.
-3. Gate every candidate, ruthlessly.
-4. Report. Nothing surviving is a good result, said plainly.
+   the product's character, a rough frequency map of the surfaces judged.
+2. Sweep the hunt list for candidates with `file:line`.
+3. Gate every candidate. Nothing surviving is a good result, said plainly.
 
 ## Say it in the reply
 
-Part 1, an opportunities table, ordered by leverage: location, today, purpose, frequency, suggested
-motion with exact curve, duration and properties (animate's property whitelist). Part 2, required:
-two to five rejected candidates, each with the gate question that killed it, for example the
-launcher toggle ("keyboard-initiated, 100+ a day, never animate") or a live data graph ("functional
-data being read"). Part 3, one short paragraph: how much motion this interface needs, whether it is
-already close, the single highest-leverage suggestion, and the hand-off to
-`improve-animations plan`.
+An opportunities table, ordered by leverage: location, today, purpose, frequency, suggested
+motion with exact curve, duration and properties (animate's property whitelist), and the rejected
+candidates with the gate question that killed each.
 
 How each rule is written and read on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).
