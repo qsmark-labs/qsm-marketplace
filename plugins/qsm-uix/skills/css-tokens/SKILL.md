@@ -5,12 +5,10 @@ description: "Use when a set of colours is to be wired into CSS or Tailwind: pal
 
 # CSS Tokens
 
-A palette pasted into components drifts: `--mauve` in a button that must turn teal in another
-theme, a `dark:` colour on one element and a different one on the next, a hex in a badge. This
-skill is for the person who ships web UI on custom properties or Tailwind. It makes every colour
-a role that points at a palette value, so a theme swap or a dark block changes values in one place
-and no component. Out of scope: how the palette and roles are chosen (ui-palette, ui-design),
-the rest of the stylesheet (css-ui, whose rules 2, 3, 4 and 7 this skill builds on).
+Makes every colour a role that points at a palette value, so a theme swap or a dark block changes
+values in one place and no component. Out of scope: how the palette and roles are chosen
+(ui-palette, ui-design), the rest of the stylesheet (css-ui, whose rules 2, 3, 4 and 7 this skill
+builds on).
 
 ## Rules
 
@@ -40,19 +38,7 @@ the rest of the stylesheet (css-ui, whose rules 2, 3, 4 and 7 this skill builds 
 7. **Build class names whole** (`{ red: 'bg-red-500' }`), never `bg-${color}-500`: the scanner
    cannot see the second.
 
-## Red flags
-
-- A `dark:` colour class, or a `bg-[#...]`, in a component: move the value into the theme and use
-  the role.
-- A component rule naming a palette value (`var(--mauve)`): point it at the role.
-- A role declared once on `:root` and read inside a subtree that sets its own appearance: redeclare
-  it there, because the `var()` already resolved.
-
-## Say it in the reply
-
-Name the palette values and roles written, which dark values differ and why, and the grep that
-found no palette name in a component. Never claim a contrast ratio you did not compute;
-ui-audit measures it.
+Never claim a contrast ratio you did not compute; ui-audit measures it.
 
 Sources: Tailwind syntax, [theme variables](https://tailwindcss.com/docs/theme) and
 [class detection](https://tailwindcss.com/docs/detecting-classes-in-source-files). The token-only
