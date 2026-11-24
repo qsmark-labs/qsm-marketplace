@@ -2,7 +2,7 @@
 // exits, and the children are orphaned. A function of the command line alone.
 
 const BACKGROUND_DENIAL =
-  "qsm-essentials: `&` inside one Bash call is blocked, because the call returns and its children are orphaned. Run the command with run_in_background on the Bash call, or as separate agent calls. For more, load the qsm-essentials:subagents skill.";
+  "qsm-essentials: `&` inside one Bash call is blocked, because the call returns and its children are orphaned. Run the command with run_in_background on the Bash call, or as separate agent calls.";
 
 /** Quoted text and comments, removed so an `&` inside them is not read as a job. */
 function unquoted(command: string): string {
