@@ -38,14 +38,6 @@ archive".
   read, you do not write: no notes, no files, no git.
 - Replace any token or password in a quote with `<redacted>`.
 
-## Red flags
-
-- When the only hit is a title or a snippet you have not read around, read the turns before
-  answering, because a snippet cut mid-sentence often flips the meaning.
-- When you are about to answer from what the hit "probably" says, run `show` first.
-- When `search` says "no session matches" on the first phrasing, try other words before giving up:
-  the person may have said it in Czech or with a different noun.
-
 ## Your reply
 
 At most eight lines, plain words, in this order:
