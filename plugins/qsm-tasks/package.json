@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "mutate": "stryker run"
+    "mutate": "bun scripts/mutate.ts"
   },
   "devDependencies": {
     "@questi0nm4rk/feats": "1.0.1",

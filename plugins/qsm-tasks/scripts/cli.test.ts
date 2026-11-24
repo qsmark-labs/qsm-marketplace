@@ -1,5 +1,3 @@
-// qsm-tasks through its real entry: argv in, one envelope out, against a fake gh.
-// The behaviour is the Gherkin in features/; every row runs through the steps below.
 import { expect } from "bun:test";
 import { resolve } from "node:path";
 import { Given, loadFeatures, runFeatures, Then, When } from "@questi0nm4rk/feats";
@@ -29,8 +27,6 @@ Given("gh is {string}", (world: World, how: unknown) => {
 });
 
 When("I run {string}", (world: World, args: unknown) => {
-  // StrykerJS names the mutant to switch on in this variable; the CLI child must see it, or no
-  // mutant in the code it runs is ever active.
   const mutant = process.env[MUTANT_VAR];
   const env = isolatedEnv(sandboxDir("qsm-tasks-home-"), {
     PATH: world.path ?? "",

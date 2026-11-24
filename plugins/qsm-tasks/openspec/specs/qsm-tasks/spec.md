@@ -3,10 +3,9 @@
 ## Purpose
 
 qsm-tasks is the plug-in that serves the task port: the role every plan, spec and review flow names
-when it says "the task". It holds the task model, the guidance for task writing, and the
-`qsm-tasks` CLI. The retained `task-tool` skill still teaches the existing `br` workflow.
-Migration of tracker calls across the marketplace is tracked in
-[#6](https://github.com/qsmark-labs/qsm-marketplace/issues/6).
+when it says "the task". It holds the task model, writing guidance, and the `qsm-tasks` CLI.
+The retained `task-tool` skill teaches the `br` workflow pending the marketplace-wide migration
+in [#6](https://github.com/qsmark-labs/qsm-marketplace/issues/6).
 
 ## Requirements
 
