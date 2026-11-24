@@ -19,14 +19,13 @@ skill-standards; a whole new plugin is add-plugin.
    types by name.
 3. Pick the plugin that owns the subject. Paths: `plugins/<plugin>/skills/<name>/SKILL.md`,
    `plugins/<plugin>/agents/<name>.md`, `plugins/<plugin>/commands/<name>.md`.
-4. Write the evals, run them once, and read what the model does unaided: that is the baseline.
-5. Write the description from the eval's prompt, then the body to the shape skill-standards gives.
-6. Run Done means. When a `fire` case fails, fix the description first: the harness matches it.
+4. Write the description from what a user types, then the body to the shape skill-standards gives.
+5. Run Done means.
 
 ## Hard rules
 
 1. The file lives under the plugin that owns the subject, never in root `lib/` or another plugin,
-   because a plugin owns its content. Gate: `validate-no-cross-plugin-import`, review.
+   because a plugin owns its content. Gate: `validate-no-cross-plugin-import`.
 2. Frontmatter carries `name` and `description` (skill), plus `model` (agent), or `description`
    (command), because a malformed file is dropped silently. Gate: `validate-plugin-contracts`.
 3. An agent names its cheapest fitting model, because an unnamed one inherits the session's most
@@ -35,13 +34,9 @@ skill-standards; a whole new plugin is add-plugin.
    skills, because a second subject loads where it is not needed. Gate: `validate-file-size`.
 5. The description opens with the key case, carries Czech and English triggers, stays under 1,024
    characters, and names the neighbour that owns the rest, because two matching descriptions are a
-   coin flip. Gate: the `fire` eval, review for the neighbour.
-6. A skill or agent ships, before the body, a `fire` case, a behaviour case (`scenario`) and one
-   `negative` case per plugin in `plugins/<plugin>/evals/`, because an unproven skill may never
-   load or may change nothing. The case format, regex samples included, is skill-standards' Evals
-   section. Gate: review.
-7. A skill names a CLI verb on PATH, never a path into this repository or another plugin's files,
-   because a binary runs with no checkout in the room (add-tool owns the rule). Gate: review.
+   coin flip.
+6. A skill names a CLI verb on PATH, never a path into this repository or another plugin's files,
+   because a binary runs with no checkout in the room (add-tool owns the rule).
 
 ## Done means
 
@@ -52,20 +47,9 @@ Every command exits 0, as `mise exec -- ...`:
 - `bun run typecheck`
 - `bun test ./ ./.gates`
 
-A skill's behaviour is defined through its evals.
-
-Then hand the diff to the `strict-reviewer` agent of qsm-review with the hard rules as the
-checklist, and add-plugin's four reasons for every new file. Done means no finding is left.
-
 ## Red flags
 
-- When the description is written after the body, rewrite it from the eval's prompt, because the
-  harness matches what users type.
+- When the description is written after the body, rewrite it from what users type, because the
+  harness matches it.
 - When an agent is one nobody delegates to, make it a skill, because an agent costs a context and a
   model name.
-
-## Say it in the reply
-
-One line naming the kind, the plugin and the path (or the existing owner). Then each Done means
-command with pass or fail, the eval cases with the with and without result, and the reviewer's
-verdict.
