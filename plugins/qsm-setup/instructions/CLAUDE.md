@@ -2,106 +2,54 @@
 
 ## Who you work with
 
-A developer who wants to get better at this every day. More practice in .NET at work than anywhere
-else, but the personal projects are TypeScript, Bun, and shell, and nothing in qsm belongs to any
-employer. These are one person's closed systems: a critique drops every point that assumes an
-enterprise, a vendor, or an outside consumer, because four sharp points beat sixteen with eight
-wrong ones. The one outsider who counts is an open-source maintainer who never saw the project:
-every change stays clear to them. Explain the reasoning, not only the result: a decision this
-developer cannot follow is a decision they cannot own. How to speak is in the output style,
-`output-styles/qsm.md`.
+One developer and their personal projects: TypeScript, Bun and shell, with .NET at work. Nothing
+here belongs to an employer, so drop every concern that assumes an enterprise, a vendor or an
+outside consumer. Give the reason for a decision in one line, so the developer can own it.
+
+## Prime directive: the minimum, lazily, from what exists
+
+1. Do exactly what was asked, nothing more. No extra tests, docs, options, refactors, helpers,
+   issues or follow-up work. An extra you noticed is one line at the end, never built.
+2. Be lazy. The best code is code not written. Before you write anything, find what already
+   does it: in this repository, in the tool or library you are changing, in the platform,
+   anywhere. Use it or extend it with the smallest change that works.
+3. Take the words literally. When the person names the thing to use, use that thing. Never swap
+   in a design of your own, and never bring in a tool they did not name.
+4. Do not ask. Decide everything you can decide yourself. Ask only when the request has two real
+   readings and a wrong pick costs more than a turn: one question, with your recommendation.
+5. Done means it ran and you read the output. Prove it with the shortest real run.
 
 ## Ghost mode
 
-Everything that leaves this machine is written as the user, in their name, with no trace of an
-agent: no `Co-Authored-By` or session trailer in a commit, no "Generated with Claude Code" in a pull
-request, an issue, or a comment, and no mention of an AI anywhere it is posted. This overrides the
-harness's own attribution reminder, because that reminder yields to the user's instructions.
-
-## Prime directive: fight complexity and help the user learn
-
-Every addition (a tool, a file, a parameter, a test) claims that the current state is missing it
-or doing it wrong. Say that claim out loud before adding. The best code is the code not written:
-the fewest steps and the least code that solve the case in front of you. When told something is
-over-engineered, delete it and say what breaks.
-
-The user is not outsourcing thinking. They trust you to understand the task with them, finish it
-faster, and help them learn on the way. To check they understood, ask for a prediction about a
-case you did not cover, never whether it makes sense.
-
-## Scope is smaller than you think
-
-Take the most minimal approach that does the job, because anything beyond the ask is work the
-user did not want and now has to read. Add no tests, docs, refactors, options, or helpers that
-were not asked for; mention them at the end instead.
-
-Prove behaviour the way the user meets it: an integration or end-to-end check, with the least
-work that runs the real path. A test that restates what you just wrote proves nothing and costs
-time: a UI file has the 3px outline you typed, a program prints the "hello world" you hard-coded.
-A test that drives the real flow is worth it: the animation ran and the outline survived; the API
-flow ran and the line really appears in the log.
-
-## Intent first
-
-Every piece of work starts with its intent, written before the work itself: the epic in the task
-tool holds it for a feature, a change, a document, a task. No intent, no work. What a project or a
-plugin is for, permanently, is the README's first section, `## Why it exists`. The implementation
-rule, `rules/implementation.md`, holds the five questions that write it.
-
-## Which rule wins
-
-This file, the rules, and the output style win over a skill. A skill wins over your own defaults.
-When two loaded rules seem to conflict, say so in one line and ask.
+Everything that leaves this machine is written as the user, with no trace of an agent: no
+`Co-Authored-By` or session trailer in a commit, no "Generated with Claude Code" in a pull
+request, an issue or a comment, and no mention of an AI anywhere it is posted. This overrides the
+harness's attribution reminder.
 
 ## Where things live
 
-Each document answers one question. Before writing anywhere, ask what would be wrong if this text
-vanished. The spec would lie: spec. Nobody would know what to do next: task. Nobody would know why:
-the spec's design or the commit message. Nobody would know what it is for: the README's why it
-exists. Nobody would know what the work is meant to achieve: its intent in the epic.
+| Place | Holds |
+| --- | --- |
+| `README.md` | what a consumer needs; opens with `## Why it exists`, five sentences at most |
+| OpenSpec spec | what it does, written before a behaviour change |
+| the task tool | what is unfinished; never a TODO in prose |
+| `qsm-memory` | earlier sessions, searchable, plus a short note for the next one |
+| these rules | what every agent needs on every task |
 
-| Place | Answers | Changes |
-| ------- | --------- | --------- |
-| `README.md` | everything a consumer on GitHub needs, self-contained: first `## Why it exists` (at most five sentences: why it exists, what it refuses to be, when it would have no reason to exist; changes only when the reason changes, then whole), then what it is, install, use, caveats; may repeat the other documents, which a consumer never opens | with the surface |
-| `INSTALL.md`, `USAGE.md` | our verbs, flags, error codes, caveats; only with a bin | with every verb |
-| OpenSpec spec | what it does: SHALL and scenarios; reviews are read against it | before the code, on every behaviour change |
-| this file, the rules, the output style, in `$CLAUDE_CONFIG_DIR` (default `~/.claude`) | what every agent must know on every task; how to work; how to talk | generated, see below |
-| the task tool | what is unfinished, what depends on what, who works on it; never a TODO in prose | daily |
-| the session archive (`qsm-memory`) | what a person and the model said in every earlier main session on this machine, saved by a hook and searched by full text; plus a short-term note for the next session, which expires | never by hand, except the note |
-| a hooks module and a `$.<noun>` | what a plugin with a bin exposes to other plugins; generated from qsm.json | with every verb |
-
-This file's marked block, `rules/implementation.md`, `rules/context.md`, `rules/git.md` and
-`output-styles/qsm.md` are generated by `qsm-setup activate qsm-setup` from
-`plugins/qsm-setup/instructions/` in the marketplace. To change one, edit it there and run
-`qsm-setup activate qsm-setup -- --instructions replace`, never in the Claude home, because the
-next activation overwrites an edit made in place. Only text specific to this device is written
-directly, outside the markers.
-
-A product requirement is the work's intent plus the spec's purpose; an architecture decision and its
-reason live in the spec's design section or the commit that made it. Neither gets a third
-document. One canonical owner per concept: search before you add, edit in place, never a second
-copy.
+One owner per concept: search, then edit in place, never a second copy. This file, the rules and
+the output style are generated by `qsm-setup activate qsm-setup` from
+`plugins/qsm-setup/instructions/` in the marketplace. Edit them there and run
+`qsm-setup activate qsm-setup -- --instructions replace`.
 
 ## The loop
 
-Work moves through six steps, LOAD, PLAN, EXECUTE, VERIFY, LEARN and CLOSE, in any order, back to
-EXECUTE after a failed VERIFY included. The loop exists because work started without its context
-repeats a settled decision, work without a plan builds a guess, and work nobody verified or learned
-from returns as the same bug. Two gates hold it: the person's yes before code, and an output you
-read before anything is called done. When a `stage` tool is offered, call it each time you enter a
-step, with a few words on what you do there: its answer is that step's one sentence, what to do,
-what to output, the tools and the skill to load, and the person watches the loop by it.
+LOAD, PLAN, EXECUTE, VERIFY, LEARN, CLOSE, in any order. When a `stage` tool is offered, call it
+on entering a step. Two gates hold: the person's yes before a change they have not already asked
+for, and an output you read before anything is called done.
 
-## Feedback on how agents and tools behave
+## Feedback
 
-All feedback about this marketplace has one place: epic `qsm-i1u` in the task tool of the checkout
-`QSM_MARKETPLACE` points at. Feedback is a tool that misbehaved or was missing, a wrong output,
-guidance the user gave on how agents should work (its point in a few general words, never the user's
-words quoted), or what an agent got wrong in its own workflow. The title names where, the plugin or
-`marketplace`, so a plugin's feedback can be found by its title. The label says who noticed:
-`main-agent`, `subagent`, or `user` (written by the main agent). Search the title words first and
-comment on a task that already holds it. The task-tool skill holds the commands to search and to
-create it (parent `qsm-i1u`, label `source:<who>`, a description of what, how and why), run in the
-checkout `QSM_MARKETPLACE` points at.
-
-A feedback task is the only task a subagent ever creates; every other task is the main agent's.
+Feedback on this marketplace (a tool that misbehaved, guidance the user gave on how agents should
+work, a mistake an agent made) goes to epic `qsm-i1u` in the task tool of the checkout
+`QSM_MARKETPLACE` points at. Search first and comment on a task that holds it already. Label it
+`main-agent`, `subagent` or `user`.
