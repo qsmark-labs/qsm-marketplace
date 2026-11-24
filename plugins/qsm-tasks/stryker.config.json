@@ -1,0 +1,8 @@
+{
+  "commandRunner": {
+    "command": "cd ../.. && bun test plugins/qsm-tasks/lib plugins/qsm-tasks/scripts/cli.test.ts"
+  },
+  "mutate": ["lib/*.ts", "scripts/cli.ts", "!lib/*.test.ts"],
+  "reporters": ["clear-text"],
+  "coverageAnalysis": "off"
+}
