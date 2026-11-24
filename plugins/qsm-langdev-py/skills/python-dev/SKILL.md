@@ -90,8 +90,3 @@ A plain function `test_<behaviour>` in `test_<unit>.py`, a bare `assert`, no cla
 - `with pytest.raises(Err, match="text")`, and check the message too.
 - A hand-written fake over `unittest.mock`, and never verify a call the result already proves.
 - Run one test `python -m pytest path::test_name`, or by keyword `-k rejects`.
-
-## Say it in the reply
-
-When a 3.14 feature replaced an older spelling (no quotes, `type`, `[T]`), say so in a clause, and
-name the one place each domain value is validated.
