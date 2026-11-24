@@ -119,7 +119,6 @@ export function askText(a: Ask): string {
   const large = a.files > CONSENT_THRESHOLD ? "; WARNING: it will be large" : "";
   return (
     `${found} (${a.files} files, about ${mb} MB and ${s} s to build${large}). ` +
-    `Ask the person with AskUserQuestion whether to ${a.stale ? "reindex" : "index"} it. ` +
-    `Yes: run \`qsm-index auto ${a.repo} --consent yes\`; no: run \`qsm-index auto ${a.repo} --consent no\`.`
+    `To ${a.stale ? "reindex" : "index"} it: \`qsm-index auto ${a.repo} --consent yes\`; to stop this notice: \`qsm-index auto ${a.repo} --consent no\`.`
   );
 }
