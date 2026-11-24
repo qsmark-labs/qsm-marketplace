@@ -5,11 +5,8 @@ description: "Use when working with git worktrees or wt (worktrunk): creating, s
 
 # Worktrunk
 
-Parallel work drifts when somebody tracks workspace paths by hand. `wt` gives every branch its own
-workspace at a path it computes, and this skill serves the person who works that way: it holds
-his conventions for using `wt`, and how to change or repair its configuration. A change ends in a
-configuration edit or a diagnosis, never in an explanation alone. It does not list `wt`'s
-commands: `wt --help` and worktrunk.dev are current, so read them instead of guessing a flag.
+His conventions for using `wt`, and how to change or repair its configuration. It does not list
+`wt`'s commands: `wt --help` and worktrunk.dev are current.
 
 ## Conventions
 
@@ -33,10 +30,9 @@ commands: `wt --help` and worktrunk.dev are current, so read them instead of gue
 | Holds | workflow hooks, dev server settings, anything the team shares | commit-message generation, path templates, defaults |
 | Permission | edit it directly | propose the exact lines, write only after the person says yes |
 
-The reason is recovery. The project file is versioned, so a wrong edit is one `git revert`. The
-personal file is in no repository: a wrong edit is gone, and only the person can judge it.
-"Run tests before merging" or "install deps for every new workspace" means the project file;
-"generate my commit messages" or "put my workspaces elsewhere" means the personal one.
+The project file is versioned; the personal file is in no repository. "Run tests before merging" or
+"install deps for every new workspace" means the project file; "generate my commit messages" or "put
+my workspaces elsewhere" means the personal one.
 
 ## Hooks: pick the timing first
 
@@ -96,22 +92,9 @@ file; `--yes` belongs to pipelines whose configuration the pipeline controls.
 | the activity marker is stale in `wt list` | `wt config state marker set active`, `wt list`, `wt config state marker clear` |
 | the harness reports `WorktreeCreate hook failed` | the `wt` on the harness's PATH is missing, older than 0.22.0, or its `switch` lacks `--create` and `--base`; the message carries wt's last line, `/qsm-worktrunk` reports the version |
 
-## Red flags
-
-- When you are about to write the personal config unasked, write a proposal instead, because it
-  has no `git revert`.
-- When an approval prompt blocks a hook, stop and hand it to the person, because `--yes` decides
-  for him.
-- When a check must pass and you are putting it in a `post-*` hook, move it to `pre-*`, because
-  `post-*` cannot block.
-- When `wt merge` failed on the push, fix and `wt step push`, because a second merge squashes
-  again.
-- When you are about to `wt remove` the workspace the shell stands in, `cd` out in a call of its
-  own first, because a removed session directory fails every hook spawn and the secrets mask then
-  withholds the whole chat.
+Before `wt remove` of the workspace the shell stands in, `cd` out in a call of its own: a removed
+session directory fails every hook spawn and the secrets mask then withholds the whole chat.
 
 ## Say it in the reply
 
-Name the file you changed and why that file, in one line. When you added a hook, say its timing
-and what fails if it fails. When nothing was written because the person must approve something,
-say which command he runs.
+The file you changed, and the command he runs when something needs his approval.
