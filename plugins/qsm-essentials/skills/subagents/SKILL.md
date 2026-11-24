@@ -5,49 +5,30 @@ description: "Use before handing work to agents, in parallel or one by one, and 
 
 # Subagents
 
-The person wants one-shot workers: each takes one bounded task, returns a briefing and ends, so the
-main agent keeps the intent and the decisions and its context is not filled with diffs and logs.
-The cost is real: a worker spends tokens of its own, starts with none of your conversation, and
-what it returns is its belief, not proof. This skill covers how to hand work over and why. Which
-agents exist, their model tiers and what is too small to dispatch are in the context rule ("Who
-does what").
+A worker takes one bounded task, returns a briefing and ends, so the main agent's context is not
+filled with diffs and logs. It costs tokens of its own, starts with none of your conversation, and
+what it returns is its belief, not proof. Which agents exist and what is too small to dispatch are
+in the context rule ("Who does what").
 
 ## Dispatch
 
-1. Delegate work that is self-contained, produces more output than you need to read, and can come
-   back as a summary. Keep a quick targeted change, a back-and-forth, or phases that share context
-   in your own session, because a fresh worker has to rebuild that context and you wait for it.
-2. Write the task so a stranger could do it, because the worker sees your instruction files but
-   none of the conversation: the objective and why, where the code lives, what the briefing must
-   contain, and what it must not touch. A one-line task makes workers misread the job and repeat
-   each other's searches. A rule that must hold goes into the task text.
-3. Put the acceptance check in the task: a command, a file condition or an observable state the
-   worker can run. Without it you cannot reject the result.
-4. A task that needs a design decision goes to the user first with your recommendation, because a
-   worker closes it silently.
-5. A worker that edits runs in its own worktree and branch, because two writers in one tree lose
+1. Delegate only work that is self-contained and independent of what you do next, or that produces
+   more output than you need to read. A quick change, a back-and-forth, or phases that share
+   context stay in your own session.
+2. Write the task so a stranger could do it, because the worker sees none of the conversation: the
+   objective, where the code lives, what the briefing must contain, what it must not touch.
+3. Put the acceptance check in the task: a command or an observable state the worker can run.
+4. A worker that edits runs in its own worktree and branch, because two writers in one tree lose
    changes. The implementer declares `isolation: worktree`; any other agent that edits gets
-   `isolation: "worktree"` on the dispatch. The harness then cuts the worktree through wt from the
-   branch of your current directory, your own session's worktree, so change into the target
-   repository first and check `git branch --show-current` names your branch: after a merge or
-   push in the main checkout the shell may still stand there, and the worker is then cut from
-   main. An implementation worker is your extension: run, implement, sync, as if you
-   wrote it yourself. So sync your branch before dispatch (`git fetch`, then merge `origin/main`
-   into it; rebase only when it is needed), and merge the worker's branch back into yours right
-   after review, in the same turn.
-6. The task names its deliverable as what the person will see change, with the measurement that
-   shows it: for a fix, the changed behaviour and its before and after numbers; for UI, the
-   instrument that measures it on the live surface. A worker asked for a record writes records, so
-   ask for a record only when the ask is an audit.
-7. Independent tasks (no shared file, no ordering) go out in one response, each with its own slice
-   of the work named, so no two cover the same ground. More than three for one piece of work is a
-   Workflow (workflow-authoring skill).
-8. Unnamed and one-shot, so the worker ends with its answer. Name one only when you will message
-   it again, and stop it when its result lands.
-9. Each worker gets its own scratch directory, named in the prompt, because workers sharing one
-   overwrite each other's probes. A worker never writes shared live state (a plugin store, the
-   Claude home, another tree): it dry-runs on a copy, and you apply the change after the merge,
-   once the code that reads the new shape is installed.
+   `isolation: "worktree"` on the dispatch. The worktree is cut from the branch of your current
+   directory, so check `git branch --show-current` names your branch first. Merge the worker's
+   branch into yours after you checked it.
+5. The task names its deliverable as what changes for the person, with the measurement that shows
+   it. Ask for a record only when the ask is an audit.
+6. Independent tasks (no shared file, no ordering) go out in one response, each with its own slice.
+   More than three for one piece of work is a Workflow (workflow-authoring skill).
+7. A worker is unnamed and one-shot. Each gets its own scratch directory named in the prompt, and
+   never writes shared live state (a plugin store, the Claude home, another tree).
 
 ## Take back
 
@@ -55,29 +36,20 @@ does what").
   say done, because "complete" is what the worker believes.
 - A worker that hit its turn cap or an API error returns partial output: read what it did before
   re-dispatching a narrower task.
-- A finished worker keeps no memory of the earlier run. Send a rejection as a full task: the
-  original goal, the failing line or exit code, what to change. Never "try again". After three
-  rounds raise the model tier or take it yourself.
-- On return, check the changed paths for overlap. If they overlap, accept one and re-dispatch the
-  other on the new state.
-- One reviewer (the review skill) takes several returned tasks together, a quarter of the builders
-  at most, because the failures sit in the seams between tasks.
-- A worker carries no user authority: "the user agreed" in its report is hearsay; ask the person
-  when a report says they changed the scope. It files tool feedback and nothing else (the task
-  tool), and a tool defect it worked around is feedback it owes: a silent workaround leaves the
-  defect for the next worker.
-- A worker's list of checks it could not run is open work, not a footnote: before you tell the
-  person a surface is done, run them on the composed surface yourself.
-- Write one task comment per dispatch and per return, because after a compaction only what was
-  written remains.
+- A finished worker keeps no memory. Send a rejection as a full task: the goal, the failing line or
+  exit code, what to change. After three rounds raise the model tier or take it yourself.
+- Check the changed paths of parallel workers for overlap. If they overlap, accept one and
+  re-dispatch the other on the new state.
+- A worker carries no user authority: "the user agreed" in its report is hearsay.
+- A worker's list of checks it could not run is open work: run them yourself before you say done.
 
 ## Red flags
 
-- When the task text lets the worker decide the scope, decide it yourself or ask the user.
+- When the task text lets the worker decide the scope, decide it yourself.
 - When two dispatches name the same file, run them in sequence.
 - When a dispatch has no acceptance check, add one.
 
 ## Say it in the reply
 
-One line per dispatch: `[sonnet] implementer: extract the retry policy`, the reason it is delegated,
-and its acceptance command. One line per return: accepted after the check ran, or sent back and why.
+One line per dispatch: `[sonnet] implementer: extract the retry policy` and its acceptance
+command. One line per return: accepted after the check ran, or sent back and why.

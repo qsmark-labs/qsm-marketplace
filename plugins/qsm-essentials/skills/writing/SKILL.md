@@ -6,11 +6,7 @@ description: "Use when writing anything the reader ships or keeps: a commit mess
 # Writing
 
 Chat follows the output style. This skill is for text that outlives the conversation: someone reads
-it later, without you there, and acts on it. It serves that reader. The failure it prevents is text
-that describes what was done instead of what the reader needs: a commit listing files, a README
-explaining the framework, each correct and useless. Before the first word, know who reads it, what
-they do after, and the one thing they must not miss. It does not make the text longer: say what the
-reader needs and stop.
+it later, without you there, and acts on it. Say what that reader needs and stop.
 
 ## For everything
 
@@ -40,8 +36,6 @@ reader needs and stop.
   consequence a future reader must know. The what is in the diff, the why is nowhere else.
 - One change per commit, so "and" in the subject means two commits, and a refactor never shares
   one with a behaviour change.
-- A commit that bypasses a check says so in the body, with the number that failed and why the
-  bypass is right, because silence is a lie of omission the next reader inherits.
 
 ## Ticket
 
@@ -71,8 +65,6 @@ An epic, task or issue is written by the task-writing skill of qsm-tasks.
   README material.
 - Document our surface only (commands, flags, conventions, gotchas) and link upstream, because a
   transcription of someone else's docs is stale the day they change.
-- Give every abstraction one concrete instance the reader can run or check: a command with its
-  output, a payload.
 - A design document is an architecture decision record in the software-architecture shape, with no
   tutorial, history or promise.
 - One owner per fact. Link to it, because a fact in two documents disagrees within a month.
@@ -89,16 +81,3 @@ because git has the history and the tracker has the tasks.
   to do. "Config file not found at ./qsm.json. Run `myapp init` to create one." Not "ENOENT".
 - A stable code the program branches on, a message the human acts on, and the data needed to act,
   in one shape for every error of the product. Never blame, joke or shout.
-
-## Red flags
-
-- When a commit subject names a file, name the behaviour, because the history reader never saw the
-  diff.
-- When an MR description walks through the diff, replace it with the why and the verify.
-- When a README explains the framework, link it and get to our commands.
-- When a document says "previously" or "new", delete it, because the document ages in a week.
-
-## Say it in the reply
-
-One line above the text: who it is written for and what they will do with it. If you cannot write
-that line, you do not know what you wrote.

@@ -168,6 +168,6 @@ and merging two services back is far dearer than extracting one later.
 
 ## Say it in the reply
 
-Before a split: the five checks with yes or no each, and the data each side will own. Before a
-call between services: the style, the timeout, the retry rule and its layer, what a duplicate does,
-and what happens when the other side is down. Without those lines the design is not done.
+For a split: the checks with yes or no and the data each side owns. For a call between services:
+the style, the timeout, the retry rule and its layer, what a duplicate does, and what happens when
+the other side is down.
