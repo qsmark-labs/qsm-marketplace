@@ -7,17 +7,15 @@ interface Rule {
   readonly refusal: string;
 }
 
-/** gh has a skill to point at; the git forms carry their whole reason in the refusal. */
-const MORE = "For more, load the qsm-forge:review-threads skill.";
-
+/** Each refusal carries its whole reason. */
 const RULES: readonly Rule[] = [
   {
     pattern: /\bgh\b[^\n]*\\\n/,
-    refusal: `qsm-forge: a gh command is one line, because permission matching reads one line. Drop the backslash continuation. ${MORE}`,
+    refusal: `qsm-forge: a gh command is one line, because permission matching reads one line. Drop the backslash continuation.`,
   },
   {
     pattern: /\bgh\b.*--(?:body|notes)(?:=|\s+)(?:"[^"]*`|'[^']*`|`)/s,
-    refusal: `qsm-forge: backticks in --body or --notes run as a command and the text posts mangled. Write the body to a file and pass --body-file or --notes-file. ${MORE}`,
+    refusal: `qsm-forge: backticks in --body or --notes run as a command and the text posts mangled. Write the body to a file and pass --body-file or --notes-file.`,
   },
   {
     pattern:
