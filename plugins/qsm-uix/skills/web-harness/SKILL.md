@@ -5,11 +5,8 @@ description: "Use when break-ui or prototype is run on a web page or React app: 
 
 # Web Harness
 
-break-ui and prototype say what to do; this skill is the browser-side machinery, for the person who
-runs them on a page or a React app. A stress test whose toggle is a custom form, or a prototype
-whose picker is restyled to the project, measures the harness instead of the piece. The outcome is
-a toggle or picker that is plain, dev-only, leaves the component untouched, and a break fixed by
-the property the table names.
+The browser-side machinery for break-ui and prototype: a toggle or picker that is plain, dev-only,
+leaves the component untouched, and a break fixed by the property the table names.
 
 ## The data toggle (break-ui)
 
@@ -119,17 +116,5 @@ change on hover uses animate's `ease` exception.
 | Truncated text nobody can read | ellipsis and nothing else | tooltip or `title`, full value in a detail view |
 | 1,000 rows stutter | every row rendered | virtualize or paginate, say which |
 | Raw `<b>` or `&amp;` shown | wrong escaping layer | escape once at render |
-
-## Red flags
-
-- When the picker takes the project's fonts or colours, revert it, because it must look the same on
-  every page it is dropped into.
-- When a toggle ships outside the dev flag, remove it, because worst-case data is not a feature.
-- When a break was provoked by editing the markup, revert and change the data instead.
-
-## Say it in the reply
-
-Where the switcher runs (URL, file) and its keys, and for a break the property changed and the
-value that showed it.
 
 Sources: emilkowalski/skills (MIT); vercel-labs/web-interface-guidelines (MIT).

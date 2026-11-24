@@ -5,11 +5,9 @@ description: "Use when asked to evaluate how a UI behaves and feels rather than 
 
 # UX Audit
 
-Behaviour is judged from evidence of behaviour. A resting screenshot proves nothing about
-interaction, so this skill drives the interface, times it, and measures targets before saying how it
-feels, replacing "presumably clickable" with traces and numbers. Out of scope: static visuals
-(ui-audit), motion judgement (review-animations), accessibility criteria (a11y-audit), building the
-fix (the stack skill), redesigning.
+Behaviour is judged from evidence of behaviour: drive the interface, time it, and measure targets.
+Out of scope: static visuals (ui-audit), motion judgement (review-animations), accessibility
+criteria (a11y-audit), building the fix (the stack skill), redesigning.
 
 ## Evidence first
 
@@ -29,8 +27,7 @@ fix (the stack skill), redesigning.
 What the person says they observed is evidence. A flow they did not try and you cannot drive
 goes to Needs human trial with the exact steps and the pass criterion.
 
-Someone may be at the machine. Say which surfaces you will drive first, and inject no synthetic
-input while they work, because stealing focus costs more than the audit finds.
+Someone may be at the machine: inject no synthetic input while they work.
 
 ## The checks
 
@@ -111,27 +108,11 @@ sources that disagree are one finding citing both, tagged `source-conflict`. Und
 live hand: real hover, drag, touch, a physical device; each entry the exact steps and what counts
 as a pass) and **Not examined** (what was not reached, and why).
 
-## Red flags
-
-- When you write "presumably", "likely", or "should be" about a behaviour, drive it and trace it,
-  as those words mark a claim nobody observed.
-- When a target-size claim has no measured geometry or a feedback claim no before-and-after trace,
-  get it: painted size and felt response differ from the claim.
-- When a timing comes from a trace alone, find the source value: a busy machine looks like a slow
-  design.
-- When you judge a delete or a save from the code path, drive it with a bad and a good input:
-  recovery lives in what the user sees.
-- When the audit runs from the resting frame, enumerate states: defects live in the transitions.
-- When the finding is keyboard path, focus, screen-reader names, or reduced motion, write one line
-  "accessibility criteria are a11y-audit's; run it for this surface", because it owns that method.
-
 ## Say it in the reply
 
-The state-space map, the table, the three lists, then one line on how the interface was driven and
-what could not be, so the reader knows which half the audit saw. With no running UI, still give the
-standards and guidelines with their sources (24 px WCAG floor, 44 px touch, about 100 ms direct
-feedback) as the check to run,
-the human-trial steps with a pass criterion, and what was not examined.
+The state-space map, the table, the three lists, and one line on what could not be driven. With no
+running UI, give the standards as the check to run (24 px WCAG floor, 44 px touch, about 100 ms
+direct feedback), the human-trial steps with a pass criterion, and what was not examined.
 
 How each rule is built and exposed on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

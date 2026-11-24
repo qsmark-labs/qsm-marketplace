@@ -5,17 +5,10 @@ description: "Use when building or fixing a full-screen terminal program: panes,
 
 # Full-screen terminal programs
 
-A TUI owns the screen, the keyboard and the terminal's modes until it exits. It has no hover, no
-pixels, no compositor, and a reader the screen cannot show it to: a screen reader, a log, a pipe, a
-shell it must leave intact. Unaided, an agent computes layout from a constant, prints a debug line
-in the middle of a frame, forgets to restore raw mode on a panic, and lists keys the screen does not
-honour. This skill is the rules for the author who ships such programs. It does not cover a command
-that prints and exits (cli-ui), and the rules there (colour order, secrets, exit codes) apply to a
-TUI's plain mode and to its first and last second.
-
-Why: ui-design (tokens), a11y-audit (criteria), ux-audit (feedback, interruption), animate and
-animation-vocabulary (motion values). Here: how a program that owns the screen behaves. Measure it
-headless (below); a screenshot of a terminal proves little.
+A TUI owns the screen, the keyboard and the terminal's modes until it exits. These are the rules
+for how a program that owns the screen behaves. A command that prints and exits is cli-ui, whose
+rules (colour order, secrets, exit codes) also apply to a TUI's plain mode. Tokens: ui-design;
+criteria: a11y-audit; feedback: ux-audit; motion values: animate.
 
 ## Framework
 
@@ -112,43 +105,21 @@ A display-width helper is already a dependency of the framework; use it, add no 
   written per redraw. Redraw only what changed.
 - Depth is one step of background shade or a rule line, never transparency; hierarchy is bold, dim
   and case, never colour alone. The font is the person's.
-- Stress it: an environment variable (`APP_DATA=worst`, `empty`, `one`) swaps the data source where
-  rows load, and `APP_VARIANT=2` picks a design variant there; one binary prints each, nothing is
-  edited. Check the narrow 60-to-80-column band and below the application's minimum
-  (gfargo `visual-patterns.md`). Width and table folding follow cli-ui.
+- Check the narrow 60-to-80-column band and below the application's minimum. Width and table
+  folding follow cli-ui.
 
 ## Plain mode
 
 Every action is reachable in a linear mode, chosen by a flag or an environment variable
 (`--plain`, `ACCESSIBLE=1`), never by guessing a screen reader. In it: no alternate screen, status
 lines appended instead of repainted, menu choices numbered, each line labelled by kind, and meaning
-never carried by position. Streams, the colour carrier and table folding are cli-ui's. Why:
-screen readers read a TUI poorly, and this mode is the practical help.
+never carried by position. Streams, the colour carrier and table folding are cli-ui's.
 
 ## Prove it headless
 
 Drive state transitions, event to action, and a frame at a pinned size and colour profile (80x24,
 60 columns and the minimum) with scripted keys (`Down Down Enter`) and an injected clock, with no
 TTY, so CI runs it. Snapshot per size, not once.
-
-## Red flags
-
-- Layout from a constant, or in the key handler: move it to draw, from the real area.
-- A print, a log call or a library that writes to stdout while the screen is owned: send it to a
-  file.
-- No restore on panic or signal: add the guard, because the shell stays raw.
-- A footer that lists keys by hand: derive it from the key table.
-- A mouse-only action, or an action missing from plain mode: add the keyboard path.
-- Rows of W+1 cells or a spinner on an idle screen: fix each, they tear the frame.
-  Text-width defects follow cli-ui's Width rule.
-- A confirm on every delete: offer undo and confirm only the irreversible.
-
-## Say it in the reply
-
-- The framework and why, the buffer (inline or alternate) and what is restored on exit.
-- The floor plan: what 80x24, a narrow split and below-minimum do.
-- The key table and where the footer and help read it from.
-- What plain mode prints, from a run. Anything unverified: a terminal or size you did not run in.
 
 Sources: gfargo/tui-design-skill (MIT), pageton/tui-design-skill (MIT),
 jrschumacher/skill-bubbletea-tui (MIT), clig.dev (CC-BY-SA-4.0, paraphrased).
