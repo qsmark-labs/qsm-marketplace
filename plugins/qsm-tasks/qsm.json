@@ -10,7 +10,7 @@
         "description": "Report whether gh, the one program qsm-tasks needs on PATH, is there"
       },
       "qsm-tasks list": {
-        "description": "List every open issue of the current repository with its Status on the board, one per line"
+        "description": "List up to 1000 open issues of the current repository with their Status on the board"
       }
     }
   }
