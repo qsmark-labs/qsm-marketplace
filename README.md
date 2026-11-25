@@ -93,7 +93,7 @@ These plugins need no other plugin and no plugin needs them: `qsm-compuse`, `qsm
 | --- | --- | --- |
 | [qsm-openspec](plugins/qsm-openspec/README.md) | A change that starts in code ends in code nobody can review against an intention. | 3 skills, CLI |
 | [qsm-plan](plugins/qsm-plan/README.md) | Claude's default is to start building the moment an ask arrives, whatever its size: a five-line fix gets a project's ceremony, or a project gets built on a guess. | 2 skills |
-| [qsm-tasks](plugins/qsm-tasks/README.md) | Work that outlives a session is lost unless one place outside the conversation holds it. | 2 skills, CLI |
+| [qsm-tasks](plugins/qsm-tasks/README.md) | Agents need a quick way to pick up work, file an issue, or update a project card. | 1 skill |
 
 ### Code quality and languages
 

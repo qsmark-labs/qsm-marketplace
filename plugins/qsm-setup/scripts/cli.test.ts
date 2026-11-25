@@ -11,7 +11,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { cliShim, fakeBin } from "../../../lib/fixtures/bin.ts";
 import { dataOf, envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { commit, git } from "../../../lib/fixtures/git.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
@@ -100,27 +99,11 @@ describe("qsm-setup cli", () => {
     expect(toolbox?.output).toContain("qsm-toolbox is not on PATH");
   });
 
-  test.each([
-    { gh: true, status: "PASS" },
-    { gh: false, status: "FAIL" },
-  ])("qsm-tasks plugin health without br and gh present=$gh is $status", ({ gh, status }) => {
-    const home = sandboxDir("qsm-setup-tasks-");
-    symlinkSync("/bin/sh", join(home, "sh"));
-    cliShim(home, "qsm-tasks", join(ROOT, "plugins/qsm-tasks/scripts/cli.ts"));
-    if (gh) {
-      fakeBin(home, "gh", "exit 0");
-    }
-    const result = run(["doctor", "qsm-tasks", "--root", ROOT, "--json"], {
-      PATH: [home, dirname(process.execPath)].join(":"),
-      QSM_BIN_DIR: home,
-    });
-    expect(result.exit).toBe(status === "PASS" ? 0 : 1);
+  test("doctor skips the skill-only qsm-tasks plugin", () => {
+    const result = run(["doctor", "qsm-tasks", "--root", ROOT, "--json"]);
+    expect(result.exit).toBe(0);
     const [check] = checksOf(result.stdout);
-    expect(check).toMatchObject({ name: "qsm-tasks", status });
-    if (!gh) {
-      expect(check?.output).toContain("install the GitHub CLI");
-    }
-    expect(check?.output).not.toContain("br is not on PATH");
+    expect(check).toMatchObject({ name: "qsm-tasks", status: "SKIP" });
   });
 
   test("install qsm-setup --dry-run prints the plan and exits 0", () => {

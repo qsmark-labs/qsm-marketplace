@@ -1,8 +1,7 @@
 {
   "name": "qsm-tasks",
-  "description": "The task port for the marketplace, with a task model, task writing guidance, and the qsm-tasks CLI.",
-  "keywords": ["tasks", "epic", "tracker"],
-  "types": "./types/index.d.ts",
+  "description": "A skill for reading, filing and moving tasks directly with the GitHub CLI.",
+  "keywords": ["tasks", "issues", "projects"],
   "author": {
     "name": "qsm"
   }
