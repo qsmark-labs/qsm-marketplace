@@ -14,6 +14,14 @@ const CLI = resolve(import.meta.dir, "cli.ts");
 // Built at run time so this file is not itself a hit for the scan it tests.
 const FAKE_KEY = ["AKIA", "QYLPMN5HHHFPZAM2"].join("");
 
+/** A bare repository for the pushes: git hands a local remote's `receive-pack` an environment
+ * without GIT_CONFIG_COUNT, so the sandbox's switch-off of background maintenance does not reach
+ * it, and the repository's own config has to say it. */
+function bareRemote(home: string, path: string): void {
+  git(home, "init", "-q", "--bare", path);
+  git(home, "-C", path, "config", "maintenance.auto", "false");
+}
+
 /** A work repository gating `secrets` at a push, a bare remote `origin`, and the pre-push hook
  * `install` writes, which finds the CLI as `qsm-langdev` on PATH like the installed one. */
 function pushSetup(): { work: string; bin: string; home: string } {
@@ -21,7 +29,7 @@ function pushSetup(): { work: string; bin: string; home: string } {
   const work = join(home, "work");
   const remote = join(home, "remote.git");
   const bin = join(home, "bin");
-  git(home, "init", "-q", "--bare", remote);
+  bareRemote(home, remote);
   git(home, "init", "-q", "-b", "main", work);
   git(work, "remote", "add", "origin", remote);
   writeIn(work, ".gitleaks.toml", "[extend]\nuseDefault = true\n");
@@ -118,8 +126,8 @@ describe("qsm-langdev secrets gate at a push", () => {
   test("a secret commit only another remote holds is refused when pushed as a new branch to this one", () => {
     const setup = pushSetup();
     const { work, home } = setup;
-    git(home, "init", "-q", "--bare", join(home, "backup.git"));
-    git(home, "init", "-q", "--bare", join(home, "public.git"));
+    bareRemote(home, join(home, "backup.git"));
+    bareRemote(home, join(home, "public.git"));
     git(work, "remote", "add", "backup", join(home, "backup.git"));
     git(work, "remote", "add", "public", join(home, "public.git"));
 
