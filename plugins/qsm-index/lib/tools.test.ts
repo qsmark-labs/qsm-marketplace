@@ -345,6 +345,20 @@ describe("a graph read with no index, and search", () => {
   });
 });
 
+/** Whether any process of the group `pid` leads still runs: the leader can end before the
+ * children the kill reached, such as the build's `git status`. */
+function groupAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ESRCH") {
+      return false;
+    }
+    throw error;
+  }
+}
+
 /** A repository, its cache, and a PATH whose graphify sleeps `seconds` and counts its runs in
  * `runs` before it writes the graph. */
 function background(seconds: number) {
@@ -373,7 +387,7 @@ describe("reindex", () => {
     // the test is done with the build: end its group and wait for the end
     const pid = outcome.pid ?? 0;
     process.kill(-pid, "SIGKILL");
-    await untilGone(pid);
+    await until(() => !groupAlive(pid), "every process of the build's group to end");
   });
 
   test("a second reindex while a build runs starts nothing and says so", async () => {
