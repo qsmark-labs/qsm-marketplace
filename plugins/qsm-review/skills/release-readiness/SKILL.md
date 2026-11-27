@@ -88,4 +88,5 @@ Running it
 - When an item is a US default (Delaware, a US holding, CCPA), use the Czech or EU equivalent, and
   raise the US route only if the person names a US buyer.
 
-The reply is a table: item, `have` / `missing` / `n/a`, evidence.
+The reply is a table: item, `have` / `missing` / `n/a`, evidence. A legal item not checked against
+its primary source is marked `unverified`, never stated from memory.
