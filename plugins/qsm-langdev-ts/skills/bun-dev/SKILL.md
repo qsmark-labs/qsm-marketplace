@@ -35,12 +35,3 @@ the API. Out of scope: TypeScript idioms (typescript-dev).
 - Set `BUN_RUNTIME_TRANSPILER_CACHE_PATH=0` in Docker and on read-only filesystems, because the
   cache fails or serves a stale hit there.
 - Prefer a Node-API `.node` addon to `bun:ffi`, which is experimental; `close()` every `JSCallback`.
-
-## Red flags
-
-- When you reach for `node:http`, `bcrypt`, `dotenv` or `child_process`, use the `Bun.*` native,
-  because that is the stance of this marketplace.
-
-## Say it in the reply
-
-When you choose a `Bun.*` native over a dependency or a Node module, name what it replaces.

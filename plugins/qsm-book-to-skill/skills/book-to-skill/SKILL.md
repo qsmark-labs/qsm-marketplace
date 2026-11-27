@@ -31,8 +31,7 @@ chapter files stay in the work directory. Each stage reads the previous one's fi
 that went wrong is re-run alone. Name `--work` for anything longer than one sitting, because
 without it the run lands in a temporary directory a later session cannot find. `qsm-book-to-skill
 doctor` reports which optional converters are missing: PDF needs `pdftotext`, EPUB, DOCX and RTF
-need `pandoc`, MOBI and AZW need `ebook-convert`. When one is missing say so and let the person
-decide; do not convert the source to another format behind his back.
+need `pandoc`, MOBI and AZW need `ebook-convert`. When one is missing, say so.
 
 ## How to fill a chapter
 
@@ -66,8 +65,7 @@ The result is one document the agent loads whole, so read it once as the reader 
 
 ## Decisions
 
-- Ask once where the skill goes and pass it as `--out`, because the destination depends on which
-  agent loads it and a guess lands where nothing looks. `QSM_SKILLS_DIR` also works.
+- Pass the destination as `--out` (or `QSM_SKILLS_DIR`).
 - Write `--description` as the trigger: when to use the skill and what the person would be saying
   then. `assemble` refuses to run without one, because a description of the book instead of the
   occasion means the skill never loads.
@@ -75,20 +73,3 @@ The result is one document the agent loads whole, so read it once as the reader 
   not restart the run for one file.
 - A placeholder left anywhere, or a failed scan, means the run is not done: fill it or delete the
   section that holds it.
-
-## Red flags
-
-- When you are about to read the whole extracted text into context, run `analyze` and `draft`
-  instead, because a chapter at a time is what fits.
-- When a summary would fit any book on the subject, go back to the chapter and take its named
-  frameworks, because a generic summary changes nothing about how the agent works.
-- When you cannot point at a framework in the chapter's own text, drop it, because it is yours,
-  not the author's.
-- When you want to write the skill by hand because the binary is slower, run `assemble`, because
-  the scan is bound to what it builds.
-
-## Say it in the reply
-
-The skill's location and slug, its size, any source that failed to extract with the reason, and
-the scan result: clean, or each finding on a line. Last line: done, or the one thing still
-unfilled.

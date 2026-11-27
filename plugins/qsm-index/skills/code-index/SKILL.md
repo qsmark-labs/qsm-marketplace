@@ -36,17 +36,3 @@ exact token, grep is faster and exact.
   cross-language uses are invisible to it. Grep the name before saying it is safe.
 - An error naming a missing command means a tool is not installed: say so and continue with grep.
   Do not retry the same call.
-
-## Red flags
-
-- When you have sent several reworded `search` calls, read the files, because the index does not
-  have it.
-- When you are about to treat `search` output as the answer, read the places it lists, because it
-  says where to look, not what is there.
-- When you are about to claim a dependency exports something because `search` surfaced it, check
-  the entry point, because a hit shows presence, not export.
-
-## Say it in the reply
-
-Name the call and the tree: `searched <tree> for <query>, three hits, read two`. On an error, say
-which and what you did instead, in one line.

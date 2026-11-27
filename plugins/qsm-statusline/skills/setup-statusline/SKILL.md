@@ -7,14 +7,13 @@ description: "Use when the user wants the status line that shows model, context 
 
 The status line appears when two things are true: the `qsm-statusline` binary is on `PATH`, and the
 user's Claude Code settings file has a `statusLine` key naming it. The installer does the first;
-you do the second, with the user's go, because that file is theirs. Install and update are one
+you do the second. Install and update are one
 action, so there is no separate update path. It does not edit any other key.
 
 ## In order
 
 1. Read the state: `qsm-statusline doctor --json` answers `wired`, `absent`, `other` or
-   `unreadable`. Report it in one line before changing anything, because acting first is how a
-   configured status line gets replaced by accident.
+   `unreadable`. Read it before changing anything.
 2. Make sure the binary is there: `bun plugins/qsm-statusline/scripts/install.ts` prints
    `installed`, `suggested` with the entry to add, or `missing-prereq` naming the binary that is not
    on `PATH`. Run it even when doctor said `wired`, because that is how an older compiled binary is
@@ -48,18 +47,3 @@ action, so there is no separate update path. It does not edit any other key.
   whether the binary answers. A missing row means its source was absent (no repository, no
   subscription window, a git state not yet read), not a crash. Then run
   `qsm-statusline render --no-color < payload.json` on a captured payload before touching anything.
-
-## Red flags
-
-- When you are about to write the settings file without having read it, read it, because the write
-  replaces keys you did not know were there.
-- When the user said "remove the statusline", give the instructions and delete nothing, because the
-  key is theirs to take out.
-- When you are about to report success, check you told them to restart, because that is when it
-  shows.
-
-## Say it in the reply
-
-One outcome in a line: installed, already up to date, or the failure and its cause. Then the
-settings file you read, what you changed in it if anything, and the restart. When the state forbade
-a change, say which state and what the user has to do.

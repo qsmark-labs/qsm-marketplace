@@ -6,10 +6,8 @@ description: "Use when the user wants qsm on a machine or wants to change what i
 # Setup
 
 qsm-setup is the marketplace's proactive installer. A user who knows what they want names the verb;
-one who does not gets a guided run that picks the arguments, asks for the go before anything is
-written, and ends by offering the usage review (the qsm-usage skills do the judging). Install
-changes no file the user owns; only an activation writes into the Claude home, so each one waits
-for its own answer.
+one who does not gets a guided run that picks the arguments. Install changes no file the user
+owns; only an activation writes into the Claude home, so each one waits for its own answer.
 
 ## Direct
 
@@ -33,7 +31,7 @@ Run the verb the user named, read the per-plugin lines, report them.
    a named list. `qsm-setup install --all --dry-run` lists every plugin and what its installer
    would do. qsm-builder is not in the general profile and installs at project scope inside the
    marketplace checkout only, so offer it only there.
-2. Get the go, then run one install call and read every status line. `suggested` means the
+2. Run one install call and read every status line. `suggested` means the
    installer left a command for the user; `blocked` means a requirement failed first;
    `missing-prereq` names a tool to install by hand.
 3. Then the activations, one question each, `--dry-run` first, then the user's choice, because an
@@ -51,19 +49,11 @@ Run the verb the user named, read the per-plugin lines, report them.
      it deletes transcripts after 30 days and qsm-memory packs nothing.
 4. Run doctor and report PASS / FAIL / SKIP per plugin, the `claude ...` lines and the summary
    line. A FAIL is a finding for the user, not something to retry.
-5. End with the usage review offer, the one walkthrough setup hands off to.
-   - doctor shows qsm-usage is not installed: say that a review session needs qsm-usage and give
-     `qsm-setup install qsm-usage`.
-   - it is installed: ask through the ask tool whether to start the usage review now. On yes load
-     the qsm-usage `usage` skill and the rest is its work. On no say the phrase that starts it
-     later: "review my Claude Code usage".
-
-Write nothing and start nothing until the person says yes to that one.
 
 ## Claude Code health
 
 Doctor's `claude ...` lines only report. Each FAIL names its fix; show the line and the exact fix,
-ask once per fix, apply it after the yes, never a batch "fix all". Then run doctor again.
+apply the fix, then run doctor again.
 
 - Removals (`claude installs`): run the command the line names.
 - PATH (`claude path`): add the line to the shell profile the user names.
@@ -78,17 +68,6 @@ ask once per fix, apply it after the yes, never a batch "fix all". Then run doct
 
 ## Red flags
 
-- When the run is about to end after doctor with no usage review offer made, make it, because the
-  person otherwise never learns the review exists.
-- When it is a first setup, show a dry run before the install, because the user has not seen what
-  gets written.
-- When you want `--all` and plugin names in one call, pick one, because the tool refuses both.
-- When you are about to choose overwrite, ask first and name the text outside the markers it would
-  delete, because that text is specific to this device and lives nowhere else.
-- When a status is `suggested`, report it as not installed, because the user still has a command
-  to run.
-
-## Say it in the reply
-
-After install, one line per plugin, `name: status: detail`, nothing summarised away. After doctor,
-the summary line plus every FAIL with its exit code and remedy.
+- `--all` and plugin names in one call: pick one, the tool refuses both.
+- Overwrite deletes the device-specific text outside the markers: choose it only when asked.
+- A `suggested` status is not installed: the user still has a command to run.
