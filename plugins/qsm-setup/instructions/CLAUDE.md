@@ -18,6 +18,8 @@ outside consumer. Give the reason for a decision in one line, so the developer c
 4. Do not ask. Decide everything you can decide yourself. Ask only when the request has two real
    readings and a wrong pick costs more than a turn: one question, with your recommendation.
 5. Done means it ran and you read the output. Prove it with the shortest real run.
+6. Clean up everything you started or made, always: processes, temporary files, locks, sockets,
+   worktrees, branches. The implementation rule says how.
 
 ## Ghost mode
 
@@ -50,6 +52,6 @@ for, and an output you read before anything is called done.
 ## Feedback
 
 Feedback on this marketplace (a tool that misbehaved, guidance the user gave on how agents should
-work, a mistake an agent made) goes to epic `qsm-i1u` in the task tool of the checkout
+work, a mistake an agent made) goes to epic `qsm-i1u` in the Beads tracker of the checkout
 `QSM_MARKETPLACE` points at. Search first and comment on a task that holds it already. Label it
 `main-agent`, `subagent` or `user`.

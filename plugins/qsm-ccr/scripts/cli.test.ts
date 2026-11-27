@@ -1,7 +1,7 @@
 // qsm-ccr through its real surface: the entry script's argv, stdout, stderr, exit, in a sandbox.
 
 import { Database } from "bun:sqlite";
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -46,7 +46,6 @@ import { ROUTER_ENV } from "../lib/route.ts";
 import { startDetachedSync } from "../lib/sync.ts";
 
 const CLI = resolve(import.meta.dir, "cli.ts");
-setDefaultTimeout(30_000);
 
 function bare(argv: readonly string[]) {
   const home = sandboxDir("qsm-ccr-bare-");
@@ -829,9 +828,7 @@ describe("lead", () => {
     const envelope = envelopeOf(runCcr(w, ["lead", "--json"]).stdout);
     expect(envelope.code).toBe("ok");
     expect(JSON.parse(readFileSync(w.settingsPath, "utf8"))).toEqual({ model: "opus" });
-    const dir = claudeLaunches(w)[0]?.env.CLAUDE_CONFIG_DIR;
-    expect(dir).toBeDefined();
-    expect(JSON.parse(readFileSync(join(dir ?? "", "settings.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(readFileSync(join(w.out, "private-settings.json"), "utf8"))).toMatchObject({
       model: "anthropic/claude-ccr-abc123",
     });
   });

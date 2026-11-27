@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { ended, leftProcess } from "../../../lib/fixtures/dead-run.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { TranscriptBuilder } from "./fixtures/transcript.ts";
 import { ageOf, daysOfUse, IDLE_DAYS, notDueBecause, pack, type PackState } from "./pack.ts";
@@ -211,6 +212,16 @@ describe("a pack killed mid-run", () => {
     expect(box.archives()).toHaveLength(1);
     expect(box.archives()[0]).toMatch(/\.tar\.zst$/);
     expect(getState(box.db, "pack_claim")).toBeNull();
+  });
+
+  test("ends the tar or zstd it left running before the next run clears its .part", async () => {
+    const box = packBox(["idle"]);
+    const left = leftProcess("qsm-memory");
+
+    const r = await pack(box.db, box.env);
+
+    expect(r.code).toBe("ok");
+    expect(await ended(left)).toBe(true);
   });
 });
 
