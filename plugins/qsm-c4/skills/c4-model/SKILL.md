@@ -44,22 +44,18 @@ Four kinds at their levels, the vocabulary the tool supplies:
 
 1. Read the graph and the view the work touches. Fix the model, never the picture: the engine
    places every box, so a bad view is changed by groups, levels and relations, not by coordinates.
-2. Draft the edit in a copy of `models/` in the scratchpad, never in `models/<project>.c4` itself.
-3. `qsm-c4 lint <copy>`. `likec4 validate` runs first, then the rules; every finding names the
-   element and the rule. Fix the draft, run it again.
+2. Draft the edit in a copy of `models/` in the scratchpad.
+3. `qsm-c4 lint <copy>` (`likec4 validate` first, then the rules); fix each finding and run it
+   again.
 4. `qsm-c4 render <copy>`, then look at each changed view (rasterise the `.drawio.svg` and read the
    image). A label over a box, two boxes on each other or a view nobody can follow goes back to
-   step 1.
-5. Hand the changed views, the draft and the spec to the `model-reviewer` agent of qsm-c4. A finding
-   sends the draft back to step 2, and the reviewer reads it again. Only a draft that passed lint
-   and came back with no finding is written into `models/<project>.c4`; a binary cannot run the
-   reviewer, so this step is yours and nothing else catches a skipped review.
-6. `qsm-c4 render` writes the views beside the graph, and `qsm-c4 render --check` runs before
+   step 1. When it is clean, write the copy into `models/<project>.c4`.
+5. `qsm-c4 render` writes the views beside the graph, and `qsm-c4 render --check` runs before
    every commit: a stale view is a lie in the tree. When `render` refuses a view whose layout
    measure grew, restructure the graph or ask the owner; `--accept <measure>` is the owner's to
    type, never yours. When it refuses a view where two painted things touch, nothing passes it:
    fix the renderer or restructure the graph.
-7. `qsm-c4 pages` writes `.qsm/c4/c4.html`; the owner opens it in a browser. When he says a view
+6. `qsm-c4 pages` writes `.qsm/c4/c4.html`; the owner opens it in a browser. When he says a view
    does not say what he wants, his words go back to step 2.
 
 Commit the graph with its views. Another tool reads the graph only through `qsm-c4 elements`;
@@ -69,12 +65,6 @@ after a rename.
 ## Red flags
 
 - About to add a `.c4` file anywhere but `models/<project>.c4`: edit the one graph.
-- About to edit `models/<project>.c4` before the reviewer has read the draft: draft in a copy.
 - A relation titled "uses" with no technology: say what it does and how.
 - A container inside a container: the inner one is a component, or a container of the system.
 - Typing `--accept`: that is the owner's choice.
-
-## Say it in the reply
-
-The element or view changed and why it sits at that level, the `qsm-c4` runs with their verdict,
-the views looked at, and the reviewer's verdict.

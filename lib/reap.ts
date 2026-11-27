@@ -23,6 +23,8 @@ const MARK = `${OWNER_VAR}=`;
 const LEFT_BY_CRASH = "left by a run that ended before its cleanup";
 const REAP_LIMIT_MS = 5_000;
 const REAP_PAUSE_MS = 20;
+const ENVIRON_SETTLE_MS = 20;
+const PF_KTHREAD = 0x200000;
 
 export type Proc = { readonly pid: number; readonly ppid: number; readonly cmd: string };
 type Stat = { readonly pid: number; readonly ppid: number };
@@ -81,13 +83,36 @@ export function ownerEnv(tool: string): Record<string, string> {
   return { [OWNER_VAR]: outer === undefined || outer === "" ? entry : `${outer} ${entry}` };
 }
 
+/** The environment of `pid`, or null when it ended. A child that is in the middle of exec reads
+ * empty for a moment, and a scan that took that for "no mark" would pass over a process this run
+ * started, so an empty read of a live process is read again for up to ENVIRON_SETTLE_MS. A zombie
+ * and a kernel thread stay empty for good and are not waited for. */
+function settledEnviron(pid: number): Buffer | null {
+  const until = Date.now() + ENVIRON_SETTLE_MS;
+  for (;;) {
+    const env = procFile(pid, "environ");
+    if (env === null || env.length > 0) {
+      return env;
+    }
+    const stat = procFile(pid, "stat")?.toString();
+    if (stat === undefined) {
+      return null;
+    }
+    // After the parenthesised name: state, then 5 fields, then the flags.
+    const [state, , , , , , flags] = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+    if (state === "Z" || (Number(flags) & PF_KTHREAD) !== 0 || Date.now() >= until) {
+      return env;
+    }
+  }
+}
+
 /** Each live process that carries `tool`'s mark, with the pid of the innermost run of `tool` that
  * marked it, because that run is its owner; this process is left out. Most processes carry no
  * mark, so the environment is searched as bytes before any of it is decoded, and only a marked
  * process has its stat read. */
 function marked(tool: string): { stat: Stat; runPid: number }[] {
   return pids().flatMap((pid) => {
-    const env = pid === process.pid ? null : procFile(pid, "environ");
+    const env = pid === process.pid ? null : settledEnviron(pid);
     const stat = env?.includes(MARK) === true ? statOf(pid) : null;
     if (env === null || stat === null) {
       return [];

@@ -5,11 +5,10 @@ description: "Use when the same thing may live in two places: duplicate guidance
 
 # Duplicates
 
-The same guidance written twice is paid for twice, and the copies drift until they disagree. Find
-the pair, name both places, say which stays and why, propose removing the other. A disagreement that
-changes behaviour is not a duplicate: quote both sides and leave it to the person. An extension
-nobody uses, with no twin, is `unused-extensions`; here the pair is the finding. Shared reading and
-apply rules are in the `usage` skill.
+Find the pair, name both places, say which stays and why, propose removing the other. A
+disagreement that changes behaviour is not a duplicate: quote both sides and leave it to the
+person. An extension nobody uses, with no twin, is `unused-extensions`. Shared reading and apply
+rules are in the `usage` skill.
 
 ## Which stays
 
@@ -44,12 +43,8 @@ change (an edit, a narrowed description, a switch from `unused-extensions`, or `
 "cleanup"`. Contradiction: `verdict: "warn"`, `question: "none"`, `change.kind: "none"`, both sides
 in `evidence`; recommend nothing unless one side is plainly stale.
 
-## Red flags
-
-- When two lines share words but differ in condition or scope, treat them as different, because a
-  removal would lose the narrower rule.
-- When the copy to remove is in a file the team does not own, name it and let the person decide,
-  because the edit is theirs.
+Two lines that share words but differ in condition or scope are different. A copy in a file the
+team does not own is named, and the person decides.
 
 ## Say it in the reply
 

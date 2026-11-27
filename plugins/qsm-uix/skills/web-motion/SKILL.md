@@ -5,13 +5,9 @@ description: "Use when motion on a web page is written, judged, surveyed or debu
 
 # Web Motion
 
-animate, review-animations, improve-animations, find-animation-opportunities and
-animation-performance hold the values and the judgement; this skill holds how they are written on
-a web page, for the person who ships it. A model left alone writes `transition: all 300ms`,
-`ease-in`, a hover effect that fires on touch and no reduced-motion block. The outcome is motion
-whose curves are tokens, whose properties are compositor-only, that survives a second click and a
-busy thread, and that the reviewer passes on the first read. The numbers (curves, durations,
-scales) are animate's tables; here are only the three curves and the CSS forms of its rules.
+How the values and judgement of animate, review-animations, improve-animations,
+find-animation-opportunities and animation-performance are written on a web page. The numbers
+(durations, scales) are animate's tables; here are the three curves and the CSS forms of its rules.
 
 ## Write it
 
@@ -90,7 +86,7 @@ Each is a finding in review-animations' tiers, with the fix beside it:
 
 ## Survey it
 
-Use improve-animations for the survey workflow and plan format. Web search terms: `transition`,
+Web search terms: `transition`,
 `animation`, `@keyframes`, `motion.`, `useSpring`,
 `ease-in`, `transition: all`, `scale(0)`, `prefers-reduced-motion`, `transform-origin`,
 `will-change`, `@starting-style`. A web plan includes the rewritten CSS or component line.
@@ -100,18 +96,5 @@ Use improve-animations for the survey workflow and plan format. Web search terms
 The web words for the vocabulary: `transition`, `@keyframes` (the keyframes), WAAPI (`animate()`
 on an element), Motion (the library), a view transition (the browser morphs between two states),
 `transform-origin` (the origin), `@starting-style` (the mount state).
-
-## Red flags
-
-- When a hover rule has no media query, gate it, because the touch user gets a stuck state.
-- When an animation is only checked by reading the code, say "from code" and name the recording
-  that would prove it.
-- When the answer to "should this animate" is no (a keyboard shortcut, 100+ times a day), write no
-  CSS, because animate decides that first.
-
-## Say it in the reply
-
-The CSS or component, then the three lines animate asks for, and for a review the table of
-Before, After, Why. Say which checks were from code and which from a recording.
 
 Sources: emilkowalski/skills (MIT); vercel-labs/web-interface-guidelines (MIT).

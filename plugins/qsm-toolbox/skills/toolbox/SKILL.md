@@ -28,17 +28,7 @@ A tool not in this table has none.
 | `semgrep` | `--autofix` rewrites source, never run it against an uncommitted tree; registry rules pull metrics |
 | `yq` | this is mikefarah/yq (Go); kislyuk/yq (Python) shares the name and has a different syntax |
 
-## Red flags
+## Adding a tool
 
-- When a tool you are about to run has a row above, read the row first, because the caveat is the
-  part that costs time.
-- When a tool is missing, say so and run `qsm-toolbox doctor`, which prints its install line, then
-  carry on with what is there, because no tool here is required.
-- When you want to add a tool or a caveat, edit `lib/catalog.ts` and paste the table `bun test`
-  expects into this page, because a test fails the moment the page and the catalog disagree.
-
-## Say it in the reply
-
-Name the tool and what it bought you in one line: "used `scc`, the tree is 40k lines of
-TypeScript". When a tool was missing, say which and give its install line. When a caveat changed
-what you ran, say the caveat.
+Edit `lib/catalog.ts` and paste the table `bun test` expects into this page. A missing tool: run
+`qsm-toolbox doctor` for its install line and carry on.

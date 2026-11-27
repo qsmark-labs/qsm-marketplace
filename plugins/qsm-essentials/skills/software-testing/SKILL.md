@@ -8,20 +8,16 @@ description: "Use when deciding whether a change needs a test at all, choosing t
 A test is a question the system can answer wrong, and every test costs reading and upkeep. The
 default is no test file: run the real path once, the way the user meets it, and read the output.
 Write a test only when that run cannot be repeated cheaply or cannot reach the logic, and then
-choose the cheapest one that still runs the real path. This skill serves the person who wants real
-proof at the least cost. It does not add tests the ask did not need, and a test that only
-restates the code just written agrees with every bug already in it.
+choose the cheapest one that still runs the real path. A test that only restates the code
+just written agrees with every bug already in it.
 
 ## Before the first test
 
-- State what the thing promises, one sentence per promise as its user would say it. Those are the
-  test names, and a promise you cannot state is a design problem.
-- Name what wrong looks like for each (a wrong value, an exception, a missing side effect, a slow
-  answer, a leaked secret), because the wrong you name is the wrong you catch.
+- State what the thing promises as its user would say it, and what wrong looks like for each.
 - Check the promise against the real path first. If one run of the bin, the hook or the request
   shows it, you are done.
 - A test earns its file when the run cannot be repeated by hand (a regression that will come back)
-  or cannot reach the logic (a parser's edge cases). Say which in the reply.
+  or cannot reach the logic (a parser's edge cases).
 
 ## Choosing the cases
 
@@ -74,13 +70,9 @@ restates the code just written agrees with every bug already in it.
   wrong (fix it and say why), or the promise changed (change the test on purpose and name it).
 - Make a test pass by fixing the cause. Loosening an assertion, adding a retry or catching the
   exception hides the bug it caught. A test that fails only sometimes goes to the debugging skill.
-- A bug that escaped gets a check that reproduces it through the real path, only when it can come
-  back.
 
 ## Red flags
 
-- When a suite has unit tests and no check that runs the flow end to end, add the flow check,
-  because the pieces are proven and the product is not.
 - When a test asserts only that a mock was called, or has no assertion, replace it with one on the
   result, because it tests your opinion of the code.
 - When setup is longer than the test, look for a hard-to-use interface or the wrong level, because
@@ -92,8 +84,3 @@ restates the code just written agrees with every bug already in it.
 - When a test sleeps, inject the clock, because time is a hidden dependency that makes the test slow
   and flaky.
 - When a test depends on the machine ("works on mine"), name the dependency and remove it.
-
-## Say it in the reply
-
-List the promises covered and the ones left out, one line each: "Covered: empty list, one item,
-duplicate id. Not covered: concurrent insert." The user checks the second list.

@@ -83,7 +83,5 @@ events and separate contexts only where the business pays for them.
 
 ## Say it in the reply
 
-Before any code, the model in the business's words in five to ten lines: the subdomains with their
-type and the pattern each gets, the contexts and their relationship, the aggregates with their
-invariants and why each member is inside, the events, and what stays plain CRUD. The user checks it
-against how the business talks; if it does not match, no code yet.
+The model in the business's words in five to ten lines: the subdomains and the pattern each gets,
+the contexts, the aggregates with their invariants, the events, and what stays plain CRUD.

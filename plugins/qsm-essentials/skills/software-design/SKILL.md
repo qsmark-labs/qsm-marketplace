@@ -96,6 +96,4 @@ for, and the simplest design that does the job wins.
 
 ## Say it in the reply
 
-Two lines: what the module hides, and what the caller now writes. That is the whole design, and
-it is what the user checks. When the design had a real choice, add the two interfaces you compared
-and the one call site that decided it.
+Two lines: what the module hides, and what the caller now writes.

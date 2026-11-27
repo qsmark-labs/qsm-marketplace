@@ -6,17 +6,13 @@ description: "Use when something is broken and you do not yet know why: a bug, a
 # Debugging
 
 A fix made before the cause is known is a guess, and a guess that turns the check green hides the
-fault: it returns as a different symptom nobody connects to this one. This skill works in steps:
-reproduce, find the cause, make the one fix for it, then say what was wrong, how it was found and
-why the fix holds. It serves the person who must trust the fix without redoing the search. It does
-not clean up around the fix (refactoring) and does not choose the regression test
-(software-testing).
+fault. Reproduce, find the cause, make the one fix for it.
 
 ## Rules
 
 - Reproduce it first, as one command you can rerun, and run it yourself before any edit. Without
   it you fix the bug you imagined and cannot tell when you are done. Cannot reproduce: say so and
-  ask for input, version and steps.
+  name what you need.
 - The same command is the proof after the fix. A different command is a different test, so a green
   result from it says nothing about this bug.
 - Trace backwards from the bad value to the first place it was right and left wrong. With several
@@ -36,16 +32,12 @@ not clean up around the fix (refactoring) and does not choose the regression tes
   fail (order, timing, leftover state, machine). Retry, skip and weaken are never the fix.
 - It worked before: `git bisect run <the reproduction>` between the last good commit and now.
   A handful of runs finds the commit however large the range.
-- Set a budget (three hypotheses) before you start. When it runs out, stop and report what you
-  ruled out and what you would need. When three fixes in a row each expose a new problem, stop: it
-  is a design problem and the user decides.
+- Budget three hypotheses. When it runs out, stop and report what you ruled out and what you
+  would need. When three fixes in a row each expose a new problem, stop: it is a design problem.
 - Fix with one change for the cause and nothing "while I am here", because a reviewer cannot
   separate a fix from a refactor. Rerun the reproduction, then the project's tests once.
-- Remove your instrumentation. Ask software-testing for the cheapest check that would have caught
-  this, because the same defect should fail loudly next time.
-- Record the cause in the commit message. A trap that will catch someone again goes into the
-  instructions; a defect you found elsewhere, or a smell, is a task in the task tool, not part of
-  this fix. Questions about logs, config or how it starts are run-and-verify.
+- Remove your instrumentation. Record the cause in the commit message. A defect you found
+  elsewhere is one line at the end, not part of this fix.
 
 ## Red flags
 
@@ -60,10 +52,6 @@ not clean up around the fix (refactoring) and does not choose the regression tes
 
 ## Say it in the reply
 
-Three parts. What: the cause in one sentence with its "because". How: the command that reproduces
-it and the hops that led to the cause, with what was ruled out. Why: what the same command showed
-after the fix and why the fix holds. When the cause is not proved yet, or someone else takes the
-work over: each known fact with where it comes from (a run, a log, a file, a person's claim), kept
-apart from what is only suspected, how the cause will be proved before anything is fixed, and what
-blocks you and what you need from whom, so the reader acts without asking back. When the budget
-ran out: what you ruled out and what you would try next, never a fix without its cause.
+The cause in one sentence with its "because", the command that reproduces it, and what the same
+command showed after the fix. When the cause is not proved, say each known fact with its source,
+what is only suspected, how you will prove the cause, and what you need from whom.

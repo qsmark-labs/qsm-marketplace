@@ -50,5 +50,4 @@ understand the decision yet.
 ## Say it in the reply
 
 Five lines, no more: the constraint, the options (doing nothing included), the choice, the cost we
-accept, the tripwire that reopens it. If it needs more, it is more than one decision. Name the build
-check on a sixth line when one exists.
+accept, the tripwire that reopens it.

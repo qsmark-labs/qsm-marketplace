@@ -34,13 +34,3 @@ is fish-dev.
 - Load a plugin manager and `compinit` only under `[[ -o interactive ]]`, because they cost 50 to
   500 ms and assume a TTY. Gate zsh-only syntax in a file bash also sources on
   `[[ -n $ZSH_VERSION ]]`.
-
-## Red flags
-
-- When a script forks `tr`, `sed` or `find` for something a flag or qualifier does, replace it,
-  because the fork is slower and splits differently.
-
-## Say it in the reply
-
-When you translate from bash, name the zsh difference that forced each change (glob, index,
-splitting), so the user sees why the line is not a copy.

@@ -5,12 +5,9 @@ description: "Use when asked to survey all the motion in a codebase or shell and
 
 # Improve Animations
 
-One review judges one diff; a codebase has dozens of animations, and fixing them in the order they
-are found wastes the person's time. This skill serves the person who owns the whole interface: it
-surveys every animation, finds the few fixes with the highest leverage (the ease-in that makes
-every dropdown sluggish, the keyframes that make toasts jump, the keyboard action that should
-never have animated), and writes each as a plan precise enough for a model with no context and no
-taste to execute. It plans; it never applies. "The motion here is already right" is a valid result.
+Surveys every animation, finds the few fixes with the highest leverage, and writes each as a plan
+precise enough for a model with no context to execute. It plans; it never applies. "The motion here
+is already right" is a valid result.
 
 ## Hard rules
 
@@ -45,17 +42,15 @@ sweep terms are the family skill's (web-motion, desktop-ui, tui-ui).
 | Missed opportunities | state that teleports, panels with no origin story, flat rare moments; at most a handful, grounded in a seen seam |
 
 Depth by effort, default standard: quick is high-traffic components, about five HIGH findings;
-standard is all interactive UI and the full table; deep is the whole repo with LOW polish. For
-anything beyond a small repo, hand read-only helpers one category each, with the recon facts and
-rule 4 quoted, returning file:line and evidence only.
+standard is all interactive UI and the full table; deep is the whole repo with LOW polish.
 
-**3. Vet, prioritize, confirm.** Re-read every cited line yourself; reject what is by design,
+**3. Vet and prioritize.** Re-read every cited line yourself; reject what is by design,
 misattributed, duplicated or exempt (a centred modal, a long marketing duration). Present one table
 ordered by impact over effort: id, severity, category, location, finding, fix. HIGH is feel-breaking
 (wrong easing on UI, animation on a keyboard or 100+/day action, dropped frames, a scale from zero),
 MEDIUM noticeably off (wrong origin, non-interruptible dynamic UI, no reduced motion), LOW polish.
-List two to four missed opportunities apart, since they add rather than correct. Then stop and let
-the person pick; non-interactively, take the top three to five.
+List missed opportunities apart, since they add rather than correct. Plan the top three to five
+unless the person named which.
 
 **4. Write plans.** One plan per chosen finding in `plans/NNN-short-slug.md`, numbered upward,
 stamped with `git rev-parse --short HEAD`, then `plans/README.md` with execution order,
@@ -69,10 +64,9 @@ dependencies and a status column. A plan holds:
 - **Steps**: one concrete edit each, file and resulting code.
 - **Boundaries**: what not to touch, no new dependency, motion properties only unless a step says
   so; if the code has drifted from the stamp, stop and report instead of improvising.
-- **Verification**: mechanical commands with expected outcome, a feel check (trigger it, spam the
-  toggle and confirm it never restarts from zero, slow it to 10 percent, toggle reduced motion and
-  confirm movement goes but opacity feedback stays), and a done-when criterion. The feel check is
-  not optional: motion can be correct and still feel wrong.
+- **Verification**: mechanical commands with expected outcome, a feel check (spam the toggle and
+  confirm it never restarts from zero, slow it to 10 percent, toggle reduced motion and confirm
+  movement goes but opacity feedback stays), and a done-when criterion.
 
 Variants: bare runs all four phases; `quick` and `deep` set the depth; a category name audits only
 it; `plan <description>` skips the audit and writes one plan; `reconcile` marks done plans,
@@ -80,8 +74,7 @@ refreshes stale file:line and retires fixed findings.
 
 ## Say it in the reply
 
-The vetted table, the missed opportunities, the plans written with their paths, and which findings
-were not chosen. State what could not be judged from code and needs a recording or a person's eye.
+The vetted table, the plans written with their paths, and what could not be judged from code.
 
 How each rule is written and read on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

@@ -5,11 +5,8 @@ description: "Use when instruction files have grown: my CLAUDE.md is too big, tr
 
 # CLAUDE.md trim
 
-Every line of an always-loaded instruction file is paid for in every session, and a file full of
-what the code already says buries the few lines only the person could write. This skill cuts in
-two passes, in order, so the second never works on text the first deletes. Each cut or move carries
-its own reason, because a line gone without one may be the line only the person could write. It
-changes nothing the person did not confirm. Shared reading and apply rules are in the `usage` skill.
+Every line of an always-loaded instruction file is paid for in every session. Two passes, in
+order. Shared reading and apply rules are in the `usage` skill.
 
 Surfaces: `~/.claude/CLAUDE.md`, `~/.claude/rules/*.md`, the project's `CLAUDE.md`,
 `.claude/CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `.claude/rules/*.md`, every `@path` they pull
@@ -48,21 +45,13 @@ resident (a description, a pointer line).
 
 ## Findings
 
-Quote every removed or moved block so the person can judge it and the report can undo it. Each
-finding carries a reason that fits that block alone: the command or file that already says it, or
-the surviving copy and where it is. "The file is long" is no reason. One
-finding per cut or move: `change.kind: "edit"`, `target` the file, the block in `change.detail`,
-`verdict: "fix"`, `question: "cleanup"`. Asked alone, per file: tokens now, what goes, what moves
-where, tokens after. After applying, count again with the same command and show both totals.
+Quote every removed or moved block with the reason that fits it alone: the command or file that
+already says it, or the surviving copy. One finding per cut or move: `change.kind: "edit"`,
+`target` the file, the block in `change.detail`, `verdict: "fix"`, `question: "cleanup"`. After
+applying, count again with the same command and show both totals.
 
-## Red flags
-
-- When a section looks derivable but states why a choice was made, keep it, because the code
-  cannot say why.
-- When a move leaves a "never do X" rule only in a lazy file, bring it back to the root, because
-  it loads too late.
-- When a saving ignores the pointer or description left behind, subtract it, because the
-  resident part is still paid.
+A section that states why a choice was made stays. A "never do X" rule stays in the root file. A
+saving subtracts the pointer or description left behind.
 
 ## Say it in the reply
 
