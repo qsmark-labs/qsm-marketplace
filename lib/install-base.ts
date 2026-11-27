@@ -1,11 +1,10 @@
 // The one installer every plugin runs.
-import { spawnSync } from "node:child_process";
+import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   readlinkSync,
@@ -16,7 +15,6 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fishCompletion, MARKER, writeCompletion } from "./completions.ts";
 import {
@@ -28,6 +26,7 @@ import {
   type Step,
 } from "./install-contract.ts";
 import { purgeFarm } from "./legacy-farm.ts";
+import { deadRunDirs, runTempDir, sweepNamed } from "./reap.ts";
 import { binDir, buildRecordPath, type Env, fishCompletionDir } from "./paths.ts";
 import { loadManifest, type QsmManifest } from "./qsm-manifest.ts";
 
@@ -279,6 +278,8 @@ function hasDeps(pluginRoot: string): boolean {
   return existsSync(join(pluginRoot, "package.json"));
 }
 
+const BUN_INSTALL_TMP = "qsm-bun-install";
+
 /** The plugin's own npm dependencies, installed from its lockfile before anything compiles. */
 function dependencyStep(pluginRoot: string): Step | null {
   if (!hasDeps(pluginRoot)) {
@@ -286,14 +287,19 @@ function dependencyStep(pluginRoot: string): Step | null {
   }
   const name = "dependencies";
   // bun install leaves an empty hidden file in its temp directory, so it gets one of its own.
-  const scratch = mkdtempSync(join(tmpdir(), "qsm-bun-install-"));
-  const done = spawnSync("bun", ["install", "--frozen-lockfile"], {
-    cwd: pluginRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, TMPDIR: scratch },
-  });
-  rmSync(scratch, { recursive: true, force: true });
+  sweepNamed(BUN_INSTALL_TMP);
+  const scratch = runTempDir(BUN_INSTALL_TMP);
+  let done: SpawnSyncReturns<string>;
+  try {
+    done = spawnSync("bun", ["install", "--frozen-lockfile"], {
+      cwd: pluginRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, TMPDIR: scratch },
+    });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
   if (done.status !== 0) {
     const detail = `bun install failed in ${pluginRoot}: ${lastLine(done.stderr)}; run \`bun install\` in the plugin and commit its bun.lock`;
     return { name, status: "error", detail };
@@ -305,6 +311,8 @@ function dependencyStep(pluginRoot: string): Step | null {
   return { name, status: "installed", detail: "ran bun install --frozen-lockfile" };
 }
 
+const BUILD_TMP = "qsm-build";
+
 /** Compiles `entry` to `outFile`, replacing it only when the bytes differ. */
 function compile(pluginRoot: string, entry: string, outFile: string): Step {
   const name = basename(outFile);
@@ -314,29 +322,50 @@ function compile(pluginRoot: string, entry: string, outFile: string): Step {
   }
   mkdirSync(resolve(outFile, ".."), { recursive: true });
   // The build goes through a temporary file because the binary being replaced may be the one
-  // running us.
-  const tmp = `${outFile}.tmp`;
-  const built = spawnSync(
-    "bun",
-    ["build", "--compile", "--target", "bun", "--outfile", tmp, source],
-    { stdio: ["ignore", "ignore", "pipe"], cwd: pluginRoot, encoding: "utf8" },
-  );
-  if (built.status !== 0) {
-    if (existsSync(tmp)) {
-      unlinkSync(tmp);
+  // running us. It sits in a directory of its own, because two installs of one plugin can run at
+  // once (two sessions pulling main) and one must not remove or rename the other's partial build.
+  // The file inside keeps the final name: the compiled bytes depend on it, and the compare below
+  // only skips a rebuild when two runs produce equal bytes.
+  const tmpDir = runTempDir(BUILD_TMP, dirname(outFile));
+  try {
+    const tmp = join(tmpDir, basename(outFile));
+    const built = spawnSync(
+      "bun",
+      ["build", "--compile", "--target", "bun", "--outfile", tmp, source],
+      { stdio: ["ignore", "ignore", "pipe"], cwd: pluginRoot, encoding: "utf8" },
+    );
+    if (built.status !== 0) {
+      return {
+        name,
+        status: "error",
+        detail: `bun build failed for ${entry}: ${lastLine(built.stderr)}`,
+      };
     }
-    return {
-      name,
-      status: "error",
-      detail: `bun build failed for ${entry}: ${lastLine(built.stderr)}`,
-    };
+    if (existsSync(outFile) && sha256(outFile) === sha256(tmp)) {
+      return { name, status: "already", detail: `${outFile} unchanged` };
+    }
+    renameSync(tmp, outFile);
+    return { name, status: "installed", detail: `compiled ${entry} to ${outFile}` };
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
   }
-  if (existsSync(outFile) && sha256(outFile) === sha256(tmp)) {
-    unlinkSync(tmp);
-    return { name, status: "already", detail: `${outFile} unchanged` };
+}
+
+/** Removes from the bin directory what builds left: the directory of a build whose install is
+ * dead, and the `<bin>.tmp` file an older install left. */
+function sweepBuilds(dir: string, bins: readonly string[]): void {
+  if (!existsSync(dir)) {
+    return;
   }
-  renameSync(tmp, outFile);
-  return { name, status: "installed", detail: `compiled ${entry} to ${outFile}` };
+  sweepNamed(BUILD_TMP, dir, "left by a build that ended before its cleanup");
+  for (const bin of bins) {
+    const old = join(dir, `${bin}.tmp`);
+    if (existsSync(old)) {
+      console.error(`install: removed ${old}, left by an older install`);
+      // another install may remove it between the look and this call
+      rmSync(old, { recursive: true, force: true });
+    }
+  }
 }
 
 /** Every `command` string anywhere inside a parsed hooks.json. */
@@ -383,7 +412,11 @@ function staleDist(pluginRoot: string): string[] {
     return [];
   }
   const kept = new Set(declaredHooks(pluginRoot).map((h) => h.name));
-  return readdirSync(dist).filter((name) => !kept.has(name));
+  // A running install's build directory is not stale; a dead one's is.
+  const dead = new Set(deadRunDirs(BUILD_TMP, dist).map((path) => basename(path)));
+  return readdirSync(dist).filter(
+    (name) => !kept.has(name) && (!name.startsWith(`${BUILD_TMP}.`) || dead.has(name)),
+  );
 }
 
 function pruneSteps(pluginRoot: string): Step[] {
@@ -501,6 +534,7 @@ function planStep(detail: string): Step {
 /** What the plugin compiles: its binaries into the bin directory, its
  * classic hooks into dist/. */
 function compileSteps(config: InstallBaseConfig, manifest: QsmManifest, env: Env): Step[] {
+  sweepBuilds(binDir(env), Object.keys(manifest.qsm.bin ?? {}));
   const binSteps = Object.entries(manifest.qsm.bin ?? {}).map(([bin, entry]) => {
     const outFile = join(binDir(env), bin);
     const step = compile(config.pluginRoot, entry, outFile);

@@ -75,6 +75,7 @@ describe("runDefinition", () => {
     outDir: "/srv/out/bbox-11000",
     liveView: "http://127.0.0.1:11000/",
     user: "1000:1000",
+    ownerPid: null,
   });
 
   test("the instance is detached, named, labelled and ephemeral", () => {

@@ -5,9 +5,10 @@
 // runs, no network, no source cache.
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { envelopeOf, isolatedEnv } from "../../../lib/fixtures/cli.ts";
+import { deadPid } from "../../../lib/fixtures/dead-run.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 
 const PLUGIN = resolve(import.meta.dir, "..");
@@ -15,8 +16,8 @@ const CLI = join(PLUGIN, "scripts", "cli.ts");
 
 /** A docker that answers from the FAKE_* environment: ps prints
  * FAKE_PS_OUTPUT or exits FAKE_PS_EXIT, exec (the readiness ping) exits
- * FAKE_PING_EXIT or answers ok, rm exits FAKE_RM_EXIT, image reports no
- * image, build and run succeed. */
+ * FAKE_PING_EXIT or answers ok, a fetch job gets FAKE_FETCH_REPLY in place of
+ * ok, rm exits FAKE_RM_EXIT (after one rm, ps prints FAKE_PS_AFTER_RM when set), image reports no image, build and run succeed. */
 function fakeRuntime(): string {
   const dir = sandboxDir("qsm-web-fake-docker-");
   writeFileSync(
@@ -24,9 +25,11 @@ function fakeRuntime(): string {
     [
       "#!/bin/sh",
       'case "$1" in',
-      '  ps) [ "${FAKE_PS_EXIT:-0}" -eq 0 ] || exit "$FAKE_PS_EXIT"; printf "%s" "${FAKE_PS_OUTPUT:-}"; exit 0 ;;',
-      '  rm) exit "${FAKE_RM_EXIT:-0}" ;;',
-      '  exec) [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT"; printf \'{"ok":true}\\n\'; exit 0 ;;',
+      '  ps) [ "${FAKE_PS_EXIT:-0}" -eq 0 ] || exit "$FAKE_PS_EXIT"; if [ -s "${FAKE_LOG:-/dev/null}" ]; then printf "%s" "${FAKE_PS_AFTER_RM-${FAKE_PS_OUTPUT:-}}"; else printf "%s" "${FAKE_PS_OUTPUT:-}"; fi; exit 0 ;;',
+      '  rm) echo "$@" >> "${FAKE_LOG:-/dev/null}"; exit "${FAKE_RM_EXIT:-0}" ;;',
+      '  exec) [ -z "${FAKE_EXEC_HANG:-}" ] || exec sleep "$FAKE_EXEC_HANG"; [ "${FAKE_PING_EXIT:-0}" -eq 0 ] || exit "$FAKE_PING_EXIT";',
+      '    reply=\'{"ok":true}\'; case "$(cat)" in *\'"cmd":"fetch"\'*) reply=${FAKE_FETCH_REPLY:-$reply} ;; esac',
+      '    printf "%s\\n" "$reply"; exit 0 ;;',
       "  image) exit 1 ;;",
       "  build|run) exit 0 ;;",
       "esac",
@@ -146,5 +149,97 @@ describe("qsm-web browserbox lifecycle", () => {
       c.says.filter((phrase) => !envelope.message.includes(phrase)),
       (c.silent ?? []).filter((phrase) => envelope.message.includes(phrase)),
     ]).toEqual([[], []]);
+  });
+});
+
+describe("qsm-web browserbox fetch whose own container cannot be removed", () => {
+  const LEFT = "bbox-11000 could not be removed after the fetch (exit 1)";
+  const fetchOf = (env: Record<string, string>, exit: number) =>
+    runOutcome({
+      title: "left container",
+      argv: ["fetch", "http://x.invalid", "--json"],
+      env: { FAKE_RM_EXIT: "1", ...env },
+      exit,
+      says: [],
+    });
+
+  test("a fetch that succeeded keeps its result and names the container on stderr", () => {
+    const r = fetchOf({}, 0);
+
+    expect(r.exit).toBe(0);
+    expect(envelopeOf(r.stdout).code).toBe("ok");
+    expect(r.stderr).toContain(LEFT);
+  });
+
+  test("a fetch that failed keeps its own failure", () => {
+    const r = fetchOf({ FAKE_FETCH_REPLY: '{"ok":false}' }, 1);
+
+    expect(r.exit).toBe(1);
+    expect(envelopeOf(r.stdout).message).toContain("http://x.invalid could not be fetched");
+    expect(r.stderr).toContain(LEFT);
+  });
+});
+
+describe("qsm-web browserbox driver that never answers", () => {
+  test("the call fails at the reply limit, not when the driver answers", () => {
+    const started = Date.now();
+    const r = runOutcome({
+      title: "hung driver",
+      argv: ["fetch", "--in", "bbox-11000", "http://x.invalid", "--timeout", "200", "--json"],
+      env: { FAKE_EXEC_HANG: "60", QSM_BROWSERBOX_REPLY_MS: "1500" },
+      exit: 1,
+      says: [],
+    });
+
+    expect(r.exit).toBe(1);
+    expect(JSON.stringify(envelopeOf(r.stdout).data)).toContain("did not answer within 1500 ms");
+    expect(Date.now() - started).toBeLessThan(20_000);
+  });
+});
+
+describe("qsm-web browserbox sweep of a dead run's container", () => {
+  /** `ls` against a fake runtime holding these containers; answers what it asked `rm` to remove. */
+  function removedBy(
+    ps: string,
+    extra: Record<string, string> = {},
+  ): { removed: string[]; stderr: string; exit: number } {
+    const log = join(sandboxDir("qsm-web-rm-log-"), "rm.log");
+    writeFileSync(log, "");
+    const r = runOutcome({
+      title: "sweep",
+      argv: ["ls", "--json"],
+      env: { FAKE_PS_OUTPUT: ps, FAKE_LOG: log, ...extra },
+      exit: 0,
+      says: [],
+    });
+    const removed = readFileSync(log, "utf8")
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((l) => l.replace("rm --force ", ""));
+    return { removed, stderr: r.stderr, exit: r.exit };
+  }
+
+  test("a container whose owner run is dead is removed and named", () => {
+    const dead = deadPid();
+    const r = removedBy(
+      `bbox-11000 id11000 qsm.browserbox=1,qsm-owner=browserbox:${dead}\n` +
+        `bbox-11001 id11001 qsm.browserbox=1,qsm-owner=browserbox:${process.pid}\n`,
+    );
+    expect(r.removed).toEqual(["id11000"]);
+    expect(r.stderr).toContain("removed bbox-11000");
+  });
+
+  test("a persistent container, with no owner, survives", () => {
+    const r = removedBy("bbox-11000 id11000 qsm.browserbox=1\n");
+    expect(r.removed).toEqual([]);
+  });
+
+  test("a removal that fails for an id another sweep already removed is not a failure", () => {
+    const r = removedBy(`bbox-11000 id11000 qsm.browserbox=1,qsm-owner=browserbox:${deadPid()}\n`, {
+      FAKE_RM_EXIT: "1",
+      FAKE_PS_AFTER_RM: "",
+    });
+    expect(r.exit).toBe(0);
+    expect(r.stderr).toContain("bbox-11000 was already removed");
   });
 });

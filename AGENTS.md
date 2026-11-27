@@ -51,7 +51,7 @@ touching its users (Cockburn, ports and adapters).
 - **Evals over unit tests.** A change is proved by the least work that runs the real path end to
   end; a unit test only for logic the real run cannot reach. No test count goal.
 - **Clean before and after.** A tool leaves the machine as it found it, plus what it was asked
-  to add: an installer removes what older versions left, and a test leaves no temp dir.
+  to add: an installer removes what older versions left, and a run leaves no process or temp entry.
 - **No history in the tree.** When a decision changes, the old form is deleted everywhere. Git is
   the only history.
 - **Public, so nothing machine-specific.** No employer names, tenant identifiers or machine paths.
@@ -60,6 +60,11 @@ touching its users (Cockburn, ports and adapters).
 
 Each law is the short form; the skill named after it holds the detail.
 
+0. **Everything is cleaned up, forward and backward**: a run that ends, fails or times out leaves
+   no process, temp entry, lock or socket, and a start removes what a crashed earlier run left.
+   Every process a tool starts carries `QSM_OWNER`, and `lib/reap.ts` finds and ends it; the test
+   run fails on any leftover. A change that can leave something behind is not approvable
+   (implementation rule, "Clean before and after").
 1. **A plugin owns its content**: skills, agents, code and docs live under the plugin (add-plugin).
 2. **A plugin imports root `lib/` and itself only**; code two plugins need goes to `lib/` (add-lib).
 3. **Docs: `README.md` always, opening with `## Why it exists` in at most five sentences;
@@ -84,7 +89,7 @@ Each law is the short form; the skill named after it holds the detail.
 
 ```text
 .claude-plugin/marketplace.json   # one entry per plugin, source ./plugins/<name>
-lib/                              # layer 0: install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, palette.ts, model-graph.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, loopback.ts, html.ts, touch.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture, server: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
+lib/                              # layer 0: reap.ts, install-contract.ts, install-base.ts, legacy-farm.ts, cli-base.ts, outcome.ts, palette.ts, model-graph.ts, qsm-error.ts, qsm-manifest.ts, completions.ts, paths.ts, fs.ts, generate-noun.ts, mcp-stdio.ts, hooks-kit.ts, secret-shapes.ts, detach.ts, loopback.ts, html.ts, touch.ts, fixtures/ (sandbox, cli-fixture, cli, git, bin, install, plugin-fixture, dead-run, server: tests only), templates/ (hooks-host.ts, what generate-noun copies beside a noun), nothing else
 plugins/<name>/                   # layer 1: one plugin
   .claude-plugin/plugin.json      # name = directory name, author {"name": "qsm"}
   qsm.json                        # bin + command descriptions, only when the plugin ships a CLI
@@ -206,10 +211,19 @@ type-aware finding is measured without the dependencies and the engine types.
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 mise exec -- bun run test:hooks
 ```
 
+- Every test runs in parallel, here and in CI: one worker per core, so the machine is loaded by
+  design. A test owns everything it uses (its sandbox, home, processes and ports), waits for the
+  end of what it starts, and leaves nothing behind, so it runs again at once, alone or beside any
+  other. It stays simple: the flow it proves and nothing else. A tool's tests carry fuzz cases for
+  its inputs and a mutation run of its logic.
+- No test is flaky. A test that fails once and passes on a rerun hides a cause, and the cause is
+  found and fixed; a rerun to green is never the answer.
+- The preload `lib/fixtures/sandbox.ts` gives every test 30 s, a fresh run directory, git without
+  background maintenance, and the run's own `bun` first on PATH.
 - `bun test` skips a dot directory unless it is named, and skips `plugins/*/hooks/*.test.ts`;
   `test:hooks` runs those and skips visibly without `claude` on PATH.
 - `bun run plugin-types` regenerates the engine types the hooks typecheck against.

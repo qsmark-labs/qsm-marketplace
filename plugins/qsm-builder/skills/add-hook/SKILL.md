@@ -71,7 +71,7 @@ does not decide whether the capability should exist (add-plugin does).
 Run as `mise exec -- ...`, all passing:
 
 - `bun run validate`, `bun run lint`, `bun run typecheck`
-- `bun test ./ ./.gates`
+- `bun test --parallel ./ ./.gates`
 - `bun run test:hooks`, which must not skip: `claude` is on PATH
 - a real run of the verb the hook calls, in a shell, with its output read
 - the hook firing in a fresh session (`claude -p --model haiku "<the call>"`), because a running

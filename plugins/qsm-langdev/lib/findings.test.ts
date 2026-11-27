@@ -38,12 +38,12 @@ describe("countSemgrep", () => {
   // same rule would read as a new finding against a side stored by another run.
   test("a rule read from a run's pack file is known by its own id, not by the scratch directory", () => {
     const stored = countSemgrep(
-      semgrepOutput("tmp.qsm-langdev-packs-rkLWPy.python.lang.security.shell-true"),
+      semgrepOutput("tmp.qsm-langdev-packs.4242.rkLWPy.python.lang.security.shell-true"),
       "",
       1,
     );
     const fresh = countSemgrep(
-      semgrepOutput("home.u.v1.2.tmp.qsm-langdev-packs-Ab3dE9.python.lang.security.shell-true"),
+      semgrepOutput("home.u.v1.2.tmp.qsm-langdev-packs.77.Ab3dE9.python.lang.security.shell-true"),
       "",
       1,
     );
