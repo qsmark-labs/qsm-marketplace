@@ -1,5 +1,5 @@
 // qsm-memory through its real surface: the binary's argv, stdout, stderr, exit.
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
@@ -13,10 +13,6 @@ import { TranscriptBuilder } from "../lib/fixtures/transcript.ts";
 import { openDb, setState } from "../lib/store.ts";
 
 const CLI = resolve(import.meta.dir, "cli.ts");
-
-// Every call starts a bun process (0.6 to 1 s idle); the catch-up and note tests make five, so
-// 5 s at rest and more under a loaded gate. 30 s leaves six times the measured worst case.
-setDefaultTimeout(30_000);
 
 interface Sandbox {
   readonly home: string;

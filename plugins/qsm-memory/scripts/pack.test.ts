@@ -1,7 +1,7 @@
 // `qsm-memory pack` through its real surface: this checkout's CLI, a Claude home and an archive in a
 // sandbox, the real tar and zstd. The date rule itself is lib/pack.test.ts.
 
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -20,8 +20,6 @@ import { envelopeOf, isolatedEnv, runBin } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { TranscriptBuilder } from "../lib/fixtures/transcript.ts";
 import { getState, openDb, setState } from "../lib/store.ts";
-
-setDefaultTimeout(30_000);
 
 const CLI = resolve(import.meta.dir, "cli.ts");
 const OLD = new Date("2026-09-01T12:00:00");
