@@ -152,6 +152,13 @@ result with every step as data inside the outcome envelope: `error` maps to
 - **WHEN** the installer runs again and every compiled file hashes the same
 - **THEN** the status SHALL be `already`
 
+#### Scenario: Builds an earlier install left behind
+
+- **WHEN** the bin directory holds `<bin>.tmp` of a declared bin, or `qsm-build.<pid>.<random>` of a
+  dead install, or `dist/` holds either
+- **THEN** the installer SHALL remove and name them, keep the directory of a live install, and a
+  build that throws SHALL leave no build directory
+
 #### Scenario: An upstream tool is missing and slow to install
 
 - **WHEN** the tool is not on PATH and the plugin declares no install command
@@ -410,6 +417,29 @@ data directory, backup file or temporary directory. A removal SHALL be named in 
 silent, and a second run SHALL remove nothing. Every test and tool that creates a temporary
 directory SHALL write its full cleanup, so the temporary directory holds the same entries after
 a run as before it. The install purge is specified under qsm-setup.
+
+A tool run SHALL mark what it starts: every process it starts carries the run's owner mark, which
+its descendants inherit, and a temporary directory carries the run's pid in its name. A run that
+reaches its end SHALL end the processes it left running and remove its temporary directory. A run
+that is killed cleans nothing, so the next run of the same tool SHALL first end the processes and
+remove the directories of every run that no longer lives. Each one ended or removed SHALL be named
+on stderr with its reason. The process is `tool_run_process` of `models/marketplace.bpmn`.
+
+#### Scenario: A tool run reaches its end (path p-866d77)
+
+- **WHEN** a tool run that started processes and made a temporary directory reaches its end
+- **THEN** none of those processes SHALL still run and the directory SHALL be gone
+
+#### Scenario: A tool run follows a killed run (path p-866d77)
+
+- **WHEN** a tool starts after a run of the same tool was killed before its cleanup
+- **THEN** it SHALL end the processes that run left, remove its temporary directory and name each
+  one, before it does its own work
+
+#### Scenario: A tool run is killed (path p-62a2af)
+
+- **WHEN** a tool run is killed before its cleanup
+- **THEN** what it started SHALL still carry its mark, so the next run of the tool finds it
 
 #### Scenario: A test run
 

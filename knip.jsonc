@@ -38,8 +38,8 @@
   // Binaries that come from PATH, never from package.json, so knip cannot see
   // where they come from and would report each as unlisted: the ones a
   // plugin's installer puts there (sentrux, openspec, toon, shot-scraper,
-  // opensrc, wt, rumdl, br, which qsm-tasks installs and the qsm-memory
-  // briefing and the qsm-builder lens call), a system tool (xdg-open,
+  // opensrc, wt, rumdl), the tracker that the qsm-memory briefing and
+  // qsm-builder lens still call (br), a system tool (xdg-open,
   // magick), no-such-verb, a name a test runs because it must not exist, hi
   // and qsm-fix, the fake binary and shim the test kit's own test puts on PATH, and
   // search, lens and check, false positives: qsm-memory's cli test spawns

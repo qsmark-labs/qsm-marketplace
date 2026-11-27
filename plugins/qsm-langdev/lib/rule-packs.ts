@@ -8,15 +8,14 @@ import { join } from "node:path";
 import { messageOf } from "../../../lib/outcome.ts";
 import { OWN_RULES } from "./rules-data.ts";
 
-/** The scratch directory a run fetches its packs into is named with this,
- * and a fresh suffix every run. */
-export const PACKS_SCRATCH_PREFIX = "qsm-langdev-packs-";
+/** The scratch directory a run fetches its packs into is `<this>.<run pid>.<random>`. */
+export const PACKS_SCRATCH_TOOL = "qsm-langdev-packs";
 
 /**
  * semgrep names a rule read from a local file after the file's directory, dotted:
- * `tmp.qsm-langdev-packs-rkLWPy.python.lang.x`.
+ * `tmp.qsm-langdev-packs.4242.rkLWPy.python.lang.x`.
  */
-const SCRATCH_IN_RULE_ID = new RegExp(`^.*?${PACKS_SCRATCH_PREFIX}[^.]+\\.`);
+const SCRATCH_IN_RULE_ID = new RegExp(`^.*?${PACKS_SCRATCH_TOOL}\\.\\d+\\.[^.]+\\.`);
 
 /** The id of the rule semgrep reported as `checkId`. */
 export function ruleIdOf(checkId: string): string {
