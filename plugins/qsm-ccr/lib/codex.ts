@@ -1,6 +1,5 @@
 // codex's own files: auth.json (its tokens), config.toml (its settings), and its catalog refresh.
 // codex is the sole owner; qsm-ccr reads, and at activation removes what CCR wrote into config.toml.
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -9,6 +8,7 @@ import { binPath, isRecord } from "../../../lib/outcome.ts";
 import type { Env } from "../../../lib/paths.ts";
 import type { CodexTokens } from "./ccr-config.ts";
 import { type Json, parseJson, parseOrName } from "./parse.ts";
+import { spawnMarked } from "../../../lib/reap.ts";
 import { notOnPath } from "./places.ts";
 import type { Gateway } from "./route.ts";
 import { atRouter } from "./settings.ts";
@@ -262,10 +262,9 @@ export function refreshCatalog(env: Env): string | null {
   if (codex === null) {
     return notOnPath("codex");
   }
-  const r = spawnSync(codex, ["debug", "models"], {
+  const r = spawnMarked("qsm-ccr", codex, ["debug", "models"], {
     env: { ...env },
     stdio: ["ignore", "ignore", "pipe"],
-    encoding: "utf8",
     timeout: CODEX_TIMEOUT_MS,
   });
   if (r.error !== undefined) {

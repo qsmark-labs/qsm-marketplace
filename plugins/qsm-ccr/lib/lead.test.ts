@@ -1,13 +1,11 @@
 // The lead's teammate command, through runLead in the sandbox world: the running binary when it is
 // compiled, else qsm-ccr from PATH.
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { which } from "bun";
 import { claudeLaunches, makeWorld } from "./fixtures/world.ts";
 import { runLead } from "./lead.ts";
-
-setDefaultTimeout(30_000);
 
 describe("the teammate command the lead hands its teammates", () => {
   test("a compiled binary names itself, wherever it was run from", async () => {
