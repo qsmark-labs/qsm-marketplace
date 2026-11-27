@@ -33,8 +33,10 @@ touching its users (Cockburn, ports and adapters).
 
 ## What we believe
 
-- **The best code is the code not written.** Every new file, function or plugin claims something
-  is missing; say the claim, or do not add it.
+- **The minimum, lazily, from what exists.** Do exactly what was asked and nothing more. Before
+  writing anything, find what already does it, here or anywhere, and extend it with the smallest
+  change. Every new file, function or plugin claims something is missing; say the claim, or do
+  not add it.
 - **The CLI itself, before a wrapper.** A skill names the CLI a job already has (`gh`, `git`, `wt`)
   and the model calls it directly. A plugin wraps a CLI only for what the bare call cannot do, such
   as keeping a secret out of the context, because a wrapper is code to keep and one more place that
