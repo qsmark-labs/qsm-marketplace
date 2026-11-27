@@ -37,10 +37,6 @@ it later, without you there, and acts on it. Say what that reader needs and stop
 - One change per commit, so "and" in the subject means two commits, and a refactor never shares
   one with a behaviour change.
 
-## Ticket
-
-An epic, task or issue is written by the task-writing skill of qsm-tasks.
-
 ## Merge request
 
 - Title is the commit subject of the whole branch.

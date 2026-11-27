@@ -171,17 +171,44 @@ ships no shell function and edits no shell rc file.
 Each routed lead and each routed teammate of an ordinary Claude lead SHALL start in a separate
 Claude home with a fresh copy of the current settings. Its settings SHALL never be linked to the
 original settings, and a model pick SHALL not write the original. The home SHALL retain access to
-the current login, user instructions, skills, plugins, MCP configuration and team communication.
-A teammate SHALL share its lead's team and task directories, so all members see the same team.
-A Claude teammate of a routed lead SHALL start from the original settings, not a model the routed
-lead saved in its isolated settings. A home that cannot
-be prepared SHALL stop the launch with the cause. Session data SHALL NOT be deleted automatically.
-Isolated homes SHALL share a CCR-owned project session directory, so a later `qsm-ccr lead --
---resume` can find sessions started by an earlier routed lead without changing the original Claude
-home's settings or project sessions.
-`qsm-ccr doctor` SHALL answer `failed` when user settings `model` names a router model: a
-`<provider>,<slug>` pair, a gateway id (`anthropic/claude-ccr-...`), or a catalog slug. Doctor
-SHALL name the value and SHALL NOT rewrite it.
+the current login, user instructions, skills, plugins, MCP configuration and team communication. A
+teammate SHALL share its lead's team and task directories, so all members see the same team. A
+Claude teammate of a routed lead SHALL start from the original settings, not a model the routed lead
+saved in its isolated settings. When a launch's claude ends, qsm-ccr SHALL remove, and name on
+stderr, only what it made in the home (the copied settings and the symlinks), and the next launch
+SHALL do the same for the home of a launch that died, unless a live process still has that home as
+its `CLAUDE_CONFIG_DIR`. What Claude wrote in the home (history, plans, transcripts) SHALL stay, and
+the directory SHALL be removed only when it is then empty; one that still holds what Claude wrote
+SHALL be renamed from `session.<pid>.<random>` to `kept.<pid>.<random>`, so no later launch looks
+at it again. A home that cannot be prepared SHALL stop
+the launch with the cause. Session data SHALL NOT be deleted automatically. Isolated homes SHALL
+share a CCR-owned project session directory, so a later `qsm-ccr lead -- --resume` can find sessions
+started by an earlier routed lead without changing the original Claude home's settings or project
+sessions. `qsm-ccr doctor` SHALL answer `failed` when user settings `model` names a router model: a
+`<provider>,<slug>` pair, a gateway id (`anthropic/claude-ccr-...`), or a catalog slug. Doctor SHALL
+name the value and SHALL NOT rewrite it.
+
+#### Scenario: A teammate outlives its lead
+
+- **WHEN** a lead's claude ends and removes its home while a teammate's claude still runs
+- **THEN** the teammate's `teams` and `tasks` SHALL still resolve, because they link the real
+  directories and not the lead's home entries
+
+#### Scenario: A teammate outlives its lead and the Claude home had no teams directory
+
+- **WHEN** the Claude home a launch starts from had no `teams` or `tasks` directory
+- **THEN** they SHALL live in the state directory and the teammate's links SHALL still resolve
+
+#### Scenario: A home that cannot be cleaned
+
+- **WHEN** removing a launch's home fails after its claude ended
+- **THEN** qsm-ccr SHALL name the failure on stderr and keep claude's exit code
+
+#### Scenario: Homes of the shape before the pid name
+
+- **WHEN** the installer runs and the homes directory holds `session-<random>` homes
+- **THEN** it SHALL name and remove only what qsm-ccr made in each, keep what Claude wrote under a
+  `kept-<random>` name, and leave a home a live claude still uses
 
 #### Scenario: Verification that startup leaves the model alone
 
