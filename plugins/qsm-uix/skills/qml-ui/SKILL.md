@@ -5,28 +5,25 @@ description: "Use when writing or changing QML in a Quickshell shell: components
 
 # QML UI
 
-Quickshell moves fast: an unaided model guesses a colour or exclusive zone and leaves nothing to
-measure. This skill builds on the shell's tokens, reserves the right space, and leaves a way to
-read geometry back. It is how QML is written; what a bar, popout or OSD does, the desktop rules and
-the Hyprland config are desktop-ui. Values: ui-design, ui-palette. Names, keyboard, reduced
-motion: a11y-audit.
+How QML is written in a Quickshell shell: on the shell's tokens, with the right reserved space, and
+a way to read geometry back. What a bar, popout or OSD does, the desktop rules and the Hyprland
+config are desktop-ui. Values: ui-design, ui-palette. Names, keyboard, reduced motion: a11y-audit.
 
 ## Before the first line
 
 1. **Confirm the stack.** `shell.qml` with `import Quickshell` in the project, and `qs list --all`
    shows the running instance with its config path. Anything else is not this skill.
 2. **Find the token source.** The shell's `Theme` singleton (`pragma Singleton`, usually under
-   `theme/`), the `Motion` singleton when it has one, and the design source if one exists. Read
-   them and the nearest existing component; match its structure, because a second dialect is a
-   defect. With no singleton, say so and ask for the design source; never invent tokens inside a
-   component. Shell unreadable: write `Theme.<role>` and list those names as assumed.
+   `theme/`), the `Motion` singleton when it has one, and the design source if one exists. Read them
+   and the nearest existing component; match its structure, because a second dialect is a defect.
+   With no singleton, use the design source; never invent tokens inside a component. Shell
+   unreadable: write `Theme.<role>` and list those names as assumed.
 3. **Reuse before building.** Search the shared component library by concept before writing any
    visible control, in a consumer of the library too, then Qt Quick Controls. When a type already
    does the concept, use it and add the missing slot to it. A consumer never defines a control
    named after where it is used (`PopoutRow`, `OsdSlider`): that is a second copy that drifts, and
    a system control brings focus and keyboard handling a custom one must redo.
-4. **Open every file the owner named** (plugin, PDF, spec) before the first edit; say so in the
-   first reply if one is missing.
+4. **Open every file the owner named** (plugin, PDF, spec) before the first edit.
 
 ## Rules
 
@@ -42,10 +39,9 @@ motion: a11y-audit.
   prints nothing.
 - **Pairs travel together.** A fill token and its on-token (`primary` / `onPrimary`) are read
   together in one item; never copy a colour into a local `property color`.
-- **Durations and easing come from the motion tokens** (`Motion`, else `Theme`; with none, say so
-  and ask). Reduced motion is clamped in the singleton, nowhere else: a component that bypasses
-  it breaks the setting for the whole shell. How a surface animates is desktop-ui. A tappable item
-  reads `TapHandler.pressed`.
+- **Durations and easing come from the motion tokens** (`Motion`, else `Theme`). Reduced motion is
+  clamped in the singleton, nowhere else: a component that bypasses it breaks the setting for the
+  whole shell. How a surface animates is desktop-ui. A tappable item reads `TapHandler.pressed`.
 - **Integer geometry.** A fractional `x`/`y`/`width` blurs a 1 px edge. Round computed sizes
   (`Math.round`, `Math.ceil` for text). Position with `anchors` or `Layout`, never both on one
   item; `Layout` where the content drives the parent.
@@ -122,8 +118,10 @@ Qt's QML conventions and the qt-qml-review checklist, the stricter where they di
   fed a title wider than itself elides (`elide: Text.ElideRight`, bounded `Layout.maximumWidth`);
   a `Layout.fillWidth` text needs `Layout.minimumWidth: 0` or it pushes siblings off.
 - Variants: a `variant` property on that singleton read by a `Loader` per component, flipped by
-  `IpcHandler { target: "proto"; ... }` (`call proto pick 2`). Variants live outside the
-  production import path; replay sets `active` to false, then true.
+  `IpcHandler { target: "proto"; ... }` (`call proto pick 2`). Variants live outside the production
+  import path; replay sets `active` to false, then true.
+- A property or id named `on<Capital>`, or `size`, `radius` or `live` on an Item, crashes the load
+  or drops the config silently: rename it.
 - `font.letterSpacing` is in pixels: convert tracking from em.
 
 ## Make it checkable
@@ -160,24 +158,10 @@ live geometry.
 2. `qmllint <file>`, clean. Without import paths it may report Quickshell and `qs.*` types as not
    found (`-I <dir>` points it at qmltypes); read any other warning as real. Fix warnings, do not
    silence them.
-3. Run the shell only when the owner asked (`qs -p <shell.qml>`, then dump the tree). Otherwise end
-   with "Not verified on the composed surface" and list each owner check as surface, route,
-   expected state: geometry read from code is a hypothesis, and lint proves syntax only, so never
-   write "works" for pointer, hover, focus or animation behaviour.
-
-## Red flags
-
-- When a panel overlaps windows on one monitor, read `reserved`, the window's anchors and
-  `exclusionMode` for that output before touching a margin: the cause is nearly always a zone or
-  a missing per-output window.
-- When `qmllint` is clean but the surface renders empty, read `qs log`: lint misses runtime type
-  failures.
-- When a property or id is named `on<Capital>`, or `size`, `radius`, `live` on an Item, rename
-  it: it crashes the load or drops the config silently.
+3. Run the shell (`qs -p <shell.qml>`, then dump the tree) to verify behaviour. Lint proves syntax
+   only: never write "works" for pointer, hover, focus or animation behaviour you did not run.
 
 ## Say it in the reply
 
-- The tokens used and any added.
-- The `qmlformat` / `qmllint` result, whether the surface was run (or the owner checks), and the
-  dump target and `objectName`.
-- For reserved space: the `reserved` numbers before and after, or that they were not read.
+The tokens added, the `qmlformat` / `qmllint` result, whether the surface was run, and for reserved
+space the `reserved` numbers before and after.

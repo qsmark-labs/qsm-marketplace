@@ -5,28 +5,20 @@ description: "Use when a web app or PWA (browser, React, plain CSS) is built for
 
 # Feeling Native On Mobile
 
-A web app on a phone gives itself away by a handful of platform-layer tells: viewport, touch,
-scroll, safe areas, browser chrome. This skill removes them one by one for the person who ships web
-UI to real phones. It does not design or review motion (animate, review-animations) and does not
-cover React Native. Most "janky on mobile" reports are not animation problems: they
-are a tap delay, a gray flash, or a hover that will not let go.
-
-The phone is the source of truth. A desktop browser with the device toolbar on is not a phone, and
-none of the bugs below reproduce there. When no hardware is at hand, say which fixes you verified
-from code and which need a device.
+Removes the platform-layer tells of a web app on a phone: viewport, touch, scroll, safe areas,
+browser chrome. Not motion (animate, review-animations), not React Native. A desktop browser with
+the device toolbar on does not reproduce these bugs; say which fixes need a device.
 
 ## Hard rules
 
-1. **Every fix ships with its reason.** Apply it where the reason applies, not out of habit:
-   `user-select: none` on a button is correct, on body text it is a defect.
+1. **Apply a fix where its reason applies:** `user-select: none` on a button is correct, on body
+   text it is a defect.
 2. **Media queries over device sniffing.** `(hover: hover)`, `(pointer: fine)`, `env()`, `dvh`.
    Never branch on user agent or screen width to guess touch; JavaScript is the wrong tool when a
    declaration or a meta tag does it.
 3. **Touch and mouse are not exclusive** (iPad trackpads, touch laptops). Gate by capability.
 4. **Never disable zoom.** `user-scalable=no` and `maximum-scale=1` fail accessibility; fix the
    input font size that caused the zoom.
-5. **Test on hardware before calling it done**, over the LAN IP, with Safari Web Inspector or
-   `chrome://inspect`.
 
 ## Symptom table
 
@@ -88,9 +80,8 @@ from code and which need a device.
     theme updates the tag from JavaScript on toggle; an installed PWA also needs the manifest
     `theme_color` and `background_color`.
 11. **Hardware.** Sticky hover, tap highlight, URL bar effect on `vh`, input zoom, click delay,
-    overscroll, safe areas and the software keyboard are real-device behaviours. Use a phone a few
-    years old, with the keyboard open, once in landscape, and as an installed PWA when that is a
-    target. The Xcode Simulator beats emulation but still misses touch feel.
+    overscroll, safe areas and the software keyboard are real-device behaviours (LAN IP, Safari Web
+    Inspector or `chrome://inspect`).
 
 ## Baseline
 
@@ -125,11 +116,5 @@ fix 10.
 | `touch-action: none` on something the user must scroll past | `pan-x` or `pan-y` |
 | `env(safe-area-inset-*)` without `viewport-fit=cover` | add the meta tag |
 | one `theme-color` for both schemes | one per scheme |
-| declaring it fixed from emulation | real hardware |
-
-## Say it in the reply
-
-At most a few lines: the symptom matched and its one-line reason; each change as file and
-declaration; which fixes need a phone to confirm. The code is the deliverable, not a report.
 
 Source: emilkowalski/skills mobile-native (MIT), condensed.
