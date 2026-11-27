@@ -105,7 +105,9 @@ A display-width helper is already a dependency of the framework; use it, add no 
   written per redraw. Redraw only what changed.
 - Depth is one step of background shade or a rule line, never transparency; hierarchy is bold, dim
   and case, never colour alone. The font is the person's.
-- Check the narrow 60-to-80-column band and below the application's minimum. Width and table
+- Stress it: an environment variable (`APP_DATA=worst`, `empty`, `one`) swaps the data source where
+  rows load, and `APP_VARIANT=2` picks a design variant there; one binary prints each, nothing is
+  edited. Check the narrow 60-to-80-column band and below the application's minimum. Width and table
   folding follow cli-ui.
 
 ## Plain mode
