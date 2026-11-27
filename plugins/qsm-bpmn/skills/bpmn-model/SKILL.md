@@ -54,7 +54,7 @@ Analytic sub-class only, read by business people:
 4. `qsm-bpmn render <copy>`, then look at each changed picture (rasterise it and read the image). A
    cut label, two shapes on each other or a flow through a step goes back to step 1.
 5. `qsm-bpmn paths <copy> --specs openspec/`. Every cover path of a changed process needs a scenario
-   that cites its id.
+   that cites its id. When all of it is clean, write the copy into `models/<project>.bpmn`.
 6. `qsm-bpmn render` writes the pictures beside the graph, and `qsm-bpmn render --check` runs
    before every commit: a stale picture is a lie in the tree. When `render` refuses a picture whose
    layout measure grew, restructure the graph or ask the owner; `--accept <measure>` is the

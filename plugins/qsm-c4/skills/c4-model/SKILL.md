@@ -49,7 +49,7 @@ Four kinds at their levels, the vocabulary the tool supplies:
    again.
 4. `qsm-c4 render <copy>`, then look at each changed view (rasterise the `.drawio.svg` and read the
    image). A label over a box, two boxes on each other or a view nobody can follow goes back to
-   step 1.
+   step 1. When it is clean, write the copy into `models/<project>.c4`.
 5. `qsm-c4 render` writes the views beside the graph, and `qsm-c4 render --check` runs before
    every commit: a stale view is a lie in the tree. When `render` refuses a view whose layout
    measure grew, restructure the graph or ask the owner; `--accept <measure>` is the owner's to
