@@ -321,7 +321,7 @@ tree, in a repository the person declined, while a build runs, or with a fresh i
 nothing. A stale index of at most 5000 files (counted by `git ls-files`) SHALL be refreshed by a
 detached build, silently. With no index, or a stale one above 5000 files, `auto` SHALL answer
 `ask` with `askText` in its data, and the first `prompt.submit` SHALL carry that text as hidden
-`context`, naming the file count, an
+`context`, telling it to ask the person with its own AskUserQuestion, naming the file count, an
 estimate of about 15 MB and 73 seconds per 1000 files, above 5000 files a WARNING that it will be
 large, and the two answers `qsm-index auto <root> --consent yes` and `--consent no`. A yes SHALL
 start the build; a no SHALL be recorded in the repository's cache directory and SHALL stop every
@@ -337,8 +337,8 @@ reason as one context line.
 #### Scenario: the session-start hook asks before the first index of a repository
 
 - **WHEN** the session starts in a git repository with no index and no build running
-- **THEN** the `askText` the hook hands the agent names `qsm-index auto <root> --consent yes` and
-  `--consent no`, and no build starts
+- **THEN** the `askText` the hook hands the agent tells it to ask the person with AskUserQuestion
+  and names `qsm-index auto <root> --consent yes` and `--consent no`, and no build starts
 
 #### Scenario: the first ask warns that a repository above 5000 files will be large
 
@@ -354,7 +354,7 @@ reason as one context line.
 #### Scenario: a stale index above 5000 files asks whether to reindex
 
 - **WHEN** the session starts in a repository of more than 5000 files whose index is stale
-- **THEN** the `askText` offers the reindex, with the warning, and no build starts
+- **THEN** the `askText` asks whether to reindex, with the warning, and no build starts
 
 #### Scenario: a fresh index or a running build is left alone without a word
 

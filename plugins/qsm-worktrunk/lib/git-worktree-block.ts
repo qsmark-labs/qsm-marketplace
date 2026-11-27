@@ -44,7 +44,7 @@ export function denialFor(command: string): string | null {
 function denial(subcommand: string): string {
   const replacement = SUBCOMMAND_REPLACEMENT[subcommand] ?? GENERIC_REPLACEMENT;
   const named = subcommand.length > 0 ? `git worktree ${subcommand}` : "git worktree";
-  return `qsm-worktrunk: ${named} is blocked. Use wt instead: ${replacement}..`;
+  return `qsm-worktrunk: ${named} is blocked. Use wt instead: ${replacement}.`;
 }
 
 /** The `git worktree` subcommand this one command runs, "" for a bare

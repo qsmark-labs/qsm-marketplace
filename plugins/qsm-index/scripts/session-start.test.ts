@@ -54,6 +54,7 @@ test("the session-start hook asks before the first index of a repository", () =>
 
   expect(exit).toBe(0);
   expect(context).toContain(`${repo} has no qsm-index map yet`);
+  expect(context).toContain("AskUserQuestion");
   expect(context).toContain(`qsm-index auto ${repo} --consent yes`);
   expect(context).toContain(`qsm-index auto ${repo} --consent no`);
   expect(context).not.toContain("WARNING");
@@ -99,7 +100,7 @@ test("a stale index above 5000 files asks whether to reindex", () => {
 
   expect(context).toContain(`The qsm-index map of ${repo} is stale (5001 files`);
   expect(context).toContain("WARNING: it will be large");
-  expect(context).toContain("To reindex it");
+  expect(context).toContain("whether to reindex it");
   expect(readStatus(files.status)).toEqual(before);
 });
 
