@@ -1,6 +1,7 @@
 // Test fixture: a stand-in for `qs` that logs its argv and, on `ipc call askpass request`, answers on
 // the request's reply socket as the person would. FAKE_ACTION is allow, deny, cancel, or none (no
 // answer at all); FAKE_VALUE is the typed text; FAKE_QS_LOG names the file the argv lines go to.
+// FAKE_TERM_ON_WITHDRAW sends SIGTERM to the helper as it dismisses the pane.
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,6 +13,9 @@ import { connect } from "node:net";
 const args = process.argv.slice(2);
 const log = process.env.FAKE_QS_LOG;
 if (log) appendFileSync(log, JSON.stringify(args) + "\\n");
+if (args[0] === "ipc" && args[5] === "withdraw" && process.env.FAKE_TERM_ON_WITHDRAW === "1") {
+  process.kill(process.ppid, "SIGTERM");
+}
 const at = args.indexOf("request");
 if (args[0] === "ipc" && at !== -1) {
   if (process.env.FAKE_ACTION === "none") {

@@ -77,7 +77,7 @@ All of these exit 0, and the output is read, not assumed:
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 ```
 
 Then the kind's own proof: `bun run test:hooks` when it has hooks, one real run of each new verb.

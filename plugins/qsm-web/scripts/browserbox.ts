@@ -1,7 +1,7 @@
 // qsm-web browserbox: the last rung.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { spawnDetached } from "../../../lib/detach.ts";
+import { isAlive, spawnDetached } from "../../../lib/detach.ts";
 import { home } from "../../../lib/paths.ts";
 import { join } from "node:path";
 import {
@@ -24,6 +24,7 @@ import {
   type Instance,
   instanceName,
   listDefinition,
+  orphanedInstances,
   liveViewLink,
   liveViewUrl,
   outDir,
@@ -44,6 +45,15 @@ const READY_TRIES = 120;
 const READY_PAUSE_MS = 500;
 const POLL_PAUSE_MS = 3000;
 const DEFAULT_WAIT_MS = 300_000;
+/** How long ctl.py, the driver's client inside the box, waits on the driver's socket. */
+const CTL_SOCKET_LIMIT_MS = 600_000;
+
+/** The longest a healthy driver takes to answer one call; `QSM_BROWSERBOX_REPLY_MS` shortens it
+ * for a test. */
+function replyLimitMs(env: Readonly<Record<string, string | undefined>>): number {
+  const value = Number(env.QSM_BROWSERBOX_REPLY_MS);
+  return Number.isInteger(value) && value > 0 ? value : CTL_SOCKET_LIMIT_MS + POLL_PAUSE_MS;
+}
 
 /** A synchronous pause, with no runtime-specific helper behind it. */
 function pause(ms: number): void {
@@ -97,28 +107,43 @@ class Box {
       );
       return { ok: true, dryRun: true };
     }
-    const { status, stdout } = spawnSync(this.runtime(), args, {
+    // A driver that never answers must not hold this process, whose signal handlers run only
+    // between synchronous calls. ctl.py, the driver's client inside the box, gives up on the
+    // driver after 600 s whatever the job is (a script's waits and a fetch's settle and capture
+    // all fit inside it), so that plus one poll pause is the longest a healthy driver takes.
+    const limitMs = replyLimitMs(process.env);
+    const { status, stdout, error } = spawnSync(this.runtime(), args, {
       encoding: "utf8",
       input: `${JSON.stringify(job)}\n`,
       stdio: ["pipe", "pipe", quiet ? "ignore" : "inherit"],
+      timeout: limitMs,
     });
-    const reply = (stdout ?? "").trim();
-    if (status !== 0 && reply.length === 0) {
-      return { ok: false, error: { kind: "driver", message: `the driver exited ${status ?? 1}` } };
+    if (error !== undefined && "code" in error && error.code === "ETIMEDOUT") {
+      return {
+        ok: false,
+        error: { kind: "driver", message: `the driver did not answer within ${limitMs} ms` },
+      };
     }
-    let answer: unknown;
-    try {
-      answer = JSON.parse(reply);
-    } catch {
-      return { ok: false, error: { kind: "driver", message: "the driver answered with non-JSON" } };
-    }
-    return isRecord(answer)
-      ? answer
-      : {
-          ok: false,
-          error: { kind: "driver", message: "the driver answered with non-object JSON" },
-        };
+    return driverAnswer(status, stdout ?? "");
   }
+}
+
+/** What a driver's exit status and standard output say: its JSON object, or an error naming
+ * what was wrong with the reply. */
+function driverAnswer(status: number | null, stdout: string): Record<string, unknown> {
+  const reply = stdout.trim();
+  if (status !== 0 && reply.length === 0) {
+    return { ok: false, error: { kind: "driver", message: `the driver exited ${status ?? 1}` } };
+  }
+  let answer: unknown;
+  try {
+    answer = JSON.parse(reply);
+  } catch {
+    return { ok: false, error: { kind: "driver", message: "the driver answered with non-JSON" } };
+  }
+  return isRecord(answer)
+    ? answer
+    : { ok: false, error: { kind: "driver", message: "the driver answered with non-object JSON" } };
 }
 
 /** A job as it may be printed: a filled value is replaced by its marker. */
@@ -231,8 +256,44 @@ function ready(box: Box, name: string): boolean {
   return false;
 }
 
-/** Start one instance. */
-function startInstance(box: Box, out?: string): Instance & { readonly out: string } {
+/** Removes the instances whose run died before it removed them (killed, timed out), naming each
+ * on stderr. An instance that lives until `browserbox stop` carries no owner and is never swept. */
+function sweepOrphans(box: Box): void {
+  if (box.dryRun) {
+    return;
+  }
+  const { status, stdout } = box.run(listDefinition());
+  if (status !== 0) {
+    throw new QsmError("failed", `listing the running instances failed (exit ${status})`);
+  }
+  for (const { id, name } of orphanedInstances(stdout, isAlive)) {
+    // By id, never by name: names come from the port, so a new run may already hold this one.
+    const removed = box.run(stopDefinition(id));
+    if (removed.status !== 0) {
+      const again = box.run(listDefinition());
+      if (again.status !== 0) {
+        throw new QsmError("failed", `listing the running instances failed (exit ${again.status})`);
+      }
+      if (again.stdout.split("\n").some((line) => line.trim().split(/\s+/)[1] === id)) {
+        throw new QsmError(
+          "failed",
+          `${name} is left by a dead run and could not be removed (exit ${removed.status})`,
+        );
+      }
+      process.stderr.write(`qsm-web browserbox: ${name} was already removed by another sweep\n`);
+      continue;
+    }
+    process.stderr.write(`qsm-web browserbox: removed ${name}, left by a run that ended\n`);
+  }
+}
+
+/** Start one instance. An ephemeral one is labelled with this run's pid, so a later run can remove
+ * it if this one dies; a persistent one carries no owner. */
+function startInstance(
+  box: Box,
+  ephemeral: boolean,
+  out?: string,
+): Instance & { readonly out: string } {
   ensureImage(box);
   const port = pickPort(instances(box).map((i) => i.port));
   if (port === null) {
@@ -251,6 +312,7 @@ function startInstance(box: Box, out?: string): Instance & { readonly out: strin
       outDir: where,
       liveView,
       user: `${process.getuid?.()}:${process.getgid?.()}`,
+      ownerPid: ephemeral ? process.pid : null,
     }),
   );
   if (started.status !== 0) {
@@ -273,11 +335,13 @@ function startInstance(box: Box, out?: string): Instance & { readonly out: strin
 }
 
 function start(call: Call, box: Box): Outcome {
-  const instance = startInstance(box, optionalString(call, "out"));
+  sweepOrphans(box);
+  const instance = startInstance(box, false, optionalString(call, "out"));
   return ok(instance, JSON.stringify(instance));
 }
 
 function ls(_call: Call, box: Box): Outcome {
+  sweepOrphans(box);
   const live = instances(box);
   return ok(live, JSON.stringify(live));
 }
@@ -304,12 +368,49 @@ function stop(call: Call, box: Box): Outcome {
   return ok({ stopped: name }, `stopped ${name}`);
 }
 
+/** Removes the container a fetch started for itself. A failed removal is named on stderr and the
+ * fetch's own result or error stands, because the next call sweeps what a dead run left. */
+function removeEphemeral(box: Box, name: string): void {
+  const { status } = box.run(stopDefinition(name));
+  if (status !== 0) {
+    const left = `${name} could not be removed after the fetch (exit ${status})`;
+    process.stderr.write(`qsm-web browserbox: ${left}\n`);
+  }
+}
+
 /** One address, one result. */
 function fetchOne(call: Call, box: Box): Outcome {
   const given = optionalString(call, "in");
   const keep = flagArg(call, "keep");
   const url = requiredString(call, "url");
-  const name = given ?? startInstance(box).name;
+  sweepOrphans(box);
+  const ephemeral = given === undefined && !keep;
+  const name = given ?? startInstance(box, ephemeral).name;
+  // A signal handler runs only between the synchronous calls below, so it can be late; the
+  // finally covers every other end, and the owner label covers the one nothing can catch (SIGKILL).
+  const ends = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+  const onSignal = (signal: NodeJS.Signals): void => {
+    removeEphemeral(box, name);
+    process.exit(128 + (signal === "SIGINT" ? 2 : signal === "SIGTERM" ? 15 : 1));
+  };
+  if (ephemeral) {
+    for (const s of ends) {
+      process.on(s, onSignal);
+    }
+  }
+  try {
+    return fetchIn(call, box, name, url, keep);
+  } finally {
+    if (ephemeral) {
+      for (const s of ends) {
+        process.off(s, onSignal);
+      }
+      removeEphemeral(box, name);
+    }
+  }
+}
+
+function fetchIn(call: Call, box: Box, name: string, url: string, keep: boolean): Outcome {
   const job: Record<string, unknown> = {
     cmd: "fetch",
     url,
@@ -328,9 +429,6 @@ function fetchOne(call: Call, box: Box): Outcome {
   }
   const answer = box.send(name, job);
   const result: Record<string, unknown> = { ...answer, instance: name };
-  if (given === undefined && !keep) {
-    box.run(stopDefinition(name));
-  }
   return answer.ok === true
     ? ok(result, JSON.stringify(result))
     : fail("failed", `${url} could not be fetched`, result);

@@ -43,10 +43,6 @@ reader needs and stop.
 - A commit that bypasses a check says so in the body, with the number that failed and why the
   bypass is right, because silence is a lie of omission the next reader inherits.
 
-## Ticket
-
-An epic, task or issue is written by the task-writing skill of qsm-tasks.
-
 ## Merge request
 
 - Title is the commit subject of the whole branch.

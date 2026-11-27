@@ -46,13 +46,13 @@ import {
 import {
   type FetchPack,
   fetchFromRegistry,
-  PACKS_SCRATCH_PREFIX,
+  PACKS_SCRATCH_TOOL,
   type ResolvedPack,
   resolvePacks,
 } from "./rule-packs.ts";
 import { isIgnored, withCommitTree, withIndexTree, withScratchDir } from "./tree.ts";
 
-const REPORT_SCRATCH_PREFIX = "qsm-langdev-report-";
+const REPORT_SCRATCH_TOOL = "qsm-langdev-report";
 
 /** Every file the index holds: only what is staged is on its way into a commit. Empty when git
  * could not answer. */
@@ -259,7 +259,7 @@ function scoreWithReport(
   files: readonly string[],
   timeoutMs: number,
 ): Promise<Score> {
-  return withScratchDir(REPORT_SCRATCH_PREFIX, (reportDir) => {
+  return withScratchDir(REPORT_SCRATCH_TOOL, (reportDir) => {
     const readReport = (): string => {
       try {
         return readFileSync(join(reportDir, reportFile), "utf8");
@@ -1331,7 +1331,7 @@ function withPacks<T>(
   if (wanted.length === 0) {
     return fn(new Map());
   }
-  return withScratchDir(PACKS_SCRATCH_PREFIX, async (dir) =>
+  return withScratchDir(PACKS_SCRATCH_TOOL, async (dir) =>
     fn(await resolvePacks(wanted, dir, fetchPack, timeoutMs)),
   );
 }
