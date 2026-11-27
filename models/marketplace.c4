@@ -59,6 +59,10 @@ model {
       #shared
       technology 'TypeScript modules'
       metadata { group 'Core' path 'lib' }
+      reap = component 'Run cleanup' 'Marks the processes and temp directories of a tool run, and ends or removes what a call or a killed run left' {
+        technology 'TypeScript module'
+        metadata { path 'lib/reap.ts' }
+      }
     }
     essentials = container 'qsm-essentials' 'The shared method: how to debug, design, test, write and delegate' {
       technology 'skills, agents'
@@ -138,22 +142,13 @@ model {
         metadata { path 'plugins/qsm-openspec/skills/spec-archive' }
       }
     }
-    tasks = container 'qsm-tasks' 'One door to the board: features, tasks, feedback' {
-      technology 'Bun binary, skills'
+    tasks = container 'qsm-tasks' 'Task work through the GitHub CLI' {
+      technology 'Skill'
       metadata { group 'Features' path 'plugins/qsm-tasks' }
-      tool = component 'qsm-tasks binary' 'The binary: ready, add, claim, close and the other board verbs' {
-        technology 'Bun binary'
-        metadata { path 'plugins/qsm-tasks/scripts' }
-      }
-      tasktool = component 'task-tool' 'When and how a session reads and changes the board' {
+      tasktool = component 'task-tool' 'Read issues, file work and update project status' {
         #artifact
         technology 'SKILL.md'
         metadata { path 'plugins/qsm-tasks/skills/task-tool' }
-      }
-      writing = component 'task-writing' 'How a task is written: intent, acceptance, proof' {
-        #artifact
-        technology 'SKILL.md'
-        metadata { path 'plugins/qsm-tasks/skills/task-writing' }
       }
     }
     bpmn = container 'qsm-bpmn' 'Lints, lays out, renders and walks the BPMN graph' {
@@ -394,8 +389,8 @@ model {
   mp.bpmn.kinds -> mp.docs.tool 'installs the bpmn kind with' { technology 'exec, stdio' }
   mp.bpmn.subgraph -> mp.docs.tool 'gets the base and branch snapshots with' { technology 'exec, stdio' }
   mp.spec.apply -> mp.essentials 'hands disjoint work to the agents of' { technology 'skill reference' }
-  mp.spec.propose -> mp.tasks.tool 'has the agent bind the change to its feature with' { technology 'instruction' }
-  mp.plan.planskill -> mp.tasks.tool 'has the agent file and split features with' { technology 'instruction' }
+  mp.spec.propose -> mp.tasks.tasktool 'guides the agent through issue work with' { technology 'instruction' }
+  mp.plan.planskill -> mp.tasks.tasktool 'guides the agent through issue work with' { technology 'instruction' }
   mp.plan.planskill -> mp.spec.propose 'hands the change to' { technology 'skill reference' }
   mp.review.workflow -> mp.forge.tool 'has the agent post the review with' { technology 'instruction' }
   mp.spec.apply -> mp.forge.tool 'has the agent open the task pull request with' { technology 'instruction' }
@@ -425,16 +420,22 @@ model {
   mp.worktrunk -> mp.lib 'builds on cli-base, hooks-kit, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
   mp.spec.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-manifest' { technology 'import' }
   mp.forge.tool -> mp.lib 'builds on cli-base, install-base, outcome, qsm-error, qsm-manifest' { technology 'import' }
-  mp.tasks.tool -> mp.lib 'builds on install-base' { technology 'import' }
+  // who cleans up through the run cleanup of the shared kit (measured: production imports of lib/reap)
+  mp.docs.kinds -> mp.lib.reap 'runs each converter under its run mark and sweeps its temp directories with' { technology 'import' }
+  mp.index -> mp.lib.reap 'runs its indexer under its run mark with' { technology 'import' }
+  mp.books -> mp.lib.reap 'runs its converters under its run mark and sweeps its temp directories with' { technology 'import' }
+  mp.ccr -> mp.lib.reap 'names its launch homes and marks its calls with' { technology 'import' }
+  mp.compuse -> mp.lib.reap 'ends what a fake machine left with' { technology 'import' }
+  mp.langdev -> mp.lib.reap 'ends what a checker left and sweeps its temp trees with' { technology 'import' }
+  mp.memory -> mp.lib.reap 'ends what a pack left with' { technology 'import' }
   mp.spec.hooks -> mp.spec.tool 'calls the verbs through the noun' { technology 'function call' }
   mp.forge.hooks -> mp.forge.tool 'calls the verbs through the noun' { technology 'function call' }
-  mp.tasks.tasktool -> mp.tasks.tool 'has the agent run' { technology 'instruction' }
   mp.forge.threads -> mp.forge.tool 'has the agent run' { technology 'instruction' }
   mp.review.workflow -> mp.review.strict 'dispatches' { technology 'Agent tool' }
   mp.review.reviewskill -> mp.review.strict 'dispatches' { technology 'Agent tool' }
 
   // the systems the plugins call
-  mp.tasks.tool -> github 'reads and writes issues and the board' { technology 'HTTPS, GraphQL' }
+  mp.tasks.tasktool -> github 'has the agent read issues and update projects' { technology 'gh' }
   mp.forge.tool -> github 'opens PRs, reads threads' { technology 'HTTPS, REST' }
   mp.spec.archive -> openspec 'has the agent archive the change with' { technology 'instruction' }
   mp.builder -> repo 'reads the changes and models of the branch' { technology 'file read' }

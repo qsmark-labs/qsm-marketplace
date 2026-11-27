@@ -45,7 +45,7 @@ Errors, environment reads and the hooks sandbox apply here as add-tool and add-h
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 ```
 
 ## Red flags

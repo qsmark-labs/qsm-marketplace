@@ -67,7 +67,7 @@ Each exits 0:
 mise exec -- bun run validate
 mise exec -- bun run lint
 mise exec -- bun run typecheck
-mise exec -- bun test ./ ./.gates
+mise exec -- bun test --parallel ./ ./.gates
 ```
 
 Then `bun run test:hooks` when it has hooks, and one real run of each new verb.

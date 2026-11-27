@@ -75,7 +75,7 @@ export function processes(): Proc[] {
 /** The environment entries that mark a child of this process as `tool`'s. The mark is a chain:
  * this run's entry is added after the marks this process carries, so a test run still finds what
  * the code under it started, and each tool still finds its own. */
-function ownerEnv(tool: string): Record<string, string> {
+export function ownerEnv(tool: string): Record<string, string> {
   const outer = process.env[OWNER_VAR];
   const entry = `${tool}:${process.pid}`;
   return { [OWNER_VAR]: outer === undefined || outer === "" ? entry : `${outer} ${entry}` };
@@ -102,6 +102,25 @@ function marked(tool: string): { stat: Stat; runPid: number }[] {
     const runPid = Number(entry?.slice(tool.length + 1));
     return Number.isInteger(runPid) ? [{ stat, runPid }] : [];
   });
+}
+
+/** Every value `name` has in the environment of a live process, read in one scan; this process is
+ * left out. The environment is searched as bytes before any of it is decoded. */
+export function envValues(name: string): Set<string> {
+  const prefix = `${name}=`;
+  return new Set(
+    pids().flatMap((pid) => {
+      const env = pid === process.pid ? null : procFile(pid, "environ");
+      const entry =
+        env?.includes(prefix) === true
+          ? env
+              .toString()
+              .split("\0")
+              .find((e) => e.startsWith(prefix))
+          : undefined;
+      return entry === undefined ? [] : [entry.slice(prefix.length)];
+    }),
+  );
 }
 
 /** The live processes this run of `tool` started. */
@@ -148,6 +167,16 @@ function reapNamed(tool: string, find: () => readonly Proc[], why: string): void
   }
 }
 
+/** Kills the processes this run of `tool` started and left running. */
+export function reapOwned(tool: string, why: string): void {
+  reapNamed(tool, () => owned(tool), why);
+}
+
+/** Kills the processes runs of `tool` started that have since ended: what a crash left. */
+export function reapOrphaned(tool: string, why: string): void {
+  reapNamed(tool, () => orphaned(tool), why);
+}
+
 /** Runs `command` and waits for it, with every process it starts marked as `tool`'s: before the
  * call what a crashed run of `tool` left is killed, and after it whatever the command left
  * running, because a timeout kills the direct child only. Each kill is named on stderr. Without an
@@ -158,13 +187,13 @@ export function spawnMarked(
   args: readonly string[],
   options: Omit<SpawnSyncOptionsWithStringEncoding, "encoding">,
 ): SpawnSyncReturns<string> {
-  reapNamed(tool, () => orphaned(tool), LEFT_BY_CRASH);
+  reapOrphaned(tool, LEFT_BY_CRASH);
   const result = spawnSync(command, [...args], {
     ...options,
     encoding: "utf8",
     env: { ...(options.env ?? process.env), ...ownerEnv(tool) },
   });
-  reapNamed(tool, () => owned(tool), `left running by ${command}`);
+  reapOwned(tool, `left running by ${command}`);
   return result;
 }
 
@@ -176,7 +205,7 @@ export function runTempDir(tool: string, base: string = tmpdir()): string {
 
 /** The temp directories under `base` that runs of `tool` made and that ended without removing
  * them; a live run's directory is not listed. */
-function deadRunDirs(tool: string, base: string = tmpdir()): string[] {
+export function deadRunDirs(tool: string, base: string = tmpdir()): string[] {
   const prefix = `${tool}.`;
   return readdirSync(base)
     .filter((name) => name.startsWith(prefix))

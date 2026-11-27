@@ -45,7 +45,7 @@ Every command exits 0, as `mise exec -- ...`:
 - `bun run validate`
 - `bun run lint`
 - `bun run typecheck`
-- `bun test ./ ./.gates`
+- `bun test --parallel ./ ./.gates`
 
 ## Red flags
 
