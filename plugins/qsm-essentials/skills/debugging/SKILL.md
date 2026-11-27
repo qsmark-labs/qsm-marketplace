@@ -53,5 +53,5 @@ fault. Reproduce, find the cause, make the one fix for it.
 ## Say it in the reply
 
 The cause in one sentence with its "because", the command that reproduces it, and what the same
-command showed after the fix. When the cause is not proved, say what is known, what is only
-suspected and what you need.
+command showed after the fix. When the cause is not proved, say each known fact with its source,
+what is only suspected, how you will prove the cause, and what you need from whom.

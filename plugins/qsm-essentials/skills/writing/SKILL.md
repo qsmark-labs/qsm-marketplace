@@ -36,6 +36,7 @@ it later, without you there, and acts on it. Say what that reader needs and stop
   consequence a future reader must know. The what is in the diff, the why is nowhere else.
 - One change per commit, so "and" in the subject means two commits, and a refactor never shares
   one with a behaviour change.
+- A commit that bypasses a check says so in the body, with the number that failed.
 
 ## Merge request
 

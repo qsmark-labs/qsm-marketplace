@@ -44,8 +44,8 @@ restatement.
 
 The `run-and-verify` skill SHALL state three rules and no more: a change is done when the running
 system was seen doing what was asked, not when the build passes; when nothing written says how the
-project runs, the agent SHALL work it out from the code and run it, asking only when two readings
-are possible.
+project runs, the agent SHALL ask once; after the person's go, the agent SHALL write the run down
+in the project.
 
 #### Scenario: A change with a green build
 
@@ -55,8 +55,8 @@ are possible.
 #### Scenario: Nothing written says how to run
 
 - **WHEN** the project has no written way to run it
-- **THEN** the agent works out how to start it from the code and runs it, and asks only when two
-  readings are possible
+- **THEN** the agent asks once how to start it and write the answer into the project after the
+  person's go, so the next session does not ask
 
 ### Requirement: The design, testing, modelling, architecture, distribution and writing skills
 
@@ -113,8 +113,8 @@ holds. A retry, skip or weakened check SHALL NOT count as a fix.
 ### Requirement: subagents says how and why to delegate
 
 The `subagents` skill SHALL tell how to hand work to a subagent and why: a task with an acceptance
-check the agent can run, its own worktree for a writer, and a returned briefing treated as a belief
-to check, not proof.
+check the agent can run, its own worktree for a writer, a design decision settled with the person
+first, and a returned briefing treated as a belief to check, not proof.
 
 #### Scenario: Handing a task to an agent
 
@@ -277,7 +277,9 @@ silently.
 
 ### Requirement: Nothing specific to a language, project, or machine
 
-The plugin SHALL hold no language or framework idiom, no project fact, and no machine fact.
+The plugin SHALL hold no language or framework idiom, no project fact, and no machine fact. A
+project's run and verify facts SHALL be written into that project by the agent, after asking, and
+the `run-and-verify` skill SHALL say how.
 
 #### Scenario: A machine path appears in a skill
 
