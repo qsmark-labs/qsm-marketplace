@@ -5,12 +5,9 @@ description: "Use when building, reviewing or deciding the behaviour of a Quicks
 
 # Desktop UI
 
-A shell is the part of the desktop every other program sits in, so a wrong surface is wrong all
-day: a popout that vanishes under the pointer, an OSD that steals focus, a blur that never
-switches off. An unaided model builds each surface as a web card. This skill says what each
-surface is for, the rules that keep it quiet, and the Hyprland config around it. It builds
-nothing alone: QML syntax (Layout, Loader, IpcHandler, letterSpacing, tokens) is qml-ui; this
-skill keeps the motion forms; the numbers are ui-design and animate.
+What each shell surface is for, the rules that keep it quiet, and the Hyprland config around it.
+QML syntax (Layout, Loader, IpcHandler, letterSpacing, tokens) is qml-ui; the numbers are
+ui-design and animate.
 
 ## Surfaces
 
@@ -121,8 +118,6 @@ The numbers are animate's; this is how they land here.
   changes the hit area; reduced motion not clamped. On Hyprland: the built-in `default` curve on a
   window or layer; speed over 3 without reason; any animation on `workspaces`; `popin` below 90
   percent.
-- Survey and gaps: a `visible:` flip with no `Behavior`; a leaf with `enabled = false` that a
-  surface needs. A plan names targets as `Behavior` + `Easing.BezierSpline` + token duration.
 - Speed: animators (`OpacityAnimator`, `ScaleAnimator`, `XAnimator`, `YAnimator`,
   `RotationAnimator`) run on the render thread; a plain `NumberAnimation` runs on the GUI thread.
   Use an animator for motion that plays while the shell is busy. A `Behavior` on a property many
@@ -154,22 +149,6 @@ section says.
   deep.
 - A Qt or QML app (Quickshell included) is absent from the accessibility tree unless launched
   with `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`.
-
-## Red flags
-
-- When a popout's content exists only on hover, add the click and key route first, because a
-  touch, keyboard or screen-reader user cannot see it.
-- When a standing layer rule mentions blur, remove it and write the named rule at runtime, because
-  it blurs the desktop behind a surface that is mapped but empty.
-- When both QML and a layer leaf animate one surface, give it to one owner, because the two
-  fight and the exit flickers.
-
-## Say it in the reply
-
-- The surface kind and which of the rules above shaped it.
-- For Hyprland: the lines changed and which owner animates each surface.
-- What was run, and the owner checks not run, as surface, route, expected state. qml-ui owns the
-  composed-surface verification rule.
 
 Sources, paraphrased: KDE HIG, invent.kde.org/documentation/develop-kde-org `content/hig`
 (CC-BY-SA-4.0); GNOME HIG, gitlab.gnome.org/Teams/Websites/developer.gnome.org-hig `source` (no

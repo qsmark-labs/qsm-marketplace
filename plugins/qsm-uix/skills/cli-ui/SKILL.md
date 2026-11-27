@@ -5,15 +5,10 @@ description: "Use when writing or fixing a CLI command that prints and exits: st
 
 # Command-line output
 
-A command that prints and exits has an unknown reader: a person on a light terminal, a script, a log
-file in CI, a program that closes the pipe early. Unaided, an agent writes `\x1b[32m` literals,
-sizes columns by `string.length`, prints a stack trace for a user mistake, accepts a token as
-`--token`, and redraws a progress bar into every log. This skill is the rules for the author who
-ships such commands and answers for everyone who runs them. It does not cover a full-screen
-program (tui-ui), and in a qsm binary it does not redo the outcome system (below).
-
-Why: ui-design (tokens), a11y-audit (criteria), ux-audit (feedback timing). Here: how the streams
-are written. To check a command, run it three ways (TTY, `| cat`, `NO_COLOR=1`) and read the bytes.
+A command that prints and exits has an unknown reader: a person, a script, a CI log, a program that
+closes the pipe early. Rules for how the streams are written. It does not cover a full-screen
+program (tui-ui), and in a qsm binary it does not redo the outcome system (below). Tokens are
+ui-design, criteria a11y-audit, feedback timing ux-audit.
 
 ## In a qsm binary, what already exists
 
@@ -69,7 +64,6 @@ stdout does not make the stderr diagnostics unreadable. Pass the answer down.
 - Colour is an addition. Off when `--color=never` or `--no-color`, when `NO_COLOR` is set and not
   empty, when `TERM=dumb`, and on a non-TTY stream. On when `--color=always`, or when `FORCE_COLOR`
   is set, even for a non-TTY. Order: the flag, then `NO_COLOR`, then `FORCE_COLOR`, then detection.
-  Why: the user's explicit choice outranks detection and the flag outranks the environment.
   Document the order in `--help` and test the variables together, because runtimes disagree
   (`FORCE_COLOR=0` means off in the chalk convention; one tool may let it beat `NO_COLOR`).
 - Read the environment in one decision function, once. In Bun, `process.stdout.getColorDepth()`
@@ -148,25 +142,10 @@ stdout does not make the stderr diagnostics unreadable. Pass the answer down.
 - A reader that closes the pipe (`cmd | head`) ends the command with exit 0 or 141 and no trace:
   catch `EPIPE` on stdout (Node: `process.stdout.on("error", ...)`), stop writing, exit.
 
-## Red flags
+## Check
 
-- A `\x1b[` or a colour helper with no gate: route it through the one colour decision, or it leaks
-  into pipes and ignores `NO_COLOR`.
-- `padEnd` or `.length` for columns: use display width, or a wide glyph shifts the rest.
-- A status that differs only by colour: add the word.
-- Progress on stdout, or a bar with no TTY gate: move it to stderr and gate it, because the pipe
-  consumer gets every redraw.
-- A secret in a flag, an environment variable or an echo: change it to a file, stdin or the store.
-- A stack trace on `| head`: handle `EPIPE`.
-- Your own exit-code mapping in a qsm binary: use `exitOf` in `lib/outcome.ts`;
-  `lib/cli-base.ts` owns the `--json` and `--no-input` flags.
-
-## Say it in the reply
-
-- The colour order applied, and which stream carries what.
-- What a non-TTY run prints, from a real piped run (`bin | cat`, and with `NO_COLOR=1`).
-- The width used for a table and what happens when it is unknown or narrow.
-- What Ctrl-C and a closed pipe do, from a run. Anything unverified: a terminal you did not run in.
+Run the command three ways (TTY, `| cat`, `NO_COLOR=1`) and read the bytes. Report what a non-TTY
+run prints and anything unverified.
 
 Sources: clig.dev (CC-BY-SA-4.0, paraphrased), gfargo/tui-design-skill (MIT, `cli-basics.md`,
 `ecosystem-typescript.md` and `visual-patterns.md`), pageton/tui-design-skill (MIT). Wait thresholds

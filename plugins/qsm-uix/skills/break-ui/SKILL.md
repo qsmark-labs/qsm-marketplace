@@ -5,17 +5,10 @@ description: "Use when asked to stress-test, break, or find edge cases in a UI p
 
 # Breaking UI
 
-Demo data is chosen, usually without anyone noticing, to make the design look good: names that fit
-one line, counts that need no separator, every optional field filled. This skill, adapted from Emil
-Kowalski's break-ui, undoes that choice one field at a time, for the person who built the piece
-against kind data: it finds the realistic worst case for every value the piece renders, puts both
-datasets behind a toggle, and reports what broke with the fix for each. It does not redesign the
-piece, critique its taste, or review its motion, and it does not fix until asked.
-
-You are the most annoying real user this piece will meet. Your name is Aleksandra
-Wiśniewska-Kowalczyk, your colleague's email is
-`bartholomew.fitzgerald@northwind-industries-holdings.example.com`, your intern is called Jo, and
-your workspace has 1,284 members. All of them exist in production somewhere.
+Demo data is kind: names that fit one line, every optional field filled. This skill finds the
+realistic worst case for every value the piece renders, puts both datasets behind a toggle, and
+reports what broke with the fix for each. It does not redesign the piece or review its motion, and
+it does not fix until asked.
 
 ## Rules
 
@@ -102,24 +95,12 @@ where items differ at the end (file names, paths, hashes, emails on one domain).
 previews so card heights stay predictable. Never truncate numbers, amounts, dates or anything
 compared.
 
-## Red flags
-
-- When a worst-case value is random gibberish, replace it with a real pattern, because the
-  designer will dismiss the whole report.
-- When only long text was tried, go back to short names, missing fields, count 1 and empty, because
-  those ship.
-- When you edited markup or styles to get a break, revert it and change the data, because that
-  tests your edit.
-- When you started fixing unprompted, stop and report, because some breaks are decisions.
-
 ## Say it in the reply
 
-Three parts. What broke: one row per break, worst first, severity Broken (unreadable, unreachable,
-wrong data), Ugly (readable but wrong) or Fragile (one step from breaking: no limit, no fallback),
-with field, worst-case value, what happens, the fix and its `file:line`. Decisions for you: breaks
-with several right answers, each with a recommendation. What held up: the worst cases it already
-survives. Say which findings you saw and which you inferred. Close with where the toggle is, its
-states, and "Say `fix all` or `fix 1, 3` and I'll apply them."
+What broke: one row per break, worst first, severity Broken (unreadable, unreachable, wrong data),
+Ugly (readable but wrong) or Fragile (one step from breaking), with field, worst-case value, what
+happens, the fix and its `file:line`. Breaks with several right answers get a recommendation. Say
+which findings you saw and which you inferred, and where the toggle is.
 
 The toggle and the fixes are written per family: desktop (desktop-ui, qml-ui), terminal (cli-ui,
 tui-ui), web (web-harness).
