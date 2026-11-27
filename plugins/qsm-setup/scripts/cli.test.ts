@@ -99,6 +99,13 @@ describe("qsm-setup cli", () => {
     expect(toolbox?.output).toContain("qsm-toolbox is not on PATH");
   });
 
+  test("doctor skips the skill-only qsm-tasks plugin", () => {
+    const result = run(["doctor", "qsm-tasks", "--root", ROOT, "--json"]);
+    expect(result.exit).toBe(0);
+    const [check] = checksOf(result.stdout);
+    expect(check).toMatchObject({ name: "qsm-tasks", status: "SKIP" });
+  });
+
   test("install qsm-setup --dry-run prints the plan and exits 0", () => {
     const r = run(["install", "qsm-setup", "--dry-run", "--root", ROOT, "--json"], {
       QSM_BIN_DIR: "/nonexistent/bin",

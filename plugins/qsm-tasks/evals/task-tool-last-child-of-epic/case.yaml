@@ -1,7 +1,0 @@
----
-schema_version: "1.1"
-name: task-tool-last-child-of-epic
-tags: [scenario]
-runs: 3
-context:
-  scaffold_script: scaffold.sh

@@ -3,10 +3,11 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { type Envelope, isRecord, OUTCOME_CODES, type OutcomeCode } from "../outcome.ts";
 import type { Finding } from "../model-graph.ts";
-import { sandboxDir } from "./sandbox.ts";
+import { NO_GIT_MAINTENANCE, sandboxDir } from "./sandbox.ts";
 
 /** What a child needs to run and nothing the machine owns: PATH and TMPDIR from this run, HOME and
- * the XDG dirs inside `home`, then `extra`. No token, no config dir, no editor setting comes along. */
+ * the XDG dirs inside `home`, git with no background maintenance, then `extra`. No token, no config
+ * dir, no editor setting comes along. */
 export function isolatedEnv(
   home: string,
   extra: Record<string, string> = {},
@@ -18,6 +19,7 @@ export function isolatedEnv(
     XDG_CONFIG_HOME: join(home, "config"),
     XDG_DATA_HOME: join(home, "data"),
     XDG_CACHE_HOME: join(home, "cache"),
+    ...NO_GIT_MAINTENANCE,
     ...extra,
   };
 }
@@ -29,7 +31,8 @@ interface BinRun {
 }
 
 /** Runs a bun script the way a shell would. The environment is exactly `env`, or a fresh
- * `isolatedEnv` when none is given. */
+ * `isolatedEnv` when none is given. A child that gave no exit code fails the test: a signal ended
+ * it, as bun does to the child of a test past its time limit, and that is no answer of the tool. */
 export function runBin(
   script: string,
   argv: readonly string[] = [],
@@ -41,7 +44,11 @@ export function runBin(
     cwd: opts.cwd,
     input: opts.input,
   });
-  return { exit: r.status ?? 1, stdout: r.stdout, stderr: r.stderr };
+  if (r.status === null) {
+    const why = r.error?.message ?? `ended by ${String(r.signal)}`;
+    throw new Error(`${[script, ...argv].join(" ")} gave no exit code: ${why}`);
+  }
+  return { exit: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
 function isOutcomeCode(value: unknown): value is OutcomeCode {

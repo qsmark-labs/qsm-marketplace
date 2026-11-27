@@ -2,6 +2,7 @@
 // tests and unusual homes never touch real state.
 import { join } from "node:path";
 import { QsmError } from "./qsm-error.ts";
+import { envValues } from "./reap.ts";
 
 export type Env = Readonly<Record<string, string | undefined>>;
 
@@ -38,6 +39,11 @@ export function withClaudeDirAt(env: Env, dir: string): Record<string, string> {
   }
   out.CLAUDE_CONFIG_DIR = dir;
   return out;
+}
+
+/** The Claude homes live processes run with, read in one scan. */
+export function liveClaudeDirs(): Set<string> {
+  return envValues("CLAUDE_CONFIG_DIR");
 }
 
 /** The person's Claude Code settings, `settings.json` in the Claude home. */
