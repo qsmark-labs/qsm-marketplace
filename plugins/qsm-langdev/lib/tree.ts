@@ -11,54 +11,13 @@
 // there and silently falls back to a plain filesystem walk with no import
 // resolution at all, scoring nothing real under an inflated quality number.
 
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  symlinkSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { runTempDir, sweepNamed } from "../../../lib/reap.ts";
 import { git, type GitRun, scratchEnv } from "./gitref.ts";
 import { arrayOf, recordOf, str } from "./json.ts";
 
-const SCRATCH_PREFIX = "qsm-langdev-tree-";
-const ABANDONED_MS = 60 * 60 * 1000;
-
-// A scratch directory survives its own process being killed: the finally
-// below removes what THIS run finished with, but cannot run when the
-// process is killed (a timed-out hook, Ctrl-C), so every run also sweeps
-// what earlier runs abandoned.
-function sweepAbandoned(prefix: string): void {
-  const parent = tmpdir();
-  let entries: string[];
-  try {
-    entries = readdirSync(parent);
-  } catch {
-    return;
-  }
-  const deadline = Date.now() - ABANDONED_MS;
-  for (const entry of entries) {
-    if (!entry.startsWith(prefix)) {
-      continue;
-    }
-    const path = join(parent, entry);
-    try {
-      if (statSync(path).mtimeMs > deadline) {
-        continue;
-      }
-      rmSync(path, { recursive: true, force: true });
-    } catch {
-      // Gone already, or someone else's to remove.
-    }
-  }
-}
-
+const SCRATCH_TOOL = "qsm-langdev-tree";
 function fail(step: string, result: GitRun): never {
   const stderr = result.stderr.trim();
   const suffix = stderr.length > 0 ? `: ${stderr}` : "";
@@ -212,14 +171,16 @@ export function leaveOut(dir: string, matches: (path: string) => boolean): Kept 
 }
 
 /**
- * Hands `fn` a fresh scratch directory under `prefix` and removes it afterward, whatever `fn` did.
+ * Hands `fn` a fresh scratch directory named for `tool` and this run's pid, and removes it
+ * afterward, whatever `fn` did. A directory a dead run left is removed first, so a directory
+ * goes exactly when its run is gone.
  */
 export async function withScratchDir<T>(
-  prefix: string,
+  tool: string,
   fn: (dir: string) => Promise<T> | T,
 ): Promise<T> {
-  sweepAbandoned(prefix);
-  const dir = mkdtempSync(join(tmpdir(), prefix));
+  sweepNamed(tool);
+  const dir = runTempDir(tool);
   try {
     return await fn(dir);
   } finally {
@@ -234,7 +195,7 @@ export function withCommitTree<T>(
   ref: string,
   fn: (dir: string) => Promise<T> | T,
 ): Promise<T> {
-  return withScratchDir(SCRATCH_PREFIX, (dir) => {
+  return withScratchDir(SCRATCH_TOOL, (dir) => {
     checkoutInto(root, ref, dir);
     linkInputs(dir, root, ref);
     gitIndexInto(dir);
@@ -265,7 +226,7 @@ function stagedIndex(root: string): string {
  * is never handed to a checker, so node_modules/ or dist/ never enter a score
  * just because they sit on disk. Removed once `fn` settles. */
 export function withIndexTree<T>(root: string, fn: (dir: string) => Promise<T> | T): Promise<T> {
-  return withScratchDir(SCRATCH_PREFIX, (dir) => {
+  return withScratchDir(SCRATCH_TOOL, (dir) => {
     const indexFile = `${dir}.index`;
     try {
       const live = stagedIndex(root);

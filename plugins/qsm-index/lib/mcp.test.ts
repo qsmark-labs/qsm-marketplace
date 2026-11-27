@@ -4,7 +4,7 @@
 // own behaviour is covered in tools.test.ts; this file proves the wiring a
 // session sees.
 
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -21,8 +21,6 @@ import type { Env } from "./paths.ts";
 import { type Runner, spawnRunner, timedRunner } from "./run.ts";
 import { sandboxDir } from "../../../lib/fixtures/sandbox.ts";
 import { killBuilds, repoWithCache } from "./test-repo.ts";
-
-setDefaultTimeout(20_000);
 
 afterEach(killBuilds);
 

@@ -196,11 +196,15 @@ describe("catch-up", () => {
   test("catch-up stops at twenty and says how many remain", () => {
     const d = db();
     const { root, dir } = projects();
+    // Each file gets a time in the past: one written in the millisecond of its save reads as newer
+    // than that save, since saved-at is a whole millisecond, and the second catch-up saves it again.
     for (let i = 0; i < 25; i += 1) {
-      write(
+      const path = write(
         join(dir, `s${String(i).padStart(2, "0")}.jsonl`),
         new TranscriptBuilder().human(`n${i}`).text(),
       );
+      const written = new Date(Date.UTC(2026, 8, 30, 9, 0, i));
+      utimesSync(path, written, written);
     }
 
     expect(catchUp(d, root, testEnv())).toEqual({ saved: 20, skipped: 0, remain: 5, failed: [] });
