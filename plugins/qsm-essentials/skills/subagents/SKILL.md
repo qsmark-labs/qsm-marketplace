@@ -21,8 +21,8 @@ in the context rule ("Who does what").
 4. A worker that edits runs in its own worktree and branch, because two writers in one tree lose
    changes. The implementer declares `isolation: worktree`; any other agent that edits gets
    `isolation: "worktree"` on the dispatch. The worktree is cut from the branch of your current
-   directory, so check `git branch --show-current` names your branch first. Merge the worker's
-   branch into yours after you checked it.
+   directory, so check `git branch --show-current` names your branch first, and sync it with
+   `origin/main` before dispatch. Merge the worker's branch into yours after you checked it.
 5. The task names its deliverable as what changes for the person, with the measurement that shows
    it. Ask for a record only when the ask is an audit.
 6. Independent tasks (no shared file, no ordering) go out in one response, each with its own slice.
