@@ -36,9 +36,14 @@ One sentence lives in one part. Move a repeat, do not copy it.
 - One subject per skill, cap 12 KB, aim for 8, no `references/`. Over the cap: split into two.
 - No dates, no history, no test evidence in the body.
 
+A `qsm-builder lens tasks` task is the person's request: re-read the file it names (a stale task
+names a file that changed after the edit), apply it, update the eval case, and close the task with
+what was done.
+
 ## Evals
 
-An eval shows whether a skill or agent loads and changes anything. The cases live under the
+Every skill and agent ships an eval. An eval shows whether a skill or agent loads and changes
+anything. The cases live under the
 plugin's `evals/`, one folder each, tagged in `case.yaml` when the case has one, else in the
 prompt's frontmatter:
 

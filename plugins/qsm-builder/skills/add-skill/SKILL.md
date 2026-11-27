@@ -37,6 +37,9 @@ skill-standards; a whole new plugin is add-plugin.
    coin flip.
 6. A skill names a CLI verb on PATH, never a path into this repository or another plugin's files,
    because a binary runs with no checkout in the room (add-tool owns the rule).
+7. A skill or agent ships a `fire`, a `scenario` and a `negative` case in `plugins/<plugin>/evals/`,
+   written in the same change (format: skill-standards, Evals), because an unproven skill may never
+   load. Gate: `plugin-eval`.
 
 ## Done means
 
