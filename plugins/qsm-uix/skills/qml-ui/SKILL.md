@@ -117,6 +117,11 @@ Qt's QML conventions and the qt-qml-review checklist, the stricter where they di
   void { Debug.data = mode; } }`, then `qs ipc -p <shell.qml> call debug data worst`. A bar module
   fed a title wider than itself elides (`elide: Text.ElideRight`, bounded `Layout.maximumWidth`);
   a `Layout.fillWidth` text needs `Layout.minimumWidth: 0` or it pushes siblings off.
+- Variants: a `variant` property on that singleton read by a `Loader` per component, flipped by
+  `IpcHandler { target: "proto"; ... }` (`call proto pick 2`). Variants live outside the production
+  import path; replay sets `active` to false, then true.
+- A property or id named `on<Capital>`, or `size`, `radius` or `live` on an Item, crashes the load
+  or drops the config silently: rename it.
 - `font.letterSpacing` is in pixels: convert tracking from em.
 
 ## Make it checkable
