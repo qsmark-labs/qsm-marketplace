@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { YAML } from "bun";
+import { isolatedEnv } from "../../../lib/fixtures/cli.ts";
 import { sandboxDir, writeIn } from "../../../lib/fixtures/sandbox.ts";
 import { bunActivationReader } from "../lib/run-installers.ts";
 import { activation, instructionsStep } from "./activate.ts";
@@ -11,25 +12,25 @@ import { activation, instructionsStep } from "./activate.ts";
 function context(home: string, claudeHome: string, instructions = "replace") {
   return {
     dryRun: false,
-    env: {
-      HOME: home,
+    env: isolatedEnv(home, {
       CLAUDE_CONFIG_DIR: claudeHome,
       GIT_AUTHOR_NAME: "t",
       GIT_AUTHOR_EMAIL: "t@t",
       GIT_COMMITTER_NAME: "t",
       GIT_COMMITTER_EMAIL: "t@t",
       GIT_CONFIG_GLOBAL: "/dev/null",
-    },
+    }),
     choices: { instructions },
   };
 }
 const install = activation.activate;
 
+/** A home and a Claude home. The activation's git drops every GIT_* variable, so the home's own git
+ * config turns off the background maintenance a commit would leave running past the test. */
 function sandbox(): { home: string; claudeHome: string } {
-  return {
-    home: sandboxDir("qsm-home-"),
-    claudeHome: sandboxDir("qsm-claude-"),
-  };
+  const home = sandboxDir("qsm-home-");
+  writeIn(home, ".gitconfig", "[maintenance]\n\tauto = false\n");
+  return { home, claudeHome: sandboxDir("qsm-claude-") };
 }
 
 describe("the managed write as one step", () => {

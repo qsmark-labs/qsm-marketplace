@@ -291,6 +291,16 @@ describe("ssh prompt modes", () => {
 });
 
 describe("a signal", () => {
+  test("SIGTERM during pane dismissal leaves no socket directory", () => {
+    const child = spawnSync(process.execPath, [CLI, "askpass", "sudo", "--", "p"], {
+      env: env({ FAKE_TERM_ON_WITHDRAW: "1", FAKE_VALUE: TYPED }),
+      timeout: 5000,
+    });
+    expect(child.error).toBeUndefined();
+    expect(readFileSync(log, "utf8")).toContain('"withdraw"');
+    expect(existsSync(join(runtime, "qsm-askpass"))).toBe(false);
+  });
+
   test("SIGTERM withdraws the request and removes the socket directory", async () => {
     rmSync(log, { force: true });
     const child = spawn(["bun", CLI, "askpass", "sudo", "--", "p"], {

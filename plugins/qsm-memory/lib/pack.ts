@@ -19,9 +19,12 @@ import { isAlive } from "../../../lib/detach.ts";
 import { isRecord, messageOf, type Outcome, ok, onPath } from "../../../lib/outcome.ts";
 import { claudeDir } from "../../../lib/paths.ts";
 import { QsmError } from "../../../lib/qsm-error.ts";
+import { ownerEnv, reapOrphaned, reapOwned } from "../../../lib/reap.ts";
 import { listTranscripts, mtimeOf, projectsDir, unsavedTranscripts } from "./save.ts";
 import { type Env, getState, resolveDbPath, setState } from "./store.ts";
 import { sessionIdOf } from "./transcript.ts";
+
+const TOOL = "qsm-memory";
 
 /** Days of use a transcript may be unused before it is idle. */
 export const IDLE_DAYS = 7;
@@ -202,13 +205,15 @@ function runTool(cmd: string, args: readonly string[], env: Env): string {
 
 /** `tar -cf - | zstd -19 -T0` into `part`; throws with the stderr of whichever failed. */
 async function writeArchive(home: string, entries: readonly string[], part: string, env: Env) {
+  // Bun.spawn reads the env it is given, never process.env, so the owner mark goes in explicitly.
+  const marked = { ...env, ...ownerEnv(TOOL) };
   const tar = Bun.spawn(["tar", "-C", home, "-cf", "-", "--", ...entries], {
-    env,
+    env: marked,
     stdout: "pipe",
     stderr: "pipe",
   });
   const zstd = Bun.spawn(["zstd", "-19", "-T0", "-q", "-f", "-o", part], {
-    env,
+    env: marked,
     stdin: tar.stdout,
     stderr: "pipe",
   });
@@ -253,6 +258,7 @@ async function archiveSessions(
     }
     renameSync(part, target);
   } finally {
+    reapOwned(TOOL, "left running by the pack");
     rmSync(part, { force: true });
   }
 }
@@ -346,6 +352,7 @@ export async function pack(
   const liveIds = () => liveSessionIds(home, (path) => readSessionFile(path, read));
   const archiveDir = join(dirname(resolveDbPath(env)), "transcripts");
   try {
+    reapOrphaned(TOOL, "left by a pack that ended before its cleanup");
     removeStaleParts(archiveDir);
     requireTools(env);
     const taken = idleTranscripts(db, env, now, liveIds).map((jsonl) => takeSession(home, jsonl));
