@@ -12,8 +12,8 @@ rules are written. If the repository ever stops changing, it has nothing left to
 
 ## What it ships
 
-One builder skill per kind of addition, each with its steps, hard rules that name the gate or the
-review that checks them, and a done that ends in the gates, the evals and a strict review. Plus two
+One builder skill per kind of addition, each with its steps, hard rules that name the gate
+that checks them, and a done that ends in the gates and the kind's own proof. Plus two
 hooks: one refuses a broken `plugin.json`, one tells the agent a plugin's open lens edits and
 feedback.
 
