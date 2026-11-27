@@ -5,10 +5,9 @@ description: "Use when the user asks about patterns across their past sessions: 
 
 # Insights
 
-One session shows a mistake, fifty show a habit. The output that matters is the instruction given
-in two or more sessions: the person should not give it a third time. Nothing is added to a file
-unless the person confirms. Shared reading and apply rules are in the `usage` skill. A subagent
-cannot start subagents, so the main agent runs this pipeline.
+The output that matters is the instruction given in two or more sessions. Shared reading and apply
+rules are in the `usage` skill. A subagent cannot start subagents, so the main agent runs this
+pipeline.
 
 ## 1. Collect
 
@@ -55,13 +54,6 @@ A new line costs tokens in every session: count it with `qsm-usage count`. Its f
 50 sessions"). "Make it permanent" is `change.kind: "edit"` with the target file and the line in
 `detail`, `verdict: "fix"`, `question: "cleanup"`. Friction and prompting findings are `verdict:
 "warn"`, `change.kind: "none"`, `question: "none"`, examples in `evidence`.
-
-## Red flags
-
-- When a facet claims satisfaction or a goal with no explicit signal, mark it unclear, because
-  inferred feelings make the habits look false.
-- When a "make it permanent" line is already in a loaded file, drop it, because it would be paid
-  for twice.
 
 ## Say it in the reply
 

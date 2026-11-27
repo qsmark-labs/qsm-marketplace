@@ -9,8 +9,7 @@ A finding is a claim about the code from someone who read part of it. Reviewers 
 report everything they can support, so a batch holds true findings next to wrong ones, and this
 skill is the second pass that tells them apart. It serves the person who wants the real defects
 fixed and the correct code left alone. It does not decide scope: work beyond the change is the
-person's call. It follows review or workflow-review in the qsm flow; once the real
-defects are fixed, the change goes on to spec-archive.
+person's call.
 
 ## Per finding
 
@@ -33,12 +32,8 @@ defects are fixed, the change goes on to spec-archive.
 
 - Verify the whole batch before changing anything. Findings contradict each other and two often
   share one cause, so fixing in arrival order produces edits that undo each other.
-- Answer every finding, refuted and deferred ones included, because an unanswered finding is one
-  the reviewer has to chase.
-- A finding that asks for work beyond the change (a new subsystem, a rewrite, a feature) goes to
-  the person as one question with your recommendation and what it would cost, and you wait. Tell
-  the reviewer "out of scope for this change, raised with the author", because silence reads as
-  agreement.
+- A finding that asks for work beyond the change (a new subsystem, a rewrite, a feature) is
+  declined as out of scope, and you do not build it.
 
 ## Red flags
 
@@ -48,11 +43,3 @@ defects are fixed, the change goes on to spec-archive.
   finding, because the test was the evidence.
 - When every finding in a batch was confirmed, re-check the batch, because reviewers that report
   everything are wrong sometimes.
-- When a finding asked for a feature and you started building it, stop and ask the person,
-  because a two-file change becomes a twelve-file one nobody approved.
-
-## Say it in the reply
-
-One line per finding: confirmed and fixed with file and line, refuted with the evidence, or raised
-with the person as out of scope. Then the counts. If a finding changed what you believe about the
-design and not just one line, say that separately.

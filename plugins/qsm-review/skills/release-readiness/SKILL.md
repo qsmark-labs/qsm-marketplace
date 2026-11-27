@@ -16,11 +16,10 @@ what matters.
 1. Go through the list below for the named product. Mark each item `have` (with the path, link
    or document that proves it), `missing`, or `n/a` (with why).
 2. Look the evidence up yourself: the repository, CI config, docs, `qsm-secrets`, the person's
-   notes. Ask only for what no file holds.
+   notes.
 3. A legal item marked "verify" is checked against its primary source (zakonyprolidi.cz, EUR-Lex,
    upv.gov.cz, euipo.europa.eu) before you state it, because a remembered rule is often an older
    or a foreign one.
-4. Every `missing` becomes one task in the task tool.
 
 ## The list
 
@@ -89,7 +88,5 @@ Running it
 - When an item is a US default (Delaware, a US holding, CCPA), use the Czech or EU equivalent, and
   raise the US route only if the person names a US buyer.
 
-## Say it in the reply
-
-A table: item, `have` / `missing` / `n/a`, evidence. Below it the count of each, the task ids
-created, and which legal items still need a lawyer or a source check.
+The reply is a table: item, `have` / `missing` / `n/a`, evidence. A legal item not checked against
+its primary source is marked `unverified`, never stated from memory.

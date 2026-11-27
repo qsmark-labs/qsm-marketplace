@@ -5,10 +5,8 @@ description: "Use when the user asks whether a better tool exists for what the a
 
 # Tools review
 
-The agent reaches for what it knows, such as `cat` on a big JSON file, and a tool that does the
-job in fewer tokens is worth naming only with evidence. This skill finds the long-way calls and
-names the tool. It installs nothing: an install is listed for the person to run. Shared reading
-and apply rules are in the `usage` skill.
+Finds long-way calls and names the tool that does the job in fewer tokens. It installs nothing: an
+install is listed for the person to run. Shared reading and apply rules are in the `usage` skill.
 
 ## Look at
 
@@ -44,11 +42,6 @@ The verbs and the catalog win over this table.
   because that line is resident.
 - Findings: install is `change.kind: "command"`, a rule line is `change.kind: "edit"`; both
   `verdict: "fix"`, `question: "cleanup"`.
-
-## Red flags
-
-- When a recommendation rests on one call, drop it, because one call is no habit.
-- When a saving ignores the rule line's tokens, subtract them, because the line loads every session.
 
 ## Say it in the reply
 

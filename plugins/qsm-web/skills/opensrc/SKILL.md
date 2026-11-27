@@ -5,9 +5,7 @@ description: "Use when the source code of an open-source library or repository i
 
 # opensrc
 
-When the docs do not say, the source does. `qsm-web opensrc get` puts one library's source in one
-directory per library and prints where, so the agent reads real code for the real version instead
-of recalling an API.
+`qsm-web opensrc get` puts one library's source in one directory per library and prints where.
 
 ## Use
 

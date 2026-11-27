@@ -5,10 +5,8 @@ description: "Use when Claude Code feels slow between steps or hooks may be nois
 
 # Hooks review
 
-A hook on a per-call event blocks the loop every time it fires, and a hook that injects text
-charges that text to every later turn. This skill finds both and proposes one fix per hook. It
-edits no hook configuration the person did not confirm. Shared reading and apply rules are in the
-`usage` skill.
+Finds hooks that block the loop on every call or inject text every later turn pays for, and
+proposes one fix per hook. Shared reading and apply rules are in the `usage` skill.
 
 ## Where the data is
 
@@ -27,7 +25,6 @@ Per hook and event, the typical run and the worst. Warn above 2 s typical on `Pr
 its timeout ran until the timeout, so its duration is a floor and a hook that keeps timing out is
 the worst case; an Esc cancel says nothing about speed. For a slow hook read its `command` with a
 key-scoped read and point at the heavy part (network call, package manager, cold interpreter).
-Run a hook command yourself only when it is plainly read-only and the person agrees, with a timeout.
 
 ## Injected text no later turn uses
 
@@ -44,13 +41,6 @@ the turns it fires on. A slow hook saves no tokens: `savingTokens` 0 and a `savi
 time ("~3 s on each of ~120 tool calls per session"). A fix is `change.kind: "edit"` with the
 settings or hook file as `target`, `verdict: "fix"`, `question: "cleanup"`. When no fix is safe:
 `verdict: "warn"`, `change.kind: "none"`, `question: "none"`.
-
-## Red flags
-
-- When a hook has no timing entries, say "no timing data" and do not guess, because silence is not
-  speed.
-- When a duration comes from a cancelled run, report it as a floor, because the real run was
-  longer.
 
 ## Say it in the reply
 
