@@ -19,7 +19,6 @@ is the right one.
 | opening | the purpose: the gap, who it serves, the outcome, what it will not do |
 | body | the maintainer's stance, thresholds, commands, each rule with its reason |
 | `## Red flags` | symptoms the agent can notice, each with action and reason |
-| `## Say it in the reply` | what the reply must show |
 
 One sentence lives in one part. Move a repeat, do not copy it.
 
@@ -34,17 +33,19 @@ One sentence lives in one part. Move a repeat, do not copy it.
 - Give the reason with each rule. A rule with no reason is deleted.
 - Prefer one positive example to a list of "never" lines.
 - A constraint that must hold every time is a hook, and the skill names the hook.
-- A skill that tells an agent to test says: the least work that runs the real path end to end, never
-  a test that restates what was just written.
 - One subject per skill, cap 12 KB, aim for 8, no `references/`. Over the cap: split into two.
 - No dates, no history, no test evidence in the body.
 
+A `qsm-builder lens tasks` task is the person's request: re-read the file it names (a stale task
+names a file that changed after the edit), apply it, update the eval case, and close the task with
+what was done.
+
 ## Evals
 
-Every skill and agent ships an eval, written before the body, so the first run shows what the
-model does unaided. A skill without one is not merged, because an unproven skill may never load or
-may change nothing. The cases live under the plugin's `evals/`, one folder each, tagged in
-`case.yaml` when the case has one, else in the prompt's frontmatter:
+Every skill and agent ships an eval. An eval shows whether a skill or agent loads and changes
+anything. The cases live under the
+plugin's `evals/`, one folder each, tagged in `case.yaml` when the case has one, else in the
+prompt's frontmatter:
 
 | Tag | What it proves | Grader | Runs |
 | --- | --- | --- | --- |
@@ -89,28 +90,6 @@ When the sandbox lacks what the job needs (web, git, the task tool), the prompt 
 arms and the grade falls on the plan. The bar: every run with the plugin passes (3 of 3) and at
 most one without does.
 
-## Working the lens edits
-
-The person edits a skill, an agent or a plugin text on the marketplace lens. Saving makes one task
-and writes no file, so the work is yours, with them. When a task of kind edit reaches you (the hook
-shows it, or `qsm-builder lens tasks <plugin>` lists it):
-
-1. Check it is current. A task marked stale names a file that changed after the edit was made, so
-   read the file now and say what differs. Never apply a stale task as it is.
-2. Show the person three things: the text before, the text after, and their note. Then say what you
-   would do, or why you refuse. A `SKILL.md` that would pass 12 KB is a split. A change of
-   behaviour goes through `spec-propose` first. An edit that breaks a rule above is proposed again
-   in better words, with the reason.
-3. Ask for a yes and write nothing before it. A silent write is the one thing the lens was made to
-   prevent.
-4. After the yes, apply it, update the eval case of an edited skill or agent, and commit the change
-   with a message that names the task.
-5. Close the task in the task tool with what was done. A refused task is closed with the reason, so
-   the person sees the answer on the page.
-
-The reason for the order: the person reads at the level of intent and use case, and an edit made
-under their eyes is one they can own.
-
 ## Red flags
 
 - When the description summarises the body, rewrite it in typed words, because the harness matches
@@ -119,10 +98,3 @@ under their eyes is one they can own.
 - When a body line is textbook, delete it, because it adds bytes and no behaviour.
 - When the purpose appears mid-body, move it to the opening, because rules are read through it.
 - When a constraint says "remember to", write the hook, because prose is forgotten under pressure.
-- When a skill has no eval, write the fire and scenario cases first, because an unproven skill may
-  never load or may change nothing.
-
-## Say it in the reply
-
-One line: kept or cut, the case run, pass or fail, the with and without delta. Name the byte size
-when near the cap.

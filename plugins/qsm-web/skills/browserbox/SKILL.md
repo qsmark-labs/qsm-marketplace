@@ -6,8 +6,7 @@ description: "Use when one page needs a real browser through qsm-web browserbox:
 # browserbox
 
 `qsm-web browserbox` runs a real browser in a container with a live view the person can open. It is
-the most expensive way to read a page, a container and a minute, so it is for the one page the
-cheaper steps could not read, and it is never a session to act through.
+for the one page the cheaper steps could not read, never a session to act through.
 
 ## Instances
 
@@ -50,12 +49,6 @@ stops at a login and reports it.
   hand you a session to act through.
 - A scripted run over many pages sleeps 8 to 15 seconds between requests and stops on a 429,
   because a faster retry gets the account blocked.
-
-## Red flags
-
-- When a page is still blocked after the one solve attempt, take over, do not retry with other
-  options, because the wall will not move.
-- When you are done with the page, stop the instance, because it keeps a browser resident.
 
 ## Say it in the reply
 

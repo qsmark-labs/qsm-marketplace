@@ -10,12 +10,12 @@ validates once, where outside data is mapped into it, so code past that line hol
 cannot be invalid. The compiler and lint gate reject the rest; this skill holds the choices they
 cannot make. Out of scope: a tutorial, Bun APIs (bun-dev).
 
-The gate: `qsm-langdev init` writes `tsconfig.qsm.json` and `.oxlintrc.json`, which require `strict`,
-`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `??` over `||`,
-no `any` flowing into a typed value, and every promise awaited; oxfmt formats.
-Write against them; do not restate them in code or prose. A repository may opt into
-`isolatedDeclarations` (explicit return type on every export) and `erasableSyntaxOnly` (no enums,
-no namespaces with code, no parameter properties).
+The gate: `qsm-langdev init` writes `tsconfig.qsm.json` and `.oxlintrc.json`, which require
+`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `??`
+over `||`, no `any` flowing into a typed value, and every promise awaited; oxfmt formats. Write
+against them; do not restate them in code or prose. A repository may opt into `isolatedDeclarations`
+(explicit return type on every export) and `erasableSyntaxOnly` (no enums, no namespaces with code,
+no parameter properties).
 
 ## Our own types, validated at the mapping
 
@@ -78,8 +78,3 @@ tests at once. Whether a test is needed is software-testing.
   nothing.
 - When a `string` or `number` carries a domain meaning past the parse, give it a type, because the
   next caller will pass the wrong one.
-
-## Say it in the reply
-
-When you avoided a cast, an enum or a throw, say what replaced it, and name the one place each
-value is validated. For a test file: file, count, and the command that runs it.

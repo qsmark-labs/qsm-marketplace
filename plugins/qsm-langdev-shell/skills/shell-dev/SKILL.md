@@ -82,8 +82,3 @@ retry() { local max=$1 delay=$2; shift 2; local n=1
   while (( n <= max )); do "$@" && return 0; sleep "$delay"; (( n++, delay *= 2 )); done
   return 1; }
 ```
-
-## Say it in the reply
-
-When a script uses one of the traps above, name which one, so the next reader does not "simplify"
-it back.

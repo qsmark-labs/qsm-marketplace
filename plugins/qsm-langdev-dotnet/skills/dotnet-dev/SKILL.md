@@ -89,9 +89,3 @@ shows only what matters. Whether a test is needed is software-testing.
 - Mark slow or external tests `[Trait("Category", "Integration")]` and exclude them by default:
   `--filter "Category!=Integration"`.
 - Run one test: `dotnet test --filter "FullyQualifiedName~OrderServiceTests.Rejects"`.
-
-## Say it in the reply
-
-Name the C# 14 or .NET 10 feature you chose when it replaces an older spelling, and for a rename
-or signature change say that you listed the callers through the language server. For a test file:
-file, count, and the command that runs it.

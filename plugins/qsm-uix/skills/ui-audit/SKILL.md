@@ -5,13 +5,10 @@ description: "Use when asked to audit, review, or measure the static visual desi
 
 # UI Audit
 
-A screen that is looked at produces an opinion; a screen that is measured produces a finding. This
-skill serves the person who builds and publishes a UI and wants to settle a design argument with a
-number, so no finding goes in without one, and the number comes from a place the reader can check.
-"The gap looks like about 170px" and "the contrast is low" are plausible, uncheckable, and about
-half wrong. It audits static visuals only and does not fix the UI. Motion is review-animations.
-Accessibility criteria are a11y-audit's; run it for this surface. How to create the design source is
-ui-design, and how to expose a UI on one stack is that stack skill.
+No finding goes in without a number the reader can check ("about 170px" and "the contrast is low"
+are not findings). It audits static visuals only and does not fix the UI. Motion is
+review-animations, accessibility criteria are a11y-audit's, the design source is ui-design's, and
+exposing a UI on one stack is that stack skill.
 
 ## Collect three channels before judging
 
@@ -29,8 +26,7 @@ ui-design, and how to expose a UI on one stack is that stack skill.
    system from the measurements ("9 of 11 gaps are 12px"), say so, and file the deviators against
    it.
 
-Drive the UI into every surface and state (each popout, panel, overlay) and capture each; one
-resting frame is not an audit.
+Capture every surface and state (each popout, panel, overlay), not one resting frame.
 
 ## The passes
 
@@ -117,26 +113,10 @@ wins is the owner's ruling. Under the table: **Hypotheses** (observed, not measu
 into the table) and **Not examined** (states, themes, screens, passes skipped, and why), so the
 reader does not assume there were no gaps.
 
-## Red flags
-
-- When a row says "roughly", "about", or "appears to be", measure it or move it to Hypotheses,
-  because a row the reader cannot check is an opinion.
-- When a contrast claim has no ratio or a spacing claim no arithmetic from the tree, get the
-  number, because those are the claims that turn out wrong.
-- When you are judging from the full-resolution screenshot, crop and zoom first, because the eye
-  misreads a downscaled edge.
-- When you have one frame of a surface that has states or themes, capture each, because a resting
-  light frame hides most defects.
-- When you are about to rule on focus, keyboard, labels, colour-only meaning or reduced motion,
-  stop and say accessibility criteria are a11y-audit's, because its method and the criterion list
-  decide those, not a screenshot.
-- When you are about to describe how something moves, hand it to review-animations, because this
-  skill has no motion method.
-
 ## Say it in the reply
 
-The table, then Hypotheses and Not examined, then one line naming which evidence channels and
-which themes were available. Missing live geometry goes first: it changes how every row reads.
+The table, then Hypotheses and Not examined. Missing live geometry goes first: it changes how every
+row reads.
 
 How each rule is built and exposed on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

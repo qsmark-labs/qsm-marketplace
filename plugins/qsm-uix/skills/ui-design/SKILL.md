@@ -5,10 +5,8 @@ description: "Use when a UI is to be designed, specified, or restyled before it 
 
 # UI Design
 
-A UI built from taste drifts: components choose their own greys, gaps and dark values. This skill
-serves the person who builds accessible interfaces. It writes one design source before the first
-component, for builders to follow and audits to measure. It chooses constraints, not palettes,
-font pairings or frameworks; the maintainer picks the hues. It does not audit a running UI.
+Writes one design source for builders to follow and audits to measure. It chooses constraints, not
+palettes, font pairings or frameworks; the maintainer picks the hues.
 
 ## Decide in this order
 
@@ -25,9 +23,8 @@ Work top-down: a late concern costs a rebuild, an early one a sentence.
 ## Detect before you ask
 
 Find the existing design folder, theme, tokens or screenshot before assuming a stack. Extend an
-existing design source, never regenerate it. Ask only what changes it: surfaces, audience, fixed
-brand colours. Keep the source stack-neutral and mark assumptions in the draft, so the person
-corrects concrete tokens and ratios rather than a questionnaire.
+existing design source, never regenerate it. Keep the source stack-neutral and mark assumptions in
+the draft.
 
 ## The design source
 
@@ -104,9 +101,8 @@ Use these headings, because the audits and the stack skills look for them:
   it has a tooltip and an accessible name; otherwise the control is a text label. Never icon and
   label on one button, because the pair says one thing twice and costs width.
 - **A number comes from a named source.** Before choosing a colour, size, offset or duration, name
-  the token, reference file or mockup it comes from. With none, show two candidates live and wait
-  for the owner's pick; never tune a value from geometry alone, because the owner then supplies
-  the number anyway.
+  the token, reference file or mockup it comes from. With none, pick one and mark it
+  as an assumption; never tune a value from geometry alone.
 - **Pastel or alive is a target, not an adjective.** Give each role a chroma and lightness range
   (OKLCH) and check each accent is visible on the surface it sits on. Grey or dull is a finding,
   and a role never shown is one too.
@@ -129,26 +125,11 @@ Use these headings, because the audits and the stack skills look for them:
 
 ## Output
 
-Write `design/MASTER.md` (and a page file only when a surface differs). When no file can be written,
-give the same content in the reply. Keep it short: tokens in a table, not prose. Mark each threshold
-as default or override. Close with `## Requirements`, then tell the person what to do next: build
-with the stack skill, then run ui-audit against this file, which is the expected column.
+Write `design/MASTER.md` (and a page file only when a surface differs). Keep it short: tokens in a
+table, not prose. Mark each threshold as default or override. Close with `## Requirements`.
 
-## Red flags
-
-- When you reach for a hex literal in a component description, name a token instead, because the
-  literal is invisible to the audit and to the next theme.
-- When the draft names a framework, a stack's property or component type, move it to the stack
-  skill, because the source must survive a change of stack.
-- When you are about to list palettes, font pairings, or "styles for SaaS", stop and write the
-  token roles and constraints, because the person picks the look and the source holds its rules.
-
-## Say it in the reply
-
-- The path of the design source written, and which parts are defaults versus the person's choices.
-- The contrast ratio per pair and theme, computed, with the tool or formula used.
-- What was assumed, what was asked, and the open decisions left for the person.
-- What is not covered: no running UI was measured, so nothing is verified until ui-audit runs.
+Reply with the path of the design source and the computed contrast ratio per pair and theme. Nothing
+is verified until ui-audit runs.
 
 How each rule is built and exposed on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

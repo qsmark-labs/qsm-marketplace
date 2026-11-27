@@ -6,17 +6,9 @@ disable-model-invocation: true
 
 # Prototyping Variants
 
-Three tints of one idea teach nothing, so a person who asks "show me the options" gets one answer
-dressed three ways. This skill, adapted from Emil Kowalski's prototype, takes one described piece
-of UI, builds several genuinely different versions, and puts them behind a switcher so the person
-flips through them live and chooses. It runs only when invoked: asking to build one piece is not
-asking for variants. It does not review existing UI or pick dependencies.
-
-You are a senior design engineer running an exploration. The value is divergence: each variant is a
-direction you could defend shipping alone, an answer to the same brief that differs on a named axis.
-Divergence is not a reason to drop craft: every variant meets animate's rules (ease-out entrances,
-short durations, correct origin, reduced motion handled). A sloppy variant loses on execution and
-teaches nothing about its direction.
+Takes one described piece of UI, builds several genuinely different versions behind a switcher so
+the person flips through them live and chooses (adapted from Emil Kowalski's prototype). The value
+is divergence on a named axis, and every variant meets animate's rules.
 
 ## Rules
 
@@ -34,8 +26,7 @@ teaches nothing about its direction.
 ## Workflow
 
 1. **Scope.** One piece per run. If the brief spans several ("the dashboard"), pick the
-   highest-leverage piece, say which and why, offer the rest as later runs. Restate the brief in one
-   sentence: what it is, where it lives, what it must do.
+   highest-leverage piece and say which.
 2. **Recon.** Stack and styling system, tokens (colours, radii, spacing, fonts, easing, durations:
    variants use them), personality (playful app or crisp dashboard bounds the boldest variant),
    context (background, neighbours, sizes). No project: a restrained default, neutral grays, one
@@ -47,9 +38,8 @@ teaches nothing about its direction.
 4. **Build the harness** in the family's form (below): one variant at a time, full size, in
    realistic surroundings (a toast needs a page behind it, a card needs siblings, a button needs a
    form), never thumbnails. Switching is instant, no animation on the swap.
-5. **Verify and hand off.** Flip through every variant yourself: all render, interactions respond,
-   console clean; screenshot each if tooling exists. Present the table below and stop: the choice
-   is the person's.
+5. **Verify and hand off.** Flip through every variant: all render, interactions respond, console
+   clean. Present the table below and stop: the choice is the person's.
 6. **Promote on selection** (`keep <variant>`): integrate it with the project's conventions, then
    delete the surface. Another round (`riff <variant>`): keep the harness, diverge around the
    direction they gravitated to. `x5` sets the count; `keep <variant>, leave the picker` keeps the
@@ -73,18 +63,7 @@ or command) and the keys:
 | 1 | Quiet | minimal motion, borders over shadows | a daily-use tool | least memorable |
 | 2 | Editorial | large type, generous whitespace | the moment deserves weight | eats vertical space |
 
-If asked which you would choose, answer from the product's personality and how often the piece is
-seen, not aesthetics alone. If two variants converged while you built, cut one and say so: two
-distinct directions beat three padded.
-
-## Red flags
-
-- When two variants share an axis position, replace one, because the person learns nothing from
-  flipping between them.
-- When a variant has a dead button or placeholder copy, finish it, because an unfinished variant
-  loses on execution, not direction.
-- When production code is edited before a pick, revert it, because exploration lives on its own
-  surface.
+If two variants converged while you built, cut one and say so.
 
 How each rule is built on a stack is its family: desktop (desktop-ui, qml-ui), terminal (cli-ui,
 tui-ui), web (web-harness).

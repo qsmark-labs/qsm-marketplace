@@ -47,40 +47,26 @@ Analytic sub-class only, read by business people:
 
 1. Read the graph and the process the work touches. Fix the model, never the picture: an engine
    places every shape, so a bad picture is changed by order, lanes and levels, not by coordinates.
-2. Draft the edit in a copy of `models/` in the scratchpad, never in `models/<project>.bpmn`
-   itself. A new process with no geometry gets `qsm-bpmn layout <copy>`; a drawn process is never
-   laid out again, because the owner's moves in bpmn.io must survive.
-3. `qsm-bpmn lint <copy>`. Every finding names the element and the rule; fix the draft, run it
-   again.
+2. Draft the edit in a copy of `models/` in the scratchpad. A new process with no geometry gets
+   `qsm-bpmn layout <copy>`; a drawn process is never laid out again, because the owner's moves in
+   bpmn.io must survive.
+3. `qsm-bpmn lint <copy>`; fix each finding and run it again.
 4. `qsm-bpmn render <copy>`, then look at each changed picture (rasterise it and read the image). A
    cut label, two shapes on each other or a flow through a step goes back to step 1.
 5. `qsm-bpmn paths <copy> --specs openspec/`. Every cover path of a changed process needs a scenario
-   that cites its id; write the missing ones before the commit.
-6. Hand the changed pictures, the draft and the spec to the `model-reviewer` agent of qsm-bpmn. A
-   finding sends the draft back to step 2, and the reviewer reads it again. Only a draft that
-   passed lint and came back with no finding is written into `models/<project>.bpmn`; a binary
-   cannot run the reviewer, so this step is yours and nothing else catches a skipped review.
-7. `qsm-bpmn render` writes the pictures beside the graph, and `qsm-bpmn render --check` runs
+   that cites its id. When all of it is clean, write the copy into `models/<project>.bpmn`.
+6. `qsm-bpmn render` writes the pictures beside the graph, and `qsm-bpmn render --check` runs
    before every commit: a stale picture is a lie in the tree. When `render` refuses a picture whose
    layout measure grew, restructure the graph or ask the owner; `--accept <measure>` is the
    owner's to type, never yours.
-8. `qsm-bpmn pages` writes `.qsm/bpmn/bpmn.html`; the owner opens it in a browser. When he says the
-   picture does not say what he wants, his words go back to step 2, and the graph is linted with its
-   C4 ids, rendered and reviewed again before he reads it once more.
+7. `qsm-bpmn pages` writes `.qsm/bpmn/bpmn.html`; the owner opens it in a browser. When he says the
+   picture does not say what he wants, his words go back to step 2.
 
 Commit the graph with its pictures.
 
 ## Red flags
 
 - About to add `openspec/changes/<x>/models/<y>.bpmn`: edit `models/<project>.bpmn`.
-- About to edit `models/<project>.bpmn` before the reviewer has read the draft: draft in a copy.
 - An activity with two outgoing flows or a name with a comma joining two verbs: split it.
 - A lane named after a plugin or a tool: name the role that does the step.
-- A rendered picture nobody looked at: render it to PNG and read it before the spec.
 - Typing `--accept`: that is the owner's choice.
-
-## Say it in the reply
-
-The process changed and why it is the owner of the behaviour, the `qsm-bpmn` runs with their
-verdict, the picture looked at, the cover paths and the scenarios that cite them, and the reviewer's
-verdict.

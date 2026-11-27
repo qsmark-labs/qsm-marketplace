@@ -5,9 +5,8 @@ description: "Use when running a web search through the person's own SearXNG ins
 
 # searxng
 
-`qsm-web searxng search` asks the person's SearXNG instance, which reaches many engines in one call
-and returns the same shape every time. This skill is how to call it so the result is narrow and its
-failures are visible; when to call it is the web-ladder skill.
+`qsm-web searxng search` asks the person's SearXNG instance. When to call it is the web-ladder
+skill.
 
 ## Use
 
@@ -39,20 +38,6 @@ Use a profile instead of rebuilding an engine list for a common search intent:
 | `files` | Torrent metadata through `bt4g` and Sailfish app listings through `openrepos`, not comprehensive file discovery. Results do not grant reuse rights. |
 | `social-media` | Public social discovery across posts, users, communities, forums and hashtags. The exact nine-engine set is in [USAGE.md](../../USAGE.md#search-profiles). |
 
-```bash
-qsm-web searxng search "current events" --profile default
-qsm-web searxng search "personal Linux websites" --profile niche
-qsm-web searxng search "graph neural networks" --profile academic --language en
-qsm-web searxng search "AbortController" --profile it
-qsm-web searxng search "minimal mountain icon" --profile images
-qsm-web searxng search "conference talks on Rust" --profile videos
-qsm-web searxng search "Seoul transit policy" --profile news
-qsm-web searxng search "ambient electronic albums" --profile music
-qsm-web searxng search "Brandenburg Gate Berlin" --profile map
-qsm-web searxng search "Sailfish OS apps" --profile files
-qsm-web searxng search "Lemmy communities about gardening" --profile social-media
-```
-
 Profiles affect only the query. They do not enable engines globally or change the server. A
 targeted profile reads `/config` before searching and requires all listed engines to be registered,
 even if disabled by default. Both requests share `--timeout`. A missing engine or unreadable
@@ -66,15 +51,13 @@ profiles return links and metadata. The search command does not fetch or play me
 or grant content reuse rights. Map results are place links, not routes, and do not guarantee
 coordinates.
 
-## Red flags
+## Failures
 
-- When the output is not a JSON array, stop and read it, because piping it on hides the failure.
-- When an engine is reported suspended, treat it as a warning, not a result, and keep the rest: the
-  other engines' results are the answer.
-- When no results come back and an engine reported a failure, the search failed. Say which engines
-  failed; do not say the whole instance is down.
-- When the instance does not answer, say so and let the loop fall back to `WebSearch`, because a
-  silent switch hides that the instance is down.
+- Output that is not a JSON array: stop and read it.
+- A suspended engine is a warning; keep the other engines' results.
+- No results and an engine failure: the search failed. Say which engines failed, not that the
+  instance is down.
+- An instance that does not answer: say so and fall back to `WebSearch`.
 
 ## Say it in the reply
 
