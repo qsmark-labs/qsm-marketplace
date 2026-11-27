@@ -554,16 +554,14 @@ after it.
 
 ### Requirement: Each instruction file owns one subject
 
-`CLAUDE.md` SHALL hold who the user is, how to talk, the prime directive, intent first, which rule
-wins, where things live, the loop with the owner of each of its seven steps, and the one place for
-feedback with its command. The implementation rule SHALL hold the six questions asked before any
-design, the table of kinds of things with the three answers per kind, one error system per project,
-contracts before code, and the design gate. The context rule SHALL hold understand before act, the
-restate and when a go is waited for, what is closed, only the ask, large output to files, secrets
-never in context, done means verified, memory is never acceptance criteria, the model tiers with the
-four agents, and workflows. The output style SHALL hold the shape of a turn, words, form, language,
-and the check before sending. A rule SHALL appear in one of the four, and the others SHALL point to
-it at most in one line.
+`CLAUDE.md` SHALL hold who the user is, the prime directive (the minimum, lazily, from what exists),
+ghost mode, where things live, the loop, and the one place for feedback. The implementation rule
+SHALL hold its numbered rules: reuse first, the smallest change, one path, validate input, a test
+only for the real flow or an edge case, UI checked on the real surface, leave the machine as found
+forward and backward, and never delete what the person made. The context rule SHALL hold before
+acting, during the work, after the work, and agents. The output style SHALL hold short,
+conclusion-first replies in the user's language. A rule SHALL appear in one of the four, and the
+others SHALL point to it at most in one line.
 
 #### Scenario: A rule is found in two files
 
@@ -573,9 +571,8 @@ it at most in one line.
 
 #### Scenario: A fix-sized ask whose intent is certain
 
-- **WHEN** the ask sizes as a fix and every one of the six questions already has an answer
-- **THEN** the agent restates in one line what it understood and the size, and acts without
-  waiting for a go
+- **WHEN** the request has one reading
+- **THEN** the agent says in one sentence what it will do and does it, without waiting for a go
 
 ### Requirement: The marketplace can be read from OpenCode V2
 

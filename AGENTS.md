@@ -64,7 +64,7 @@ Each law is the short form; the skill named after it holds the detail.
    no process, temp entry, lock or socket, and a start removes what a crashed earlier run left.
    Every process a tool starts carries `QSM_OWNER`, and `lib/reap.ts` finds and ends it; the test
    run fails on any leftover. A change that can leave something behind is not approvable
-   (implementation rule, "Clean before and after").
+   (implementation rule, item 7).
 1. **A plugin owns its content**: skills, agents, code and docs live under the plugin (add-plugin).
 2. **A plugin imports root `lib/` and itself only**; code two plugins need goes to `lib/` (add-lib).
 3. **Docs: `README.md` always, opening with `## Why it exists` in at most five sentences;
