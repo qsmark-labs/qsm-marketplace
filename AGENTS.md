@@ -64,7 +64,7 @@ Each law is the short form; the skill named after it holds the detail.
    no process, temp entry, lock or socket, and a start removes what a crashed earlier run left.
    Every process a tool starts carries `QSM_OWNER`, and `lib/reap.ts` finds and ends it; the test
    run fails on any leftover. A change that can leave something behind is not approvable
-   (implementation rule, "Clean before and after").
+   (implementation rule, item 7).
 1. **A plugin owns its content**: skills, agents, code and docs live under the plugin (add-plugin).
 2. **A plugin imports root `lib/` and itself only**; code two plugins need goes to `lib/` (add-lib).
 3. **Docs: `README.md` always, opening with `## Why it exists` in at most five sentences;
@@ -106,7 +106,7 @@ plugins/<name>/                   # layer 1: one plugin
 ## Which builder skill
 
 Each skill of `qsm-builder` gives the steps, the hard rules with the gate that checks each one, and
-what done means, ending in a `strict-reviewer` review.
+what done means.
 
 | You are adding | Skill |
 | --- | --- |
@@ -140,8 +140,6 @@ what done means, ending in a `strict-reviewer` review.
 
 - GitHub holds the work, and the owner reads it there, often on a phone: a feature and its tasks
   in their issues, a change in its pull request description.
-- Each item opens with its pictures in the order a reader understands it: the BPMN process of the
-  business flow first, then the C4 view of where the code goes, then the least text.
 - The board holds issues only, and every pull request closes one, a side change included: a board
   that mixes issue and pull request numbers leaves the reader unsure which number is the work, and
   work without an issue has no status anyone can see. A report names the work by its issue number

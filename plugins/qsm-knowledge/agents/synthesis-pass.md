@@ -31,8 +31,7 @@ If one is missing, name it and stop, because guessing the shape produces notes n
 - Add no opinion the findings do not carry, and give every claim its citation.
 - Do not say anything passed a linter, validator, or build, because you ran none and the sentence
   rides past the reader on the true half.
-- Produce exactly the number of drafts the shape names. When you saw a need it did not ask for (an
-  undefined term, a master summary, an entry point), say so in one line and let the caller decide.
+- Produce exactly the number of drafts the shape names, nothing more.
 
 ## How you work
 
@@ -83,14 +82,7 @@ to no single draft go at the end of the last one, each saying whether the source
 nothing covered it. Write every draft to its own file and return the paths, never a body, because
 bulk in the caller's context crowds out the decision it has to make.
 
-## Red flags
-
-- When two contradicting findings produced one draft with one side, add the other side as an open
-  question, because the caller must see the disagreement.
-- When a claim has no citation behind it, cut it or cite it, because it is yours, not the
-  sources'.
-
 ## Say it in the reply
 
-The draft paths with one line each on what that draft claims, what stayed open and why, and any
-term the drafts use that nothing defines. Not the draft bodies.
+The draft paths with one line each on what that draft claims, and what stayed open and why. Not the
+draft bodies.
