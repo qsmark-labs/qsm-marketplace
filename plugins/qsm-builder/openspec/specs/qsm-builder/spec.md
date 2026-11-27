@@ -15,8 +15,8 @@ place rather than duplicate it. For a new plugin it SHALL require a README openi
 why-it-exists section written before the specification, a specification written before the build,
 a `plugin.json` without `version`, an install script built on the shared install base, and each
 dependency written in the manifest and in the spec. It SHALL hand each part to its own builder
-skill (add-tool, add-hook, add-skill, add-lib), carry hard rules each naming its gate or review,
-and define done as the repository gates, the kind's own proof and a strict-reviewer review.
+skill (add-tool, add-hook, add-skill, add-lib), carry hard rules each naming its gate,
+and define done as the repository gates and the kind's own proof.
 
 #### Scenario: Developer asks for a new capability
 
@@ -42,8 +42,8 @@ The plugin SHALL offer a skill, add-tool, for adding a CLI bin or a verb. It SHA
 declared in `qsm.json` and handled through `runCli`, its failures as `fail` or a thrown `QsmError`,
 its environment read through `lib/paths.ts`, the generated noun refreshed with the manifest, and a
 test that drives the real binary through `runBin` and `isolatedEnv` with temp dirs from
-`sandboxDir`. It SHALL carry hard rules each naming its gate or review, and define done as the
-repository gates, one real run of the verb and a strict-reviewer review.
+`sandboxDir`. It SHALL carry hard rules each naming its gate, and define done as the
+repository gates and one real run of the verb.
 
 #### Scenario: A test spreads the whole environment
 
@@ -58,7 +58,7 @@ of the hook's own plugin and the hook as one call of its noun, every `.catch` ca
 generated `failure()` before its policy, no listener on the events the engine skips under managed
 settings, a classic command hook only for an event with no function form, and a hooks test run
 through `claude plugin test`. It SHALL define done as the repository gates, `bun run test:hooks`,
-a real run of the verb and a strict-reviewer review.
+and a real run of the verb.
 
 #### Scenario: Logic sits in a hook
 
@@ -70,9 +70,9 @@ a real run of the verb and a strict-reviewer review.
 
 The plugin SHALL offer a skill, add-skill, for adding a skill, an agent or a command to a plugin
 that exists. It SHALL search for an existing owner before writing, choose the file kind, require the
-eval cases (fire, behaviour, negative) before the body, and carry numbered hard rules each with its
-reason and its enforcing gate or "review". It SHALL define done as the repository gates, the
-plugin's eval and a strict-reviewer review of the diff with those rules as the checklist, and it
+eval cases (fire, behaviour, negative) in the same change, and carry numbered hard rules each with
+its reason and its enforcing gate. It SHALL define done as the repository gates and the plugin's
+eval, and it
 SHALL point to the skill-standards skill for the quality bar instead of repeating it.
 
 #### Scenario: A developer asks for a new skill
@@ -87,8 +87,8 @@ The plugin SHALL offer a skill, add-lib, for code that is about to go into root 
 `lib/fixtures/`. It SHALL accept a new export only in the change that deletes at least two plugin
 copies of it, SHALL require a helper a plugin could copy to be registered with the private-helper
 gate and in the AGENTS.md layout, and SHALL keep `lib/` free of plugin names, plugin imports and
-npm packages. It SHALL define done as the repository gates, a shortstat whose deletions exceed its
-additions and a strict-reviewer review.
+npm packages. It SHALL define done as the repository gates, and a shortstat whose deletions exceed
+its additions.
 
 #### Scenario: A helper with one consumer
 
@@ -108,8 +108,8 @@ written here, a skill, an agent or a command. A skill SHALL open with its
 purpose (the gap, who it serves, the outcome, what is out of scope), carry a
 description under 1,024 characters that names when it triggers and
 disambiguates it from neighbouring skills, give each rule its reason, and end
-with a Red flags section and a Say it in the reply section, with each sentence
-in exactly one of the body, Red flags, or Say it. A skill SHALL stay under the
+with a Red flags section, with each sentence in exactly one of the body or Red
+flags. A skill SHALL stay under the
 size cap, hold one subject, and carry no references directory.
 
 #### Scenario: A skill description is ambiguous

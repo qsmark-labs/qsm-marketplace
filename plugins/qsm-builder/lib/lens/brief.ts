@@ -47,7 +47,7 @@ export function briefOf(file: string): Brief | null {
   return {
     plugin,
     text: [
-      `${plugin} has ${open.length} open tasks from the lens and from feedback. Before you change its files, show the person each one (what changes, and what you would do or why you refuse), write only after their yes, and close the task with what was done.`,
+      `${plugin} has ${open.length} open tasks from the lens and from feedback.`,
       ...open.slice(0, SHOWN).map(line),
       ...more,
     ].join("\n"),

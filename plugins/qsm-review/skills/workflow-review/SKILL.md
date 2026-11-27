@@ -8,22 +8,18 @@ description: "Use to review one whole GitHub pull request or GitLab merge reques
 A pull request is public, so the review posts under the caller's own forge account, never a bot or
 an env token. The judgement is in `${CLAUDE_PLUGIN_ROOT}/workflows/strict-review.mjs`. You gather
 facts and post, because the workflow has no filesystem or network. You do not review in the session
-and you do not change the code. It is the review step of the qsm flow for a change that lives on a
-forge; the findings then go to received-findings. Reading the author's replies later, answering
-and resolving threads is the review-threads skill, not this one.
+and you do not change the code. Answering and resolving threads is the review-threads skill.
 
 ## Before the run
 
 - If the `qsm-forge` binary is not on PATH, report `missing`, name `qsm-forge`, tell the caller to
   install it (`claude plugin install qsm-forge@qsm-marketplace`), and stop without attempting the
   review, because the review has nowhere to read from or post to.
-- Resolve target and forge: the caller's number, or the open request on this branch; else ask.
+- Resolve target and forge: the caller's number, or the open request on this branch.
   GitHub is `qsm-forge gh`, GitLab is `qsm-forge gl`.
 - Check auth first with the forge bin's status verb. On failure name the forge and the sign-in
   command and stop, because the run is long.
 - Dry run if the caller says so: same work, reported in the session, nothing posted.
-- An automated rerun skips when threads still wait on the author or the head is unchanged since
-  the last posted review. A rerun the caller asks for always proceeds.
 
 ## Run
 
@@ -61,16 +57,3 @@ and resolving threads is the review-threads skill, not this one.
 - A dry run prints verdict, finding count, lenses and the payload, and says nothing was posted.
 - At the end, even after a failure, remove the worktree and the diff file. Never say posted when
   the post failed.
-
-## Red flags
-
-- Context built, auth unchecked: check it now.
-- Rerun with threads waiting on the author: skip.
-- Editing a finding before posting: post it as returned.
-- Aborted run and you are about to approve: post nothing.
-
-## Say it in the reply
-
-Before: target, forge, posts or dry run. After: verdict, finding count, rating, lenses, dead lens
-slots, folded findings, where it posted or that nothing did and why. A stopped run names the gate;
-an aborted run gives the reason and says no review exists.

@@ -5,13 +5,8 @@ description: "Use when a colour palette is to be built or fixed: a UI that feels
 
 # UI Palette
 
-A palette chosen colour by colour drifts to one hue and one grey: every token a different shade of
-the same violet, surfaces a few percent of lightness apart, an edge drawn three ways. This skill is
-for the person who owns a product's colours and cannot say why they feel wrong. It says how a
-coherent palette is built, so `## Tokens` of the design source can be written and `ui-audit` can
-check it. It picks no brand colour and writes no stack syntax. The measured case behind it: a
-desktop shell whose thirteen tokens sat at one hue, with surface steps of 1.03 to 1.21:1 and three
-edge treatments at once.
+How a coherent palette is built, so `## Tokens` of the design source can be written and `ui-audit`
+can check it. It picks no brand colour and writes no stack syntax.
 
 ## Rules
 
@@ -56,18 +51,3 @@ edge treatments at once.
 
 The rules above do not change; the stack skill holds the syntax. CSS and Tailwind: css-tokens.
 Quickshell: qml-ui.
-
-## Red flags
-
-- When every named hue of a draft lies within 15 degrees of the neutral tint, the accent cannot
-  mark anything: move it, then recompute its pairs.
-- When two kinds of edge (hairline, border, shadow) appear on one container, keep one and delete
-  the others.
-- When a component names a palette value instead of a role, a theme swap will miss it.
-
-## Say it in the reply
-
-- The role list with each sentence, and the palette values with their OKLCH lightness and hue.
-- The container step ratios and the one separation mechanism, computed, not estimated.
-- For an image theme: the median lightness, the tint hue, the accent hue, or that the image gave
-  no hue.

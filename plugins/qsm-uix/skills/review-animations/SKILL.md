@@ -5,12 +5,9 @@ description: "Use when asked to review, judge, or critique motion: an animation 
 
 # Review Animations
 
-A transition that works but feels sluggish, grows from the wrong origin, fires too often or drops
-frames is a regression, not a pass. This skill serves the person who must answer for how an
-interface feels: it measures every animation in the diff against ten standards with their values and
-defaults to flagging, because approval is earned. It owns the motion judgement in this plugin;
-ux-audit hands motion here, so no two voices rule on one animation. It reviews motion only, writes
-no feature, and declines general code review.
+Measures every animation in the diff against ten standards and defaults to flagging, because
+approval is earned. It owns the motion judgement in this plugin; ux-audit hands motion here. It
+reviews motion only.
 
 ## The ten standards
 
@@ -75,20 +72,20 @@ stagger, a spring for "alive". 9. Reduced motion, hover gating, cohesion.
 
 ## Say it in the reply
 
-Two parts, in this order. First one markdown table, one row per issue, never a Before/After list:
+One markdown table, one row per issue:
 
 | Before | After | Why |
 | --- | --- | --- |
 | a 300 ms transition on every property | transform only, 200 ms ease-out | name the properties; `all` animates what nobody meant |
 | `ease-in` on a dropdown | strong ease-out | ease-in delays the moment watched |
 
-Second the verdict, grouped by tier and highest first, empty tiers omitted: feel-breaking
-regressions, missed simplifications, performance, interruptibility and timing, origin and cohesion,
-accessibility. Close with Block (a feel-breaking regression, an animation on a keyboard or 100+/day
-action, a scale from zero or ease-in on UI, a layout property with an easy transform fix) or Approve
-(none of those, values inside bounds, interruption and reduced motion handled). Cite `file:line`.
-When feel cannot be judged from code, say so and name the check: slow motion with the duration
-raised to 2 to 5 times, frame by frame, a real device for gestures, fresh eyes the next day.
+Then the verdict, highest tier first: feel-breaking regressions, missed simplifications,
+performance, interruptibility and timing, origin and cohesion, accessibility. Close with Block (a
+feel-breaking regression, an animation on a keyboard or 100+/day action, a scale from zero or
+ease-in on UI, a layout property with an easy transform fix) or Approve (none of those, values
+inside bounds, interruption and reduced motion handled). Cite `file:line`. When feel cannot be
+judged from code, say so and name the check (duration raised 2 to 5 times, frame by frame, a real
+device for gestures).
 
 How each rule is written and read on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

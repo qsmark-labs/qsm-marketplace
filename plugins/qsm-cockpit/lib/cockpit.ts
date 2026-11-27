@@ -20,61 +20,21 @@ export const OUTCOME_WORD: Readonly<Record<string, string>> = {
   error: "failed",
 };
 
-/**
- * Each stage as the one sentence its switch answers: what to do ideally, what to output, the
- * tools, the skills that own it (loaded by the agent, never pushed), and where the loop goes next.
- */
-const GUIDE: Record<
-  Stage,
-  { does: string; output: string; tools: string; skills: string[]; next: Stage }
-> = {
+/** Each stage as the one sentence its switch answers: what the stage is, and where the loop goes next. */
+const GUIDE: Record<Stage, { does: string; next: Stage }> = {
   LOAD: {
-    does: "read the notes for this tree, the ready tasks and the governing spec, and search past sessions before asking twice",
-    output: "what was decided and what is open",
-    tools: "qsm-memory notes and search, the task tool's ready list",
-    skills: ["qsm-memory:memory", "qsm-tasks:task-tool"],
+    does: "read the notes for this tree, the ready tasks and the governing spec",
     next: "PLAN",
   },
-  PLAN: {
-    does: "gather first (the project's rules and builder skill, specs, tasks, memory, code), reason it through, then ask only what is still open; the six questions, the size; a fix goes to EXECUTE, an epic through grilling, the split and a spec per piece",
-    output: "the person's yes",
-    tools: "the question tool, the task tool, openspec",
-    skills: ["qsm-plan:plan", "qsm-plan:grilling", "qsm-openspec:spec-propose"],
-    next: "EXECUTE",
-  },
-  EXECUTE: {
-    does: "apply the spec change, claim the task, work in a worktree, delegate and take the work back",
-    output: "the change in and the run that proves it ready",
-    tools: "wt, Agent, the task tool",
-    skills: ["qsm-openspec:spec-apply", "qsm-essentials:subagents"],
-    next: "VERIFY",
-  },
+  PLAN: { does: "settle what to build; a fix goes straight to EXECUTE", next: "EXECUTE" },
+  EXECUTE: { does: "make the change", next: "VERIFY" },
   VERIFY: {
-    does: "search the task tool for an open hold, run the real path end to end, lint and typecheck",
-    output: "the lines that decide, a failure back to EXECUTE",
-    tools: "bun run validate, lint, typecheck, the runner agent",
-    skills: ["qsm-essentials:run-and-verify", "qsm-review:review"],
+    does: "run the real path and read its output; a failure goes back to EXECUTE",
     next: "LEARN",
   },
-  LEARN: {
-    does: "fix the cause of each retry and each correction where it lives (the code, the tool, the gate, the hook, the instruction that misled), so it cannot happen again; a task only for a cause that is not ours to fix now; a decision's reason into the spec design or the commit",
-    output:
-      "each fix and the run that proves it, or the task that says why it waits; a note that describes a problem without removing it is no lesson",
-    tools: "Edit, the tests, the task tool",
-    skills: [],
-    next: "CLOSE",
-  },
-  CLOSE: {
-    does: "spec-archive the change and close its task, push after review, close the epic only when every task is done, its criteria hold and test-it passed, a note when work stays open",
-    output: "the closed task or the note",
-    tools: "openspec archive, git push, qsm-memory note",
-    skills: ["qsm-openspec:spec-archive", "qsm-memory:memory"],
-    next: "LOAD",
-  },
+  LEARN: { does: "fix the cause of each retry and each correction where it lives", next: "CLOSE" },
+  CLOSE: { does: "close the task and push when the work is done", next: "LOAD" },
 };
-
-/** Every skill a stage sentence names, for the test that each one exists. */
-export const STAGE_SKILLS: string[] = STAGES.flatMap((stage) => GUIDE[stage].skills);
 
 // differs: hooks sandbox (the hooks module imports this file, and root lib/ is out of its reach)
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -103,18 +63,17 @@ export function tierOf(model: string): string {
 
 /** What the stage tool answers: the stage's one sentence. */
 export function guideText(stage: Stage): string {
-  const { does, output, tools, skills, next } = GUIDE[stage];
-  const load = skills.length === 0 ? "" : `; load ${skills.join(" and ")} if not loaded`;
-  return `You are in ${stage}: ${does}; output ${output}; tools: ${tools}${load}; next ${next}, and call stage again when you move.`;
+  const { does, next } = GUIDE[stage];
+  return `You are in ${stage}: ${does}; next ${next}.`;
 }
 
 /** The one line every prompt carries, so the main chat always knows where it stands. */
 export function reminderText(step: StageStep | undefined, now: number): string {
   if (step === undefined) {
-    return "qsm stage: not said yet. Call the stage tool with the stage you start in.";
+    return "qsm stage: not said yet.";
   }
   const note = step.why === "" ? "" : `, ${step.why}`;
-  return `qsm stage: ${step.stage} (${seconds(now - step.at)}${note}); next ${GUIDE[step.stage].next}. Call the stage tool when you move.`;
+  return `qsm stage: ${step.stage} (${seconds(now - step.at)}${note}); next ${GUIDE[step.stage].next}.`;
 }
 
 /** A duration said short: `42s`, `3m05s`. */

@@ -33,8 +33,3 @@ nothing here restates what they report. Bash is shell-dev, zsh is zsh-dev.
 - When you write `[[ ]]`, `${var:-x}`, `export` or `local`, rewrite it in fish (`test`, `set -q`
   with `or set`, `set -gx`, `set -l`), because it does not parse or means something else. `$(...)`
   and `VAR=value cmd` are fine in fish 4, so leave them.
-
-## Say it in the reply
-
-When you translate from bash or zsh, name the fish behaviour that forced each change, so the user
-sees why the line changed shape.

@@ -35,10 +35,9 @@ structure or behaviour.
 ## Rules
 
 - Refactor only inside the lines of a change you are making, in its own commit before it: make the
-  change easy, then make the easy change. A cleanup beyond that is scope the person must read.
-  A smell you meet mid-change is a task in the task tool, not a fix. A bug you meet is a finding for
-  debugging with its reproduction, not a fix, because a fix inside a refactoring cannot be told
-  from a slip.
+  change easy, then make the easy change. A cleanup beyond that is scope nobody asked for.
+  A smell or a bug you meet mid-change is one line at the end, not a fix, because a fix inside a
+  refactoring cannot be told from a slip.
 - Pin behaviour first by running the real path (the bin, the request, the flow) and keeping its
   output, odd behaviour included. That records what the code does, not what it should. Write it as
   a test file only when you must repeat it over many steps.
@@ -69,6 +68,4 @@ structure or behaviour.
 
 ## Say it in the reply
 
-The plan as a table: step, the callers it touches, the run that proves it. Then three lines: what
-changed structurally, which run shows the behaviour unchanged, and which coming change it made
-easy. Smells and bugs met on the way are listed as tasks and findings, not as edits.
+What changed structurally and which run shows the behaviour unchanged.
