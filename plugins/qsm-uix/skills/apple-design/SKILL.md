@@ -5,16 +5,10 @@ description: "Use when an interface should feel the way Apple's do and the quest
 
 # Apple Design
 
-An interface feels Apple-made when it answers before the person finishes acting, keeps things where
-they came from, layers material so that structure shows without shouting, and sets type for its
-size. This skill serves the person who builds interfaces on a desktop, in a terminal or on the web
-and wants that feel, and gives the foundations. It does not write stack syntax, choose the design's
-numbers (ui-design), or carry motion: curves, durations, springs, gestures, momentum and
-rubber-banding are `animate`, and `review-animations` checks them. Say so when a question is about
-them.
-
-The through-line: every rule serves one of four needs, safety (predictable), understanding,
-achievement, joy. A rule that serves none is decoration.
+The foundations of the Apple feel: it answers before the person finishes acting, keeps things where
+they came from, layers material so structure shows without shouting, and sets type for its size. It
+does not write stack syntax, choose the design's numbers (ui-design), or carry motion: curves,
+durations, springs, gestures, momentum and rubber-banding are `animate`.
 
 ## 1. Response
 
@@ -91,20 +85,8 @@ comprehension stay. Durations and curves are `animate`'s. Large moving things tu
 while they travel, no background moves across the whole viewport, no slow loop oscillates near
 0.2 Hz (one cycle per 5 s), and a light-to-dark switch eases instead of jumping in brightness.
 
-## Red flags
-
-- When a blurred panel's text passes against its fill but was never measured over the blur, run the
-  contrast on a capture of the real surface, because the blur carries the wallpaper's colours.
-- When a translucent layer sits on a translucent layer, make the lower one solid, because the
-  stack loses legibility.
-- When the question turns to springs, flicks, velocity or drag, hand it to `animate`, because
-  those values are not kept here.
-- When a design has no solid fallback for reduced transparency, add it before the material.
-
-## Say it in the reply
-
-The foundation rule applied, the solid variant, and the family skill that writes it. Name what was
-handed to `animate`.
+Contrast over a blur is measured on a capture of the real surface: the blur carries the
+wallpaper's colours.
 
 How each rule lands on a stack is its family: desktop (desktop-ui, qml-ui), terminal (cli-ui,
 tui-ui), web (css-ui, react-ui, web-motion).

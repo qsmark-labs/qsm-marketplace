@@ -6,10 +6,8 @@ description: "Use when asked whether a UI can be used without a mouse, with a sc
 # A11y Audit
 
 Whether someone can use a UI is decided by what the keyboard reaches, what the platform tree
-announces, and what survives without colour, motion or default text size. A screenshot shows none of
-that, so an unaided agent reads the code, says "looks accessible", and files nothing measured. This
-skill serves the person who publishes interfaces and answers for their accessibility: it drives and
-reads the UI, and fills a conformance table where every verdict has evidence or says it has none. It
+announces, and what survives without colour, motion or default text size. This skill drives and
+reads the UI and fills a conformance table where every verdict has evidence or says it has none. It
 does not judge static visuals (ui-audit), judge motion (review-animations), fix the UI (the family
 skills), or give legal advice. Criterion numbers, levels and legal status are in a11y-conformance.
 
@@ -17,8 +15,7 @@ skills), or give legal advice. Criterion numbers, levels and legal status are in
 
 Name the evidence channels you have before any verdict: the platform accessibility tree, a way to
 send keys, captures (`qsm-uix screenshot`), the design source. A criterion that needs a channel you
-lack is `not tested`, said up front, because a pass without the channel measures nothing and
-`not tested` is the honest cell. Never write `pass` for what you only inferred from code.
+lack is `not tested`. Never write `pass` for what you only inferred from code.
 
 ## Method
 
@@ -76,29 +73,18 @@ reconstruct them from memory. Under the table: **Hypotheses** (suspected, unmeas
 human trial** (a real screen reader, a real keyboard session, assistive hardware: exact steps and
 what counts as a pass), **Not examined** (surfaces and states not reached, and why).
 
-A conformance table is a fact about the surfaces you drove. A UI with three untested surfaces
-cannot be summed up as "conformant"; say which surfaces the table covers.
+## Pitfalls
 
-## Red flags
-
-- When about to write `pass` from reading the code, drive it or read the tree, because code says
-  what was meant and the tree says what a user gets.
-- When the tree is unreachable, list every name, role and state row as `not tested` in the first
-  line, because a silent gap looks like a clean result.
-- When focus is invisible in a capture, check theme and pointer-versus-keyboard mode before filing,
-  because many toolkits show the indicator only after a key press.
-- When a control works by hover, drag or right click only, look for a key path before filing
-  pass, because a pointer path alone fails 2.1.1.
-- When you reach for legal wording (required, fined, covered), point to a11y-conformance, because
-  level and law are decided there and nowhere else.
-- When a finding rests on a screenshot of the resting state, drive the other states, because most
-  keyboard and focus defects live in transitions.
+- When the tree is unreachable, list every name, role and state row as `not tested`.
+- When focus is invisible in a capture, check theme and pointer-versus-keyboard mode first: many
+  toolkits show the indicator only after a key press.
+- A control that works by hover, drag or right click only needs a key path, or it fails 2.1.1.
+- Legal wording (required, fined, covered) is a11y-conformance's.
 
 ## Say it in the reply
 
 The evidence-channel line first, then the table with its three lists, then one sentence on which
-surfaces were driven and which half of the criteria the tree could not test. Point the reader to
-a11y-conformance for what each criterion means in law.
+surfaces were driven.
 
 How to drive and expose each stack is its family: desktop (desktop-ui, qml-ui), terminal
 (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

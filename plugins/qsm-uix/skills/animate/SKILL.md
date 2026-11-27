@@ -5,12 +5,9 @@ description: "Use when asked to build one animation or one transition for a popo
 
 # Animate
 
-An agent asked for motion picks its own curve and duration, and picks wrong: `ease-in` on an enter,
-a scale from zero, a transition on every property, an animation on a keyboard action. This
-skill serves the person who builds an interface and must answer for how it feels: it turns a request
-for motion into an implementation that survives `review-animations` the first time. The first answer
-is sometimes "do not animate", and that is a result, not a dodge. Never present motion options as a
-menu: make the call, give the reason in one line, write the code.
+Turns a request for motion into an implementation that survives `review-animations` the first
+time. The first answer is sometimes "do not animate". Never present motion options as a menu: make
+the call, give the reason in one line, write the code.
 
 ## The sequence, in order
 
@@ -25,9 +22,8 @@ Steps 1 and 2 gate everything; no curve is chosen before they pass.
 | Occasional (modal, drawer, toast, settings) | Standard animation |
 | Rare or first-time (onboarding, success, celebration) | The delight budget lives here |
 
-A keyboard-initiated action is a disqualifier, not a judgment call: Raycast has no open or close
-animation, and that is correct for something opened hundreds of times a day. Say so plainly, write
-no animation, and offer the non-motion alternative (instant state change, a static cue).
+A keyboard-initiated action is a disqualifier: write no animation (instant state change or a
+static cue instead).
 
 ### 2. Name the purpose
 
@@ -139,20 +135,10 @@ travelled divided by elapsed milliseconds) above 0.11. Capture the pointer once 
 ignore extra touch points, damp the movement past an edge (friction, not a wall), and settle with a
 spring so an interrupted drag keeps its velocity.
 
-## Never ship
-
-a transition on every property; a scale-from-zero entrance; ease-in on UI; built-in `ease-out` on a
-deliberate animation; animation on a keyboard shortcut; UI over 300 ms without a reason; centre
-origin on a trigger-anchored popover; keyframes on a rapidly triggered element; animated layout
-properties; ungated hover motion; a keyword easing outside the two exceptions; no reduced-motion
-variant; everything entering at once.
-
 ## Say it in the reply
 
-The code, then at most three lines: the gate result (frequency tier, named purpose, anything
-rejected and why), the ingredients (tool, properties, curve, duration or spring), and what to
-feel-check because code cannot show it: raise its duration to 2 to 5 times, step it frame by
-frame, test gestures on the real device, look again the next day.
+The code, then at most two lines: the gate result (frequency tier, named purpose) and the
+ingredients (tool, properties, curve, duration or spring).
 
 How each rule is written on a stack is its family: desktop (desktop-ui, qml-ui), terminal
 (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).

@@ -5,10 +5,8 @@ description: "Use when someone describes a motion effect without knowing its nam
 
 # Animation Vocabulary
 
-People describe what they see or feel ("springy", "slides off", "draws itself in"), not the
-technical name, and then prompt an agent or a designer with the wrong word. This skill serves that
-person: it maps the sensation to the one term in the glossary below so the next request asks for the
-right thing. It names, it does not design or build.
+Maps a described sensation ("springy", "slides off", "draws itself in") to the term in the glossary
+below. It names, it does not design or build.
 
 ## How to answer
 
@@ -18,8 +16,8 @@ right thing. It names, it does not design or build.
    another with a small delay between each, creating a cascade.` Its wording is authoritative.
 3. When two terms compete (clip-path and mask, pop in and bounce, shared element transition and
    layout animation), contrast them so the person can pick.
-4. Nothing matches exactly: name the closest term and say it is an approximation, or describe the
-   effect in glossary words. A term not in the glossary is said to be missing, never invented.
+4. Nothing matches exactly: name the closest term and say it is an approximation. Never invent a
+   term.
 5. Lead with the term; expand only when asked.
 
 ## Glossary

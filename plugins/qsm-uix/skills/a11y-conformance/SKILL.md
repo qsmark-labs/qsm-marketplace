@@ -5,11 +5,9 @@ description: "Use when asked which accessibility criterion applies, what WCAG 2.
 
 # A11y Conformance
 
-An agent asked "is this required" answers from memory, and memory blurs three things: what WCAG
-2.2 says, what EN 301 549 contains, and what the European Accessibility Act binds. This skill gives
-the person who publishes interfaces the checked mapping between them, so a criterion is cited by
-number with its level and its test, and a legal claim says exactly how far it reaches. It is not
-legal advice, it does not drive a UI (a11y-audit), and it does not say how to design or fix.
+The mapping between what WCAG 2.2 says, what EN 301 549 contains, and what the European
+Accessibility Act binds. Cite a criterion by number with its level and test; a legal claim says
+exactly how far it reaches. Not legal advice; driving a UI is a11y-audit.
 
 ## Three layers, never merged
 
@@ -26,10 +24,9 @@ legal advice, it does not drive a UI (a11y-audit), and it does not say how to de
   conformity to what meets a harmonised standard "the references of which have been published in
   the Official Journal", and only "in so far as those standards cover those requirements".
 
-Say "in EN 301 549" for a criterion the standard's text carries, never "mandatory". The word
-"enforceable" is for the whole chain: in the standard, the standard cited for the Act, the product
-or service in scope. Break any link and the claim weakens, because presumption is a route to proving
-conformity, not the duty itself.
+Say "in EN 301 549" for a criterion the standard's text carries, never "mandatory". "Enforceable"
+is for the whole chain: in the standard, the standard cited for the Act, the product or service in
+scope.
 
 Unresolved here, say so when asked: Decision (EU) 2021/1339 publishes V3.2.1 for Directive
 2016/2102 (public-sector sites and apps). A citation of it for Directive 2019/882 could not be
@@ -117,25 +114,21 @@ required. The 44 px touch target is ui-design's rule, not this criterion.
 A desktop shell, a developer CLI, or a tool for oneself is in scope only if it is one of those
 products or services. When the reading is contested, say a lawyer decides it.
 
-## Red flags
+## Pitfalls
 
-- When about to write "required", "mandatory" or "you will be fined", name the chain link you can
-  prove (criterion, standard clause, Act article) and stop there, because each link has a gap above.
-- When a 2.2 criterion (2.4.11, 2.5.7, 2.5.8, 3.2.6, 3.3.7, 3.3.8) is called enforceable via EN 301
-  549 V3.2.1, say it is not in that text, because the standard reflects 2.1.
-- When asked about a fine, say penalties are national and the Act sets none, and quote no figure
-  from memory even hedged, because an unchecked number gets repeated as fact; name the national
-  act whose penalty provision to read, or fetch it.
-- When asked "are we exempt", ask for headcount, turnover, product or service, and ownership links,
-  because the exemption is conditional on all four.
-- When a source cannot be fetched, leave the claim out, because a plausible clause number is worse
-  than a gap.
+- Instead of "required", "mandatory" or "you will be fined", name the chain link you can prove
+  (criterion, standard clause, Act article) and stop there.
+- A 2.2 criterion (2.4.11, 2.5.7, 2.5.8, 3.2.6, 3.3.7, 3.3.8) is not in EN 301 549 V3.2.1, which
+  reflects 2.1.
+- Penalties are national and the Act sets none; quote no figure from memory.
+- The microenterprise exemption depends on headcount, turnover, product or service, and ownership
+  links; state which you assumed.
+- A source you cannot fetch leaves the claim out.
 
 ## Say it in the reply
 
 The criterion by number and level, its test, and the chain: in WCAG, in EN 301 549 (clause number),
-in scope of the Act (article). Name the one link you could not confirm, and close with "a lawyer
-decides contested readings" when the question was legal.
+in scope of the Act (article). Name the one link you could not confirm.
 
 How each rule is built and exposed on a stack is its family: desktop (desktop-ui, qml-ui),
 terminal (cli-ui, tui-ui), web (css-ui, react-ui, web-motion).
