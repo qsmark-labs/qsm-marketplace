@@ -46,5 +46,5 @@ or `--skip-specs` (the second only for a change with no deltas).
 
 ## Say it in the reply
 
-Per durable spec: path and actions applied. Each gate with its result. The archived path. Task ids
+Per durable spec: path and actions applied. Each gate with its result. The archived path. Issue
 closed, if any.
