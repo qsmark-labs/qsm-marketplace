@@ -24,9 +24,7 @@ It writes planning artifacts only. It never edits code.
    a nested repository silently resolves to the ancestor's root. No root of its own: stop and offer
    `openspec init --tools none`.
 3. **Pick a short kebab-case change id and check it is free.** An id in use is a question for the
-   person (continue that change or rename). If a task in the task tool carries the external
-   reference `openspec:<change-id>`, it is this change's task; create none the person did not ask
-   for.
+   person (continue that change or rename). Create no GitHub issue the person did not ask for.
 
 ## Writing the artifacts
 

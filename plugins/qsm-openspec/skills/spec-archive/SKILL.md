@@ -41,8 +41,8 @@ or `--skip-specs` (the second only for a change with no deltas).
 1. `openspec archive <id> --yes` with every gate green. Confirm the change sits under the archive
    directory and is gone from `openspec list`.
 2. `openspec validate --all --strict` again, because the move rewrites paths.
-3. If tasks in the task tool are bound with `openspec:<change-id>`, close them with a reason naming
-   the work done. Create none.
+3. If the person named the change's issue, close it with
+   `gh issue close <n> --comment "<the work done>"`. Create none.
 
 ## Say it in the reply
 
