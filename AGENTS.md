@@ -106,7 +106,7 @@ plugins/<name>/                   # layer 1: one plugin
 ## Which builder skill
 
 Each skill of `qsm-builder` gives the steps, the hard rules with the gate that checks each one, and
-what done means, ending in a `strict-reviewer` review.
+what done means.
 
 | You are adding | Skill |
 | --- | --- |
